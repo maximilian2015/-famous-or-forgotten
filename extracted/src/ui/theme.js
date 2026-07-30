@@ -1,0 +1,1 @@
+export const theme = { bg: '#150f2c', panel: '#1e1740', panel2: '#221a44', accent: '#9e74ff', accent2: '#7c5cff', text: '#ece7fb', muted: '#9d90c4', gold: '#ffd166', good: '#5fce8a', bad: '#ff6a8a', line: 'rgba(158,116,255,.2)' };

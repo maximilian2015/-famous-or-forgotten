@@ -1,0 +1,11 @@
+{
+  "version": "0.0.1",
+  "configurations": [
+    {
+      "name": "fof-dev",
+      "runtimeExecutable": "C:\\Program Files\\nodejs\\node.exe",
+      "runtimeArgs": ["extracted/node_modules/vite/bin/vite.js", "extracted", "--port", "5173", "--strictPort"],
+      "port": 5173
+    }
+  ]
+}

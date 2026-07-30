@@ -1,0 +1,10 @@
+import { build } from 'vite';
+import react from '@vitejs/plugin-react';
+import fs from 'fs';
+await build({ configFile: false, plugins: [react()], build: { outDir: 'dist-sf', target: 'es2019', minify: 'terser', emptyOutDir: true, rollupOptions: { output: { format: 'iife', inlineDynamicImports: true, entryFileNames: 'app.js', assetFileNames: 'a.[ext]' } } }, logLevel: 'error' });
+const js = fs.readFileSync('dist-sf/app.js', 'utf8');
+let css = ''; for (const f of fs.readdirSync('dist-sf')) if (f.endsWith('.css')) css += fs.readFileSync('dist-sf/' + f, 'utf8');
+const html = `<!DOCTYPE html><html lang="en"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><title>Famous or Forgotten</title>${css ? '<style>' + css + '</style>' : ''}</head><body><div id="root"></div><script>${js}</script></body></html>`;
+fs.mkdirSync('dist', { recursive: true });
+fs.writeFileSync('dist/game.html', html);
+console.log('built:', (html.length / 1024 | 0) + 'KB | module:', html.includes('type="module"'));
