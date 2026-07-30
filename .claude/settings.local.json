@@ -6,7 +6,16 @@
       "PowerShell(npm --version)",
       "Bash(git config *)",
       "Bash(git init *)",
-      "Bash(git add *)"
+      "Bash(git add *)",
+      "Bash(timeout 120 git push -u origin main)",
+      "Bash(echo \"exit=$?\")",
+      "Read(//c/games/Git/**)",
+      "Read(//c/games/Git\" 2>/dev/**)",
+      "Read(//c/games/Git//**)",
+      "Bash(GIT_TERMINAL_PROMPT=0 timeout 30 git ls-remote origin)",
+      "Read(//tmp/**)",
+      "Bash(ls '/c/games/Git/cmd/git.exe' 2>/dev/null && echo \"git.exe FOUND\" || echo \"not found\")",
+      "Bash(timeout 45 git ls-remote --heads origin)"
     ]
   }
 }
