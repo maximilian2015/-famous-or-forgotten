@@ -28,6 +28,25 @@ export function applyMonthly(s) {
   if (perk.confidence) s.confidence = Math.max(0, Math.min(100, (s.confidence || 0) + perk.confidence));
   checkInsolvency(s);
 }
+// The whole point of the title: stop working and the world forgets you.
+// Nothing here ran before — fame only ever went up, so every life ended a Legend.
+export function relevanceDrift(s) {
+  if (s.stage !== 'career') return;
+  // Shooting counts as working, and a fresh credit buys you a few quiet months.
+  if (s.production) { s._idleMonths = 0; } else { s._idleMonths = (s._idleMonths || 0) + 1; }
+  // Old news fades whether you like it or not.
+  if ((s.scandal || 0) > 0) s.scandal = Math.max(0, s.scandal - 0.4);
+  if ((s._idleMonths || 0) < 4) return;
+  const height = 0.35 + (s.fame || 0) / 95;      // the higher you are, the further there is to fall
+  const noise = (s.scandal || 0) / 45;            // bad press speeds the slide
+  s.fame = Math.max(0, Math.min(100, s.fame - (height + noise)));
+  if ((s._idleMonths === 13 || s._idleMonths === 25) && (s.fame || 0) > 5) {
+    addTimeline(s, s._idleMonths > 20
+      ? 'Two years without work. People talk about you in the past tense now.'
+      : 'A year with nothing released. The phone rings less than it used to.', true);
+  }
+}
+export function markReleased(s) { s._idleMonths = 0; }
 export function applyYearly(s) {
   const tax = wealthTax(s);
   if (tax > 0) { s.cash -= tax; addTimeline(s, `Wealth levy: the state taxed your idle fortune €${tax.toLocaleString()} this year. Money that sits still shrinks — put it to work.`, true); }

@@ -40,7 +40,9 @@ export function maybeGenerateOffer(s) {
   const acc = computeAccess(s);
   if (s.stage !== 'career') return;
   if ((s.offers || []).length >= 4) return;
-  const p = acc.agentReach ? 0.5 : (s.fame >= 20 ? 0.18 : 0.05);
+  let p = acc.agentReach ? 0.5 : (s.fame >= 20 ? 0.18 : 0.05);
+  // A name people are nervous about gets fewer calls.
+  p *= Math.max(0.25, 1 - (s.scandal || 0) / 90);
   if (chance(p * 100)) (s.offers = s.offers || []).push(generateOffer(s));
 }
 export function acceptOffer(s, id) {

@@ -1,5 +1,5 @@
 import { advanceStage } from '../systems/life/stages.js';
-import { applyMonthly, applyYearly } from './economy.js';
+import { applyMonthly, applyYearly, relevanceDrift } from './economy.js';
 import { maybeGenerateOffer } from '../systems/career/offers.js';
 import { emailTick } from '../systems/meta/email.js';
 import { maybeStartArc } from '../systems/life/arcs.js';
@@ -18,6 +18,7 @@ export function advanceMonth(state) {
   s.month += 1;
   if (s.month > 11) { s.month = 0; s.year += 1; s.ageY += 1; applyYearly(s); familyYear(s); datingYear(s); spotlightYear(s); }
   applyMonthly(s);
+  relevanceDrift(s);
   productionTick(s);
   eventsTick(s);
   maybeGenerateEvent(s);

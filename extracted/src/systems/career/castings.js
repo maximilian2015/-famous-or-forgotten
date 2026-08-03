@@ -1,6 +1,6 @@
 import { rint, chance, pick } from '../../engine/rng.js';
 import { addTimeline } from '../../engine/timeline.js';
-import { earn } from '../../engine/economy.js';
+import { earn, markReleased } from '../../engine/economy.js';
 const clamp = (v) => Math.max(0, Math.min(100, v));
 const POOLS = {
   actor: {
@@ -32,7 +32,8 @@ export function refreshCastingPool(s, force) {
 }
 export function castingChance(s, c) {
   const skill = s.dream === 'singer' ? s.singing : s.acting;
-  return Math.round(clamp(15 + skill * 0.5 + s.charisma * 0.2 + s.looks * 0.15 + s.luck * 0.1));
+  // Scandal was purely cosmetic before — it accumulated and did nothing.
+  return Math.round(clamp(15 + skill * 0.5 + s.charisma * 0.2 + s.looks * 0.15 + s.luck * 0.1 - (s.scandal || 0) * 0.3));
 }
 // quality (0-100) comes from the audition minigame: nail the read and your odds jump,
 // fumble it and the room cools on you.
@@ -48,7 +49,7 @@ export function auditionFor(s, id, quality = 50) {
     const status = rating >= 85 ? 'Hit' : rating >= 70 ? 'Well-received' : rating >= 50 ? 'Released' : 'Flop';
     const bucket = s.dream === 'singer' ? 'discography' : 'filmography';
     (s[bucket] = s[bucket] || []).unshift({ title: c.title, role: c.role, type: c.type, salary: c.salary, rating, status, year: s.year });
-    earn(s, c.salary, `"${c.title}" paid`); s.fame = clamp(s.fame + rint(1, 3)); s.confidence = clamp(s.confidence + 2);
+    earn(s, c.salary, `"${c.title}" paid`); markReleased(s); s.fame = clamp(s.fame + rint(1, 3)); s.confidence = clamp(s.confidence + 2);
     s.lastEvent = `${quality >= 80 ? 'The room goes quiet — you nailed it. ' : ''}You booked "${c.title}"! It came out ${status.toLowerCase()} (${Math.round(rating)}/100).`;
     addTimeline(s, `Booked ${c.title}: ${status}.`, rating < 50);
   } else {

@@ -1,6 +1,6 @@
 import { rint, chance, pick } from '../../engine/rng.js';
 import { addTimeline } from '../../engine/timeline.js';
-import { earn } from '../../engine/economy.js';
+import { earn, markReleased } from '../../engine/economy.js';
 import { hotGenre } from '../meta/news.js';
 const clamp = (v) => Math.max(0, Math.min(100, v));
 const TIERS = [
@@ -86,12 +86,13 @@ function wrapProduction(s) {
   const skill = s.dream === 'singer' ? s.singing : s.acting;
   const meterBonus = (p.meter - 50) * 0.5;
   let rating = clamp(35 + skill * 0.35 + p.prestigeScore * 0.2 + (s.looks - 40) * 0.1 + meterBonus + rint(-5, 8));
+  // A genuine cultural moment should be a career highlight, not a monthly occurrence.
   let worldHit = false;
-  if (rating >= 80 && p.tier !== 'supporting') {
-    let odds = 6 + Math.max(0, rating - 80) * 0.6;
-    if (p.genre === hotGenre(s)) odds += 18;
-    if (p.campaign) odds += 12;
-    worldHit = chance(Math.min(60, odds));
+  if (rating >= 90 && p.tier !== 'supporting') {
+    let odds = 1.5 + (rating - 90) * 0.4;
+    if (p.genre === hotGenre(s)) odds += 7;
+    if (p.campaign) odds += 5;
+    worldHit = chance(Math.min(18, odds));
   }
   if (worldHit) rating = Math.max(rating, 96);
   const status = worldHit ? 'World Hit' : rating >= 85 ? 'Hit' : rating >= 70 ? 'Well-received' : rating >= 50 ? 'Released' : 'Flop';
@@ -99,6 +100,7 @@ function wrapProduction(s) {
   const bucket = s.dream === 'singer' ? 'discography' : 'filmography';
   (s[bucket] = s[bucket] || []).unshift(credit);
   earn(s, p.salary, `"${credit.title}" paid`);
+  markReleased(s);
   s.fame = clamp((s.fame || 0) + { tentpole: 9, lead: 5, supporting: 2 }[p.tier] + (rating >= 85 ? 4 : 0) + (worldHit ? 25 : 0));
   s.confidence = clamp((s.confidence || 0) + 2);
   const lead = p.crew[0];
