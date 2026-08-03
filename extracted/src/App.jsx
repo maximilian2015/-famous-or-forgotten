@@ -27,6 +27,7 @@ export default function App() {
   const g = useGame();
   const [screen, setScreen] = useState('life');
   const [confirmEnd, setConfirmEnd] = useState(false);
+  if (!g.alive) return <EndOfLifeScreen g={g} />;
   if (g.pendingArc) return <ArcModal g={g} />;
   if (confirmEnd) return <EndLifeModal onCancel={() => setConfirmEnd(false)} onConfirm={() => { import('./systems/meta/legacy.js').then(m => { m.enshrine(g); newLife(); setConfirmEnd(false); }); }} />;
   return (
@@ -35,7 +36,7 @@ export default function App() {
         <div>
           <div style={{ fontSize: 22, fontWeight: 900 }}>{g.name}</div>
           <div style={{ fontSize: 12.5, color: theme.muted }}>{g.ageY} yrs · {MON[g.month]} {g.year} · {g.city}</div>
-          <div style={{ fontSize: 10, color: theme.accent, marginTop: 2, opacity: .7 }}>Rebuild · Step 20</div>
+          <div style={{ fontSize: 10, color: theme.accent, marginTop: 2, opacity: .7 }}>Rebuild · Step 21</div>
         </div>
         <div style={{ textAlign: 'right' }}>
           <div style={{ fontSize: 11, fontWeight: 800, letterSpacing: '.08em', textTransform: 'uppercase', color: theme.accent }}>{STAGE_LABEL[g.stage]}</div>
@@ -175,6 +176,43 @@ function PeopleScreen({ g }) {
     {people.length > 0 && (<><div style={{ fontSize: 11, fontWeight: 900, letterSpacing: '.09em', textTransform: 'uppercase', color: theme.muted, margin: '14px 0 8px' }}>Industry contacts</div>{people.map((p) => { const opensDoor = p.unlocks === 'aaa' && p.industryWeight >= 80;
       return (<Card key={p.id} style={{ marginBottom: 8 }}><div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline' }}><div style={{ fontSize: 14, fontWeight: 800 }}>{p.name}{p.fromSchool && <span style={{ fontSize: 10.5, color: theme.accent }}> · from school</span>}</div><div style={{ fontSize: 12, color: theme.muted }}>weight {p.industryWeight}</div></div><div style={{ fontSize: 11.5, color: theme.muted, margin: '3px 0 8px' }}>{p.role} · closeness {p.relationship}{opensDoor && p.relationship >= 60 ? ' · opens A-list ★' : opensDoor ? ' · could open doors' : ''}</div><Button onClick={() => dispatch(deepenRelationship, p.id)}>Spend time together</Button></Card>); })}</>)}
     {g.stage !== 'career' && <div style={{ fontSize: 11.5, color: theme.muted, textAlign: 'center', padding: '14px 10px', opacity: .8 }}>Industry contacts start once your career begins. Keep school friends close on Spotlight — some of them go far.</div>}
+  </div>);
+}
+function EndOfLifeScreen({ g }) {
+  const L = computeLegacy(g);
+  const hall = getHall();
+  const rank = hall.findIndex((h) => h.name === g.name && h.points === L.points) + 1;
+  const credits = [...(g.filmography || []), ...(g.discography || [])];
+  const best = [...credits].sort((a, b) => (b.rating || 0) - (a.rating || 0))[0];
+  const spouse = (g.family || []).find((p) => p.relation === 'Spouse');
+  const kids = (g.family || []).filter((p) => p.relation === 'Child').length;
+  const row = (k, v) => (<div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 12.5, padding: '5px 0', borderBottom: `1px solid ${theme.line}` }}>
+    <span style={{ color: theme.muted }}>{k}</span><span style={{ fontWeight: 700 }}>{v}</span></div>);
+  return (<div style={{ maxWidth: 440, margin: '0 auto', minHeight: '100vh', background: theme.bg, color: theme.text, padding: 16, display: 'flex', flexDirection: 'column', justifyContent: 'center', fontFamily: 'system-ui, sans-serif' }}>
+    <div style={{ fontSize: 11, fontWeight: 900, letterSpacing: '.14em', textTransform: 'uppercase', color: theme.muted, textAlign: 'center', marginBottom: 10 }}>A life, ended</div>
+    <div style={{ fontSize: 26, fontWeight: 900, textAlign: 'center' }}>{g.name}</div>
+    <div style={{ fontSize: 13, color: theme.muted, textAlign: 'center', marginTop: 4 }}>
+      {g.year - (g.deathAge || g.ageY)} — {g.deathYear || g.year} · died at {g.deathAge || g.ageY}, {g.deathCause || 'quietly'}
+    </div>
+    <Card style={{ margin: '18px 0 14px', background: `linear-gradient(135deg, rgba(255,209,102,.16), rgba(158,116,255,.06))`, borderColor: 'rgba(255,209,102,.35)' }}>
+      <div style={{ fontSize: 22, fontWeight: 900, color: theme.gold, textAlign: 'center' }}>{L.tier}</div>
+      <div style={{ fontSize: 12.5, color: theme.muted, textAlign: 'center', marginTop: 3 }}>{L.points} legacy points{rank > 0 ? ` · #${rank} in the Hall of Fame` : ''}</div>
+    </Card>
+    <div style={{ marginBottom: 16 }}>
+      {row('Peak fame', Math.round(L.peakFame))}
+      {row('Credits', L.credits)}
+      {row('Hits', L.hits)}
+      {L.worldHits > 0 && row('🌍 World hits', L.worldHits)}
+      {best && row('Best work', `${best.title} (${Math.round(best.rating)})`)}
+      {row('Left behind', `€${Math.round(g.cash || 0).toLocaleString()}`)}
+      {row('Family', spouse ? `${spouse.name}${kids ? ` · ${kids} child${kids > 1 ? 'ren' : ''}` : ''}` : kids ? `${kids} child${kids > 1 ? 'ren' : ''}` : 'None of their own')}
+    </div>
+    <div style={{ fontSize: 13, lineHeight: 1.6, color: theme.muted, textAlign: 'center', marginBottom: 20 }}>
+      {L.tier === 'Forgotten' ? 'The obituaries were short. Somewhere, a few people still remember what you were trying to do.'
+        : L.tier === 'Legend' ? 'They will be teaching your work long after everyone who knew you is gone.'
+        : `The name still means something to the people who were paying attention.`}
+    </div>
+    <Button kind="pri" onClick={() => newLife()}>Begin a new life</Button>
   </div>);
 }
 function EventsScreen({ g }) {

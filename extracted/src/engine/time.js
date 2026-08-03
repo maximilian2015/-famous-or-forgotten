@@ -9,6 +9,7 @@ import { datingYear } from '../systems/life/dating.js';
 import { spotlightYear } from '../systems/social/spotlight.js';
 import { productionTick } from '../systems/career/production.js';
 import { maybeGenerateEvent, eventsTick } from '../systems/social/events.js';
+import { agingTick, mortalityCheck } from '../systems/life/mortality.js';
 
 export function stepIsYear(state) { return state.stage === 'child' || state.stage === 'teen'; }
 export function advanceTime(state) { return stepIsYear(state) ? advanceYear(state) : advanceMonth(state); }
@@ -16,7 +17,12 @@ export function advanceTime(state) { return stepIsYear(state) ? advanceYear(stat
 export function advanceMonth(state) {
   const s = { ...state, timeline: [...(state.timeline || [])] };
   s.month += 1;
-  if (s.month > 11) { s.month = 0; s.year += 1; s.ageY += 1; applyYearly(s); familyYear(s); datingYear(s); spotlightYear(s); }
+  if (s.month > 11) {
+    s.month = 0; s.year += 1; s.ageY += 1;
+    applyYearly(s); familyYear(s); datingYear(s); spotlightYear(s);
+    agingTick(s);
+    if (mortalityCheck(s)) return s;   // life is over — nothing else runs this tick
+  }
   applyMonthly(s);
   relevanceDrift(s);
   productionTick(s);
@@ -38,6 +44,8 @@ export function advanceYear(state) {
   familyYear(s);
   datingYear(s);
   spotlightYear(s);
+  agingTick(s);
+  if (mortalityCheck(s)) return s;   // life is over — nothing else runs this tick
   s.peakFame = Math.max(s.peakFame || 0, s.fame || 0);
   advanceStage(s);
   maybeYouthEvent(s);
