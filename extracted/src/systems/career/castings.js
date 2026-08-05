@@ -45,7 +45,8 @@ export function auditionFor(s, id, quality = 50) {
   const odds = clamp(castingChance(s, c) + (quality - 50) * 0.55);
   if (chance(odds)) {
     const skill = s.dream === 'singer' ? s.singing : s.acting;
-    const rating = clamp(40 + skill * 0.4 + (s.looks - 40) * 0.12 + rint(-8, 18));
+    // Same rule as a full production: skill keeps you off the floor, the read decides the ceiling.
+    const rating = clamp(25 + skill * 0.30 + (quality - 50) * 0.25 + (s.looks - 40) * 0.1 + rint(-8, 14));
     const status = rating >= 85 ? 'Hit' : rating >= 70 ? 'Well-received' : rating >= 50 ? 'Released' : 'Flop';
     const bucket = s.dream === 'singer' ? 'discography' : 'filmography';
     (s[bucket] = s[bucket] || []).unshift({ title: c.title, role: c.role, type: c.type, salary: c.salary, rating, status, year: s.year });

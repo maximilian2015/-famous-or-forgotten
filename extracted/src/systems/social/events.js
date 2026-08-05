@@ -86,11 +86,15 @@ export function sneakIntoEvent(s, eventId, quality = 0) {
   }
   return s;
 }
+// A party is an evening, not a working day — charging a full action for it meant events
+// always lost to auditions and shooting, and in a 30-life simulation none were ever attended.
+// So: showing up is free, but only one night out a month.
 export function attendEvent(s, eventId) {
   const ev = (s.events || []).find((x) => x.id === eventId); if (!ev) return s;
   if (!isInvited(s, ev) && !ev.invited) { s.lastEvent = "You're not on the list for that one."; return s; }
-  if ((s.ap || 0) <= 0) { s.lastEvent = 'No energy left this period. Live a bit first.'; return s; }
-  s.ap = (s.ap || 0) - 1;
+  const stamp = (s.year || 0) * 12 + (s.month || 0);
+  if (s._wentOut === stamp) { s.lastEvent = "You've already been out this month. Two nights in a row is how people start talking."; return s; }
+  s._wentOut = stamp;
   const t = tierById(ev.tier);
   ev.attended = true;
   s.events = (s.events || []).filter((x) => x.id !== eventId);

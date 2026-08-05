@@ -84,8 +84,11 @@ export function productionTick(s) {
 function wrapProduction(s) {
   const p = s.production;
   const skill = s.dream === 'singer' ? s.singing : s.acting;
-  const meterBonus = (p.meter - 50) * 0.5;
-  let rating = clamp(35 + skill * 0.35 + p.prestigeScore * 0.2 + (s.looks - 40) * 0.1 + meterBonus + rint(-5, 8));
+  // Skill is a FLOOR, not a ceiling: a master never embarrasses themselves, but a hit has to
+  // be earned on set. Before this, skill 100 alone cleared the 85 hit line on every project.
+  const floor = 20 + skill * 0.30;
+  const craft = (p.meter - 40) * 0.45;            // how the shoot actually went — can go negative
+  let rating = clamp(floor + craft + p.prestigeScore * 0.18 + (s.looks - 40) * 0.08 + rint(-10, 12));
   // A genuine cultural moment should be a career highlight, not a monthly occurrence.
   let worldHit = false;
   if (rating >= 90 && p.tier !== 'supporting') {

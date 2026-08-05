@@ -3,9 +3,11 @@ export function computeLegacy(s) {
   const hits = [...(s.filmography || []), ...(s.discography || [])].filter((x) => (x.rating || 0) >= 85).length;
   const worldHits = s.worldHits || 0;
   const peakFame = s.peakFame || s.fame || 0;
-  const points = Math.round(peakFame * 2.5 + hits * 35 + worldHits * 150 + credits * 5 + (s.respect || 0) * 1.5 + Math.max(0, (s.cash || 0) / 100000));
+  // Weighted for QUALITY over volume: grinding out credits barely moves the needle, while a
+  // genuine cultural moment defines a career. The old weights let any life clear Legend.
+  const points = Math.round(peakFame * 2.5 + hits * 25 + worldHits * 400 + credits * 1 + (s.respect || 0) * 1.5 + Math.max(0, (s.cash || 0) / 150000));
   let tier = 'Forgotten';
-  if (points >= 700) tier = 'Legend'; else if (points >= 350) tier = 'A-list Icon'; else if (points >= 180) tier = 'Established Star'; else if (points >= 80) tier = 'Working Actor'; else if (points >= 30) tier = 'Had a Moment';
+  if (points >= 2300) tier = 'Legend'; else if (points >= 1500) tier = 'A-list Icon'; else if (points >= 800) tier = 'Established Star'; else if (points >= 350) tier = 'Working Actor'; else if (points >= 120) tier = 'Had a Moment';
   return { points, tier, credits, hits, worldHits, peakFame };
 }
 export function enshrine(s) {
