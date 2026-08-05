@@ -11,6 +11,7 @@ function normalize(saved) {
   const merged = { ...base, ...saved };
   for (const k of Object.keys(base)) { if (typeof base[k] === 'number') { const v = Number(merged[k]); merged[k] = Number.isFinite(v) ? v : base[k]; } }
   merged.version = CURRENT_VERSION;
+  merged.created = true;   // an existing save already has a character — never re-run the creator over it
   return merged;
 }
 function sanitize(st) {

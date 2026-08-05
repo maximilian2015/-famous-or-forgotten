@@ -21,8 +21,16 @@ export function Phone({ g }) {
     return (<div style={{ background: theme.panel, borderRadius: 22, overflow: 'hidden', border: `1px solid ${theme.line}` }}>
       <div style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '12px 14px', background: 'rgba(158,116,255,.12)', borderBottom: `1px solid ${theme.line}` }}>
         <button onClick={() => setOpenApp(null)} style={{ background: 'rgba(255,255,255,.1)', border: 'none', color: '#d8cff0', borderRadius: 9, padding: '6px 11px', fontSize: 13, fontWeight: 800, cursor: 'pointer' }}>‹ Apps</button>
-        <div style={{ fontSize: 15, fontWeight: 900 }}>{app.name}</div>
+        <div style={{ fontSize: 15, fontWeight: 900, flex: 1 }}>{app.name}</div>
+        <div style={{ display: 'flex', gap: 4, alignItems: 'center' }}>
+          {Array.from({ length: g.apMax || 3 }).map((_, i) => (<span key={i} style={{ width: 8, height: 8, borderRadius: '50%', background: i < (g.ap || 0) ? theme.accent : 'rgba(255,255,255,.14)' }} />))}
+        </div>
       </div>
+      {/* Without this, every button in every app just goes dead and the app reads as broken —
+          the "out of energy" line only ever appeared on the Home screen. */}
+      {(g.ap || 0) <= 0 && <div style={{ fontSize: 11.5, color: theme.gold, textAlign: 'center', padding: '8px 12px', background: 'rgba(255,209,102,.08)', borderBottom: `1px solid ${theme.line}`, lineHeight: 1.45 }}>
+        Out of energy — nothing here will respond until you live some time.
+      </div>}
       <div style={{ padding: '12px 13px' }}>
         {openApp === 'messenger' && <Messages g={g} />}
         {openApp === 'opencall' && <OpenCall g={g} ocTab={ocTab} setOcTab={setOcTab} teenMode={teenMode} />}

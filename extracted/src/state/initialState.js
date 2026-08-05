@@ -5,7 +5,9 @@ export function createInitialState(opts = {}) {
     city: opts.city || 'Amsterdam',
     dream: opts.dream || 'actor',
     gender: opts.gender || 'male',
-    year: 2026, month: 0, ageY: 0,
+    // false until the player has actually made a character — the creator screen gates on this
+    created: !!opts.created,
+    year: opts.startYear || 2026, month: 0, ageY: 0,
     stage: 'child', livingWith: 'parents', hasApartment: false,
     lifestyle: 'broke',
     cash: 3500, fame: 0, media: 0, respect: 0, scandal: 0,
