@@ -10,6 +10,7 @@ import { spotlightYear } from '../systems/social/spotlight.js';
 import { productionTick } from '../systems/career/production.js';
 import { maybeGenerateEvent, eventsTick } from '../systems/social/events.js';
 import { agingTick, mortalityCheck } from '../systems/life/mortality.js';
+import { pruneCooldowns } from './cooldown.js';
 
 export function stepIsYear(state) { return state.stage === 'child' || state.stage === 'teen'; }
 export function advanceTime(state) { return stepIsYear(state) ? advanceYear(state) : advanceMonth(state); }
@@ -33,6 +34,7 @@ export function advanceMonth(state) {
   maybeStartArc(s);
   s.peakFame = Math.max(s.peakFame || 0, s.fame || 0);
   advanceStage(s);
+  pruneCooldowns(s);
   s.ap = s.apMax || 3;
   return s;
 }
@@ -49,6 +51,7 @@ export function advanceYear(state) {
   s.peakFame = Math.max(s.peakFame || 0, s.fame || 0);
   advanceStage(s);
   maybeYouthEvent(s);
+  pruneCooldowns(s);
   s.ap = s.apMax || 3;
   return s;
 }

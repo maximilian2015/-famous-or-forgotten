@@ -1,4 +1,5 @@
 import { rint, chance, pick } from '../../engine/rng.js';
+import { onCooldown, markUsed } from '../../engine/cooldown.js';
 import { addTimeline } from '../../engine/timeline.js';
 const clamp = (v) => Math.max(0, Math.min(100, v));
 const MFIRST = ['James','Michael','David','Robert','Daniel','Andrew','Thomas','Marcus','Viktor','Sergei'];
@@ -51,8 +52,8 @@ export function familyYear(s) {
 export function spendWithFamily(s, id) {
   const p = (s.family || []).find((x) => x.id === id && x.alive);
   if (!p) return s;
-  if ((s.ap || 0) <= 0) { s.lastEvent = 'No energy left this period. Live a bit first.'; return s; }
-  s.ap = (s.ap || 0) - 1;
+  if (onCooldown(s, 'fam:' + id)) { s.lastEvent = `You've already seen ${p.name} this month.`; return s; }
+  markUsed(s, 'fam:' + id);
   p.relationship = clamp(p.relationship + rint(4, 10)); s.mental = clamp((s.mental || 50) + rint(2, 5));
   s.lastEvent = `You spent time with ${p.name}. It was good for both of you. (Closeness +, Mental +)`;
   return s;

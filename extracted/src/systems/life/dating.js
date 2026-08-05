@@ -1,4 +1,5 @@
 import { rint, chance, pick } from '../../engine/rng.js';
+import { onCooldown, markUsed } from '../../engine/cooldown.js';
 import { addTimeline } from '../../engine/timeline.js';
 const clamp = (v) => Math.max(0, Math.min(100, v));
 const MFIRST = ['Jonas','Marco','Idris','Felix','Ren','Cole','Adrian','Nico','Sami','Leo'];
@@ -23,8 +24,8 @@ export function refreshDatingPool(s, force) {
 export function askOut(s, id) {
   if (s.partner) { s.lastEvent = "You're already seeing someone."; return s; }
   const p = (s.datingPool || []).find((x) => x.id === id); if (!p) return s;
-  if ((s.ap || 0) <= 0) { s.lastEvent = 'No energy left this period. Live a bit first.'; return s; }
-  s.ap = (s.ap || 0) - 1;
+  if (onCooldown(s, 'date:' + id)) { s.lastEvent = `You already saw ${p.name} this month. Give it some air.`; return s; }
+  markUsed(s, 'date:' + id);
   const odds = clamp(30 + (s.charisma || 0) * 0.3 + (s.looks || 0) * 0.2 + p.charm * 0.2);
   if (chance(odds)) {
     p.dates += 1;
@@ -48,8 +49,8 @@ export function askOut(s, id) {
 }
 export function spendWithPartner(s) {
   if (!s.partner) return s;
-  if ((s.ap || 0) <= 0) { s.lastEvent = 'No energy left this period. Live a bit first.'; return s; }
-  s.ap = (s.ap || 0) - 1;
+  if (onCooldown(s, 'partner')) { s.lastEvent = `You've already had your evening with ${s.partner.name} this month.`; return s; }
+  markUsed(s, 'partner');
   const gain = rint(6, 14);
   s.partner.relationship = clamp(s.partner.relationship + gain);
   s.mental = clamp((s.mental || 50) + rint(2, 6));
@@ -58,9 +59,9 @@ export function spendWithPartner(s) {
 }
 export function proposeMarriage(s) {
   if (!s.partner || s.partner.married) return s;
-  if ((s.ap || 0) <= 0) { s.lastEvent = 'No energy left this period. Live a bit first.'; return s; }
   if (s.partner.relationship < 65) { s.lastEvent = `Too soon. ${s.partner.name} isn't ready for that yet — keep growing closer.`; return s; }
-  s.ap = (s.ap || 0) - 1;
+  if (onCooldown(s, 'propose')) { s.lastEvent = `Asking twice in one month would not help your case.`; return s; }
+  markUsed(s, 'propose');
   const odds = clamp(50 + (s.partner.relationship - 65));
   if (chance(odds)) {
     const partner = s.partner;
@@ -78,8 +79,8 @@ export function proposeMarriage(s) {
 export function tryForBaby(s) {
   const spouse = (s.family || []).find((p) => p.relation === 'Spouse' && p.alive);
   if (!spouse) { s.lastEvent = 'You need a spouse first.'; return s; }
-  if ((s.ap || 0) <= 0) { s.lastEvent = 'No energy left this period. Live a bit first.'; return s; }
-  s.ap = (s.ap || 0) - 1;
+  if (onCooldown(s, 'baby')) { s.lastEvent = 'Give it a month.'; return s; }
+  markUsed(s, 'baby');
   if (chance(35)) {
     const surname = (s.name || 'Alex Moon').split(' ').slice(1).join(' ') || 'Moon';
     const gender = chance(50) ? 'm' : 'f';

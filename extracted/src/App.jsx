@@ -37,7 +37,7 @@ export default function App() {
         <div>
           <div style={{ fontSize: 22, fontWeight: 900 }}>{g.name}</div>
           <div style={{ fontSize: 12.5, color: theme.muted }}>{g.ageY} yrs · {MON[g.month]} {g.year} · {g.city}</div>
-          <div style={{ fontSize: 10, color: theme.accent, marginTop: 2, opacity: .7 }}>Rebuild · Step 23</div>
+          <div style={{ fontSize: 10, color: theme.accent, marginTop: 2, opacity: .7 }}>Rebuild · Step 24</div>
         </div>
         <div style={{ textAlign: 'right' }}>
           <div style={{ fontSize: 11, fontWeight: 800, letterSpacing: '.08em', textTransform: 'uppercase', color: theme.accent }}>{STAGE_LABEL[g.stage]}</div>
@@ -119,7 +119,7 @@ function CareerScreen({ g }) {
       {CAREER_TABS.map(([id, label]) => (<button key={id} onClick={() => setTab(id)} style={{ flex: 1, border: 'none', borderRadius: 10, padding: '8px 4px', fontSize: 12, fontWeight: 800, cursor: 'pointer', background: tab === id ? `linear-gradient(135deg,${theme.accent2},${theme.accent})` : 'rgba(158,116,255,.16)', color: tab === id ? '#fff' : '#d9cffa' }}>{label}</button>))}
     </div>
     {tab === 'calendar' && (g.production ? <ProductionCard g={g} /> : <div style={{ fontSize: 12.5, color: theme.muted, textAlign: 'center', padding: 24, lineHeight: 1.6 }}>🎬 No active production.<br /><br />Accept a Lead or Tentpole offer in Messages to start shooting.</div>)}
-    {tab === 'credits' && (<div><div style={{ fontSize: 11, fontWeight: 900, letterSpacing: '.09em', textTransform: 'uppercase', color: theme.muted, marginBottom: 8 }}>{creditsLabel}</div>{credits.length === 0 ? <div style={{ fontSize: 12.5, color: theme.muted, textAlign: 'center', padding: 20 }}>No credits yet. Audition through the phone's OpenCall app, or accept an offer in Messages.</div> : credits.map((c, i) => (<Card key={i} style={{ marginBottom: 8 }}><div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline' }}><div style={{ fontSize: 14, fontWeight: 800 }}>{c.title}</div><div style={{ fontSize: 13, fontWeight: 900, color: theme.gold }}>{Math.round(c.rating || 0)}</div></div><div style={{ fontSize: 11.5, color: theme.muted, marginTop: 3 }}>{c.role} · {c.type} · {c.year} {c.status ? `· ${c.status}` : ''}</div></Card>))}</div>)}
+    {tab === 'credits' && <CreditsList g={g} credits={credits} label={creditsLabel} />}
     {tab === 'events' && <EventsScreen g={g} />}
   </div>);
 }
@@ -281,6 +281,57 @@ function EndOfLifeScreen({ g }) {
         : `The name still means something to the people who were paying attention.`}
     </div>
     <Button kind="pri" onClick={() => newLife()}>Begin a new life</Button>
+  </div>);
+}
+// Reads like a real filmography page: poster, title, star rating out of 10, role, year.
+const POSTER_TINTS = [['#7c5cff', '#3a2a7a'], ['#c2410c', '#5a2410'], ['#0f766e', '#0a3f3a'], ['#a21caf', '#4a0f52'], ['#b45309', '#4a2506'], ['#1d4ed8', '#122a5e']];
+function Poster({ title, type }) {
+  let h = 0; for (let i = 0; i < title.length; i++) h = (h * 31 + title.charCodeAt(i)) >>> 0;
+  const [a, b] = POSTER_TINTS[h % POSTER_TINTS.length];
+  const initials = title.split(' ').filter(Boolean).slice(0, 2).map((w) => w[0].toUpperCase()).join('');
+  return (<div style={{ width: 42, height: 60, flex: 'none', borderRadius: 5, background: `linear-gradient(160deg, ${a}, ${b})`, display: 'flex', alignItems: 'center', justifyContent: 'center', border: '1px solid rgba(255,255,255,.12)' }}>
+    <span style={{ fontSize: 15, fontWeight: 900, color: 'rgba(255,255,255,.85)', letterSpacing: '.02em' }}>{initials}</span>
+  </div>);
+}
+function CreditRow({ c }) {
+  const stars = ((c.rating || 0) / 10).toFixed(1);
+  const starCol = (c.rating || 0) >= 85 ? theme.good : (c.rating || 0) >= 60 ? theme.gold : theme.muted;
+  return (<div style={{ display: 'flex', gap: 11, padding: '10px 2px', borderBottom: `1px solid ${theme.line}` }}>
+    <Poster title={c.title} type={c.type} />
+    <div style={{ flex: 1, minWidth: 0 }}>
+      <div style={{ display: 'flex', justifyContent: 'space-between', gap: 8 }}>
+        <div style={{ fontSize: 14, fontWeight: 800, lineHeight: 1.25 }}>{c.title}</div>
+        <div style={{ fontSize: 12, color: theme.muted, flex: 'none', fontVariantNumeric: 'tabular-nums' }}>{c.year}</div>
+      </div>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 7, margin: '4px 0 3px' }}>
+        <span style={{ fontSize: 12.5, fontWeight: 800, color: starCol }}>★ {stars}</span>
+        <span style={{ fontSize: 11.5, color: theme.muted }}>{c.type}</span>
+        {c.status === 'World Hit' && <span style={{ fontSize: 10, fontWeight: 900, color: theme.gold }}>🌍 WORLD HIT</span>}
+      </div>
+      <div style={{ fontSize: 11.5, color: theme.muted }}>{c.role}{c.genre ? ` · ${c.genre}` : ''}</div>
+    </div>
+  </div>);
+}
+function CreditsList({ g, credits, label }) {
+  const p = g.production;
+  return (<div>
+    {p && (<div style={{ marginBottom: 16 }}>
+      <div style={{ fontSize: 11, fontWeight: 900, letterSpacing: '.09em', textTransform: 'uppercase', color: theme.gold, marginBottom: 8 }}>In production · 1</div>
+      <div style={{ display: 'flex', gap: 11, padding: '10px 2px', borderBottom: `1px solid ${theme.line}`, opacity: .85 }}>
+        <Poster title={p.title} type={p.type} />
+        <div style={{ flex: 1, minWidth: 0 }}>
+          <div style={{ fontSize: 14, fontWeight: 800 }}>{p.title}</div>
+          <div style={{ fontSize: 11.5, color: theme.gold, margin: '4px 0 3px' }}>Shooting · {p.monthsLeft} mo left</div>
+          <div style={{ fontSize: 11.5, color: theme.muted }}>{p.role}{p.genre ? ` · ${p.genre}` : ''}</div>
+        </div>
+      </div>
+    </div>)}
+    <div style={{ fontSize: 11, fontWeight: 900, letterSpacing: '.09em', textTransform: 'uppercase', color: theme.muted, marginBottom: 4 }}>
+      {label}{credits.length ? ` · ${credits.length}` : ''}
+    </div>
+    {credits.length === 0
+      ? <div style={{ fontSize: 12.5, color: theme.muted, textAlign: 'center', padding: 20, lineHeight: 1.6 }}>Nothing released yet.<br />Audition in OpenCall, or take an offer in Messages.</div>
+      : credits.map((c, i) => <CreditRow key={i} c={c} />)}
   </div>);
 }
 function EventsScreen({ g }) {

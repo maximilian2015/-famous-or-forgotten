@@ -1,4 +1,5 @@
 import { rint, chance, pick } from '../../engine/rng.js';
+import { onCooldown, markUsed } from '../../engine/cooldown.js';
 import { addTimeline } from '../../engine/timeline.js';
 const clamp = (v) => Math.max(0, Math.min(100, v));
 const FIRST = ['Mia','Leo','Zoe','Kai','Ivy','Max','Luna','Finn','Ava','Noah','Ruby','Eli','Nadia','Sam','Vera'];
@@ -16,8 +17,8 @@ export function makeClassmate(s) {
     since: s.ageY, closeness: rint(25, 55), future: fut.becomes, futureWeight: rint(fut.weight[0], fut.weight[1]), grownUp: false, industryWeight: 0 };
 }
 export function findClassmates(s, n = 1) {
-  if ((s.ap || 0) <= 0) { s.lastEvent = 'No energy left this period. Live a bit first.'; return s; }
-  s.ap = (s.ap || 0) - 1;
+  if (onCooldown(s, 'find')) { s.lastEvent = "You've already reached out to someone new this month."; return s; }
+  markUsed(s, 'find');
   s.spotlight = s.spotlight || [];
   for (let i = 0; i < n; i++) { if (s.spotlight.length >= 30) break; s.spotlight.push(makeClassmate(s)); }
   s.lastEvent = `You connected with someone new on Spotlight.`;
@@ -25,8 +26,8 @@ export function findClassmates(s, n = 1) {
 }
 export function pokeFriend(s, id) {
   const f = (s.spotlight || []).find((x) => x.id === id); if (!f) return s;
-  if ((s.ap || 0) <= 0) { s.lastEvent = 'No energy left this period. Live a bit first.'; return s; }
-  s.ap = (s.ap || 0) - 1;
+  if (onCooldown(s, 'poke:' + id)) { s.lastEvent = `You already messaged ${f.name} this month. Any more and it's a bit much.`; return s; }
+  markUsed(s, 'poke:' + id);
   f.closeness = clamp(f.closeness + rint(5, 12)); s.mental = clamp((s.mental || 50) + rint(1, 3));
   s.lastEvent = `You caught up with ${f.name} on Spotlight. ${f.closeness > 70 ? "You're really close now." : 'Good to stay in touch.'}`;
   return s;
