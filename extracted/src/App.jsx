@@ -13,12 +13,14 @@ import { deepenRelationship } from './systems/life/relationships.js';
 import { spendWithFamily } from './systems/life/family.js';
 import { spendWithPartner } from './systems/life/dating.js';
 import { computeLegacy, getHall } from './systems/meta/legacy.js';
-import { fameTier, setHousing } from './systems/meta/status.js';
+import { fameTier, setHousing, FAME_TIERS } from './systems/meta/status.js';
 import { rehearse, riskyTake, bondWithCrew, meterTier } from './systems/career/production.js';
 import { TimingBar } from './ui/components/TimingBar.jsx';
 import { GridRisk } from './ui/components/GridRisk.jsx';
 import { tierById, isInvited, attendEvent, askForInvite, sneakIntoEvent, inviteHelpers, helperOdds, hasAsked } from './systems/social/events.js';
-import { HOUSING, HOUSING_ORDER, monthlyCosts } from './engine/economy.js';
+import { HOUSING, HOUSING_ORDER, monthlyCosts, DIET, GYM_COST, setDiet, toggleGym } from './engine/economy.js';
+import { GENRES } from './systems/meta/news.js';
+import { genreXP, genreBonus, genreLabel } from './systems/career/genres.js';
 import { Phone } from './phone/Phone.jsx';
 import { theme } from './ui/theme.js';
 import { Button } from './ui/components/Button.jsx';
@@ -30,9 +32,11 @@ export default function App() {
   const g = useGame();
   const [screen, setScreen] = useState('life');
   const [confirmEnd, setConfirmEnd] = useState(false);
+  const [showGenres, setShowGenres] = useState(false);
   if (!g.created) return <CreatorScreen />;
   if (!g.alive) return <EndOfLifeScreen g={g} />;
   if (g.pendingArc) return <ArcModal g={g} />;
+  if (showGenres) return <GenreScreen g={g} onBack={() => setShowGenres(false)} />;
   if (confirmEnd) return <EndLifeModal onCancel={() => setConfirmEnd(false)} onConfirm={() => { import('./systems/meta/legacy.js').then(m => { m.enshrine(g); newLife(); setConfirmEnd(false); }); }} />;
   return (
     <div style={{ maxWidth: 440, margin: '0 auto', minHeight: '100vh', background: theme.bg, color: theme.text, padding: 16, paddingBottom: 90, fontFamily: 'system-ui, -apple-system, sans-serif' }}>
@@ -40,7 +44,7 @@ export default function App() {
         <div>
           <div style={{ fontSize: 22, fontWeight: 900 }}>{g.name}</div>
           <div style={{ fontSize: 12.5, color: theme.muted }}>{g.ageY} yrs · {MON[g.month]} {g.year} · {g.city}</div>
-          <div style={{ fontSize: 10, color: theme.accent, marginTop: 2, opacity: .7 }}>Rebuild · Step 26</div>
+          <div style={{ fontSize: 10, color: theme.accent, marginTop: 2, opacity: .7 }}>Rebuild · Step 27</div>
         </div>
         <div style={{ textAlign: 'right' }}>
           <div style={{ fontSize: 11, fontWeight: 800, letterSpacing: '.08em', textTransform: 'uppercase', color: theme.accent }}>{STAGE_LABEL[g.stage]}</div>
@@ -64,9 +68,12 @@ export default function App() {
           <Stat label="Cash" value={g.cash} money />
           <Stat label="Health" value={g.health} />
           <Stat label="Mental" value={g.mental} />
-          <Stat label="Fame" value={g.fame} sub={fameTier(g.fame).label} />
-          <Stat label={g.dream === 'singer' ? 'Singing' : 'Acting'} value={g.dream === 'singer' ? g.singing : g.acting} />
+          <Stat label="Fame" value={g.fame} sub={fameSub(g)} />
+          <Stat label={g.dream === 'singer' ? 'Singing' : 'Acting'} value={g.dream === 'singer' ? g.singing : g.acting}
+            sub={g.stage === 'career' ? 'tap for genres ›' : undefined} onClick={g.stage === 'career' ? () => setShowGenres(true) : undefined} />
           <Stat label="Charisma" value={g.charisma} />
+          <Stat label="Looks" value={g.looks} />
+          <Stat label="Respect" value={g.respect} />
         </div>
         {g.lastEvent && <Card style={{ marginBottom: 14, borderColor: 'rgba(255,209,102,.35)' }}><div style={{ fontSize: 13.5, lineHeight: 1.5, whiteSpace: 'pre-line' }}>{g.lastEvent}</div></Card>}
         {g.stage === 'career' && g.production && (<Card style={{ marginBottom: 14, borderColor: 'rgba(255,209,102,.35)' }}>
@@ -118,6 +125,39 @@ function BottomNav({ screen, setScreen, g }) {
 }
 function LockedScreen({ label }) { return (<div style={{ fontSize: 13, color: theme.muted, textAlign: 'center', padding: '40px 20px', lineHeight: 1.7 }}>🔒 {label} unlocks once you move out and start your career.<br /><br />Grow up, rent your own place, and this opens up.</div>); }
 function ChildPhoneLocked() { return (<div style={{ fontSize: 13, color: theme.muted, textAlign: 'center', padding: '40px 20px', lineHeight: 1.7 }}>📱 You're too young for a phone.<br /><br />You'll get your first one as a teenager (13).</div>); }
+// Fame reads as a ladder: who you are now, and how far to the next rung.
+function fameSub(g) {
+  const t = fameTier(g.fame);
+  const next = FAME_TIERS[FAME_TIERS.indexOf(t) + 1];
+  return next ? `${t.label} · ${Math.max(1, Math.ceil(next.min - (g.fame || 0)))} to ${next.label}` : t.label;
+}
+// Acting isn't one number — it's the lanes you've actually worked in. Genre experience
+// comes only from finished credits and pays back as a rating bonus in that genre.
+function GenreScreen({ g, onBack }) {
+  const key = g.dream === 'singer' ? 'Singing' : 'Acting';
+  return (<div style={{ maxWidth: 440, margin: '0 auto', minHeight: '100vh', background: theme.bg, color: theme.text, padding: 16, fontFamily: 'system-ui, sans-serif' }}>
+    <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 14 }}>
+      <button onClick={onBack} style={{ background: 'rgba(255,255,255,.1)', border: 'none', color: '#d8cff0', borderRadius: 9, padding: '6px 11px', fontSize: 13, fontWeight: 800, cursor: 'pointer' }}>‹ Back</button>
+      <div style={{ fontSize: 16, fontWeight: 900 }}>{key} · genres</div>
+    </div>
+    <div style={{ fontSize: 12, color: theme.muted, lineHeight: 1.6, marginBottom: 14 }}>
+      Every finished credit teaches its genre. Experience in a lane adds up to <span style={{ color: theme.gold, fontWeight: 700 }}>+10</span> to ratings when you work in it again — mastery of a lane is half a hit.
+    </div>
+    {GENRES.map((gr) => {
+      const xp = genreXP(g, gr); const bonus = genreBonus(g, gr);
+      return (<div key={gr} style={{ background: theme.panel, border: `1px solid ${theme.line}`, borderRadius: 12, padding: '10px 13px', marginBottom: 8 }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline' }}>
+          <div style={{ fontSize: 13.5, fontWeight: 800 }}>{gr}</div>
+          <div style={{ fontSize: 11.5, fontWeight: 800, color: bonus > 0 ? theme.gold : theme.muted }}>{bonus > 0 ? `+${bonus} to ratings` : '—'}</div>
+        </div>
+        <div style={{ height: 6, background: 'rgba(255,255,255,.08)', borderRadius: 3, margin: '7px 0 5px' }}>
+          <div style={{ width: Math.min(100, xp * 5) + '%', height: '100%', background: theme.accent, borderRadius: 3 }} />
+        </div>
+        <div style={{ fontSize: 11, color: theme.muted }}>{genreLabel(xp)}</div>
+      </div>);
+    })}
+  </div>);
+}
 // The Home screen is a passport, not a button drawer: who you are, where you live, what
 // you do for money, what's on the horizon. Actions moved to the sections they belong to.
 function LifeCard({ g }) {
@@ -129,6 +169,7 @@ function LifeCard({ g }) {
   return (<Card style={{ marginBottom: 14 }}>
     <div style={{ fontSize: 11, fontWeight: 900, letterSpacing: '.09em', textTransform: 'uppercase', color: theme.muted, marginBottom: 6 }}>Your life right now</div>
     {row('Living', g.hasApartment ? HOUSING[g.housing || 'room'].label : "At your parents'")}
+    {g.hasApartment && row('Eating', `${DIET[g.diet || 'cook'].label}${g.gym ? ' · gym' : ''}`)}
     {row('Work', g.job ? `${g.job.title} · ${g.job.employer}` : (g.stage === 'career' ? 'No job' : '—'), g.job ? theme.text : theme.muted)}
     {g.production && row('Filming', `${g.production.title} · ${g.production.monthsLeft} mo left`, theme.gold)}
     {g.hasApartment && row('Out each month', `€${c.total.toLocaleString()}`, theme.bad)}
@@ -186,7 +227,28 @@ function StyleScreen({ g }) {
               </>)}
         </div>); })}
     </div>
-    <div style={{ fontSize: 11.5, color: theme.muted, textAlign: 'center', padding: '14px 10px', lineHeight: 1.6 }}>Rent comes out every month whether you're working or not. A better place lifts your head a little — and ages you slower. Wardrobe comes later.</div>
+    <div style={{ fontSize: 11, fontWeight: 900, letterSpacing: '.09em', textTransform: 'uppercase', color: theme.muted, margin: '16px 0 8px' }}>Food</div>
+    <div style={{ display: 'grid', gap: 8 }}>
+      {Object.entries(DIET).map(([key, d]) => { const active = (g.diet || 'cook') === key;
+        return (<div key={key} style={{ background: active ? 'rgba(158,116,255,.14)' : theme.panel, border: `1px solid ${active ? theme.accent : theme.line}`, borderRadius: 12, padding: '11px 13px' }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline' }}>
+            <div style={{ fontSize: 13.5, fontWeight: 800 }}>{d.label}{active ? ' · now' : ''}</div>
+            <div style={{ fontSize: 12, fontWeight: 800, color: theme.gold }}>€{d.cost.toLocaleString()}/mo</div>
+          </div>
+          <div style={{ fontSize: 11.5, color: theme.muted, marginTop: 3 }}>{d.blurb}</div>
+          {!active && g.hasApartment && <Button onClick={() => dispatch(setDiet, key)} style={{ marginTop: 8 }}>Eat like this</Button>}
+        </div>); })}
+    </div>
+    <div style={{ fontSize: 11, fontWeight: 900, letterSpacing: '.09em', textTransform: 'uppercase', color: theme.muted, margin: '16px 0 8px' }}>Body</div>
+    <Card>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline' }}>
+        <div style={{ fontSize: 13.5, fontWeight: 800 }}>Gym membership{g.gym ? ' · active' : ''}</div>
+        <div style={{ fontSize: 12, fontWeight: 800, color: theme.gold }}>€{GYM_COST}/mo</div>
+      </div>
+      <div style={{ fontSize: 11.5, color: theme.muted, margin: '3px 0 8px' }}>Slowly raises your looks and keeps the body in shape. Casting rooms notice.</div>
+      {g.hasApartment && <Button onClick={() => dispatch(toggleGym)}>{g.gym ? 'Cancel membership' : 'Join the gym'}</Button>}
+    </Card>
+    <div style={{ fontSize: 11.5, color: theme.muted, textAlign: 'center', padding: '14px 10px', lineHeight: 1.6 }}>Rent, food and the gym come out every month whether you're working or not. Fast food quietly wears your health down; eating well rebuilds it. Wardrobe comes later.</div>
   </div>);
 }
 function LegacyScreen({ g }) {

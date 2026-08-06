@@ -31,7 +31,10 @@ export function meetPerson(s) {
 export function bondGain(s, p) {
   const base = rint(5, 11) + ((s.charisma || 0) > 60 ? 3 : 0);
   const fade = 1 - Math.min(0.75, (p.relationship || 0) / 130);
-  const gap = Math.max(0, (p.industryWeight || 30) - (s.fame || 0));
+  // Charisma is exactly this: the ability to hold your own in a room you weren't born into.
+  // High charisma shrinks the status gap between you and someone far above you.
+  const rawGap = Math.max(0, (p.industryWeight || 30) - (s.fame || 0));
+  const gap = Math.max(0, rawGap - Math.max(0, (s.charisma || 0) - 50) * 0.6);
   const status = 1 - Math.min(0.62, gap / 150);
   return Math.max(1, Math.round(base * fade * status));
 }

@@ -1,6 +1,8 @@
 import { rint, chance, pick } from '../../engine/rng.js';
 import { addTimeline } from '../../engine/timeline.js';
 import { earn, markReleased } from '../../engine/economy.js';
+import { GENRES } from '../meta/news.js';
+import { addGenreXP, genreBonus } from './genres.js';
 const clamp = (v) => Math.max(0, Math.min(100, v));
 const POOLS = {
   actor: {
@@ -27,6 +29,7 @@ export function refreshCastingPool(s, force) {
     const shelf = pick(Object.keys(shelves));
     const [type, role, months, pay] = pick(shelves[shelf]);
     s.castingPool.push({ id: 'cast' + Date.now() + Math.floor(Math.random() * 10000), title: titleFor(), type, role, months, salary: pay, shelf,
+      genre: pick(GENRES),
       minFame: shelf === 'film' && role === 'Lead' ? 30 : 0, _expires: (s.year || 0) * 12 + (s.month || 0) + rint(2, 4) });
   }
 }
@@ -46,10 +49,11 @@ export function auditionFor(s, id, quality = 50) {
   if (chance(odds)) {
     const skill = s.dream === 'singer' ? s.singing : s.acting;
     // Same rule as a full production: skill keeps you off the floor, the read decides the ceiling.
-    const rating = clamp(25 + skill * 0.30 + (quality - 50) * 0.25 + (s.looks - 40) * 0.1 + rint(-8, 14));
+    const rating = clamp(25 + skill * 0.30 + (quality - 50) * 0.25 + (s.looks - 40) * 0.1 + genreBonus(s, c.genre) + rint(-8, 14));
     const status = rating >= 85 ? 'Hit' : rating >= 70 ? 'Well-received' : rating >= 50 ? 'Released' : 'Flop';
     const bucket = s.dream === 'singer' ? 'discography' : 'filmography';
-    (s[bucket] = s[bucket] || []).unshift({ title: c.title, role: c.role, type: c.type, salary: c.salary, rating, status, year: s.year });
+    (s[bucket] = s[bucket] || []).unshift({ title: c.title, role: c.role, type: c.type, genre: c.genre, salary: c.salary, rating, status, year: s.year });
+    addGenreXP(s, c.genre, rating);
     earn(s, c.salary, `"${c.title}" paid`); markReleased(s); s.fame = clamp(s.fame + rint(1, 3)); s.confidence = clamp(s.confidence + 2);
     s.lastEvent = `${quality >= 80 ? 'The room goes quiet — you nailed it. ' : ''}You booked "${c.title}"! It came out ${status.toLowerCase()} (${Math.round(rating)}/100).`;
     addTimeline(s, `Booked ${c.title}: ${status}.`, rating < 50);

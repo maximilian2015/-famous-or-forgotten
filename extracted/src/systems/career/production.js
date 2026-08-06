@@ -2,6 +2,7 @@ import { rint, chance, pick } from '../../engine/rng.js';
 import { addTimeline } from '../../engine/timeline.js';
 import { earn, markReleased } from '../../engine/economy.js';
 import { hotGenre } from '../meta/news.js';
+import { addGenreXP, genreBonus } from './genres.js';
 const clamp = (v) => Math.max(0, Math.min(100, v));
 const TIERS = [
   { min: 0, label: 'Disaster' }, { min: 25, label: 'Rocky' }, { min: 50, label: 'Solid' },
@@ -88,7 +89,7 @@ function wrapProduction(s) {
   // be earned on set. Before this, skill 100 alone cleared the 85 hit line on every project.
   const floor = 20 + skill * 0.30;
   const craft = (p.meter - 40) * 0.45;            // how the shoot actually went — can go negative
-  let rating = clamp(floor + craft + p.prestigeScore * 0.18 + (s.looks - 40) * 0.08 + rint(-10, 12));
+  let rating = clamp(floor + craft + p.prestigeScore * 0.18 + (s.looks - 40) * 0.08 + genreBonus(s, p.genre) + rint(-10, 12));
   // A genuine cultural moment should be a career highlight, not a monthly occurrence.
   let worldHit = false;
   if (rating >= 90 && p.tier !== 'supporting') {
@@ -102,6 +103,7 @@ function wrapProduction(s) {
   const credit = { title: p.title, role: p.role, type: p.type, genre: p.genre, salary: p.salary, rating, status, year: s.year };
   const bucket = s.dream === 'singer' ? 'discography' : 'filmography';
   (s[bucket] = s[bucket] || []).unshift(credit);
+  addGenreXP(s, p.genre, rating);
   earn(s, p.salary, `"${credit.title}" paid`);
   markReleased(s);
   s.fame = clamp((s.fame || 0) + { tentpole: 9, lead: 5, supporting: 2 }[p.tier] + (rating >= 85 ? 4 : 0) + (worldHit ? 25 : 0));

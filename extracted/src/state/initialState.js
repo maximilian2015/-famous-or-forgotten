@@ -9,7 +9,7 @@ export function createInitialState(opts = {}) {
     created: !!opts.created,
     year: opts.startYear || 2026, month: 0, ageY: 0,
     stage: 'child', livingWith: 'parents', hasApartment: false,
-    housing: 'room',
+    housing: 'room', diet: 'cook', gym: false, genreXP: {},
     cash: 3500, fame: 0, media: 0, respect: 0, scandal: 0,
     mental: 80, health: 90, looks: 50, charisma: 40, confidence: 40,
     discipline: 40, luck: 50, acting: 0, singing: 0,

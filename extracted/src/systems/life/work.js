@@ -6,14 +6,15 @@ const clamp = (v) => Math.max(0, Math.min(100, v));
 
 // A day job is the trade at the heart of the early game: steady money, but it eats your
 // month. "slots" is how many of your three monthly actions the job takes off the table.
+// Pay sits around real Amsterdam service wages, so rent maths feels like rent maths.
 export const JOBS = [
-  { id: 'barista', title: 'Barista', employer: 'Corner Coffee', pay: 1400, slots: 1, minAge: 16 },
-  { id: 'retail', title: 'Shop assistant', employer: 'Nordfeld', pay: 1600, slots: 1, minAge: 16 },
-  { id: 'runner', title: 'Casting office runner', employer: 'OpenCall', pay: 1900, slots: 1, minAge: 18, industry: true },
-  { id: 'delivery', title: 'Delivery rider', employer: 'Swiftly', pay: 2000, slots: 1, minAge: 18 },
-  { id: 'waiter', title: 'Waiter', employer: 'Villa Nord', pay: 2200, slots: 2, minAge: 18 },
-  { id: 'assistant', title: "Producer's assistant", employer: 'Vega Pictures', pay: 2500, slots: 2, minAge: 20, industry: true },
-  { id: 'bartender', title: 'Bartender', employer: 'The Loft', pay: 2800, slots: 2, minAge: 21 },
+  { id: 'barista', title: 'Barista', employer: 'Corner Coffee', pay: 1900, slots: 1, minAge: 16 },
+  { id: 'retail', title: 'Shop assistant', employer: 'Nordfeld', pay: 2100, slots: 1, minAge: 16 },
+  { id: 'runner', title: 'Casting office runner', employer: 'OpenCall', pay: 2200, slots: 1, minAge: 18, industry: true },
+  { id: 'delivery', title: 'Delivery rider', employer: 'Swiftly', pay: 2300, slots: 1, minAge: 18 },
+  { id: 'waiter', title: 'Waiter', employer: 'Villa Nord', pay: 2700, slots: 2, minAge: 18 },
+  { id: 'assistant', title: "Producer's assistant", employer: 'Vega Pictures', pay: 3000, slots: 2, minAge: 20, industry: true },
+  { id: 'bartender', title: 'Bartender', employer: 'The Loft', pay: 3300, slots: 2, minAge: 21 },
 ];
 export function jobSlots(s) { return s.job ? s.job.slots : 0; }
 export function availableJobs(s) { return JOBS.filter((j) => (s.ageY || 0) >= j.minAge); }
