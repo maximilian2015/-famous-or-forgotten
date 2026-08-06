@@ -1,15 +1,21 @@
 import { addTimeline } from './timeline.js';
-export const LIFESTYLE = {
-  broke: { label: 'Scraping by', cost: 0 }, modest: { label: 'Modest', cost: 600 },
-  comfort: { label: 'Comfortable', cost: 2200 }, lavish: { label: 'Lavish', cost: 9000 },
+// Concrete places to live rather than an abstract "lifestyle" slider — a room and a penthouse
+// are things a player can picture, and the rent IS the lifestyle cost.
+export const HOUSING = {
+  room:      { label: 'Rented room',      blurb: 'A room in a shared flat. Thin walls.',            cost: 500 },
+  studio:    { label: 'Studio flat',      blurb: 'Small, yours, and the door locks.',               cost: 900 },
+  flat:      { label: 'Two-bed apartment', blurb: 'Space to breathe. A view of something.',         cost: 2400 },
+  house:     { label: 'House with a gate', blurb: 'Quiet street, no neighbours through the wall.',  cost: 6000 },
+  penthouse: { label: 'Penthouse',        blurb: 'The city underneath you, and everyone knows it.', cost: 12000 },
 };
-export const LIFESTYLE_ORDER = ['broke', 'modest', 'comfort', 'lavish'];
-const LIFESTYLE_PERK = { broke: {}, modest: {}, comfort: { mental: 1 }, lavish: { mental: 2, confidence: 1 } };
+export const HOUSING_ORDER = ['room', 'studio', 'flat', 'house', 'penthouse'];
+const HOUSING_PERK = { room: {}, studio: {}, flat: { mental: 1 }, house: { mental: 2, confidence: 1 }, penthouse: { mental: 2, confidence: 2 } };
 export function monthlyCosts(s) {
-  const rent = s.hasApartment ? (s.rent || 0) : 0;
-  const lifestyle = LIFESTYLE[s.lifestyle || 'modest']?.cost || 0;
+  // Rent is the housing tier — no separate abstract "lifestyle" charge on top of it.
+  const rent = s.hasApartment ? (HOUSING[s.housing || 'room']?.cost || 0) : 0;
+  const living = s.hasApartment ? 350 : 0;   // food, transport, phone — the unavoidable rest
   const team = (s.retainers ? Object.values(s.retainers).filter(Boolean).length : 0) * 1500;
-  return { rent, lifestyle, team, total: rent + lifestyle + team };
+  return { rent, living, team, total: rent + living + team };
 }
 export function wealthTax(s) {
   const cash = s.cash || 0;
@@ -23,7 +29,7 @@ export function wealthTax(s) {
 }
 export function applyMonthly(s) {
   const c = monthlyCosts(s); if (c.total > 0) s.cash -= c.total;
-  const perk = LIFESTYLE_PERK[s.lifestyle || 'modest'] || {};
+  const perk = HOUSING_PERK[s.housing || 'room'] || {};
   if (perk.mental) s.mental = Math.max(0, Math.min(100, (s.mental || 0) + perk.mental));
   if (perk.confidence) s.confidence = Math.max(0, Math.min(100, (s.confidence || 0) + perk.confidence));
   checkInsolvency(s);

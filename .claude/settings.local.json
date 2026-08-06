@@ -19,7 +19,9 @@
       "Bash(sed -i \"s|import { pruneCooldowns } from './cooldown.js';|import { pruneCooldowns } from './cooldown.js';\\\\nimport { workTick, jobSlots } from '../systems/life/work.js';|\" src/engine/time.js)",
       "Bash(sed -i 's|^  pruneCooldowns\\(s\\);$|  pruneCooldowns\\(s\\);\\\\n  s.apMaxEff = Math.max\\(1, \\(s.apMax \\\\|\\\\| 3\\) - jobSlots\\(s\\)\\);|' src/engine/time.js)",
       "Bash(sed -i 's|^  s.ap = s.apMax \\\\|\\\\| 3;$|  s.ap = s.apMaxEff;|' src/engine/time.js)",
-      "Bash(sed -i 's|^  productionTick\\(s\\);$|  workTick\\(s\\);\\\\n  productionTick\\(s\\);|' src/engine/time.js)"
+      "Bash(sed -i 's|^  productionTick\\(s\\);$|  workTick\\(s\\);\\\\n  productionTick\\(s\\);|' src/engine/time.js)",
+      "Bash(sed -i \"s|import { computeAccess } from './systems/career/access.js';|import { computeAccess } from './systems/career/access.js';\\\\nimport { SCHOOLS, train, trainingKey } from './systems/career/training.js';\\\\nimport { skillCap } from './systems/career/actions.js';\\\\nimport { askFamilyForMoney } from './systems/life/family.js';|\" src/App.jsx)",
+      "Bash(sed -i \"s|import { runAction, availableActions } from './systems/career/actions.js';|import { runAction, availableActions } from './systems/career/actions.js';|\" src/App.jsx)"
     ]
   }
 }

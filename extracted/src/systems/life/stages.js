@@ -1,3 +1,4 @@
+import { HOUSING } from '../../engine/economy.js';
 import { addTimeline } from '../../engine/timeline.js';
 export const STAGE_LABEL = { child: 'Childhood', teen: 'Teenager', moving_out: 'Leaving home', career: 'Building a career' };
 export function stageForAge(ageY, hasApartment) {
@@ -15,11 +16,13 @@ export function advanceStage(s) {
   if (next === 'career') { addTimeline(s, 'You have your own apartment. No safety net now — just you and the climb.'); return 'You moved out. The climb begins.'; }
   return null;
 }
-export function rentApartment(s, monthlyRent = 800) {
+export function rentApartment(s) {
   if (s.hasApartment) { s.lastEvent = 'You already have your own place.'; return s; }
   if (s.ageY < 18) { s.lastEvent = 'You are too young to move out yet.'; return s; }
-  s.hasApartment = true; s.livingWith = 'own_place'; s.rent = monthlyRent; s.stage = 'career';
-  addTimeline(s, `You signed a lease on a tiny studio at ${monthlyRent}/month. Your parents helped you carry two boxes and left.`);
-  s.lastEvent = 'You rented your first apartment. Welcome to adulthood.';
+  const rent = HOUSING.room.cost;
+  if ((s.cash || 0) < rent) { s.lastEvent = `You need at least €${rent.toLocaleString()} for the first month. Earn a little first.`; return s; }
+  s.hasApartment = true; s.livingWith = 'own_place'; s.housing = 'room'; s.stage = 'career';
+  addTimeline(s, `You moved into a rented room at €${rent.toLocaleString()}/month. Your parents helped you carry two boxes and left.`);
+  s.lastEvent = 'You moved out. A room of your own, and the rent is yours now.';
   return s;
 }

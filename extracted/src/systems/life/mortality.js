@@ -10,7 +10,7 @@ export function agingTick(s) {
   if (age < 35) return;
   let decline = age >= 75 ? rint(2, 5) : age >= 60 ? rint(1, 3) : age >= 48 ? (chance(60) ? 1 : 0) : (chance(30) ? 1 : 0);
   if ((s.mental || 50) < 30) decline += 1;                       // burnout wears you down
-  if (s.lifestyle === 'comfort' || s.lifestyle === 'lavish') { if (chance(45)) decline = Math.max(0, decline - 1); }
+  if (['flat', 'house', 'penthouse'].includes(s.housing)) { if (chance(45)) decline = Math.max(0, decline - 1); }
   if (decline > 0) s.health = clamp((s.health || 100) - decline);
   if (age === 40 || age === 55 || age === 70) {
     addTimeline(s, age === 40 ? 'Forty. The mirror is starting to make comments.'

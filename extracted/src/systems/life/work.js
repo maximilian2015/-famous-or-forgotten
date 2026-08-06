@@ -36,6 +36,33 @@ export function quitJob(s) {
   return s;
 }
 
+// A one-off shift for whoever needs hands today — no commitment, and how well you do
+// is on you. This replaced the old "work an odd job" button that just handed you cash.
+export const SHIFTS = [
+  { id: 'bar', title: 'Cover a bar shift', blurb: 'Friday night, three deep at the bar.', base: 900 },
+  { id: 'moving', title: 'Help a removals crew', blurb: 'Stairs. So many stairs.', base: 1100 },
+  { id: 'promo', title: 'Hand out flyers', blurb: 'A costume is involved. Nobody will know.', base: 700 },
+  { id: 'catering', title: 'Waiter at a private event', blurb: 'Rich people, small plates, long night.', base: 1000 },
+  { id: 'warehouse', title: 'Night at the warehouse', blurb: 'Scan, lift, repeat, until light.', base: 1200 },
+];
+export function pickShift() { return pick(SHIFTS); }
+export function doShift(s, shiftId, quality = 50) {
+  const sh = SHIFTS.find((x) => x.id === shiftId) || SHIFTS[0];
+  if ((s.ap || 0) <= 0) { s.lastEvent = 'No energy left this period. Live a bit first.'; return s; }
+  s.ap = (s.ap || 0) - 1;
+  // Do it well and they tip, ask you back, round it up. Do it badly and you get docked.
+  const mult = quality >= 80 ? 1.35 : quality >= 55 ? 1.1 : quality >= 30 ? 0.85 : 0.55;
+  const pay = Math.round(sh.base * mult * (0.9 + Math.random() * 0.25));
+  earn(s, pay, sh.title);
+  s.mental = clamp((s.mental || 50) - (quality < 30 ? 4 : 2));
+  s.lastEvent = quality >= 80
+    ? `You worked it hard and they noticed. €${pay.toLocaleString()}, and they want you back.`
+    : quality >= 55 ? `Solid shift. €${pay.toLocaleString()}.`
+    : quality >= 30 ? `You got through it. €${pay.toLocaleString()}.`
+    : `A mess of a shift. They paid you €${pay.toLocaleString()} and didn't take your number.`;
+  return s;
+}
+
 export function workTick(s) {
   const j = s.job; if (!j) return;
   j.months += 1;

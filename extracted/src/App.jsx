@@ -5,17 +5,20 @@ import { rentApartment, STAGE_LABEL } from './systems/life/stages.js';
 import { runAction, availableActions } from './systems/career/actions.js';
 import { acceptOffer, declineOffer } from './systems/career/offers.js';
 import { computeAccess } from './systems/career/access.js';
+import { SCHOOLS, train, trainingKey } from './systems/career/training.js';
+import { skillCap } from './systems/career/actions.js';
+import { askFamilyForMoney } from './systems/life/family.js';
 import { resolveArc } from './systems/life/arcs.js';
 import { deepenRelationship } from './systems/life/relationships.js';
 import { spendWithFamily } from './systems/life/family.js';
 import { spendWithPartner } from './systems/life/dating.js';
 import { computeLegacy, getHall } from './systems/meta/legacy.js';
-import { fameTier, setLifestyle } from './systems/meta/status.js';
+import { fameTier, setHousing } from './systems/meta/status.js';
 import { rehearse, riskyTake, bondWithCrew, meterTier } from './systems/career/production.js';
 import { TimingBar } from './ui/components/TimingBar.jsx';
 import { GridRisk } from './ui/components/GridRisk.jsx';
 import { tierById, isInvited, attendEvent, askForInvite, sneakIntoEvent, inviteHelpers, helperOdds, hasAsked } from './systems/social/events.js';
-import { LIFESTYLE, LIFESTYLE_ORDER } from './engine/economy.js';
+import { HOUSING, HOUSING_ORDER, monthlyCosts } from './engine/economy.js';
 import { Phone } from './phone/Phone.jsx';
 import { theme } from './ui/theme.js';
 import { Button } from './ui/components/Button.jsx';
@@ -37,7 +40,7 @@ export default function App() {
         <div>
           <div style={{ fontSize: 22, fontWeight: 900 }}>{g.name}</div>
           <div style={{ fontSize: 12.5, color: theme.muted }}>{g.ageY} yrs · {MON[g.month]} {g.year} · {g.city}</div>
-          <div style={{ fontSize: 10, color: theme.accent, marginTop: 2, opacity: .7 }}>Rebuild · Step 25</div>
+          <div style={{ fontSize: 10, color: theme.accent, marginTop: 2, opacity: .7 }}>Rebuild · Step 26</div>
         </div>
         <div style={{ textAlign: 'right' }}>
           <div style={{ fontSize: 11, fontWeight: 800, letterSpacing: '.08em', textTransform: 'uppercase', color: theme.accent }}>{STAGE_LABEL[g.stage]}</div>
@@ -47,7 +50,9 @@ export default function App() {
 
       {screen === 'people' ? <PeopleScreen g={g} /> :
        screen === 'phone' ? (g.stage === 'career' || g.ageY >= 13 ? <Phone g={g} /> : <ChildPhoneLocked />) :
-       screen === 'career' ? (g.stage === 'career' ? <CareerScreen g={g} /> : <LockedScreen label="Career" />) :
+       screen === 'career' ? (g.stage === 'career' ? <CareerScreen g={g} />
+         : g.stage === 'teen' ? <CareerScreen g={g} teenOnly />   /* teens can still take lessons */
+         : <LockedScreen label="Career" />) :
        screen === 'style' ? <StyleScreen g={g} /> :
        screen === 'legacy' ? <LegacyScreen g={g} /> :
        <>
@@ -74,6 +79,7 @@ export default function App() {
         </Card>)}
         {g.stage === 'career' && (g.offers || []).length > 0 && (<div style={{ marginBottom: 14 }}><div style={{ fontSize: 11, fontWeight: 900, letterSpacing: '.09em', textTransform: 'uppercase', color: theme.muted, marginBottom: 8 }}>Offers</div>{g.offers.map((o) => (<Card key={o.id} style={{ marginBottom: 8 }}><div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline' }}><div style={{ fontSize: 14, fontWeight: 800 }}>{o.projectTitle}</div><div style={{ fontSize: 13, fontWeight: 900, color: theme.gold }}>€{o.salary.toLocaleString()}</div></div><div style={{ fontSize: 11.5, color: theme.muted, margin: '3px 0 8px' }}>{o.role} · {o.type} · {o.months} mo · prestige {o.prestigeScore}</div><div style={{ display: 'flex', gap: 7 }}><Button kind="pri" onClick={() => dispatch(acceptOffer, o.id)}>Accept</Button><Button kind="danger" onClick={() => dispatch(declineOffer, o.id)}>Pass</Button></div></Card>))}</div>)}
         {g.stage === 'career' && <AaaTracker g={g} />}
+        <LifeCard g={g} />
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
           <div style={{ fontSize: 11, fontWeight: 900, letterSpacing: '.09em', textTransform: 'uppercase', color: theme.muted }}>What now</div>
           <div style={{ display: 'flex', gap: 4, alignItems: 'center' }}><span style={{ fontSize: 10, color: theme.muted, marginRight: 4 }}>Energy</span>{Array.from({ length: g.apMaxEff || g.apMax || 3 }).map((_, i) => (<span key={i} style={{ width: 9, height: 9, borderRadius: '50%', background: i < (g.ap || 0) ? theme.accent : 'rgba(255,255,255,.12)' }} />))}</div>
@@ -82,6 +88,9 @@ export default function App() {
           {availableActions(g).map((a) => { const noEnergy = (g.ap || 0) <= 0;
             return (<button key={a.id} onClick={() => dispatch(runAction, a.id)} disabled={noEnergy} style={{ textAlign: 'left', background: theme.panel, border: `1px solid ${theme.line}`, borderRadius: 12, padding: '10px 13px', cursor: noEnergy ? 'default' : 'pointer', color: theme.text, opacity: noEnergy ? .4 : 1 }}><div style={{ fontSize: 14, fontWeight: 800 }}>{a.label(g)}</div><div style={{ fontSize: 11.5, color: theme.muted, marginTop: 2 }}>{a.desc(g)}</div></button>); })}
           {(g.ap || 0) <= 0 && <div style={{ fontSize: 11.5, color: theme.gold, textAlign: 'center', padding: '4px 0' }}>Out of energy — live time to refresh your actions.</div>}
+          {g.stage === 'career' && <div style={{ fontSize: 11, color: theme.muted, textAlign: 'center', padding: '6px 8px', lineHeight: 1.55, opacity: .85 }}>
+            Auditions and shifts are in your Phone. Training and parties are under Career. Family is under People.
+          </div>}
         </div>
         <Button kind="pri" onClick={() => dispatch(advanceTime)}>{stepIsYear(g) ? '▶ Live one year' : '▶ Live one month'}</Button>
         <div style={{ marginTop: 18 }}>
@@ -109,44 +118,75 @@ function BottomNav({ screen, setScreen, g }) {
 }
 function LockedScreen({ label }) { return (<div style={{ fontSize: 13, color: theme.muted, textAlign: 'center', padding: '40px 20px', lineHeight: 1.7 }}>🔒 {label} unlocks once you move out and start your career.<br /><br />Grow up, rent your own place, and this opens up.</div>); }
 function ChildPhoneLocked() { return (<div style={{ fontSize: 13, color: theme.muted, textAlign: 'center', padding: '40px 20px', lineHeight: 1.7 }}>📱 You're too young for a phone.<br /><br />You'll get your first one as a teenager (13).</div>); }
-const CAREER_TABS = [['calendar', 'Calendar'], ['credits', 'Credits'], ['events', 'Events']];
-function CareerScreen({ g }) {
-  const [tab, setTab] = useState('calendar');
+// The Home screen is a passport, not a button drawer: who you are, where you live, what
+// you do for money, what's on the horizon. Actions moved to the sections they belong to.
+function LifeCard({ g }) {
+  const c = monthlyCosts(g);
+  const income = (g.job ? g.job.pay : 0);
+  const net = income - c.total;
+  const row = (k, v, tint) => (<div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 12.5, padding: '5px 0', borderBottom: `1px solid ${theme.line}` }}>
+    <span style={{ color: theme.muted }}>{k}</span><span style={{ fontWeight: 700, color: tint || theme.text }}>{v}</span></div>);
+  return (<Card style={{ marginBottom: 14 }}>
+    <div style={{ fontSize: 11, fontWeight: 900, letterSpacing: '.09em', textTransform: 'uppercase', color: theme.muted, marginBottom: 6 }}>Your life right now</div>
+    {row('Living', g.hasApartment ? HOUSING[g.housing || 'room'].label : "At your parents'")}
+    {row('Work', g.job ? `${g.job.title} · ${g.job.employer}` : (g.stage === 'career' ? 'No job' : '—'), g.job ? theme.text : theme.muted)}
+    {g.production && row('Filming', `${g.production.title} · ${g.production.monthsLeft} mo left`, theme.gold)}
+    {g.hasApartment && row('Out each month', `€${c.total.toLocaleString()}`, theme.bad)}
+    {g.job && row('In each month', `€${income.toLocaleString()}`, theme.good)}
+    {g.hasApartment && row('Balance', `${net >= 0 ? '+' : ''}€${net.toLocaleString()}`, net >= 0 ? theme.good : theme.bad)}
+  </Card>);
+}
+const CAREER_TABS = [['calendar', 'Calendar'], ['training', 'Training'], ['credits', 'Credits'], ['events', 'Events']];
+function CareerScreen({ g, teenOnly }) {
+  const [tab, setTab] = useState(teenOnly ? 'training' : 'calendar');
   const credits = [...(g.filmography || []), ...(g.discography || [])];
   const creditsLabel = g.dream === 'singer' ? 'Discography' : 'Filmography';
+  if (teenOnly) return (<div>
+    <div style={{ fontSize: 11.5, color: theme.muted, textAlign: 'center', padding: '2px 8px 14px', lineHeight: 1.55 }}>
+      The rest of this unlocks when you move out and start working for real. Until then — get better.
+    </div>
+    <TrainingScreen g={g} />
+  </div>);
   return (<div>
     <div style={{ display: 'flex', gap: 6, marginBottom: 14 }}>
       {CAREER_TABS.map(([id, label]) => (<button key={id} onClick={() => setTab(id)} style={{ flex: 1, border: 'none', borderRadius: 10, padding: '8px 4px', fontSize: 12, fontWeight: 800, cursor: 'pointer', background: tab === id ? `linear-gradient(135deg,${theme.accent2},${theme.accent})` : 'rgba(158,116,255,.16)', color: tab === id ? '#fff' : '#d9cffa' }}>{label}</button>))}
     </div>
-    {tab === 'calendar' && (g.production ? <ProductionCard g={g} /> : <div style={{ fontSize: 12.5, color: theme.muted, textAlign: 'center', padding: 24, lineHeight: 1.6 }}>🎬 No active production.<br /><br />Accept a Lead or Tentpole offer in Messages to start shooting.</div>)}
+    {tab === 'calendar' && <><Diary g={g} />{g.production ? <ProductionCard g={g} /> : <div style={{ fontSize: 12.5, color: theme.muted, textAlign: 'center', padding: '18px 10px', lineHeight: 1.6 }}>🎬 Nothing shooting.<br />Accept a Lead or Tentpole offer in Messages to fill the calendar.</div>}</>}
+    {tab === 'training' && <TrainingScreen g={g} />}
     {tab === 'credits' && <CreditsList g={g} credits={credits} label={creditsLabel} />}
     {tab === 'events' && <EventsScreen g={g} />}
   </div>);
 }
 function StyleScreen({ g }) {
   const tier = fameTier(g.fame);
-  const allowedIdx = LIFESTYLE_ORDER.indexOf(tier.lifestyleMax);
-  const current = g.lifestyle || 'modest';
+  const allowedIdx = HOUSING_ORDER.indexOf(tier.housingMax);
+  const current = g.housing || 'room';
   return (<div>
     <Card style={{ marginBottom: 14, background: `linear-gradient(135deg, rgba(124,92,255,.18), rgba(158,116,255,.06))` }}>
       <div style={{ fontSize: 11, fontWeight: 800, letterSpacing: '.1em', textTransform: 'uppercase', color: theme.accent, marginBottom: 6 }}>Your status</div>
       <div style={{ fontSize: 18, fontWeight: 900 }}>{tier.label}</div>
-      <div style={{ fontSize: 12.5, color: theme.muted, marginTop: 4 }}>Fame {Math.round(g.fame || 0)}/100. Higher status unlocks a bigger lifestyle to grow into.</div>
+      <div style={{ fontSize: 12.5, color: theme.muted, marginTop: 4 }}>Fame {Math.round(g.fame || 0)}/100. The bigger the name, the better the address you can hold.</div>
     </Card>
-    <div style={{ fontSize: 11, fontWeight: 900, letterSpacing: '.09em', textTransform: 'uppercase', color: theme.muted, marginBottom: 8 }}>Lifestyle</div>
+    {!g.hasApartment && <div style={{ fontSize: 12.5, color: theme.muted, textAlign: 'center', padding: '10px 12px', marginBottom: 10, lineHeight: 1.6 }}>You still live with your parents. Move out first — then this is your problem.</div>}
+    <div style={{ fontSize: 11, fontWeight: 900, letterSpacing: '.09em', textTransform: 'uppercase', color: theme.muted, marginBottom: 8 }}>Where you live</div>
     <div style={{ display: 'grid', gap: 8 }}>
-      {LIFESTYLE_ORDER.map((key, i) => {
-        const l = LIFESTYLE[key]; const locked = i > allowedIdx; const active = key === current;
+      {HOUSING_ORDER.map((key, i) => {
+        const h = HOUSING[key]; const locked = i > allowedIdx; const active = key === current && g.hasApartment;
+        const deposit = Math.round(h.cost * 1.5); const canAfford = (g.cash || 0) >= deposit;
         return (<div key={key} style={{ background: active ? 'rgba(158,116,255,.14)' : theme.panel, border: `1px solid ${active ? theme.accent : theme.line}`, borderRadius: 12, padding: '12px 14px', opacity: locked ? .5 : 1 }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline' }}>
-            <div style={{ fontSize: 14, fontWeight: 800 }}>{l.label}{active ? ' · current' : ''}</div>
-            <div style={{ fontSize: 12, fontWeight: 800, color: theme.gold }}>{l.cost ? `€${l.cost.toLocaleString()}/mo` : 'Free'}</div>
+            <div style={{ fontSize: 14, fontWeight: 800 }}>{h.label}{active ? ' · you live here' : ''}</div>
+            <div style={{ fontSize: 12, fontWeight: 800, color: theme.gold }}>€{h.cost.toLocaleString()}/mo</div>
           </div>
-          {locked ? <div style={{ fontSize: 11.5, color: theme.muted, marginTop: 6 }}>🔒 Needs more fame to pull off without looking fake.</div> :
-            !active && <Button onClick={() => dispatch(setLifestyle, key)} style={{ marginTop: 8 }}>Switch</Button>}
+          <div style={{ fontSize: 11.5, color: theme.muted, marginTop: 3 }}>{h.blurb}</div>
+          {locked ? <div style={{ fontSize: 11.5, color: theme.muted, marginTop: 6 }}>🔒 Out of your league for now.</div>
+            : !active && g.hasApartment && (<>
+                <div style={{ fontSize: 11, color: canAfford ? theme.muted : theme.bad, marginTop: 6 }}>Deposit €{deposit.toLocaleString()}{canAfford ? '' : ' — you cannot cover it'}</div>
+                <Button onClick={() => dispatch(setHousing, key)} style={{ marginTop: 8 }}>Move in</Button>
+              </>)}
         </div>); })}
     </div>
-    <div style={{ fontSize: 11.5, color: theme.muted, textAlign: 'center', padding: '14px 10px', lineHeight: 1.6 }}>Living better than "Modest" gives a small mental boost each month — but costs more rent. Wardrobe items come in a later step.</div>
+    <div style={{ fontSize: 11.5, color: theme.muted, textAlign: 'center', padding: '14px 10px', lineHeight: 1.6 }}>Rent comes out every month whether you're working or not. A better place lifts your head a little — and ages you slower. Wardrobe comes later.</div>
   </div>);
 }
 function LegacyScreen({ g }) {
@@ -191,7 +231,11 @@ function PeopleScreen({ g }) {
     {g.partner && (<><div style={{ fontSize: 11, fontWeight: 900, letterSpacing: '.09em', textTransform: 'uppercase', color: theme.muted, marginBottom: 8 }}>Partner</div>
     <Card style={{ marginBottom: 14 }}><div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline' }}><div style={{ fontSize: 14, fontWeight: 800 }}>{g.partner.name}</div><div style={{ fontSize: 12, color: theme.muted }}>closeness {g.partner.relationship}</div></div><div style={{ fontSize: 11.5, color: theme.muted, margin: '3px 0 8px' }}>{g.partner.job} · {g.partner.age}</div><Button onClick={() => dispatch(spendWithPartner)}>Spend time together</Button></Card></>)}
     <div style={{ fontSize: 11, fontWeight: 900, letterSpacing: '.09em', textTransform: 'uppercase', color: theme.muted, marginBottom: 8 }}>Family</div>
-    {family.map((p) => (<Card key={p.id} style={{ marginBottom: 8 }}><div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline' }}><div style={{ fontSize: 14, fontWeight: 800 }}>{p.name} {p.ill && <span style={{ fontSize: 11, color: theme.bad }}>· ill</span>}</div><div style={{ fontSize: 12, color: theme.muted }}>{p.relation}, {p.age}</div></div><div style={{ fontSize: 11.5, color: theme.muted, margin: '3px 0 8px' }}>{p.job} · closeness {p.relationship} · health {p.health}</div><Button onClick={() => dispatch(spendWithFamily, p.id)}>Spend time together</Button></Card>))}
+    {family.map((p) => { const isParent = p.relation === 'Mother' || p.relation === 'Father';
+      return (<Card key={p.id} style={{ marginBottom: 8 }}><div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline' }}><div style={{ fontSize: 14, fontWeight: 800 }}>{p.name} {p.ill && <span style={{ fontSize: 11, color: theme.bad }}>· ill</span>}</div><div style={{ fontSize: 12, color: theme.muted }}>{p.relation}, {p.age}</div></div><div style={{ fontSize: 11.5, color: theme.muted, margin: '3px 0 8px' }}>{p.job} · closeness {p.relationship} · health {p.health}</div>
+        <Button onClick={() => dispatch(spendWithFamily, p.id)}>Spend time together</Button>
+        {isParent && g.stage !== 'child' && <Button onClick={() => dispatch(askFamilyForMoney)} style={{ marginTop: 7 }}>Ask for money</Button>}
+      </Card>); })}
     {deceased.length > 0 && <div style={{ fontSize: 11, color: theme.muted, marginTop: 4, marginBottom: 10, opacity: .7 }}>In memory: {deceased.map((p) => `${p.name} (${p.relation})`).join(', ')}</div>}
     {people.length > 0 && (<><div style={{ fontSize: 11, fontWeight: 900, letterSpacing: '.09em', textTransform: 'uppercase', color: theme.muted, margin: '14px 0 8px' }}>Industry contacts</div>{people.map((p) => { const opensDoor = p.unlocks === 'aaa' && p.industryWeight >= 80;
       return (<Card key={p.id} style={{ marginBottom: 8 }}><div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline' }}><div style={{ fontSize: 14, fontWeight: 800 }}>{p.name}{p.fromSchool && <span style={{ fontSize: 10.5, color: theme.accent }}> · from school</span>}</div><div style={{ fontSize: 12, color: theme.muted }}>weight {p.industryWeight}</div></div><div style={{ fontSize: 11.5, color: theme.muted, margin: '3px 0 8px' }}>{p.role} · closeness {p.relationship}{opensDoor && p.relationship >= 60 ? ' · opens A-list ★' : opensDoor ? ' · could open doors' : ''}</div><Button onClick={() => dispatch(deepenRelationship, p.id)}>Spend time together</Button></Card>); })}</>)}
@@ -334,6 +378,75 @@ function CreditsList({ g, credits, label }) {
       : credits.map((c, i) => <CreditRow key={i} c={c} />)}
   </div>);
 }
+// The old prototype had a planner and Maxi missed it: twelve months ahead, with what is
+// booked, what expires when, and where the free space is.
+function Diary({ g }) {
+  const now = (g.year || 0) * 12 + (g.month || 0);
+  const cells = [];
+  for (let i = 0; i < 12; i++) {
+    const abs = now + i;
+    const yr = Math.floor(abs / 12), mo = abs % 12;
+    const shooting = g.production && i < g.production.monthsLeft;
+    const parties = (g.events || []).filter((e) => e.monthsLeft - 1 === i).length;
+    const deadlines = (g.offers || []).filter((o) => (o.deadline || 0) - 1 === i).length;
+    cells.push({ i, yr, mo, shooting, parties, deadlines });
+  }
+  return (<div style={{ marginBottom: 16 }}>
+    <div style={{ fontSize: 11, fontWeight: 900, letterSpacing: '.09em', textTransform: 'uppercase', color: theme.muted, marginBottom: 8 }}>The year ahead</div>
+    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4,1fr)', gap: 6, marginBottom: 8 }}>
+      {cells.map((c) => (<div key={c.i} style={{
+        background: c.i === 0 ? 'rgba(158,116,255,.18)' : theme.panel,
+        border: `1px solid ${c.shooting ? 'rgba(255,209,102,.5)' : c.i === 0 ? theme.accent : theme.line}`,
+        borderRadius: 9, padding: '7px 6px', minHeight: 52 }}>
+        <div style={{ fontSize: 10.5, fontWeight: 800, color: c.i === 0 ? theme.accent : theme.muted }}>{MON[c.mo]}{c.mo === 0 ? ` ’${String(c.yr).slice(2)}` : ''}</div>
+        <div style={{ display: 'flex', gap: 3, marginTop: 4, flexWrap: 'wrap' }}>
+          {c.shooting && <span title="shooting" style={{ fontSize: 11 }}>🎬</span>}
+          {c.parties > 0 && <span title="event expires" style={{ fontSize: 11 }}>🎉</span>}
+          {c.deadlines > 0 && <span title="offer expires" style={{ fontSize: 11 }}>⏳</span>}
+        </div>
+      </div>))}
+    </div>
+    <div style={{ display: 'flex', gap: 12, justifyContent: 'center', fontSize: 10.5, color: theme.muted }}>
+      <span>🎬 shooting</span><span>🎉 party ends</span><span>⏳ offer expires</span>
+    </div>
+  </div>);
+}
+function TrainingScreen({ g }) {
+  const key = trainingKey(g);
+  const skill = Math.round(g[key] || 0), cap = skillCap(g);
+  const noEnergy = (g.ap || 0) <= 0;
+  return (<div>
+    <Card style={{ marginBottom: 14 }}>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline' }}>
+        <div style={{ fontSize: 11, fontWeight: 900, letterSpacing: '.09em', textTransform: 'uppercase', color: theme.muted }}>{key === 'singing' ? 'Singing' : 'Acting'}</div>
+        <div style={{ fontSize: 13, fontWeight: 900 }}>{skill} <span style={{ color: theme.muted, fontWeight: 700 }}>/ {cap}</span></div>
+      </div>
+      <div style={{ height: 7, background: 'rgba(255,255,255,.08)', borderRadius: 4, margin: '8px 0 6px', position: 'relative' }}>
+        <div style={{ width: cap + '%', height: '100%', background: 'rgba(158,116,255,.25)', borderRadius: 4, position: 'absolute' }} />
+        <div style={{ width: skill + '%', height: '100%', background: theme.accent, borderRadius: 4, position: 'absolute' }} />
+      </div>
+      <div style={{ fontSize: 11.5, color: theme.muted, lineHeight: 1.5 }}>
+        {skill >= cap ? 'You have taken lessons as far as they go. Only real credits raise the ceiling now.'
+          : `Teachers can take you to ${cap}. Past that it's real work that makes you better.`}
+      </div>
+    </Card>
+    <div style={{ fontSize: 11, fontWeight: 900, letterSpacing: '.09em', textTransform: 'uppercase', color: theme.muted, marginBottom: 8 }}>Where to study</div>
+    <div style={{ display: 'grid', gap: 8 }}>
+      {SCHOOLS.map((sc) => { const tooPoor = (g.cash || 0) < sc.cost; const off = noEnergy || tooPoor;
+        return (<div key={sc.id} style={{ background: theme.panel, border: `1px solid ${theme.line}`, borderRadius: 12, padding: '11px 13px', opacity: tooPoor ? .55 : 1 }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline' }}>
+            <div style={{ fontSize: 13.5, fontWeight: 800 }}>{sc.label}</div>
+            <div style={{ fontSize: 12.5, fontWeight: 900, color: sc.cost ? theme.gold : theme.muted }}>{sc.cost ? `€${sc.cost.toLocaleString()}` : 'Free'}</div>
+          </div>
+          <div style={{ fontSize: 11.5, color: theme.muted, margin: '3px 0 8px' }}>{sc.blurb} · +{sc.gain[0]}–{sc.gain[1]}{sc.mental < 0 ? ` · mental ${sc.mental}` : ''}</div>
+          <button onClick={() => dispatch(train, sc.id)} disabled={off} style={{ width: '100%', border: 'none', borderRadius: 10, padding: '9px', fontSize: 12.5, fontWeight: 800,
+            cursor: off ? 'default' : 'pointer', background: off ? 'rgba(120,110,150,.15)' : `linear-gradient(135deg,${theme.accent2},${theme.accent})`, color: off ? '#6b6390' : '#fff' }}>
+            {tooPoor ? "Can't afford it" : 'Study'}
+          </button>
+        </div>); })}
+    </div>
+  </div>);
+}
 function EventsScreen({ g }) {
   const [sneak, setSneak] = useState(null);
   const [asking, setAsking] = useState(null);
@@ -437,6 +550,6 @@ function LegacyPanel({ g }) {
 function StageBody({ g }) {
   if (g.stage === 'child') return <div style={{ fontSize: 14, lineHeight: 1.55 }}>You are a kid living with your parents. School, cartoons, and the first hints of a dream. Live through the years — the real choices come when you grow up.</div>;
   if (g.stage === 'teen') return <div style={{ fontSize: 14, lineHeight: 1.55 }}>A teenager now. You daydream about being {g.dream === 'singer' ? 'on stage' : 'on screen'}. You've got your first phone, you can pick up side work, and a few years left under your parents' roof.</div>;
-  if (g.stage === 'moving_out') return <div><div style={{ fontSize: 14, lineHeight: 1.55, marginBottom: 10 }}>You are 18. Staying with your parents is comfortable — and going nowhere. Rent your own place to actually begin your path.</div><Button kind="pri" onClick={() => dispatch(rentApartment, 800)}>Rent an apartment · €800/mo</Button></div>;
+  if (g.stage === 'moving_out') return <div><div style={{ fontSize: 14, lineHeight: 1.55, marginBottom: 10 }}>You are 18. Staying with your parents is comfortable — and going nowhere. Take a room of your own to actually begin your path.</div><Button kind="pri" onClick={() => dispatch(rentApartment)}>Move into a rented room · €{HOUSING.room.cost}/mo</Button></div>;
   return <div style={{ fontSize: 14, lineHeight: 1.55 }}>You have your own place and your own path. Chase auditions and offers through your Phone, build your craft, and make a name. Your story is yours to write.</div>;
 }

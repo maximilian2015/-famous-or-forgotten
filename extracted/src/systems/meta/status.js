@@ -1,25 +1,30 @@
-import { LIFESTYLE, LIFESTYLE_ORDER } from '../../engine/economy.js';
+import { HOUSING, HOUSING_ORDER } from '../../engine/economy.js';
 export const FAME_TIERS = [
-  { id: 'unknown', label: 'Unknown', min: 0, lifestyleMax: 'broke' },
-  { id: 'rising', label: 'Rising Star', min: 15, lifestyleMax: 'modest' },
-  { id: 'known', label: 'Known Face', min: 35, lifestyleMax: 'modest' },
-  { id: 'star', label: 'Star', min: 55, lifestyleMax: 'comfort' },
-  { id: 'alist', label: 'A-lister', min: 75, lifestyleMax: 'lavish' },
-  { id: 'icon', label: 'Icon', min: 90, lifestyleMax: 'lavish' },
+  { id: 'unknown', label: 'Unknown', min: 0, housingMax: 'studio' },
+  { id: 'rising', label: 'Rising Star', min: 15, housingMax: 'studio' },
+  { id: 'known', label: 'Known Face', min: 35, housingMax: 'flat' },
+  { id: 'star', label: 'Star', min: 55, housingMax: 'house' },
+  { id: 'alist', label: 'A-lister', min: 75, housingMax: 'penthouse' },
+  { id: 'icon', label: 'Icon', min: 90, housingMax: 'penthouse' },
 ];
 export function fameTier(fame) {
   let cur = FAME_TIERS[0];
   for (const t of FAME_TIERS) if ((fame || 0) >= t.min) cur = t;
   return cur;
 }
-export function setLifestyle(s, key) {
-  if (!LIFESTYLE[key]) return s;
+export function setHousing(s, key) {
+  if (!HOUSING[key]) return s;
+  if (!s.hasApartment) { s.lastEvent = 'You still live with your parents.'; return s; }
   const tier = fameTier(s.fame);
-  const allowedIdx = LIFESTYLE_ORDER.indexOf(tier.lifestyleMax);
-  const wantIdx = LIFESTYLE_ORDER.indexOf(key);
-  if (wantIdx > allowedIdx) { s.lastEvent = `Not there yet. At "${tier.label}" people would clock a lifestyle like that as fake.`; return s; }
-  if (s.lifestyle === key) return s;
-  s.lifestyle = key;
-  s.lastEvent = `You start living ${LIFESTYLE[key].label.toLowerCase()} — €${LIFESTYLE[key].cost.toLocaleString()}/month.`;
+  const allowedIdx = HOUSING_ORDER.indexOf(tier.housingMax);
+  const wantIdx = HOUSING_ORDER.indexOf(key);
+  if (wantIdx > allowedIdx) { s.lastEvent = `No landlord is handing that to a "${tier.label}". Get bigger first.`; return s; }
+  if (s.housing === key) return s;
+  const h = HOUSING[key];
+  const deposit = Math.round(h.cost * 1.5);
+  if ((s.cash || 0) < deposit) { s.lastEvent = `Moving in needs €${deposit.toLocaleString()} up front. You don't have it.`; return s; }
+  s.cash -= deposit;
+  s.housing = key;
+  s.lastEvent = `You moved into a ${h.label.toLowerCase()} — €${h.cost.toLocaleString()}/month, €${deposit.toLocaleString()} deposit.`;
   return s;
 }
