@@ -9,6 +9,7 @@ export const PHONE_APPS = [
   { id: 'email', name: 'Email', icon: '✉️', bg: 'linear-gradient(135deg,#4a90ff,#2f6ee0)', badge: (s) => emUnread(s), teen: true },
   { id: 'news', name: 'News', icon: '📰', bg: 'linear-gradient(135deg,#ff4d4d,#d32b2b)', badge: (s) => pressUnread(s), teen: false },
   { id: 'aaa', name: 'AAA', icon: 'AAA', bg: 'linear-gradient(135deg,#2c2c34,#17171c)', badge: () => 0, teen: false, lock: (s) => !((s.filmography || []).length + (s.discography || []).length) },
+  { id: 'work', name: 'Work', icon: '💼', bg: 'linear-gradient(135deg,#4a90ff,#2a5fb0)', badge: () => 0, teen: true },
   { id: 'dating', name: 'Dating', icon: '💘', bg: 'linear-gradient(135deg,#ff6b9d,#c23566)', badge: (s) => (s.datingPool || []).length, teen: false },
 ];
 export function visibleApps(s) {

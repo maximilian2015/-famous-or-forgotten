@@ -11,6 +11,7 @@ import { productionTick } from '../systems/career/production.js';
 import { maybeGenerateEvent, eventsTick } from '../systems/social/events.js';
 import { agingTick, mortalityCheck } from '../systems/life/mortality.js';
 import { pruneCooldowns } from './cooldown.js';
+import { workTick, jobSlots } from '../systems/life/work.js';
 
 export function stepIsYear(state) { return state.stage === 'child' || state.stage === 'teen'; }
 export function advanceTime(state) { return stepIsYear(state) ? advanceYear(state) : advanceMonth(state); }
@@ -26,6 +27,7 @@ export function advanceMonth(state) {
   }
   applyMonthly(s);
   relevanceDrift(s);
+  workTick(s);
   productionTick(s);
   eventsTick(s);
   maybeGenerateEvent(s);
@@ -35,7 +37,8 @@ export function advanceMonth(state) {
   s.peakFame = Math.max(s.peakFame || 0, s.fame || 0);
   advanceStage(s);
   pruneCooldowns(s);
-  s.ap = s.apMax || 3;
+  s.apMaxEff = Math.max(1, (s.apMax || 3) - jobSlots(s));
+  s.ap = s.apMaxEff;
   return s;
 }
 
@@ -48,10 +51,12 @@ export function advanceYear(state) {
   spotlightYear(s);
   agingTick(s);
   if (mortalityCheck(s)) return s;   // life is over — nothing else runs this tick
+  for (let m = 0; m < 12 && s.job; m++) workTick(s);   // youth moves a year at a time, but wages are monthly
   s.peakFame = Math.max(s.peakFame || 0, s.fame || 0);
   advanceStage(s);
   maybeYouthEvent(s);
   pruneCooldowns(s);
-  s.ap = s.apMax || 3;
+  s.apMaxEff = Math.max(1, (s.apMax || 3) - jobSlots(s));
+  s.ap = s.apMaxEff;
   return s;
 }

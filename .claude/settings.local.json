@@ -15,7 +15,11 @@
       "Bash(GIT_TERMINAL_PROMPT=0 timeout 30 git ls-remote origin)",
       "Read(//tmp/**)",
       "Bash(ls '/c/games/Git/cmd/git.exe' 2>/dev/null && echo \"git.exe FOUND\" || echo \"not found\")",
-      "Bash(timeout 45 git ls-remote --heads origin)"
+      "Bash(timeout 45 git ls-remote --heads origin)",
+      "Bash(sed -i \"s|import { pruneCooldowns } from './cooldown.js';|import { pruneCooldowns } from './cooldown.js';\\\\nimport { workTick, jobSlots } from '../systems/life/work.js';|\" src/engine/time.js)",
+      "Bash(sed -i 's|^  pruneCooldowns\\(s\\);$|  pruneCooldowns\\(s\\);\\\\n  s.apMaxEff = Math.max\\(1, \\(s.apMax \\\\|\\\\| 3\\) - jobSlots\\(s\\)\\);|' src/engine/time.js)",
+      "Bash(sed -i 's|^  s.ap = s.apMax \\\\|\\\\| 3;$|  s.ap = s.apMaxEff;|' src/engine/time.js)",
+      "Bash(sed -i 's|^  productionTick\\(s\\);$|  workTick\\(s\\);\\\\n  productionTick\\(s\\);|' src/engine/time.js)"
     ]
   }
 }

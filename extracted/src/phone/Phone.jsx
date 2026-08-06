@@ -8,6 +8,7 @@ import { Email } from './apps/Email.jsx';
 import { AAA } from './apps/AAA.jsx';
 import { Spotlight } from './apps/Spotlight.jsx';
 import { ArcadeGame } from './apps/ArcadeGame.jsx';
+import { Work } from './apps/Work.jsx';
 import { Dating } from './apps/Dating.jsx';
 const MON = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
 export function Phone({ g }) {
@@ -23,7 +24,7 @@ export function Phone({ g }) {
         <button onClick={() => setOpenApp(null)} style={{ background: 'rgba(255,255,255,.1)', border: 'none', color: '#d8cff0', borderRadius: 9, padding: '6px 11px', fontSize: 13, fontWeight: 800, cursor: 'pointer' }}>‹ Apps</button>
         <div style={{ fontSize: 15, fontWeight: 900, flex: 1 }}>{app.name}</div>
         <div style={{ display: 'flex', gap: 4, alignItems: 'center' }}>
-          {Array.from({ length: g.apMax || 3 }).map((_, i) => (<span key={i} style={{ width: 8, height: 8, borderRadius: '50%', background: i < (g.ap || 0) ? theme.accent : 'rgba(255,255,255,.14)' }} />))}
+          {Array.from({ length: g.apMaxEff || g.apMax || 3 }).map((_, i) => (<span key={i} style={{ width: 8, height: 8, borderRadius: '50%', background: i < (g.ap || 0) ? theme.accent : 'rgba(255,255,255,.14)' }} />))}
         </div>
       </div>
       {/* Without this, every button in every app just goes dead and the app reads as broken —
@@ -40,6 +41,7 @@ export function Phone({ g }) {
         {openApp === 'spotlight' && <Spotlight g={g} />}
         {openApp === 'arcade' && <ArcadeGame g={g} />}
         {openApp === 'dating' && <Dating g={g} />}
+        {openApp === 'work' && <Work g={g} />}
       </div>
     </div>);
   }
