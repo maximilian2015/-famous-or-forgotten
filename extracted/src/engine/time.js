@@ -10,6 +10,7 @@ import { spotlightYear } from '../systems/social/spotlight.js';
 import { productionTick } from '../systems/career/production.js';
 import { maybeGenerateEvent, eventsTick } from '../systems/social/events.js';
 import { agingTick, mortalityCheck } from '../systems/life/mortality.js';
+import { healthTick } from '../systems/life/health.js';
 import { pruneCooldowns } from './cooldown.js';
 import { workTick, jobSlots } from '../systems/life/work.js';
 
@@ -26,6 +27,8 @@ export function advanceMonth(state) {
     if (mortalityCheck(s)) return s;   // life is over — nothing else runs this tick
   }
   applyMonthly(s);
+  healthTick(s);
+  if (!s.alive) return s;   // sudden collapse ends the month right here
   relevanceDrift(s);
   workTick(s);
   productionTick(s);

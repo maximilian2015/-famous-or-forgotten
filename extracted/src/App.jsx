@@ -8,6 +8,7 @@ import { computeAccess } from './systems/career/access.js';
 import { SCHOOLS, train, trainingKey } from './systems/career/training.js';
 import { skillCap } from './systems/career/actions.js';
 import { askFamilyForMoney } from './systems/life/family.js';
+import { seeDoctor } from './systems/life/health.js';
 import { resolveArc } from './systems/life/arcs.js';
 import { deepenRelationship } from './systems/life/relationships.js';
 import { spendWithFamily } from './systems/life/family.js';
@@ -44,7 +45,7 @@ export default function App() {
         <div>
           <div style={{ fontSize: 22, fontWeight: 900 }}>{g.name}</div>
           <div style={{ fontSize: 12.5, color: theme.muted }}>{g.ageY} yrs · {MON[g.month]} {g.year} · {g.city}</div>
-          <div style={{ fontSize: 10, color: theme.accent, marginTop: 2, opacity: .7 }}>Rebuild · Step 27</div>
+          <div style={{ fontSize: 10, color: theme.accent, marginTop: 2, opacity: .7 }}>Rebuild · Step 28</div>
         </div>
         <div style={{ textAlign: 'right' }}>
           <div style={{ fontSize: 11, fontWeight: 800, letterSpacing: '.08em', textTransform: 'uppercase', color: theme.accent }}>{STAGE_LABEL[g.stage]}</div>
@@ -66,7 +67,7 @@ export default function App() {
         </Card>
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10, marginBottom: 14 }}>
           <Stat label="Cash" value={g.cash} money />
-          <Stat label="Health" value={g.health} />
+          <Stat label="Health" value={g.health} sub={g.illness ? `🤒 ${g.illness.name}` : undefined} />
           <Stat label="Mental" value={g.mental} />
           <Stat label="Fame" value={g.fame} sub={fameSub(g)} />
           <Stat label={g.dream === 'singer' ? 'Singing' : 'Acting'} value={g.dream === 'singer' ? g.singing : g.acting}
@@ -76,6 +77,14 @@ export default function App() {
           <Stat label="Respect" value={g.respect} />
         </div>
         {g.lastEvent && <Card style={{ marginBottom: 14, borderColor: 'rgba(255,209,102,.35)' }}><div style={{ fontSize: 13.5, lineHeight: 1.5, whiteSpace: 'pre-line' }}>{g.lastEvent}</div></Card>}
+        {g.illness && (<Card style={{ marginBottom: 14, borderColor: 'rgba(255,90,122,.5)' }}>
+          <div style={{ fontSize: 11, fontWeight: 900, letterSpacing: '.08em', textTransform: 'uppercase', color: theme.bad, marginBottom: 5 }}>🤒 {g.illness.name}{g.illness.serious ? ' · serious' : ''}</div>
+          <div style={{ fontSize: 12, color: theme.muted, lineHeight: 1.5, marginBottom: 9 }}>
+            It drains your health every month you leave it{g.illness.serious ? '. This one will not pass on its own.' : ' — and small things ignored become big ones.'}
+          </div>
+          <Button kind="pri" onClick={() => dispatch(seeDoctor)}>See a doctor · €{g.illness.cure.toLocaleString()}</Button>
+          {(g.cash || 0) < g.illness.cure && <div style={{ fontSize: 11, color: theme.bad, textAlign: 'center', marginTop: 6 }}>You can't afford the treatment.</div>}
+        </Card>)}
         {g.stage === 'career' && g.production && (<Card style={{ marginBottom: 14, borderColor: 'rgba(255,209,102,.35)' }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline' }}>
             <div style={{ fontSize: 11, fontWeight: 900, letterSpacing: '.08em', textTransform: 'uppercase', color: theme.gold }}>🎬 On set</div>
