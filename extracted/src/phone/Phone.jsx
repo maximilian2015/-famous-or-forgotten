@@ -9,6 +9,7 @@ import { AAA } from './apps/AAA.jsx';
 import { Spotlight } from './apps/Spotlight.jsx';
 import { ArcadeGame } from './apps/ArcadeGame.jsx';
 import { Work } from './apps/Work.jsx';
+import { Shopping } from './apps/Shopping.jsx';
 import { Dating } from './apps/Dating.jsx';
 const MON = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
 export function Phone({ g }) {
@@ -42,6 +43,7 @@ export function Phone({ g }) {
         {openApp === 'arcade' && <ArcadeGame g={g} />}
         {openApp === 'dating' && <Dating g={g} />}
         {openApp === 'work' && <Work g={g} />}
+        {openApp === 'shopping' && <Shopping g={g} />}
       </div>
     </div>);
   }

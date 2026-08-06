@@ -8,7 +8,7 @@ import { computeAccess } from './systems/career/access.js';
 import { SCHOOLS, train, trainingKey } from './systems/career/training.js';
 import { skillCap } from './systems/career/actions.js';
 import { askFamilyForMoney } from './systems/life/family.js';
-import { seeDoctor } from './systems/life/health.js';
+import { seeDoctor, treatmentCost, pushThrough, PILLS, usePills } from './systems/life/health.js';
 import { resolveArc } from './systems/life/arcs.js';
 import { deepenRelationship } from './systems/life/relationships.js';
 import { spendWithFamily } from './systems/life/family.js';
@@ -34,10 +34,12 @@ export default function App() {
   const [screen, setScreen] = useState('life');
   const [confirmEnd, setConfirmEnd] = useState(false);
   const [showGenres, setShowGenres] = useState(false);
+  const [showHealth, setShowHealth] = useState(false);
   if (!g.created) return <CreatorScreen />;
   if (!g.alive) return <EndOfLifeScreen g={g} />;
   if (g.pendingArc) return <ArcModal g={g} />;
   if (showGenres) return <GenreScreen g={g} onBack={() => setShowGenres(false)} />;
+  if (showHealth) return <HealthScreen g={g} onBack={() => setShowHealth(false)} />;
   if (confirmEnd) return <EndLifeModal onCancel={() => setConfirmEnd(false)} onConfirm={() => { import('./systems/meta/legacy.js').then(m => { m.enshrine(g); newLife(); setConfirmEnd(false); }); }} />;
   return (
     <div style={{ maxWidth: 440, margin: '0 auto', minHeight: '100vh', background: theme.bg, color: theme.text, padding: 16, paddingBottom: 90, fontFamily: 'system-ui, -apple-system, sans-serif' }}>
@@ -67,7 +69,7 @@ export default function App() {
         </Card>
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10, marginBottom: 14 }}>
           <Stat label="Cash" value={g.cash} money />
-          <Stat label="Health" value={g.health} sub={g.illness ? `🤒 ${g.illness.name}` : undefined} />
+          <Stat label="Health" value={g.health} sub={g.illness ? `🤒 ${g.illness.name} ›` : 'tap ›'} onClick={() => setShowHealth(true)} />
           <Stat label="Mental" value={g.mental} />
           <Stat label="Fame" value={g.fame} sub={fameSub(g)} />
           <Stat label={g.dream === 'singer' ? 'Singing' : 'Acting'} value={g.dream === 'singer' ? g.singing : g.acting}
@@ -80,10 +82,9 @@ export default function App() {
         {g.illness && (<Card style={{ marginBottom: 14, borderColor: 'rgba(255,90,122,.5)' }}>
           <div style={{ fontSize: 11, fontWeight: 900, letterSpacing: '.08em', textTransform: 'uppercase', color: theme.bad, marginBottom: 5 }}>🤒 {g.illness.name}{g.illness.serious ? ' · serious' : ''}</div>
           <div style={{ fontSize: 12, color: theme.muted, lineHeight: 1.5, marginBottom: 9 }}>
-            It drains your health every month you leave it{g.illness.serious ? '. This one will not pass on its own.' : ' — and small things ignored become big ones.'}
+            {g.illness.freezes ? 'Everything on your calendar is frozen until you are through this.' : 'It drains you every month, and small things left alone become big ones.'}
           </div>
-          <Button kind="pri" onClick={() => dispatch(seeDoctor)}>See a doctor · €{g.illness.cure.toLocaleString()}</Button>
-          {(g.cash || 0) < g.illness.cure && <div style={{ fontSize: 11, color: theme.bad, textAlign: 'center', marginTop: 6 }}>You can't afford the treatment.</div>}
+          <Button kind="pri" onClick={() => setShowHealth(true)}>Deal with it ›</Button>
         </Card>)}
         {g.stage === 'career' && g.production && (<Card style={{ marginBottom: 14, borderColor: 'rgba(255,209,102,.35)' }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline' }}>
@@ -134,6 +135,72 @@ function BottomNav({ screen, setScreen, g }) {
 }
 function LockedScreen({ label }) { return (<div style={{ fontSize: 13, color: theme.muted, textAlign: 'center', padding: '40px 20px', lineHeight: 1.7 }}>🔒 {label} unlocks once you move out and start your career.<br /><br />Grow up, rent your own place, and this opens up.</div>); }
 function ChildPhoneLocked() { return (<div style={{ fontSize: 13, color: theme.muted, textAlign: 'center', padding: '40px 20px', lineHeight: 1.7 }}>📱 You're too young for a phone.<br /><br />You'll get your first one as a teenager (13).</div>); }
+// Tapping Health opens the body: the bar, what you've got, and the three ways out —
+// pay a doctor, push through it yourself, or reach into the medicine cabinet.
+function HealthScreen({ g, onBack }) {
+  const [game, setGame] = useState(null);
+  const ill = g.illness;
+  const cost = ill ? treatmentCost(g, ill) : 0;
+  const canPay = (g.cash || 0) >= cost;
+  const meds = g.meds || {};
+  const h = Math.round(g.health || 0);
+  const band = h >= 75 ? ['Strong', theme.good] : h >= 50 ? ['Wearing down', theme.gold] : h >= 25 ? ['Fragile', '#ff9d5a'] : ['Falling apart', theme.bad];
+  const btn = (kind, off) => ({ width: '100%', border: 'none', borderRadius: 10, padding: '10px', fontSize: 12.5, fontWeight: 800, cursor: off ? 'default' : 'pointer',
+    background: off ? 'rgba(120,110,150,.15)' : kind === 'pri' ? `linear-gradient(135deg,${theme.accent2},${theme.accent})` : 'rgba(158,116,255,.16)', color: off ? '#6b6390' : kind === 'pri' ? '#fff' : '#d9cffa' });
+  return (<div style={{ maxWidth: 440, margin: '0 auto', minHeight: '100vh', background: theme.bg, color: theme.text, padding: 16, fontFamily: 'system-ui, sans-serif' }}>
+    <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 14 }}>
+      <button onClick={onBack} style={{ background: 'rgba(255,255,255,.1)', border: 'none', color: '#d8cff0', borderRadius: 9, padding: '6px 11px', fontSize: 13, fontWeight: 800, cursor: 'pointer' }}>‹ Back</button>
+      <div style={{ fontSize: 16, fontWeight: 900 }}>Your body</div>
+    </div>
+    <Card style={{ marginBottom: 14 }}>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline' }}>
+        <div style={{ fontSize: 26, fontWeight: 900 }}>{h}</div>
+        <div style={{ fontSize: 12.5, fontWeight: 800, color: band[1] }}>{band[0]}</div>
+      </div>
+      <div style={{ height: 9, background: 'rgba(255,255,255,.08)', borderRadius: 5, margin: '9px 0 8px' }}>
+        <div style={{ width: h + '%', height: '100%', background: band[1], borderRadius: 5 }} />
+      </div>
+      <div style={{ fontSize: 11.5, color: theme.muted, lineHeight: 1.5 }}>
+        Health is your immune system. At {h} you catch something in roughly {Math.round(h <= 15 ? 99 : Math.max(2, 100 - h * 1.05))}% of months.
+      </div>
+    </Card>
+
+    {ill ? (game ? (<Card style={{ marginBottom: 14 }}>
+      <div style={{ fontSize: 11.5, color: theme.gold, textAlign: 'center', marginBottom: 10, lineHeight: 1.45 }}>
+        {game.kind === 'timing' ? 'Pace yourself — rest and push in the right rhythm.' : 'Get through the week day by day. Overdo it and you set yourself back.'}
+      </div>
+      {game.kind === 'timing'
+        ? <TimingBar zoneStart={game.zoneStart} zoneWidth={game.zoneWidth} speed={game.speed} onResult={(q) => { dispatch(pushThrough, q); setGame(null); }} />
+        : <GridRisk cols={4} rows={3} bad={game.bad} labelSafe="✓" labelBad="✕" onResult={(q) => { dispatch(pushThrough, q); setGame(null); }} />}
+    </Card>) : (<Card style={{ marginBottom: 14, borderColor: 'rgba(255,90,122,.5)' }}>
+      <div style={{ fontSize: 11, fontWeight: 900, letterSpacing: '.08em', textTransform: 'uppercase', color: theme.bad, marginBottom: 5 }}>🤒 {ill.name}{ill.serious ? ' · serious' : ''}</div>
+      <div style={{ fontSize: 11.5, color: theme.muted, marginBottom: 4 }}>Month {ill.months + 1} of about {ill.left} · −{ill.drain} health a month</div>
+      <div style={{ height: 6, background: 'rgba(255,255,255,.08)', borderRadius: 3, margin: '6px 0 10px' }}>
+        <div style={{ width: Math.min(100, ((ill.months + 1) / Math.max(1, ill.left)) * 100) + '%', height: '100%', background: theme.bad, borderRadius: 3 }} />
+      </div>
+      {ill.freezes && <div style={{ fontSize: 11.5, color: theme.gold, marginBottom: 10, lineHeight: 1.45 }}>❄ Your calendar is frozen — shooting and everything scheduled waits for you.</div>}
+      <div style={{ display: 'grid', gap: 8 }}>
+        <button onClick={() => dispatch(seeDoctor)} disabled={!canPay} style={btn('pri', !canPay)}>See a doctor · €{cost.toLocaleString()}{cost === 0 ? ' (covered)' : ''}</button>
+        <button onClick={() => setGame({ kind: Math.random() < 0.5 ? 'timing' : 'grid', zoneStart: 14 + Math.random() * 58, zoneWidth: 12 + Math.random() * 7, speed: 2.2 + Math.random() * 1.5, bad: 3 + (Math.random() < 0.5 ? 1 : 0) })}
+          disabled={(g.ap || 0) <= 0} style={btn('', (g.ap || 0) <= 0)}>Ride it out yourself</button>
+        {(meds.antibiotics > 0) && !ill.serious && <button onClick={() => dispatch(usePills, 'antibiotics')} style={btn('')}>Take antibiotics ({meds.antibiotics})</button>}
+        {(meds.painkillers > 0) && ill.freezes && <button onClick={() => dispatch(usePills, 'painkillers')} style={btn('')}>Take painkillers to keep working ({meds.painkillers})</button>}
+      </div>
+      {!canPay && <div style={{ fontSize: 11, color: theme.bad, textAlign: 'center', marginTop: 8 }}>Treatment is out of reach right now.</div>}
+    </Card>)) : (<div style={{ fontSize: 12.5, color: theme.muted, textAlign: 'center', padding: '14px 10px 18px', lineHeight: 1.6 }}>
+      Nothing wrong with you today.{(g.immuneUntil || 0) > ((g.year || 0) * 12 + (g.month || 0)) ? ' Still shrugging off the last thing.' : ''}
+    </div>)}
+
+    <div style={{ fontSize: 11, fontWeight: 900, letterSpacing: '.09em', textTransform: 'uppercase', color: theme.muted, marginBottom: 8 }}>Medicine cabinet</div>
+    {Object.entries(PILLS).filter(([k]) => (meds[k] || 0) > 0).length === 0
+      ? <div style={{ fontSize: 11.5, color: theme.muted, padding: '4px 2px 10px' }}>Empty. The Shop app on your phone sells the basics.</div>
+      : Object.entries(PILLS).map(([k, p]) => (meds[k] || 0) > 0 && (<div key={k} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '7px 0', borderBottom: `1px solid ${theme.line}` }}>
+          <div><div style={{ fontSize: 12.5, fontWeight: 700 }}>{p.label}</div><div style={{ fontSize: 10.5, color: theme.muted }}>{meds[k]} left</div></div>
+          <button onClick={() => dispatch(usePills, k)} style={{ border: 'none', borderRadius: 9, padding: '6px 12px', fontSize: 11, fontWeight: 800, cursor: 'pointer', background: 'rgba(158,116,255,.18)', color: '#d9cffa' }}>Take one</button>
+        </div>))}
+    <div style={{ fontSize: 11, color: theme.muted, textAlign: 'center', padding: '14px 8px', lineHeight: 1.55 }}>Insurance is under Work → Health. It pays most of the bill when this goes badly.</div>
+  </div>);
+}
 // Fame reads as a ladder: who you are now, and how far to the next rung.
 function fameSub(g) {
   const t = fameTier(g.fame);

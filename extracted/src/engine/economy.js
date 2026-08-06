@@ -20,6 +20,8 @@ export const DIET = {
   fine: { label: 'Chef & restaurants', blurb: 'Someone else worries about the vegetables.', cost: 2200 },
 };
 export const GYM_COST = 90;
+// Mirrors INSURANCE in systems/life/health.js — kept here so monthlyCosts stays dependency-free.
+const INSURANCE_PREMIUM = { none: 0, basic: 140, full: 380 };
 export function setDiet(s, k) {
   if (!DIET[k] || s.diet === k) return s;
   s.diet = k;
@@ -37,7 +39,8 @@ export function monthlyCosts(s) {
   const food = s.hasApartment ? (DIET[s.diet || 'cook']?.cost || 0) : 0;
   const gym = s.hasApartment && s.gym ? GYM_COST : 0;
   const team = (s.retainers ? Object.values(s.retainers).filter(Boolean).length : 0) * 1500;
-  return { rent, food, gym, team, total: rent + food + gym + team };
+  const insurance = s.hasApartment ? (INSURANCE_PREMIUM[s.insurance || 'none'] || 0) : 0;
+  return { rent, food, gym, insurance, team, total: rent + food + gym + insurance + team };
 }
 export function wealthTax(s) {
   const cash = s.cash || 0;

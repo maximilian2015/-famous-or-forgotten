@@ -2,11 +2,13 @@ import { useState } from 'react';
 import { theme } from '../../ui/theme.js';
 import { dispatch } from '../../state/store.js';
 import { availableJobs, takeJob, quitJob, JOBS, SHIFTS, doShift } from '../../systems/life/work.js';
+import { INSURANCE, setInsurance, seeDoctor, treatmentCost } from '../../systems/life/health.js';
 import { TimingBar } from '../../ui/components/TimingBar.jsx';
 import { GridRisk } from '../../ui/components/GridRisk.jsx';
 
 export function Work({ g }) {
   const job = g.job;
+  const [tab, setTab] = useState('jobs');
   const [shift, setShift] = useState(null);
   const noEnergy = (g.ap || 0) <= 0;
   function openShift(sh) {
@@ -30,9 +32,16 @@ export function Work({ g }) {
     background: kind === 'pri' ? `linear-gradient(135deg,${theme.accent2},${theme.accent})` : kind === 'dan' ? 'rgba(255,90,122,.15)' : 'rgba(158,116,255,.16)',
     color: kind === 'pri' ? '#fff' : kind === 'dan' ? '#ffa8bb' : '#d9cffa' });
 
+  const tabs = (<div style={{ display: 'flex', gap: 6, marginBottom: 12 }}>
+    {[['jobs', 'Jobs'], ['health', 'Health']].map(([id, label]) => (
+      <button key={id} onClick={() => setTab(id)} style={{ flex: 1, border: 'none', borderRadius: 10, padding: '7px 4px', fontSize: 12, fontWeight: 800, cursor: 'pointer',
+        background: tab === id ? `linear-gradient(135deg,${theme.accent2},${theme.accent})` : 'rgba(158,116,255,.16)', color: tab === id ? '#fff' : '#d9cffa' }}>{label}</button>))}
+  </div>);
+  if (tab === 'health') return (<div>{tabs}<HealthDesk g={g} /></div>);
+
   if (job) {
     const years = Math.floor(job.months / 12), months = job.months % 12;
-    return (<div>
+    return (<div>{tabs}
       <div style={{ fontSize: 11, fontWeight: 900, letterSpacing: '.09em', textTransform: 'uppercase', color: theme.muted, marginBottom: 8 }}>Currently employed</div>
       <div style={{ background: theme.panel, border: `1px solid ${theme.line}`, borderRadius: 12, padding: '12px 14px', marginBottom: 10 }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline' }}>
@@ -56,6 +65,7 @@ export function Work({ g }) {
   const open = availableJobs(g);
   const tooYoung = JOBS.filter((j) => (g.ageY || 0) < j.minAge);
   return (<div>
+    {tabs}
     <div style={{ fontSize: 11.5, color: theme.muted, padding: '2px 2px 10px', lineHeight: 1.5 }}>
       Steady money while you chase the other thing. A job pays every month without asking — but it takes your time.
     </div>
@@ -73,6 +83,38 @@ export function Work({ g }) {
       {tooYoung.length} more open up as you get older.
     </div>}
     <ShiftBoard g={g} onPick={openShift} noEnergy={noEnergy} />
+  </div>);
+}
+// Insurance and the doctor live together — the same desk you deal with when the body fails.
+function HealthDesk({ g }) {
+  const cur = g.insurance || 'none';
+  const ill = g.illness;
+  const cost = ill ? treatmentCost(g, ill) : 0;
+  const canPay = (g.cash || 0) >= cost;
+  return (<div>
+    {ill ? (<div style={{ background: theme.panel, border: '1px solid rgba(255,90,122,.45)', borderRadius: 12, padding: '12px 14px', marginBottom: 14 }}>
+      <div style={{ fontSize: 11, fontWeight: 900, letterSpacing: '.08em', textTransform: 'uppercase', color: theme.bad, marginBottom: 5 }}>🤒 {ill.name}{ill.serious ? ' · serious' : ''}</div>
+      <div style={{ fontSize: 11.5, color: theme.muted, marginBottom: 9, lineHeight: 1.5 }}>
+        Month {ill.months + 1} of about {ill.left}. Drains {ill.drain} health a month{ill.freezes ? ', and nothing on your calendar moves.' : '.'}
+      </div>
+      <button onClick={() => dispatch(seeDoctor)} disabled={!canPay} style={{ width: '100%', border: 'none', borderRadius: 10, padding: '10px', fontSize: 12.5, fontWeight: 800,
+        cursor: canPay ? 'pointer' : 'default', background: canPay ? `linear-gradient(135deg,${theme.accent2},${theme.accent})` : 'rgba(120,110,150,.15)', color: canPay ? '#fff' : '#6b6390' }}>
+        Book treatment · €{cost.toLocaleString()}{cost === 0 ? ' (covered)' : ''}
+      </button>
+      {!canPay && <div style={{ fontSize: 11, color: theme.bad, textAlign: 'center', marginTop: 6 }}>You can't cover that right now.</div>}
+    </div>) : (<div style={{ fontSize: 12.5, color: theme.muted, textAlign: 'center', padding: '14px 10px', marginBottom: 6, lineHeight: 1.6 }}>Nothing wrong with you today.</div>)}
+
+    <div style={{ fontSize: 11, fontWeight: 900, letterSpacing: '.09em', textTransform: 'uppercase', color: theme.muted, marginBottom: 4 }}>Insurance</div>
+    <div style={{ fontSize: 11.5, color: theme.muted, marginBottom: 10, lineHeight: 1.5 }}>A bill every month against a bill you can't see coming. Covers treatment and hospital.</div>
+    {Object.entries(INSURANCE).map(([key, i]) => { const active = cur === key;
+      return (<div key={key} style={{ background: active ? 'rgba(158,116,255,.14)' : theme.panel, border: `1px solid ${active ? theme.accent : theme.line}`, borderRadius: 12, padding: '10px 12px', marginBottom: 8 }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline' }}>
+          <div style={{ fontSize: 13.5, fontWeight: 800 }}>{i.label}{active ? ' · current' : ''}</div>
+          <div style={{ fontSize: 12.5, fontWeight: 900, color: i.premium ? theme.gold : theme.muted }}>{i.premium ? `€${i.premium}/mo` : 'free'}</div>
+        </div>
+        <div style={{ fontSize: 11.5, color: theme.muted, marginTop: 3 }}>{i.covers ? `Pays ${Math.round(i.covers * 100)}% of any treatment.` : 'Every bill lands on you in full.'}</div>
+        {!active && <button onClick={() => dispatch(setInsurance, key)} style={{ width: '100%', border: 'none', borderRadius: 10, padding: '8px', fontSize: 12, fontWeight: 800, cursor: 'pointer', background: 'rgba(158,116,255,.18)', color: '#d9cffa', marginTop: 8 }}>Switch to this</button>}
+      </div>); })}
   </div>);
 }
 function ShiftBoard({ g, onPick, noEnergy }) {

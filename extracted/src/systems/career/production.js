@@ -78,6 +78,13 @@ export function bondWithCrew(s, crewId) {
 }
 export function productionTick(s) {
   const p = s.production; if (!p) return;
+  // A serious illness stops the shoot dead — the schedule waits for you.
+  if (s.illness && s.illness.freezes) {
+    p.paused = (p.paused || 0) + 1;
+    if (p.paused === 1) addTimeline(s, `${p.title} is on hold while you recover.`, true);
+    return;
+  }
+  p.paused = 0;
   p.monthsLeft -= 1;
   if (p.monthsLeft > 0) return;
   wrapProduction(s);
