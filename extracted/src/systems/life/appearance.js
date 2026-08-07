@@ -4,13 +4,36 @@
 import { pick } from '../../engine/rng.js';
 
 export const HAIRSTYLES = {
-  short:  { label: 'Cropped',        cost: 45,  blurb: 'Short, tidy, forgettable in a good way.' },
-  long:   { label: 'Long',           cost: 80,  blurb: 'Past the shoulders. Takes work, reads expensive.' },
-  bob:    { label: 'Bob',            cost: 65,  blurb: 'Sharp line at the jaw. A decision, not an accident.' },
-  mohawk: { label: 'Mohawk',         cost: 95,  blurb: 'Pink crest, shaved sides. People will have opinions.' },
-  bald:   { label: 'Shaved + beard', cost: 30,  blurb: 'Clippers and a good beard. Cheapest thing here.' },
+  cropped:  { label: 'Cropped',   cost: 45, blurb: 'Short, tidy, forgettable in a good way.' },
+  buzz:     { label: 'Buzz cut',  cost: 25, blurb: 'Clippers, one setting, four minutes.' },
+  long:     { label: 'Long',      cost: 80, blurb: 'Past the shoulders. Takes work, reads expensive.' },
+  waves:    { label: 'Waves',     cost: 90, blurb: 'Parted in the middle and left to do as it likes.' },
+  bob:      { label: 'Bob',       cost: 65, blurb: 'Sharp line at the jaw. A decision, not an accident.' },
+  curly:    { label: 'Curls',     cost: 70, blurb: 'Big, round, and impossible to ignore in a doorway.' },
+  ponytail: { label: 'Ponytail',  cost: 40, blurb: 'Pulled back and out of the way. Ready to work.' },
+  bun:      { label: 'Top knot',  cost: 50, blurb: 'Wound up on top. Looks deliberate, takes a minute.' },
+  pigtails: { label: 'Pigtails',  cost: 45, blurb: 'Two of them, high. Younger than you are.' },
+  mohawk:   { label: 'Mohawk',    cost: 95, blurb: 'Pink crest, shaved sides. People will have opinions.' },
+  bald:     { label: 'Shaved',    cost: 20, blurb: 'All of it off. Cheapest thing on the list.' },
+  beard:    { label: 'Shaved + beard', cost: 30, gender: 'male', blurb: 'Clippers on top, everything else grown out.' },
 };
-export const HAIR_ORDER = ['short', 'long', 'bob', 'mohawk', 'bald'];
+export const HAIR_ORDER = ['cropped', 'buzz', 'long', 'waves', 'bob', 'curly', 'ponytail', 'bun', 'pigtails', 'mohawk', 'bald', 'beard'];
+// A beard is the one thing here that is not on offer to everyone.
+export function hairChoices(gender) {
+  return HAIR_ORDER.filter((k) => !HAIRSTYLES[k].gender || HAIRSTYLES[k].gender === gender);
+}
+
+export const EYES = [
+  { id: 'brown', label: 'Brown', colour: '#5b3a22' },
+  { id: 'hazel', label: 'Hazel', colour: '#8a6a2f' },
+  { id: 'green', label: 'Green', colour: '#3f7a52' },
+  { id: 'blue',  label: 'Blue',  colour: '#3a6ea8' },
+  { id: 'grey',  label: 'Grey',  colour: '#6b7280' },
+  { id: 'amber', label: 'Amber', colour: '#a9781f' },
+];
+export const EYE_COLOURS = EYES.map((e) => e.colour);
+// 'natural' means mixed from the skin tone rather than painted on.
+export const LIPS = ['natural', '#c04a63', '#a02840', '#8d3a5e', '#d4737f', '#6e2338'];
 
 export const OUTFITS = {
   tee:       { label: 'T-shirt and jeans', cost: 0,    blurb: 'What is already in your wardrobe.' },
@@ -42,11 +65,19 @@ export function ageBand(age) {
 }
 
 export function ensureAppearance(s) {
-  if (s.look && s.look.hair) return s;
+  if (s.look && s.look.hair) {
+    // Saves from before the hair list grew still say 'short'.
+    if (s.look.hair === 'short') s.look = { ...s.look, hair: 'cropped' };
+    if (!s.look.eyes) s.look = { ...s.look, eyes: pick(EYE_COLOURS) };
+    if (!s.look.lips) s.look = { ...s.look, lips: 'natural' };
+    return s;
+  }
   s.look = {
-    hair: s.gender === 'male' ? 'short' : 'long',
+    hair: s.gender === 'male' ? 'cropped' : 'long',
     hairColor: pick(HAIR_COLORS),
     skin: pick(SKINS),
+    eyes: pick(EYE_COLOURS),
+    lips: 'natural',
     outfit: 'tee',
     owned: ['tee'],
   };
@@ -58,9 +89,11 @@ export function lookOf(s) {
   const l = s.look || {};
   const band = ageBand(s.ageY);
   return {
-    hair: band === 'baby' ? 'short' : (l.hair || 'short'),
+    hair: l.hair || 'cropped',
     hairColor: l.hairColor || HAIR_COLORS[0],
     skin: l.skin || SKINS[1],
+    eyes: l.eyes || EYE_COLOURS[0],
+    lips: l.lips || 'natural',
     // A toddler in black tie is a bug, not a joke. Kids wear kid clothes.
     outfit: band === 'baby' || band === 'child' ? 'tee' : (l.outfit || 'tee'),
     age: s.ageY || 0,
@@ -79,12 +112,17 @@ function hashOf(str) {
 export function lookOfPerson(p) {
   const h = hashOf(p?.id || p?.name || 'someone');
   const female = p?.gender === 'f' || p?.gender === 'female';
-  const hairs = female ? ['long', 'bob', 'short'] : ['short', 'bald', 'mohawk'];
+  // No mohawks out here — a pink crest is a choice the player makes, not something a
+  // 52-year-old father turns up with by accident.
+  const hairs = female ? ['long', 'bob', 'waves', 'bun', 'curly', 'ponytail', 'cropped']
+    : ['cropped', 'buzz', 'beard', 'bald', 'curly', 'cropped'];
   const fits = ['tee', 'hoodie', 'leather', 'tracksuit'];
   return {
     hair: hairs[h % hairs.length],
     hairColor: HAIR_COLORS[(h >> 2) % HAIR_COLORS.length],
     skin: SKINS[(h >> 5) % SKINS.length],
+    eyes: EYE_COLOURS[(h >> 11) % EYE_COLOURS.length],
+    lips: 'natural',
     outfit: fits[(h >> 8) % fits.length],
     age: p?.age ?? 30,
     gender: female ? 'female' : 'male',

@@ -39,16 +39,20 @@ export function quitJob(s) {
 
 // A one-off shift for whoever needs hands today — no commitment, and how well you do
 // is on you. This replaced the old "work an odd job" button that just handed you cash.
+// minAge matters: a thirteen-year-old pulling a night warehouse shift is not a game
+// mechanic, it is a bug. Younger teens live on pocket money until the law lets them work.
 export const SHIFTS = [
-  { id: 'bar', title: 'Cover a bar shift', blurb: 'Friday night, three deep at the bar.', base: 900 },
-  { id: 'moving', title: 'Help a removals crew', blurb: 'Stairs. So many stairs.', base: 1100 },
-  { id: 'promo', title: 'Hand out flyers', blurb: 'A costume is involved. Nobody will know.', base: 700 },
-  { id: 'catering', title: 'Waiter at a private event', blurb: 'Rich people, small plates, long night.', base: 1000 },
-  { id: 'warehouse', title: 'Night at the warehouse', blurb: 'Scan, lift, repeat, until light.', base: 1200 },
+  { id: 'promo', title: 'Hand out flyers', blurb: 'A costume is involved. Nobody will know.', base: 700, minAge: 15 },
+  { id: 'bar', title: 'Cover a bar shift', blurb: 'Friday night, three deep at the bar.', base: 900, minAge: 18 },
+  { id: 'moving', title: 'Help a removals crew', blurb: 'Stairs. So many stairs.', base: 1100, minAge: 16 },
+  { id: 'catering', title: 'Waiter at a private event', blurb: 'Rich people, small plates, long night.', base: 1000, minAge: 16 },
+  { id: 'warehouse', title: 'Night at the warehouse', blurb: 'Scan, lift, repeat, until light.', base: 1200, minAge: 18 },
 ];
-export function pickShift() { return pick(SHIFTS); }
+export function availableShifts(s) { return SHIFTS.filter((sh) => (s.ageY || 0) >= sh.minAge); }
+export function pickShift(s) { const list = s ? availableShifts(s) : SHIFTS; return list.length ? pick(list) : null; }
 export function doShift(s, shiftId, quality = 50) {
   const sh = SHIFTS.find((x) => x.id === shiftId) || SHIFTS[0];
+  if ((s.ageY || 0) < sh.minAge) { s.lastEvent = `You have to be ${sh.minAge} for that one.`; return s; }
   if ((s.ap || 0) <= 0) { s.lastEvent = 'No energy left this period. Live a bit first.'; return s; }
   s.ap = (s.ap || 0) - 1;
   // Do it well and they tip, ask you back, round it up. Do it badly and you get docked.

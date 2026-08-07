@@ -28,7 +28,7 @@ import { Button } from './ui/components/Button.jsx';
 import { Card } from './ui/components/Card.jsx';
 import { Stat } from './ui/components/Stat.jsx';
 import { Avatar } from './ui/components/Avatar.jsx';
-import { lookOf, lookOfPerson, companionOf, HAIRSTYLES, HAIR_ORDER, HAIR_COLORS, OUTFITS, OUTFIT_ORDER, SKINS, buyHair, setHairColour, wearOutfit, ownsOutfit, DRESS_UP_AGE } from './systems/life/appearance.js';
+import { lookOf, lookOfPerson, companionOf, HAIRSTYLES, HAIR_ORDER, hairChoices, HAIR_COLORS, EYES, EYE_COLOURS, LIPS, OUTFITS, OUTFIT_ORDER, SKINS, buyHair, setHairColour, wearOutfit, ownsOutfit, DRESS_UP_AGE } from './systems/life/appearance.js';
 import { classOf } from './systems/life/origin.js';
 const MON = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
 
@@ -114,6 +114,9 @@ export default function App() {
           {(g.ap || 0) <= 0 && <div style={{ fontSize: 11.5, color: theme.gold, textAlign: 'center', padding: '4px 0' }}>Out of energy — live time to refresh your actions.</div>}
           {g.stage === 'career' && <div style={{ fontSize: 11, color: theme.muted, textAlign: 'center', padding: '6px 8px', lineHeight: 1.55, opacity: .85 }}>
             Auditions and shifts are in your Phone. Training and parties are under Career. Family is under People.
+          </div>}
+          {g.stage === 'teen' && <div style={{ fontSize: 11, color: theme.muted, textAlign: 'center', padding: '6px 8px', lineHeight: 1.55, opacity: .85 }}>
+            Extra work and shifts are in your Phone. Acting lessons are under Career. These are the things you can only do once.
           </div>}
         </div>
         <Button kind="pri" onClick={() => dispatch(advanceTime)}>{stepIsYear(g) ? '▶ Live one year' : '▶ Live one month'}</Button>
@@ -322,7 +325,7 @@ function WardrobeSection({ g }) {
     {locked ? null : (<>
       <div style={{ fontSize: 11, fontWeight: 900, letterSpacing: '.09em', textTransform: 'uppercase', color: theme.muted, margin: '14px 0 8px' }}>Hair</div>
       <div style={{ display: 'grid', gap: 8 }}>
-        {HAIR_ORDER.map((key) => { const h = HAIRSTYLES[key]; const active = (g.look?.hair || 'short') === key;
+        {hairChoices(g.gender).map((key) => { const h = HAIRSTYLES[key]; const active = (g.look?.hair || 'cropped') === key;
           return (<div key={key} style={{ background: active ? 'rgba(158,116,255,.14)' : theme.panel, border: `1px solid ${active ? theme.accent : theme.line}`, borderRadius: 12, padding: '10px 12px', display: 'flex', alignItems: 'center', gap: 12 }}>
             <Avatar look={{ ...worn, hair: key }} size={54} />
             <div style={{ flex: 1 }}>
@@ -451,7 +454,6 @@ function PeopleScreen({ g }) {
   const deceased = (g.family || []).filter((p) => !p.alive);
   const people = g.people || [];
   return (<div>
-    <OriginCard g={g} />
     {g.partner && (<><div style={{ fontSize: 11, fontWeight: 900, letterSpacing: '.09em', textTransform: 'uppercase', color: theme.muted, marginBottom: 8 }}>Partner</div>
     <Card style={{ marginBottom: 14, display: 'flex', gap: 12, alignItems: 'flex-start' }}><Avatar look={lookOfPerson(g.partner)} size={56} title={g.partner.name} /><div style={{ flex: 1 }}><div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline' }}><div style={{ fontSize: 14, fontWeight: 800 }}>{g.partner.name}</div><div style={{ fontSize: 12, color: theme.muted }}>closeness {g.partner.relationship}</div></div><div style={{ fontSize: 11.5, color: theme.muted, margin: '3px 0 8px' }}>{g.partner.job} · {g.partner.age}</div><Button onClick={() => dispatch(spendWithPartner)}>Spend time together</Button></div></Card></>)}
     <div style={{ fontSize: 11, fontWeight: 900, letterSpacing: '.09em', textTransform: 'uppercase', color: theme.muted, marginBottom: 8 }}>Family</div>
@@ -467,6 +469,18 @@ function PeopleScreen({ g }) {
   </div>);
 }
 const CITIES = ['Amsterdam', 'London', 'Los Angeles', 'New York', 'Paris', 'Berlin', 'Seoul', 'São Paulo'];
+// 'natural' has no colour of its own — it is mixed from the skin, so show it that way.
+function Swatches({ title, list, value, onPick, skin }) {
+  return (<div>
+    <div style={{ fontSize: 10, fontWeight: 800, letterSpacing: '.06em', textTransform: 'uppercase', color: theme.muted, marginBottom: 5 }}>{title}</div>
+    <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
+      {list.map((c) => (<div key={c} onClick={() => onPick(c)} title={c === 'natural' ? 'Natural' : undefined}
+        style={{ width: 22, height: 22, borderRadius: '50%', cursor: 'pointer',
+          background: c === 'natural' ? `linear-gradient(135deg, ${skin || '#e5bb9a'}, ${theme.panel2})` : c,
+          border: value === c ? `2px solid ${theme.gold}` : '2px solid rgba(255,255,255,.14)' }} />))}
+    </div>
+  </div>);
+}
 function CreatorScreen() {
   const [name, setName] = useState('');
   const [city, setCity] = useState('Amsterdam');
@@ -475,7 +489,13 @@ function CreatorScreen() {
   const [skin, setSkin] = useState(SKINS[1]);
   const [hairColor, setHairColor] = useState(HAIR_COLORS[0]);
   const [hair, setHair] = useState('long');
-  const preview = { hair, hairColor, skin, outfit: 'tee', age: 24, gender, sick: false };
+  const [eyes, setEyes] = useState(EYE_COLOURS[0]);
+  const [lips, setLips] = useState('natural');
+  const [outfit, setOutfit] = useState('tee');
+  const allowedHair = hairChoices(gender);
+  // Switching to a girl while wearing a beard would leave an impossible character.
+  const safeHair = allowedHair.includes(hair) ? hair : 'cropped';
+  const preview = { hair: safeHair, hairColor, skin, eyes, lips, outfit, age: 24, gender, sick: false };
   const label = { fontSize: 11, fontWeight: 900, letterSpacing: '.09em', textTransform: 'uppercase', color: theme.muted, marginBottom: 7 };
   const pill = (on) => ({ border: 'none', borderRadius: 10, padding: '8px 12px', fontSize: 12.5, fontWeight: 800, cursor: 'pointer',
     background: on ? `linear-gradient(135deg,${theme.accent2},${theme.accent})` : 'rgba(158,116,255,.16)', color: on ? '#fff' : '#d9cffa' });
@@ -517,30 +537,27 @@ function CreatorScreen() {
     <div style={{ marginBottom: 22 }}>
       <div style={label}>The person</div>
       <div style={{ display: 'flex', gap: 14, alignItems: 'center', background: theme.panel, border: `1px solid ${theme.line}`, borderRadius: 12, padding: '12px 14px' }}>
-        <Avatar look={preview} size={104} title="you" />
-        <div style={{ flex: 1, display: 'grid', gap: 10 }}>
-          <div>
-            <div style={{ fontSize: 10, fontWeight: 800, letterSpacing: '.06em', textTransform: 'uppercase', color: theme.muted, marginBottom: 5 }}>Skin</div>
-            <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
-              {SKINS.map((c) => <div key={c} onClick={() => setSkin(c)} style={{ width: 22, height: 22, borderRadius: '50%', background: c, cursor: 'pointer', border: skin === c ? `2px solid ${theme.gold}` : '2px solid rgba(255,255,255,.14)' }} />)}
-            </div>
-          </div>
-          <div>
-            <div style={{ fontSize: 10, fontWeight: 800, letterSpacing: '.06em', textTransform: 'uppercase', color: theme.muted, marginBottom: 5 }}>Hair</div>
-            <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
-              {HAIR_COLORS.map((c) => <div key={c} onClick={() => setHairColor(c)} style={{ width: 22, height: 22, borderRadius: '50%', background: c, cursor: 'pointer', border: hairColor === c ? `2px solid ${theme.gold}` : '2px solid rgba(255,255,255,.14)' }} />)}
-            </div>
-          </div>
+        <Avatar look={preview} size={128} title="you" />
+        <div style={{ flex: 1, display: 'grid', gap: 9 }}>
+          <Swatches title="Skin" list={SKINS} value={skin} onPick={setSkin} />
+          <Swatches title="Hair" list={HAIR_COLORS} value={hairColor} onPick={setHairColor} />
+          <Swatches title="Eyes" list={EYE_COLOURS} value={eyes} onPick={setEyes} />
+          <Swatches title="Lips" list={LIPS} value={lips} onPick={setLips} skin={skin} />
         </div>
       </div>
-      <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', marginTop: 8 }}>
-        {HAIR_ORDER.map((k) => <button key={k} onClick={() => setHair(k)} style={{ ...pill(hair === k), fontSize: 11.5 }}>{HAIRSTYLES[k].label}</button>)}
+      <div style={{ ...label, marginTop: 12 }}>Cut</div>
+      <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
+        {allowedHair.map((k) => <button key={k} onClick={() => setHair(k)} style={{ ...pill(safeHair === k), fontSize: 11.5 }}>{HAIRSTYLES[k].label}</button>)}
       </div>
-      <div style={{ fontSize: 11, color: theme.muted, marginTop: 8, lineHeight: 1.5 }}>This is who you grow into — you start as a baby, and the haircut waits until you are thirteen.</div>
+      <div style={{ ...label, marginTop: 12 }}>Clothes</div>
+      <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
+        {OUTFIT_ORDER.map((k) => <button key={k} onClick={() => setOutfit(k)} style={{ ...pill(outfit === k), fontSize: 11.5 }}>{OUTFITS[k].label}</button>)}
+      </div>
+      <div style={{ fontSize: 11, color: theme.muted, marginTop: 10, lineHeight: 1.5 }}>This is who you grow into — you start as a baby, and none of it shows until you are thirteen.</div>
     </div>
 
     <Button kind="pri" onClick={() => newLife({ name: name.trim() || 'Alex Moon', city, gender, startYear, created: true,
-      look: { hair, hairColor, skin, outfit: 'tee', owned: ['tee'] } })}>Be born</Button>
+      look: { hair: safeHair, hairColor, skin, eyes, lips, outfit, owned: ['tee', outfit] } })}>Be born</Button>
     <div style={{ fontSize: 11, color: theme.muted, textAlign: 'center', marginTop: 12, lineHeight: 1.5 }}>Actor or singer isn't decided here — that dream finds you around age ten. Nor is the family you land in: that is rolled at birth, and it decides how hard the start is.</div>
   </div>);
 }

@@ -1,25 +1,41 @@
 import { addTimeline } from '../../engine/timeline.js';
-import { earn } from '../../engine/economy.js';
 import { rint, chance } from '../../engine/rng.js';
-import { meetPerson } from '../life/relationships.js';
-import { askFamilyForMoney } from '../life/family.js';
 const clamp = (v) => Math.max(0, Math.min(100, v));
 export function skillCap(s) {
   const credits = (s.filmography || []).length + (s.discography || []).length;
   const hits = [...(s.filmography || []), ...(s.discography || [])].filter((x) => (x.rating || 0) >= 70).length;
   return Math.min(100, 50 + credits * 6 + hits * 4);
 }
+// Everything that exists elsewhere has been moved out and must NOT come back here:
+// askmoney is on the parent's card in People; networking is Career → Events; practice is
+// paid training in Career → Training; odd jobs are shifts in the Work app; extra work is
+// the OpenCall app. What is left are the beats that live nowhere else.
 export const ACTIONS = [
-  { id: 'sidejob', label: () => 'Take a side job', desc: () => 'Bag groceries, wait tables — small money', when: (s) => s.stage === 'teen',
-    run: (s) => { const pay = rint(200, 600); s.cash = (s.cash||0)+pay; s.mental = Math.max(0,(s.mental||50)-2); const msg = `You worked a shift after school. Earned €${pay.toLocaleString()}.`; s.lastEvent = msg; return msg; } },
-  { id: 'extrawork', label: () => 'Try to be a TV extra', desc: () => 'Background roles — a taste of a set', when: (s) => s.stage === 'teen',
+  { id: 'schoolplay', label: () => 'Audition for the school play', desc: () => 'A stage, a hundred parents, and nerves', when: (s) => s.stage === 'teen',
     run: (s) => {
       const key = s.dream === 'singer' ? 'singing' : 'acting';
-      if (chance(55)) { const pay = rint(300, 800); s.cash = (s.cash||0)+pay; s[key] = Math.min(100, (s[key]||0)+1); s.fame = Math.min(100, (s.fame||0)+1); const msg = `You got booked as a background extra on a TV shoot! €${pay.toLocaleString()}, and you watched real actors work. (${key} +1, fame +1)`; s.lastEvent = msg; return msg; }
-      s.mental = Math.max(0,(s.mental||50)-1); const msg = 'You showed up to the casting call for extras, waited three hours, and got sent home. Welcome to the industry.'; s.lastEvent = msg; return msg;
+      const odds = 40 + (s.confidence || 0) * 0.3 + (s.charisma || 0) * 0.15;
+      if (chance(odds)) {
+        const g = rint(2, 4);
+        s[key] = Math.min(100, (s[key] || 0) + g);
+        s.confidence = clamp(s.confidence + rint(2, 5));
+        return `You got the part. Standing in that light, something clicked. (${key} +${g}, confidence +)`;
+      }
+      s.confidence = clamp(s.confidence - rint(1, 3)); s.mental = clamp(s.mental - 2);
+      return 'You did not get the part. Someone louder did. You told yourself you did not care.';
     } },
-  // askmoney lives on the parent's card in People; networking lives in Career → Events;
-  // practice became paid training in Career → Training; odd jobs became shifts in the Work app.
+  { id: 'sneakout', label: () => 'Sneak out to a gig', desc: () => 'Out the window, back before six', when: (s) => s.stage === 'teen',
+    run: (s) => {
+      s.charisma = clamp(s.charisma + rint(1, 4));
+      if (chance(35)) {
+        const parent = (s.family || []).find((p) => (p.relation === 'Mother' || p.relation === 'Father') && p.alive);
+        if (parent) parent.relationship = clamp(parent.relationship - rint(6, 14));
+        s.mental = clamp(s.mental - 3);
+        return 'Caught on the stairs at 4am. It was worth it, and it cost you at home.';
+      }
+      s.confidence = clamp(s.confidence + rint(2, 4)); s.mental = clamp(s.mental + rint(2, 5));
+      return 'Nobody heard a thing. The band was loud and you were somewhere else entirely.';
+    } },
   { id: 'rest', label: () => 'Rest & recover', desc: () => 'Recover mental and health', when: () => true,
     run: (s) => { s.mental = clamp(s.mental + rint(6, 12)); s.health = clamp(s.health + rint(3, 8)); return 'You took time for yourself. Mind and body thank you.'; } },
   { id: 'school', label: () => 'Focus on school', desc: () => 'Build discipline for the road ahead', when: (s) => s.stage === 'teen' || s.stage === 'child',

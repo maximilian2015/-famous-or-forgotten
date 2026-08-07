@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { theme } from '../../ui/theme.js';
 import { dispatch } from '../../state/store.js';
-import { availableJobs, takeJob, quitJob, JOBS, SHIFTS, doShift } from '../../systems/life/work.js';
+import { availableJobs, takeJob, quitJob, JOBS, availableShifts, doShift } from '../../systems/life/work.js';
 import { INSURANCE, setInsurance, seeDoctor, treatmentCost } from '../../systems/life/health.js';
 import { TimingBar } from '../../ui/components/TimingBar.jsx';
 import { GridRisk } from '../../ui/components/GridRisk.jsx';
@@ -121,7 +121,8 @@ function ShiftBoard({ g, onPick, noEnergy }) {
   return (<div style={{ borderTop: `1px solid ${theme.line}`, paddingTop: 12 }}>
     <div style={{ fontSize: 11, fontWeight: 900, letterSpacing: '.09em', textTransform: 'uppercase', color: theme.muted, marginBottom: 4 }}>One-off shifts</div>
     <div style={{ fontSize: 11.5, color: theme.muted, marginBottom: 10, lineHeight: 1.5 }}>No commitment, cash today. How well you work it decides how much you take home.</div>
-    {SHIFTS.slice(0, 3).map((sh) => (<div key={sh.id} style={{ background: theme.panel, border: `1px solid ${theme.line}`, borderRadius: 12, padding: '10px 12px', marginBottom: 8 }}>
+    {availableShifts(g).length === 0 && <div style={{ fontSize: 11.5, color: theme.muted, textAlign: 'center', padding: '10px 8px', lineHeight: 1.55 }}>Nobody will hire you at {g.ageY}. Pocket money is all you have until fifteen.</div>}
+    {availableShifts(g).slice(0, 3).map((sh) => (<div key={sh.id} style={{ background: theme.panel, border: `1px solid ${theme.line}`, borderRadius: 12, padding: '10px 12px', marginBottom: 8 }}>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline' }}>
         <div style={{ fontSize: 13, fontWeight: 800 }}>{sh.title}</div>
         <div style={{ fontSize: 12, fontWeight: 900, color: theme.gold }}>~€{sh.base.toLocaleString()}</div>
