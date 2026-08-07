@@ -1,6 +1,26 @@
 {
   "permissions": {
     "allow": [
+      "Read",
+      "Glob",
+      "Grep",
+      "Edit",
+      "Write",
+      "Bash(node *)",
+      "Bash(npm *)",
+      "Bash(npx *)",
+      "Bash(git *)",
+      "Bash(ls *)",
+      "Bash(cp *)",
+      "Bash(mkdir *)",
+      "PowerShell(node *)",
+      "PowerShell(npm *)",
+      "PowerShell(git *)",
+      "PowerShell(Get-ChildItem *)",
+      "PowerShell(Get-Content *)",
+      "PowerShell(Copy-Item *)",
+      "PowerShell(New-Item *)",
+      "PowerShell(Test-Path *)",
       "Bash(npm install *)",
       "PowerShell(node --version)",
       "PowerShell(npm --version)",
@@ -21,7 +41,24 @@
       "Bash(sed -i 's|^  s.ap = s.apMax \\\\|\\\\| 3;$|  s.ap = s.apMaxEff;|' src/engine/time.js)",
       "Bash(sed -i 's|^  productionTick\\(s\\);$|  workTick\\(s\\);\\\\n  productionTick\\(s\\);|' src/engine/time.js)",
       "Bash(sed -i \"s|import { computeAccess } from './systems/career/access.js';|import { computeAccess } from './systems/career/access.js';\\\\nimport { SCHOOLS, train, trainingKey } from './systems/career/training.js';\\\\nimport { skillCap } from './systems/career/actions.js';\\\\nimport { askFamilyForMoney } from './systems/life/family.js';|\" src/App.jsx)",
-      "Bash(sed -i \"s|import { runAction, availableActions } from './systems/career/actions.js';|import { runAction, availableActions } from './systems/career/actions.js';|\" src/App.jsx)"
+      "Bash(sed -i \"s|import { runAction, availableActions } from './systems/career/actions.js';|import { runAction, availableActions } from './systems/career/actions.js';|\" src/App.jsx)",
+      "Skill(update-config)",
+      "Skill(update-config:*)",
+      "PowerShell(if \\($?\\) { \"JSON OK\" })",
+      "WebFetch(domain:claude.ai)",
+      "PowerShell(Copy-Item \"C:\\\\Users\\\\MAXIMI~1\\\\AppData\\\\Local\\\\Temp\\\\claude\\\\C--Users-maximilian-Desktop-game\\\\c6338e03-964b-4add-ba0d-c7905acab615\\\\scratchpad\\\\avatar_mini_figures.html\" \"C:\\\\Users\\\\maximilian\\\\Desktop\\\\game\\\\avatars.html\" -Force; \\(Get-Item C:\\\\Users\\\\maximilian\\\\Desktop\\\\game\\\\avatars.html\\).Length)",
+      "PowerShell(Copy-Item \"C:\\\\Users\\\\maximilian\\\\Desktop\\\\game\\\\avatars.html\" \"C:\\\\Users\\\\maximilian\\\\Desktop\\\\game\\\\extracted\\\\avatars.html\" -Force)",
+      "PowerShell(\"copied\")",
+      "PowerShell(Copy-Item \"C:\\\\Users\\\\MAXIMI~1\\\\AppData\\\\Local\\\\Temp\\\\claude\\\\C--Users-maximilian-Desktop-game\\\\c6338e03-964b-4add-ba0d-c7905acab615\\\\scratchpad\\\\avatar_mini_figures.html\" \"C:\\\\Users\\\\maximilian\\\\Desktop\\\\game\\\\avatars.html\" -Force)",
+      "PowerShell(\"ok\")",
+      "PowerShell(git -C C:\\\\Users\\\\maximilian\\\\Desktop\\\\game status --short)",
+      "PowerShell(Copy-Item C:\\\\Users\\\\maximilian\\\\Desktop\\\\game\\\\extracted\\\\dist\\\\game.html C:\\\\Users\\\\maximilian\\\\Desktop\\\\game\\\\game.html -Force)",
+      "PowerShell($h = Get-Content C:\\\\Users\\\\maximilian\\\\Desktop\\\\game\\\\game.html -Raw; \"module tag: \" + \\($h -match 'type=\"module\"'\\); \"has Avatar code: \" + \\($h -match 'Shaved \\\\+ beard'\\); \"size KB: \" + [math]::Round\\(\\(Get-Item C:\\\\Users\\\\maximilian\\\\Desktop\\\\game\\\\game.html\\).Length/1KB\\))"
+    ],
+    "defaultMode": "acceptEdits",
+    "additionalDirectories": [
+      "C:/Users/maximilian/AppData/Local/Temp/claude",
+      "C:/Users/MAXIMI~1/AppData/Local/Temp/claude"
     ]
   }
 }

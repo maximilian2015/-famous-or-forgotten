@@ -16,6 +16,7 @@ export function createInitialState(opts = {}) {
     filmography: [], discography: [], offers: [], people: [],
     family: [], parentsMarried: true, spotlight: [],
     inbox: [], timeline: [], flags: {},
+    look: null,   // filled in by ensureAppearance — see systems/life/appearance.js
     ap: 3, apMax: 3,
     alive: true,
   };

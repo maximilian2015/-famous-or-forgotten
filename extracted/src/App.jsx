@@ -27,6 +27,8 @@ import { theme } from './ui/theme.js';
 import { Button } from './ui/components/Button.jsx';
 import { Card } from './ui/components/Card.jsx';
 import { Stat } from './ui/components/Stat.jsx';
+import { Avatar } from './ui/components/Avatar.jsx';
+import { lookOf, lookOfPerson, companionOf, HAIRSTYLES, HAIR_ORDER, HAIR_COLORS, OUTFITS, OUTFIT_ORDER, SKINS, buyHair, setHairColour, wearOutfit, ownsOutfit, DRESS_UP_AGE } from './systems/life/appearance.js';
 const MON = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
 
 export default function App() {
@@ -43,11 +45,14 @@ export default function App() {
   if (confirmEnd) return <EndLifeModal onCancel={() => setConfirmEnd(false)} onConfirm={() => { import('./systems/meta/legacy.js').then(m => { m.enshrine(g); newLife(); setConfirmEnd(false); }); }} />;
   return (
     <div style={{ maxWidth: 440, margin: '0 auto', minHeight: '100vh', background: theme.bg, color: theme.text, padding: 16, paddingBottom: 90, fontFamily: 'system-ui, -apple-system, sans-serif' }}>
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', marginBottom: 14 }}>
-        <div>
-          <div style={{ fontSize: 22, fontWeight: 900 }}>{g.name}</div>
-          <div style={{ fontSize: 12.5, color: theme.muted }}>{g.ageY} yrs · {MON[g.month]} {g.year} · {g.city}</div>
-          <div style={{ fontSize: 10, color: theme.accent, marginTop: 2, opacity: .7 }}>Rebuild · Step 28</div>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 14 }}>
+        <div style={{ display: 'flex', alignItems: 'flex-end', gap: 9 }}>
+          <HeaderFigures g={g} onOpen={() => setScreen('style')} />
+          <div>
+            <div style={{ fontSize: 22, fontWeight: 900, lineHeight: 1.1 }}>{g.name}</div>
+            <div style={{ fontSize: 12.5, color: theme.muted, marginTop: 3 }}>{g.ageY} yrs · {MON[g.month]} {g.year}</div>
+            <div style={{ fontSize: 10, color: theme.accent, marginTop: 2, opacity: .7 }}>{g.city} · Step 29</div>
+          </div>
         </div>
         <div style={{ textAlign: 'right' }}>
           <div style={{ fontSize: 11, fontWeight: 800, letterSpacing: '.08em', textTransform: 'uppercase', color: theme.accent }}>{STAGE_LABEL[g.stage]}</div>
@@ -274,6 +279,72 @@ function CareerScreen({ g, teenOnly }) {
     {tab === 'events' && <EventsScreen g={g} />}
   </div>);
 }
+function HeaderFigures({ g, onOpen }) {
+  const mate = companionOf(g);
+  return (<div onClick={onOpen} title="Wardrobe" style={{ display: 'flex', alignItems: 'flex-end', gap: 1, cursor: 'pointer' }}>
+    <Avatar look={lookOf(g)} size={48} title={g.name} />
+    {mate && <Avatar look={lookOfPerson(mate.person)} size={mate.married ? 46 : 42}
+      title={`${mate.person.name} · ${mate.married ? 'spouse' : 'partner'}`}
+      style={{ opacity: mate.married ? 1 : .82 }} />}
+  </div>);
+}
+function WardrobeSection({ g }) {
+  const locked = (g.ageY || 0) < DRESS_UP_AGE;
+  const worn = lookOf(g);   // what is actually drawn — kids are overridden into kid clothes
+  const swatch = (on) => ({ width: 26, height: 26, borderRadius: '50%', cursor: 'pointer',
+    border: on ? `2px solid ${theme.gold}` : '2px solid rgba(255,255,255,.14)' });
+  return (<>
+    <div style={{ fontSize: 11, fontWeight: 900, letterSpacing: '.09em', textTransform: 'uppercase', color: theme.muted, margin: '16px 0 8px' }}>Wardrobe</div>
+    <Card style={{ marginBottom: 10, display: 'flex', alignItems: 'center', gap: 14 }}>
+      <Avatar look={worn} size={96} title={g.name} />
+      <div style={{ flex: 1 }}>
+        <div style={{ fontSize: 13.5, fontWeight: 800 }}>{HAIRSTYLES[worn.hair]?.label || 'Cropped'}</div>
+        <div style={{ fontSize: 11.5, color: theme.muted, marginTop: 2 }}>{OUTFITS[worn.outfit]?.label || 'T-shirt and jeans'}</div>
+        <div style={{ fontSize: 11, color: theme.muted, marginTop: 7, lineHeight: 1.5 }}>
+          {locked ? `You are ${g.ageY}. Your parents still dress you — this opens at ${DRESS_UP_AGE}.`
+            : 'Your figure ages with you, and your partner shows up beside you once you have one.'}
+        </div>
+      </div>
+    </Card>
+    {locked ? null : (<>
+      <div style={{ fontSize: 11, fontWeight: 900, letterSpacing: '.09em', textTransform: 'uppercase', color: theme.muted, margin: '14px 0 8px' }}>Hair</div>
+      <div style={{ display: 'grid', gap: 8 }}>
+        {HAIR_ORDER.map((key) => { const h = HAIRSTYLES[key]; const active = (g.look?.hair || 'short') === key;
+          return (<div key={key} style={{ background: active ? 'rgba(158,116,255,.14)' : theme.panel, border: `1px solid ${active ? theme.accent : theme.line}`, borderRadius: 12, padding: '10px 12px', display: 'flex', alignItems: 'center', gap: 12 }}>
+            <Avatar look={{ ...worn, hair: key }} size={54} />
+            <div style={{ flex: 1 }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline' }}>
+                <div style={{ fontSize: 13.5, fontWeight: 800 }}>{h.label}{active ? ' · now' : ''}</div>
+                <div style={{ fontSize: 12, fontWeight: 800, color: theme.gold }}>€{h.cost}</div>
+              </div>
+              <div style={{ fontSize: 11.5, color: theme.muted, marginTop: 3 }}>{h.blurb}</div>
+              {!active && <Button onClick={() => dispatch(buyHair, key)} style={{ marginTop: 7 }}>Sit in the chair</Button>}
+            </div>
+          </div>); })}
+      </div>
+      <div style={{ fontSize: 11, fontWeight: 900, letterSpacing: '.09em', textTransform: 'uppercase', color: theme.muted, margin: '14px 0 8px' }}>Colour · €60</div>
+      <Card style={{ display: 'flex', gap: 9, alignItems: 'center', flexWrap: 'wrap' }}>
+        {HAIR_COLORS.map((c) => (<div key={c} onClick={() => dispatch(setHairColour, c)} style={{ ...swatch(g.look?.hairColor === c), background: c }} />))}
+        <div style={{ fontSize: 11, color: theme.muted, flexBasis: '100%' }}>Grey arrives on its own after fifty. You cannot buy your way out of that.</div>
+      </Card>
+      <div style={{ fontSize: 11, fontWeight: 900, letterSpacing: '.09em', textTransform: 'uppercase', color: theme.muted, margin: '16px 0 8px' }}>Clothes</div>
+      <div style={{ display: 'grid', gap: 8 }}>
+        {OUTFIT_ORDER.map((key) => { const o = OUTFITS[key]; const active = (g.look?.outfit || 'tee') === key; const owned = ownsOutfit(g, key);
+          return (<div key={key} style={{ background: active ? 'rgba(158,116,255,.14)' : theme.panel, border: `1px solid ${active ? theme.accent : theme.line}`, borderRadius: 12, padding: '10px 12px', display: 'flex', alignItems: 'center', gap: 12 }}>
+            <Avatar look={{ ...worn, outfit: key }} size={54} />
+            <div style={{ flex: 1 }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline' }}>
+                <div style={{ fontSize: 13.5, fontWeight: 800 }}>{o.label}{active ? ' · on you' : ''}</div>
+                <div style={{ fontSize: 12, fontWeight: 800, color: theme.gold }}>{owned ? 'owned' : '€' + o.cost.toLocaleString()}</div>
+              </div>
+              <div style={{ fontSize: 11.5, color: theme.muted, marginTop: 3 }}>{o.blurb}</div>
+              {!active && <Button onClick={() => dispatch(wearOutfit, key)} style={{ marginTop: 7 }}>{owned ? 'Put it on' : 'Buy and wear'}</Button>}
+            </div>
+          </div>); })}
+      </div>
+    </>)}
+  </>);
+}
 function StyleScreen({ g }) {
   const tier = fameTier(g.fame);
   const allowedIdx = HOUSING_ORDER.indexOf(tier.housingMax);
@@ -324,7 +395,8 @@ function StyleScreen({ g }) {
       <div style={{ fontSize: 11.5, color: theme.muted, margin: '3px 0 8px' }}>Slowly raises your looks and keeps the body in shape. Casting rooms notice.</div>
       {g.hasApartment && <Button onClick={() => dispatch(toggleGym)}>{g.gym ? 'Cancel membership' : 'Join the gym'}</Button>}
     </Card>
-    <div style={{ fontSize: 11.5, color: theme.muted, textAlign: 'center', padding: '14px 10px', lineHeight: 1.6 }}>Rent, food and the gym come out every month whether you're working or not. Fast food quietly wears your health down; eating well rebuilds it. Wardrobe comes later.</div>
+    <WardrobeSection g={g} />
+    <div style={{ fontSize: 11.5, color: theme.muted, textAlign: 'center', padding: '14px 10px', lineHeight: 1.6 }}>Rent, food and the gym come out every month whether you're working or not. Fast food quietly wears your health down; eating well rebuilds it. Clothes and hair are pure vanity — they cost money and change nothing but your reflection.</div>
   </div>);
 }
 function LegacyScreen({ g }) {
@@ -367,13 +439,13 @@ function PeopleScreen({ g }) {
   const people = g.people || [];
   return (<div>
     {g.partner && (<><div style={{ fontSize: 11, fontWeight: 900, letterSpacing: '.09em', textTransform: 'uppercase', color: theme.muted, marginBottom: 8 }}>Partner</div>
-    <Card style={{ marginBottom: 14 }}><div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline' }}><div style={{ fontSize: 14, fontWeight: 800 }}>{g.partner.name}</div><div style={{ fontSize: 12, color: theme.muted }}>closeness {g.partner.relationship}</div></div><div style={{ fontSize: 11.5, color: theme.muted, margin: '3px 0 8px' }}>{g.partner.job} · {g.partner.age}</div><Button onClick={() => dispatch(spendWithPartner)}>Spend time together</Button></Card></>)}
+    <Card style={{ marginBottom: 14, display: 'flex', gap: 12, alignItems: 'flex-start' }}><Avatar look={lookOfPerson(g.partner)} size={56} title={g.partner.name} /><div style={{ flex: 1 }}><div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline' }}><div style={{ fontSize: 14, fontWeight: 800 }}>{g.partner.name}</div><div style={{ fontSize: 12, color: theme.muted }}>closeness {g.partner.relationship}</div></div><div style={{ fontSize: 11.5, color: theme.muted, margin: '3px 0 8px' }}>{g.partner.job} · {g.partner.age}</div><Button onClick={() => dispatch(spendWithPartner)}>Spend time together</Button></div></Card></>)}
     <div style={{ fontSize: 11, fontWeight: 900, letterSpacing: '.09em', textTransform: 'uppercase', color: theme.muted, marginBottom: 8 }}>Family</div>
     {family.map((p) => { const isParent = p.relation === 'Mother' || p.relation === 'Father';
-      return (<Card key={p.id} style={{ marginBottom: 8 }}><div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline' }}><div style={{ fontSize: 14, fontWeight: 800 }}>{p.name} {p.ill && <span style={{ fontSize: 11, color: theme.bad }}>· ill</span>}</div><div style={{ fontSize: 12, color: theme.muted }}>{p.relation}, {p.age}</div></div><div style={{ fontSize: 11.5, color: theme.muted, margin: '3px 0 8px' }}>{p.job} · closeness {p.relationship} · health {p.health}</div>
+      return (<Card key={p.id} style={{ marginBottom: 8, display: 'flex', gap: 12, alignItems: 'flex-start' }}><Avatar look={lookOfPerson(p)} size={56} title={p.name} /><div style={{ flex: 1 }}><div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline' }}><div style={{ fontSize: 14, fontWeight: 800 }}>{p.name} {p.ill && <span style={{ fontSize: 11, color: theme.bad }}>· ill</span>}</div><div style={{ fontSize: 12, color: theme.muted }}>{p.relation}, {p.age}</div></div><div style={{ fontSize: 11.5, color: theme.muted, margin: '3px 0 8px' }}>{p.job} · closeness {p.relationship} · health {p.health}</div>
         <Button onClick={() => dispatch(spendWithFamily, p.id)}>Spend time together</Button>
         {isParent && g.stage !== 'child' && <Button onClick={() => dispatch(askFamilyForMoney)} style={{ marginTop: 7 }}>Ask for money</Button>}
-      </Card>); })}
+      </div></Card>); })}
     {deceased.length > 0 && <div style={{ fontSize: 11, color: theme.muted, marginTop: 4, marginBottom: 10, opacity: .7 }}>In memory: {deceased.map((p) => `${p.name} (${p.relation})`).join(', ')}</div>}
     {people.length > 0 && (<><div style={{ fontSize: 11, fontWeight: 900, letterSpacing: '.09em', textTransform: 'uppercase', color: theme.muted, margin: '14px 0 8px' }}>Industry contacts</div>{people.map((p) => { const opensDoor = p.unlocks === 'aaa' && p.industryWeight >= 80;
       return (<Card key={p.id} style={{ marginBottom: 8 }}><div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline' }}><div style={{ fontSize: 14, fontWeight: 800 }}>{p.name}{p.fromSchool && <span style={{ fontSize: 10.5, color: theme.accent }}> · from school</span>}</div><div style={{ fontSize: 12, color: theme.muted }}>weight {p.industryWeight}</div></div><div style={{ fontSize: 11.5, color: theme.muted, margin: '3px 0 8px' }}>{p.role} · closeness {p.relationship}{opensDoor && p.relationship >= 60 ? ' · opens A-list ★' : opensDoor ? ' · could open doors' : ''}</div><Button onClick={() => dispatch(deepenRelationship, p.id)}>Spend time together</Button></Card>); })}</>)}

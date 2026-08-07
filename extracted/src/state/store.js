@@ -1,6 +1,7 @@
 import { useSyncExternalStore } from 'react';
 import { createInitialState } from './initialState.js';
 import { makeFamily } from '../systems/life/family.js';
+import { ensureAppearance } from '../systems/life/appearance.js';
 const KEY = 'fof_react_save';
 const CURRENT_VERSION = 'r0.8b';
 
@@ -12,6 +13,7 @@ function normalize(saved) {
   for (const k of Object.keys(base)) { if (typeof base[k] === 'number') { const v = Number(merged[k]); merged[k] = Number.isFinite(v) ? v : base[k]; } }
   merged.version = CURRENT_VERSION;
   merged.created = true;   // an existing save already has a character — never re-run the creator over it
+  ensureAppearance(merged); // saves made before the avatar existed still need a face
   return merged;
 }
 function sanitize(st) {
@@ -19,7 +21,7 @@ function sanitize(st) {
   for (const k of Object.keys(base)) { if (typeof base[k] === 'number' && (typeof st[k] !== 'number' || !Number.isFinite(st[k]))) st[k] = base[k]; }
   return st;
 }
-function freshLife(opts) { const s = createInitialState(opts); makeFamily(s); return s; }
+function freshLife(opts) { const s = createInitialState(opts); makeFamily(s); ensureAppearance(s); return s; }
 
 let state = normalize(load());
 const listeners = new Set();
