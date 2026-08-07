@@ -1,6 +1,7 @@
 import { rint, chance, pick } from '../../engine/rng.js';
 import { addTimeline } from '../../engine/timeline.js';
 import { die } from './mortality.js';
+import { homeIllness } from '../../engine/economy.js';
 const clamp = (v) => Math.max(0, Math.min(100, v));
 
 // Health is immunity. A body at 60 catches things constantly; a body at 15 is defenceless.
@@ -39,6 +40,21 @@ export function treatmentCost(s, ill) {
   return Math.round((ill?.cure || 0) * (1 - cover));
 }
 
+// Immunity IS health: at 90 you shrug things off, at 25 you catch everything going.
+// One definition, used by the monthly roll AND by the number shown on the health screen —
+// the two used to be written out separately and had already drifted apart.
+export function infectionOdds(s) {
+  const h = s.health || 100;
+  let odds = h <= 15 ? 99 : Math.max(2, 100 - h * 1.05);
+  if (s.diet === 'fast') odds += 6;
+  if (s.diet === 'fine') odds -= 5;
+  if (s.gym) odds -= 5;
+  if ((s.ageY || 0) >= 55) odds += 5;
+  if ((s.ageY || 0) >= 70) odds += 8;
+  odds += homeIllness(s);   // thin walls and damp are a reason to be ill
+  return clamp(odds);
+}
+
 // Immunity: your body fights the same thing off for a while after beating it.
 export function isIll(s) { return !!s.illness; }
 export function illnessBlocks(s) { return !!(s.illness && s.illness.freezes); }
@@ -65,14 +81,7 @@ export function healthTick(s) {
       addTimeline(s, `It got worse: ${up.name.toLowerCase()}.`, true);
     }
   } else if (((s.year || 0) * 12 + (s.month || 0)) >= (s.immuneUntil || 0)) {
-    // Immunity IS health: at 90 you shrug things off, at 25 you catch everything going.
-    let odds = h <= 15 ? 99 : Math.max(2, 100 - h * 1.05);
-    if (s.diet === 'fast') odds += 6;
-    if (s.diet === 'fine') odds -= 5;
-    if (s.gym) odds -= 5;
-    if ((s.ageY || 0) >= 55) odds += 5;
-    if ((s.ageY || 0) >= 70) odds += 8;
-    if (chance(clamp(odds))) {
+    if (chance(infectionOdds(s))) {
       const serious = h < 35 ? chance(50) : chance(12);
       const ill = pick(serious ? ILLNESSES.serious : ILLNESSES.minor);
       s.illness = { ...ill, serious, months: 0, left: ill.months };

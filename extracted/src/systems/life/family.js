@@ -1,6 +1,7 @@
 import { rint, chance, pick } from '../../engine/rng.js';
 import { onCooldown, markUsed } from '../../engine/cooldown.js';
 import { addTimeline } from '../../engine/timeline.js';
+import { homeBond } from '../../engine/economy.js';
 const clamp = (v) => Math.max(0, Math.min(100, v));
 const MFIRST = ['James','Michael','David','Robert','Daniel','Andrew','Thomas','Marcus','Viktor','Sergei'];
 const FFIRST = ['Mary','Linda','Susan','Karen','Elena','Anna','Sofia','Olga','Nina','Claire'];
@@ -71,8 +72,10 @@ export function spendWithFamily(s, id) {
   if (!p) return s;
   if (onCooldown(s, 'fam:' + id)) { s.lastEvent = `You've already seen ${p.name} this month.`; return s; }
   markUsed(s, 'fam:' + id);
-  p.relationship = clamp(p.relationship + rint(4, 10)); s.mental = clamp((s.mental || 50) + rint(2, 5));
-  s.lastEvent = `You spent time with ${p.name}. It was good for both of you. (Closeness +, Mental +)`;
+  // Somewhere you can actually sit down together is worth more than a coffee shop.
+  const gain = Math.round(rint(4, 10) * homeBond(s));
+  p.relationship = clamp(p.relationship + gain); s.mental = clamp((s.mental || 50) + rint(2, 5));
+  s.lastEvent = `You spent time with ${p.name}. It was good for both of you. (Closeness +${gain}, Mental +)`;
   return s;
 }
 export function askFamilyForMoney(s) {

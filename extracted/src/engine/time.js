@@ -1,5 +1,5 @@
 import { advanceStage } from '../systems/life/stages.js';
-import { applyMonthly, applyYearly, relevanceDrift } from './economy.js';
+import { applyMonthly, applyYearly, relevanceDrift, homeEnergy } from './economy.js';
 import { maybeGenerateOffer } from '../systems/career/offers.js';
 import { emailTick } from '../systems/meta/email.js';
 import { maybeStartArc } from '../systems/life/arcs.js';
@@ -41,7 +41,7 @@ export function advanceMonth(state) {
   s.peakFame = Math.max(s.peakFame || 0, s.fame || 0);
   advanceStage(s);
   pruneCooldowns(s);
-  s.apMaxEff = Math.max(1, (s.apMax || 3) - jobSlots(s));
+  s.apMaxEff = Math.max(1, (s.apMax || 3) + homeEnergy(s) - jobSlots(s));
   s.ap = s.apMaxEff;
   return s;
 }
@@ -61,7 +61,7 @@ export function advanceYear(state) {
   advanceStage(s);
   maybeYouthEvent(s);
   pruneCooldowns(s);
-  s.apMaxEff = Math.max(1, (s.apMax || 3) - jobSlots(s));
+  s.apMaxEff = Math.max(1, (s.apMax || 3) + homeEnergy(s) - jobSlots(s));
   s.ap = s.apMaxEff;
   return s;
 }

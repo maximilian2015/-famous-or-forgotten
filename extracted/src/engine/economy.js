@@ -2,15 +2,46 @@ import { addTimeline } from './timeline.js';
 // Concrete places to live rather than an abstract "lifestyle" slider — a room and a penthouse
 // are things a player can picture, and the rent IS the lifestyle cost.
 // Priced off real Amsterdam rents so the early squeeze feels honest.
+// Rent has to buy something you can feel, or trading €750 for €1,450 is just a worse
+// number. Every tier moves five things: how you sleep (mental), how the body holds up
+// (health), how often you fall ill, how much of the month you actually get (energy),
+// and whether the place is somewhere you can bring people — or raise a child.
 export const HOUSING = {
-  room:      { label: 'Rented room',      blurb: 'A room in a shared flat. Thin walls.',            cost: 750 },
-  studio:    { label: 'Studio flat',      blurb: 'Small, yours, and the door locks.',               cost: 1450 },
-  flat:      { label: 'Two-bed apartment', blurb: 'Space to breathe. A view of something.',         cost: 2900 },
-  house:     { label: 'Canal house',       blurb: 'Old brick, tall windows, serious money.',        cost: 7500 },
-  penthouse: { label: 'Penthouse',        blurb: 'The city underneath you, and everyone knows it.', cost: 15000 },
+  room: {
+    label: 'Rented room', blurb: 'A room in a shared flat. Thin walls.', cost: 750,
+    mental: -0.6, health: -0.3, ill: 7, ap: 0, bond: 0.8, kids: false,
+    perk: 'Someone else’s dishes and someone else’s hours. You sleep badly and catch everything going round.',
+  },
+  studio: {
+    label: 'Studio flat', blurb: 'Small, yours, and the door locks.', cost: 1450,
+    mental: 0.2, health: 0, ill: 2, ap: 0, bond: 1, kids: false,
+    perk: 'Yours, and the door locks. That is the whole of it — but it is not nothing.',
+  },
+  flat: {
+    label: 'Two-bed apartment', blurb: 'Space to breathe. A view of something.', cost: 2900,
+    mental: 1, health: 0.2, ill: -3, ap: 0, bond: 1.25, kids: true,
+    perk: 'Room to breathe and a second bedroom. People can stay, and a child could grow up here.',
+  },
+  house: {
+    label: 'Canal house', blurb: 'Old brick, tall windows, serious money.', cost: 7500,
+    mental: 1.8, health: 0.35, ill: -7, ap: 1, bond: 1.5, kids: true,
+    perk: 'Quiet, warm and yours. You wake with an extra hour in you every month.',
+  },
+  penthouse: {
+    label: 'Penthouse', blurb: 'The city underneath you, and everyone knows it.', cost: 15000,
+    mental: 2.4, health: 0.5, ill: -10, ap: 1, bond: 1.7, kids: true,
+    perk: 'The address is part of the name now. An extra hour a month, and nobody sleeps better than you.',
+  },
 };
 export const HOUSING_ORDER = ['room', 'studio', 'flat', 'house', 'penthouse'];
-const HOUSING_PERK = { room: {}, studio: {}, flat: { mental: 1 }, house: { mental: 2, confidence: 1 }, penthouse: { mental: 2, confidence: 2 } };
+export function home(s) { return HOUSING[s.housing || 'room'] || HOUSING.room; }
+// Read by systems/life/health.js — a damp shared room is a real reason to fall ill.
+export function homeIllness(s) { return s.hasApartment ? (home(s).ill || 0) : 0; }
+// Read by engine/time.js — space and quiet give you back part of the month.
+export function homeEnergy(s) { return s.hasApartment ? (home(s).ap || 0) : 0; }
+// Read wherever you spend time with someone — you cannot host anyone in a rented room.
+export function homeBond(s) { return s.hasApartment ? (home(s).bond ?? 1) : 1; }
+export function canRaiseChild(s) { return !!(s.hasApartment && home(s).kids); }
 
 // What you eat is a monthly standing choice, and the body keeps score.
 // (Long-term illness from years of fast food is planned on top of this.)
@@ -54,9 +85,12 @@ export function wealthTax(s) {
 }
 export function applyMonthly(s) {
   const c = monthlyCosts(s); if (c.total > 0) s.cash -= c.total;
-  const perk = HOUSING_PERK[s.housing || 'room'] || {};
-  if (perk.mental) s.mental = Math.max(0, Math.min(100, (s.mental || 0) + perk.mental));
-  if (perk.confidence) s.confidence = Math.max(0, Math.min(100, (s.confidence || 0) + perk.confidence));
+  // Where you sleep is a monthly drip in both directions — a bad room takes from you.
+  if (s.hasApartment) {
+    const h = home(s);
+    if (h.mental) s.mental = Math.max(0, Math.min(100, (s.mental || 0) + h.mental));
+    if (h.health) s.health = Math.max(0, Math.min(100, (s.health || 0) + h.health));
+  }
   // Diet and gym work in months, not clicks — slow drifts you only notice over years.
   if (s.hasApartment) {
     const diet = s.diet || 'cook';

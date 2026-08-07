@@ -1,6 +1,7 @@
 import { rint, chance, pick } from '../../engine/rng.js';
 import { onCooldown, markUsed } from '../../engine/cooldown.js';
 import { addTimeline } from '../../engine/timeline.js';
+import { homeBond, canRaiseChild, HOUSING } from '../../engine/economy.js';
 const clamp = (v) => Math.max(0, Math.min(100, v));
 const MFIRST = ['Jonas','Marco','Idris','Felix','Ren','Cole','Adrian','Nico','Sami','Leo'];
 const FFIRST = ['Sasha','Iris','Noor','Elin','Priya','Wren','Yara','Freya','Talia','Mira'];
@@ -51,7 +52,7 @@ export function spendWithPartner(s) {
   if (!s.partner) return s;
   if (onCooldown(s, 'partner')) { s.lastEvent = `You've already had your evening with ${s.partner.name} this month.`; return s; }
   markUsed(s, 'partner');
-  const gain = rint(6, 14);
+  const gain = Math.round(rint(6, 14) * homeBond(s));
   s.partner.relationship = clamp(s.partner.relationship + gain);
   s.mental = clamp((s.mental || 50) + rint(2, 6));
   s.lastEvent = `You spent time with ${s.partner.name}. Relationship +${gain}.`;
@@ -79,6 +80,8 @@ export function proposeMarriage(s) {
 export function tryForBaby(s) {
   const spouse = (s.family || []).find((p) => p.relation === 'Spouse' && p.alive);
   if (!spouse) { s.lastEvent = 'You need a spouse first.'; return s; }
+  // You cannot raise a child in a rented room, and both of you know it.
+  if (!canRaiseChild(s)) { s.lastEvent = `There is nowhere to put a child. You need at least a ${HOUSING.flat.label.toLowerCase()} first.`; return s; }
   if (onCooldown(s, 'baby')) { s.lastEvent = 'Give it a month.'; return s; }
   markUsed(s, 'baby');
   if (chance(35)) {

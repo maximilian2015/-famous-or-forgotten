@@ -8,7 +8,7 @@ import { computeAccess } from './systems/career/access.js';
 import { SCHOOLS, train, trainingKey } from './systems/career/training.js';
 import { skillCap } from './systems/career/actions.js';
 import { askFamilyForMoney } from './systems/life/family.js';
-import { seeDoctor, treatmentCost, pushThrough, PILLS, usePills } from './systems/life/health.js';
+import { seeDoctor, treatmentCost, pushThrough, PILLS, usePills, infectionOdds } from './systems/life/health.js';
 import { resolveArc } from './systems/life/arcs.js';
 import { deepenRelationship } from './systems/life/relationships.js';
 import { spendWithFamily } from './systems/life/family.js';
@@ -171,7 +171,7 @@ function HealthScreen({ g, onBack }) {
         <div style={{ width: h + '%', height: '100%', background: band[1], borderRadius: 5 }} />
       </div>
       <div style={{ fontSize: 11.5, color: theme.muted, lineHeight: 1.5 }}>
-        Health is your immune system. At {h} you catch something in roughly {Math.round(h <= 15 ? 99 : Math.max(2, 100 - h * 1.05))}% of months.
+        Health is your immune system. At {h} — with how you eat, where you live and how old you are — you catch something in roughly {Math.round(infectionOdds(g))}% of months.
       </div>
     </Card>
 
@@ -361,6 +361,22 @@ function WardrobeSection({ g }) {
     </>)}
   </>);
 }
+// Rent is the biggest standing bill in the game — the player has to be able to see
+// exactly what the extra money buys before spending it.
+function HousingEffects({ h }) {
+  const chip = (text, good) => ({ key: text, text, good });
+  const chips = [];
+  if (h.mental) chips.push(chip(`${h.mental > 0 ? '+' : ''}${h.mental} mental / mo`, h.mental > 0));
+  if (h.health) chips.push(chip(`${h.health > 0 ? '+' : ''}${h.health} health / mo`, h.health > 0));
+  if (h.ill) chips.push(chip(`${h.ill > 0 ? '+' : ''}${h.ill}% illness`, h.ill < 0));
+  if (h.ap) chips.push(chip(`+${h.ap} energy`, true));
+  if (h.bond !== 1) chips.push(chip(`${h.bond > 1 ? '+' : ''}${Math.round((h.bond - 1) * 100)}% closeness`, h.bond > 1));
+  chips.push(chip(h.kids ? 'can raise a child' : 'no room for a child', !!h.kids));
+  return (<div style={{ display: 'flex', flexWrap: 'wrap', gap: 5, marginTop: 7 }}>
+    {chips.map((c) => (<span key={c.key} style={{ fontSize: 10.5, fontWeight: 800, padding: '3px 7px', borderRadius: 7,
+      background: c.good ? 'rgba(95,206,138,.14)' : 'rgba(255,106,138,.14)', color: c.good ? theme.good : theme.bad }}>{c.text}</span>))}
+  </div>);
+}
 function StyleScreen({ g }) {
   const tier = fameTier(g.fame);
   const allowedIdx = HOUSING_ORDER.indexOf(tier.housingMax);
@@ -383,6 +399,8 @@ function StyleScreen({ g }) {
             <div style={{ fontSize: 12, fontWeight: 800, color: theme.gold }}>€{h.cost.toLocaleString()}/mo</div>
           </div>
           <div style={{ fontSize: 11.5, color: theme.muted, marginTop: 3 }}>{h.blurb}</div>
+          <div style={{ fontSize: 11.5, color: theme.text, marginTop: 6, lineHeight: 1.5, opacity: .9 }}>{h.perk}</div>
+          <HousingEffects h={h} />
           {locked ? <div style={{ fontSize: 11.5, color: theme.muted, marginTop: 6 }}>🔒 Out of your league for now.</div>
             : !active && g.hasApartment && (<>
                 <div style={{ fontSize: 11, color: canAfford ? theme.muted : theme.bad, marginTop: 6 }}>Deposit €{deposit.toLocaleString()}{canAfford ? '' : ' — you cannot cover it'}</div>
