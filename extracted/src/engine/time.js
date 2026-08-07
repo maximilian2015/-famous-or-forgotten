@@ -5,6 +5,7 @@ import { emailTick } from '../systems/meta/email.js';
 import { maybeStartArc } from '../systems/life/arcs.js';
 import { maybeYouthEvent } from '../systems/life/youth.js';
 import { familyYear } from '../systems/life/family.js';
+import { allowanceTick } from '../systems/life/origin.js';
 import { datingYear } from '../systems/life/dating.js';
 import { spotlightYear } from '../systems/social/spotlight.js';
 import { productionTick } from '../systems/career/production.js';
@@ -22,7 +23,7 @@ export function advanceMonth(state) {
   s.month += 1;
   if (s.month > 11) {
     s.month = 0; s.year += 1; s.ageY += 1;
-    applyYearly(s); familyYear(s); datingYear(s); spotlightYear(s);
+    applyYearly(s); familyYear(s); allowanceTick(s); datingYear(s); spotlightYear(s);
     agingTick(s);
     if (mortalityCheck(s)) return s;   // life is over — nothing else runs this tick
   }
@@ -50,6 +51,7 @@ export function advanceYear(state) {
   s.year += 1; s.ageY += 1; s.month = 0;
   applyYearly(s);
   familyYear(s);
+  allowanceTick(s);
   datingYear(s);
   spotlightYear(s);
   agingTick(s);

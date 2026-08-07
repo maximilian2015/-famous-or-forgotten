@@ -67,9 +67,14 @@ function Hair({ id, colour }) {
   }
 }
 
-function Face({ id, colour, age, sick, band }) {
+function Face({ id, colour, age, sick, band, skin }) {
   const old = age >= 60;
   const brow = greyed(colour, age);
+  // Cheeks and lips are shifted from the skin itself. A fixed pink over a deep tone
+  // turned the face tomato-red — the whole face has to move together.
+  const blush = mix(skin, '#a8384f', 0.42);
+  const lip = mix(skin, '#8e2f45', 0.62);
+  const pallor = mix(skin, '#7f9c86', 0.45);
   return (<>
     {id !== 'bald' && (<>
       <path d="M19 21 Q24 18.6 28 20.4" stroke={brow} strokeWidth="1.6" fill="none" strokeLinecap="round" />
@@ -78,7 +83,7 @@ function Face({ id, colour, age, sick, band }) {
     {old ? (<>
       <path d="M20 26.4 Q24 24.4 28 26.4" stroke="#1a1420" strokeWidth="1.5" fill="none" strokeLinecap="round" />
       <path d="M33 26.4 Q37 24.4 41 26.4" stroke="#1a1420" strokeWidth="1.5" fill="none" strokeLinecap="round" />
-      <path d="M18.5 31 Q20.5 33 18.5 35 M42.5 31 Q40.5 33 42.5 35" stroke={mix('#b98a68', '#000000', 0.1)} strokeWidth="0.9" fill="none" />
+      <path d="M18.5 31 Q20.5 33 18.5 35 M42.5 31 Q40.5 33 42.5 35" stroke={mix(skin, '#000000', 0.3)} strokeWidth="0.9" fill="none" />
     </>) : (<>
       <ellipse cx="24" cy="26" rx="3.2" ry="3.6" fill="#fff" />
       <ellipse cx="37" cy="26" rx="3.2" ry="3.6" fill="#fff" />
@@ -87,23 +92,23 @@ function Face({ id, colour, age, sick, band }) {
       <circle cx="23.4" cy="25.7" r="0.6" fill="#fff" />
       <circle cx="36.4" cy="25.7" r="0.6" fill="#fff" />
     </>)}
-    <path d="M29 30 L28 33 Q29.5 34 31 33" stroke={mix('#c99a6f', '#000000', 0.05)} strokeWidth="1.2" fill="none" strokeLinecap="round" />
+    <path d="M29 30 L28 33 Q29.5 34 31 33" stroke={mix(skin, '#000000', 0.22)} strokeWidth="1.2" fill="none" strokeLinecap="round" />
     {id === 'bald' && (<>
       <path d="M14 27 Q15 47 30 47 Q45 47 46 27 Q42 41 30 41 Q18 41 14 27 Z" fill={greyed(colour, age)} />
       <path d="M24 34.5 Q30 32.5 36 34.5 Q30 37 24 37 Z" fill={greyed(colour, age)} />
     </>)}
     {sick
-      ? <path d="M26 39 Q30 36.5 34 39" stroke="#8d4358" strokeWidth="1.8" fill="none" strokeLinecap="round" />
+      ? <path d="M26 39 Q30 36.5 34 39" stroke={lip} strokeWidth="1.8" fill="none" strokeLinecap="round" />
       : old
-        ? <path d="M27 39.5 Q30 38.6 33 39.5" stroke="#8a5c4a" strokeWidth="1.5" fill="none" strokeLinecap="round" />
-        : <path d={id === 'bald' ? 'M27 38.5 Q30 37.8 33 38.5 Q30 40.5 27 38.5 Z' : 'M26 37 Q30 36 34 37 Q30 40.5 26 37 Z'} fill="#a8506a" />}
-    {!old && !sick && band !== 'baby' && (<>
-      <circle cx="18" cy="32" r="2.6" fill="#e8879a" opacity="0.35" />
-      <circle cx="43" cy="32" r="2.6" fill="#e8879a" opacity="0.35" />
+        ? <path d="M27 39.5 Q30 38.6 33 39.5" stroke={lip} strokeWidth="1.5" fill="none" strokeLinecap="round" />
+        : <path d={id === 'bald' ? 'M27 38.5 Q30 37.8 33 38.5 Q30 40.5 27 38.5 Z' : 'M26 37 Q30 36 34 37 Q30 40.5 26 37 Z'} fill={lip} />}
+    {!old && !sick && (<>
+      <circle cx="18" cy="32" r="2.6" fill={blush} opacity="0.3" />
+      <circle cx="43" cy="32" r="2.6" fill={blush} opacity="0.3" />
     </>)}
     {sick && (<>
-      <circle cx="18" cy="31" r="3" fill="#7fd6a8" opacity="0.3" />
-      <circle cx="43" cy="31" r="3" fill="#7fd6a8" opacity="0.3" />
+      <circle cx="18" cy="31" r="3" fill={pallor} opacity="0.4" />
+      <circle cx="43" cy="31" r="3" fill={pallor} opacity="0.4" />
     </>)}
   </>);
 }
@@ -194,7 +199,7 @@ export function Avatar({ look, size = 40, title, style }) {
       <g transform={`translate(0 ${drop}) translate(30 26) scale(${b.head}) translate(-30 -26)`}>
         <circle cx="30" cy="26" r="17" fill={skin} />
         <Hair id={hairId} colour={hairColour} />
-        <Face id={hairId} colour={l.hairColor || '#241a2e'} age={age} sick={!!l.sick} band={band} />
+        <Face id={hairId} colour={l.hairColor || '#241a2e'} age={age} sick={!!l.sick} band={band} skin={skin} />
       </g>
     </svg>
   );

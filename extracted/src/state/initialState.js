@@ -10,13 +10,16 @@ export function createInitialState(opts = {}) {
     year: opts.startYear || 2026, month: 0, ageY: 0,
     stage: 'child', livingWith: 'parents', hasApartment: false,
     housing: 'room', diet: 'cook', gym: false, genreXP: {},
-    cash: 3500, fame: 0, media: 0, respect: 0, scandal: 0,
+    // A newborn owns nothing. Money comes from the family — see systems/life/origin.js.
+    cash: 0, familyClass: 'getting_by', familyAsk: 1, singleParent: false,
+    originStory: '', origin: null,
+    fame: 0, media: 0, respect: 0, scandal: 0,
     mental: 80, health: 90, looks: 50, charisma: 40, confidence: 40,
     discipline: 40, luck: 50, acting: 0, singing: 0,
     filmography: [], discography: [], offers: [], people: [],
     family: [], parentsMarried: true, spotlight: [],
     inbox: [], timeline: [], flags: {},
-    look: null,   // filled in by ensureAppearance — see systems/life/appearance.js
+    look: opts.look || null,   // the creator can hand one in; otherwise ensureAppearance rolls it
     ap: 3, apMax: 3,
     alive: true,
   };

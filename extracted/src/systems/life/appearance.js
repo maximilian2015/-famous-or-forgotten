@@ -22,7 +22,9 @@ export const OUTFITS = {
 };
 export const OUTFIT_ORDER = ['tee', 'hoodie', 'tracksuit', 'leather', 'tux', 'dress'];
 
-export const SKINS = ['#f6d3ae', '#e3b48a', '#c98f63', '#9c6238', '#6f4423'];
+// Low-chroma on purpose. The first pass used saturated oranges and the darker tones
+// came out tomato-red on screen.
+export const SKINS = ['#f4d7bd', '#e5bb9a', '#c99a76', '#a37755', '#7d5941', '#57402f'];
 export const HAIR_COLORS = ['#241a2e', '#3a2c22', '#5b3a22', '#7a5232', '#12101a', '#a8763c'];
 
 // Kids do not get to pick. Everything before this age wears what it is given.

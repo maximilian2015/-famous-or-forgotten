@@ -1,6 +1,6 @@
 import { useSyncExternalStore } from 'react';
 import { createInitialState } from './initialState.js';
-import { makeFamily } from '../systems/life/family.js';
+import { beginLife } from '../systems/life/origin.js';
 import { ensureAppearance } from '../systems/life/appearance.js';
 const KEY = 'fof_react_save';
 const CURRENT_VERSION = 'r0.8b';
@@ -21,7 +21,7 @@ function sanitize(st) {
   for (const k of Object.keys(base)) { if (typeof base[k] === 'number' && (typeof st[k] !== 'number' || !Number.isFinite(st[k]))) st[k] = base[k]; }
   return st;
 }
-function freshLife(opts) { const s = createInitialState(opts); makeFamily(s); ensureAppearance(s); return s; }
+function freshLife(opts) { const s = createInitialState(opts); beginLife(s); ensureAppearance(s); return s; }
 
 let state = normalize(load());
 const listeners = new Set();

@@ -29,6 +29,7 @@ import { Card } from './ui/components/Card.jsx';
 import { Stat } from './ui/components/Stat.jsx';
 import { Avatar } from './ui/components/Avatar.jsx';
 import { lookOf, lookOfPerson, companionOf, HAIRSTYLES, HAIR_ORDER, HAIR_COLORS, OUTFITS, OUTFIT_ORDER, SKINS, buyHair, setHairColour, wearOutfit, ownsOutfit, DRESS_UP_AGE } from './systems/life/appearance.js';
+import { classOf } from './systems/life/origin.js';
 const MON = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
 
 export default function App() {
@@ -51,7 +52,7 @@ export default function App() {
           <div>
             <div style={{ fontSize: 22, fontWeight: 900, lineHeight: 1.1 }}>{g.name}</div>
             <div style={{ fontSize: 12.5, color: theme.muted, marginTop: 3 }}>{g.ageY} yrs · {MON[g.month]} {g.year}</div>
-            <div style={{ fontSize: 10, color: theme.accent, marginTop: 2, opacity: .7 }}>{g.city} · Step 29</div>
+            <div style={{ fontSize: 10, color: theme.accent, marginTop: 2, opacity: .7 }}>{g.city} · Step 31</div>
           </div>
         </div>
         <div style={{ textAlign: 'right' }}>
@@ -68,6 +69,7 @@ export default function App() {
        screen === 'style' ? <StyleScreen g={g} /> :
        screen === 'legacy' ? <LegacyScreen g={g} /> :
        <>
+        {(g.ageY || 0) <= 1 && <OriginCard g={g} />}
         <Card style={{ marginBottom: 14, background: `linear-gradient(135deg, rgba(124,92,255,.18), rgba(158,116,255,.06))` }}>
           <div style={{ fontSize: 11, fontWeight: 800, letterSpacing: '.1em', textTransform: 'uppercase', color: theme.accent, marginBottom: 6 }}>Right now</div>
           <StageBody g={g} />
@@ -279,6 +281,17 @@ function CareerScreen({ g, teenOnly }) {
     {tab === 'events' && <EventsScreen g={g} />}
   </div>);
 }
+function OriginCard({ g }) {
+  if (!g.originStory) return null;
+  const c = classOf(g);
+  return (<Card style={{ marginBottom: 14, borderColor: 'rgba(255,209,102,.3)' }}>
+    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', marginBottom: 6 }}>
+      <div style={{ fontSize: 11, fontWeight: 900, letterSpacing: '.1em', textTransform: 'uppercase', color: theme.gold }}>Where you come from</div>
+      <div style={{ fontSize: 11, fontWeight: 800, color: theme.muted }}>{c.label}</div>
+    </div>
+    <div style={{ fontSize: 13.5, lineHeight: 1.6 }}>{g.originStory}</div>
+  </Card>);
+}
 function HeaderFigures({ g, onOpen }) {
   const mate = companionOf(g);
   return (<div onClick={onOpen} title="Wardrobe" style={{ display: 'flex', alignItems: 'flex-end', gap: 1, cursor: 'pointer' }}>
@@ -438,6 +451,7 @@ function PeopleScreen({ g }) {
   const deceased = (g.family || []).filter((p) => !p.alive);
   const people = g.people || [];
   return (<div>
+    <OriginCard g={g} />
     {g.partner && (<><div style={{ fontSize: 11, fontWeight: 900, letterSpacing: '.09em', textTransform: 'uppercase', color: theme.muted, marginBottom: 8 }}>Partner</div>
     <Card style={{ marginBottom: 14, display: 'flex', gap: 12, alignItems: 'flex-start' }}><Avatar look={lookOfPerson(g.partner)} size={56} title={g.partner.name} /><div style={{ flex: 1 }}><div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline' }}><div style={{ fontSize: 14, fontWeight: 800 }}>{g.partner.name}</div><div style={{ fontSize: 12, color: theme.muted }}>closeness {g.partner.relationship}</div></div><div style={{ fontSize: 11.5, color: theme.muted, margin: '3px 0 8px' }}>{g.partner.job} · {g.partner.age}</div><Button onClick={() => dispatch(spendWithPartner)}>Spend time together</Button></div></Card></>)}
     <div style={{ fontSize: 11, fontWeight: 900, letterSpacing: '.09em', textTransform: 'uppercase', color: theme.muted, marginBottom: 8 }}>Family</div>
@@ -458,6 +472,10 @@ function CreatorScreen() {
   const [city, setCity] = useState('Amsterdam');
   const [gender, setGender] = useState('female');
   const [startYear, setStartYear] = useState(2026);
+  const [skin, setSkin] = useState(SKINS[1]);
+  const [hairColor, setHairColor] = useState(HAIR_COLORS[0]);
+  const [hair, setHair] = useState('long');
+  const preview = { hair, hairColor, skin, outfit: 'tee', age: 24, gender, sick: false };
   const label = { fontSize: 11, fontWeight: 900, letterSpacing: '.09em', textTransform: 'uppercase', color: theme.muted, marginBottom: 7 };
   const pill = (on) => ({ border: 'none', borderRadius: 10, padding: '8px 12px', fontSize: 12.5, fontWeight: 800, cursor: 'pointer',
     background: on ? `linear-gradient(135deg,${theme.accent2},${theme.accent})` : 'rgba(158,116,255,.16)', color: on ? '#fff' : '#d9cffa' });
@@ -489,15 +507,41 @@ function CreatorScreen() {
       </div>
     </div>
 
-    <div style={{ marginBottom: 24 }}>
+    <div style={{ marginBottom: 18 }}>
       <div style={label}>You are</div>
       <div style={{ display: 'flex', gap: 6 }}>
         {[['female', 'Girl'], ['male', 'Boy']].map(([id, l]) => <button key={id} onClick={() => setGender(id)} style={{ ...pill(gender === id), flex: 1 }}>{l}</button>)}
       </div>
     </div>
 
-    <Button kind="pri" onClick={() => newLife({ name: name.trim() || 'Alex Moon', city, gender, startYear, created: true })}>Be born</Button>
-    <div style={{ fontSize: 11, color: theme.muted, textAlign: 'center', marginTop: 12, lineHeight: 1.5 }}>Actor or singer isn't decided here — that dream finds you around age ten.</div>
+    <div style={{ marginBottom: 22 }}>
+      <div style={label}>The person</div>
+      <div style={{ display: 'flex', gap: 14, alignItems: 'center', background: theme.panel, border: `1px solid ${theme.line}`, borderRadius: 12, padding: '12px 14px' }}>
+        <Avatar look={preview} size={104} title="you" />
+        <div style={{ flex: 1, display: 'grid', gap: 10 }}>
+          <div>
+            <div style={{ fontSize: 10, fontWeight: 800, letterSpacing: '.06em', textTransform: 'uppercase', color: theme.muted, marginBottom: 5 }}>Skin</div>
+            <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
+              {SKINS.map((c) => <div key={c} onClick={() => setSkin(c)} style={{ width: 22, height: 22, borderRadius: '50%', background: c, cursor: 'pointer', border: skin === c ? `2px solid ${theme.gold}` : '2px solid rgba(255,255,255,.14)' }} />)}
+            </div>
+          </div>
+          <div>
+            <div style={{ fontSize: 10, fontWeight: 800, letterSpacing: '.06em', textTransform: 'uppercase', color: theme.muted, marginBottom: 5 }}>Hair</div>
+            <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
+              {HAIR_COLORS.map((c) => <div key={c} onClick={() => setHairColor(c)} style={{ width: 22, height: 22, borderRadius: '50%', background: c, cursor: 'pointer', border: hairColor === c ? `2px solid ${theme.gold}` : '2px solid rgba(255,255,255,.14)' }} />)}
+            </div>
+          </div>
+        </div>
+      </div>
+      <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', marginTop: 8 }}>
+        {HAIR_ORDER.map((k) => <button key={k} onClick={() => setHair(k)} style={{ ...pill(hair === k), fontSize: 11.5 }}>{HAIRSTYLES[k].label}</button>)}
+      </div>
+      <div style={{ fontSize: 11, color: theme.muted, marginTop: 8, lineHeight: 1.5 }}>This is who you grow into — you start as a baby, and the haircut waits until you are thirteen.</div>
+    </div>
+
+    <Button kind="pri" onClick={() => newLife({ name: name.trim() || 'Alex Moon', city, gender, startYear, created: true,
+      look: { hair, hairColor, skin, outfit: 'tee', owned: ['tee'] } })}>Be born</Button>
+    <div style={{ fontSize: 11, color: theme.muted, textAlign: 'center', marginTop: 12, lineHeight: 1.5 }}>Actor or singer isn't decided here — that dream finds you around age ten. Nor is the family you land in: that is rolled at birth, and it decides how hard the start is.</div>
   </div>);
 }
 function EndOfLifeScreen({ g }) {
