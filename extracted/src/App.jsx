@@ -58,7 +58,10 @@ export default function App() {
           <div>
             <div style={{ fontSize: 22, fontWeight: 900, lineHeight: 1.1 }}>{g.name}</div>
             <div style={{ fontSize: 12.5, color: theme.muted, marginTop: 3 }}>{g.ageY} yrs · {MON[g.month]} {g.year}</div>
-            <div style={{ fontSize: 10, color: theme.accent, marginTop: 2, opacity: .7 }}>{g.city} · Step 31</div>
+            {/* "who is that standing next to me" should never be a question */}
+            <div style={{ fontSize: 10, color: theme.accent, marginTop: 2, opacity: .75 }}>
+              {companionOf(g) ? `with ${companionOf(g).person.name.split(' ')[0]} · ${companionOf(g).married ? 'married' : 'together'}` : `${g.city} · Step 31`}
+            </div>
           </div>
         </div>
         <div style={{ textAlign: 'right' }}>
@@ -293,8 +296,15 @@ function CareerScreen({ g, teenOnly }) {
   </div>);
 }
 function PartySection({ g }) {
+  const [open, setOpen] = useState(false);
   const blocked = canThrowParty(g);
   if (blocked) return <Card><div style={{ fontSize: 12, color: theme.muted, lineHeight: 1.6 }}>{blocked}</div></Card>;
+  if (!open) return (<Card>
+    <div style={{ fontSize: 11.5, color: theme.muted, marginBottom: 9, lineHeight: 1.5 }}>
+      Fill the place with people. How loud you go decides whether it ends with a good morning or two officers at the door.
+    </div>
+    <Button kind="pri" onClick={() => setOpen(true)}>Have people over ›</Button>
+  </Card>);
   return (<div style={{ display: 'grid', gap: 8 }}>
     {PARTY_ORDER.map((key) => { const p = PARTIES[key]; const risk = partyRisk(g, key);
       const broke = (g.cash || 0) < p.cost; const noEnergy = (g.ap || 0) <= 0;
@@ -310,13 +320,14 @@ function PartySection({ g }) {
           <span style={{ fontSize: 10.5, fontWeight: 800, padding: '3px 7px', borderRadius: 7,
             background: risk > 45 ? 'rgba(255,106,138,.16)' : 'rgba(255,209,102,.14)', color: risk > 45 ? theme.bad : theme.gold }}>{risk}% police</span>
         </div>
-        <Button kind="pri" disabled={broke || noEnergy} onClick={() => dispatch(throwParty, key)}>
+        <Button kind="pri" disabled={broke || noEnergy} onClick={() => { dispatch(throwParty, key); setOpen(false); }}>
           {broke ? 'You cannot afford it' : noEnergy ? 'No energy left' : 'Open the door'}
         </Button>
       </Card>); })}
     <div style={{ fontSize: 11, color: theme.muted, textAlign: 'center', padding: '2px 8px 0', lineHeight: 1.55 }}>
       Thick walls swallow noise. A rented room does not, and the landlord lives downstairs.
     </div>
+    <Button onClick={() => setOpen(false)}>Not tonight</Button>
   </div>);
 }
 // Where the player actually lives, with the figure standing in it and everything they

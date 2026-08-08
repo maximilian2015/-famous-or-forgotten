@@ -58,6 +58,33 @@ function Hair({ id, colour, skin }) {
         <path d="M30 19 Q22 21 16 30 L18 23 Q24 16 30 15.5 Z" fill={hi} />
         <path d="M13 34 Q17 40 14 45 M47 34 Q43 40 46 45" stroke={hi} strokeWidth="1.2" fill="none" />
       </>);
+    case 'straight':
+      // ironed flat and heavy — straight edges, no curve at the bottom
+      return (<>
+        <path d="M12 24 Q30 2 48 24 L48 60 L42 60 L42.5 30 Q40 20 30 18 Q20 20 17.5 30 L18 60 L12 60 Z" fill={colour} />
+        <path d="M14 24 Q30 5 46 24 L46 28 Q40 19 30 17 Q20 19 14 28 Z" fill={colour} />
+        <path d="M16 26 Q22 12 31 11 L30 15 Q22 17 18 28 Z" fill={hi} />
+      </>);
+    case 'volume':
+      // lifted at the root and wide at the sides
+      return (<>
+        <path d="M8 30 Q6 6 30 3 Q54 6 52 30 Q50 44 46 48 Q49 32 44 24 Q40 18 30 17 Q20 18 16 24 Q11 32 14 48 Q10 44 8 30 Z" fill={colour} />
+        <path d="M13 22 Q20 7 32 6 L30 12 Q21 14 16 26 Z" fill={hi} />
+        <path d="M44 22 Q47 30 45 38" stroke={hi} strokeWidth="1.6" fill="none" />
+      </>);
+    case 'braid':
+      return (<>
+        <path d="M12 24 Q30 3 48 24 L48 30 Q42 19 30 17.5 Q18 19 12 30 Z" fill={colour} />
+        <path d="M44 28 Q50 36 47 46 Q45 54 42 58" stroke={colour} strokeWidth="7" fill="none" strokeLinecap="round" />
+        <path d="M45.6 32 L47.4 36 M45 39 L48 42 M43.8 46 L46.4 49" stroke={hi} strokeWidth="1.4" strokeLinecap="round" />
+        <path d="M15 22 Q22 9 32 9 L30 14 Q21 15 16 25 Z" fill={hi} />
+      </>);
+    case 'undercut':
+      return (<>
+        <path d="M14 27 Q30 21 46 27 L46 29 Q40 25 30 24.5 Q20 25 14 29 Z" fill={mix(colour, skin, 0.45)} />
+        <path d="M13 24 Q30 1 47 24 L46 27 Q40 15 30 13.5 Q19 15 14 27 Z" fill={colour} />
+        <path d="M17 21 Q24 8 34 8 L31 14 Q22 15 18 24 Z" fill={hi} />
+      </>);
     case 'bob':
       return (<>
         <path d="M12 25 Q30 4 48 25 L48 41 L42 41 Q44 22 30 18 Q16 22 18 41 L12 41 Z" fill={colour} />
@@ -237,6 +264,44 @@ function Outfit({ id, skin }) {
         <path d="M27 48 L30 50.5 L27 53 Z M33 48 L30 50.5 L33 53 Z" fill="#a8506a" />
         <Arms skin={skin} sleeve="#363150" cuff="#ece7fb" />
         <Legs fill="#2b2740" />
+      </>);
+    case 'skirt':
+      return (<>
+        <path d="M20 45 L40 45 L41 62 L19 62 Z" fill="#e8e3f2" />
+        <path d="M27 45 L30 51 L33 45" fill="#cfc7e0" />
+        <path d="M19 61 L41 61 L44 76 L16 76 Z" fill="#3f3564" />
+        <Arms skin={skin} sleeve="#d8d2e8" sleeveTo={56} />
+        <rect x="24" y="75" width="5" height="15" rx="2.5" fill={skin} />
+        <rect x="32" y="75" width="5" height="15" rx="2.5" fill={skin} />
+        <path d="M23 89 L30 89 M32 89 L39 89" stroke="#2e2740" strokeWidth="2.4" strokeLinecap="round" />
+      </>);
+    case 'coat':
+      return (<>
+        <path d="M19 45 L41 45 L44 82 L16 82 Z" fill="#6d5f4e" />
+        <path d="M30 45 L41 45 L44 82 L30 82 Z" fill="#5d5142" />
+        <path d="M23 45 L30 53 L37 45 L34 45 L30 49 L26 45 Z" fill="#8a7a63" />
+        <path d="M16 64 L44 64" stroke="#3f372c" strokeWidth="3.4" />
+        <rect x="28" y="62" width="5" height="4.6" rx="1" fill="#ffd166" />
+        <Arms skin={skin} sleeve="#6d5f4e" cuff="#5d5142" />
+        <Legs fill="#2e2740" />
+      </>);
+    case 'suit':
+      return (<>
+        <path d="M20 45 L40 45 L42 72 L18 72 Z" fill="#33436b" />
+        <path d="M27 45 L33 45 L32.5 64 L27.5 64 Z" fill="#e8eef7" />
+        <path d="M25 45 L30 53 L27 63 Z" fill="#3d4f7d" />
+        <path d="M35 45 L30 53 L33 63 Z" fill="#3d4f7d" />
+        <Arms skin={skin} sleeve="#3b4c76" cuff="#e8eef7" />
+        <Legs fill="#33436b" />
+      </>);
+    case 'gown':
+      return (<>
+        <path d="M24 45 Q30 48 36 45 L37 58 Q46 68 48 92 L12 92 Q14 68 23 58 Z" fill="#2f6f8f" />
+        <path d="M30 45 L36 45 L37 58 Q46 68 48 92 L30 92 Z" fill="#27607e" />
+        <path d="M24 45 Q30 48 36 45 L36.6 53 Q30 56 23.4 53 Z" fill="#4f9dbd" />
+        <path d="M26 44 L27.5 39 M34 44 L32.5 39" stroke="#2f6f8f" strokeWidth="1.5" strokeLinecap="round" />
+        <path d="M20 78 Q30 74 40 78" stroke="#4f9dbd" strokeWidth="1.4" fill="none" />
+        <Arms skin={skin} />
       </>);
     case 'dress':
       return (<>

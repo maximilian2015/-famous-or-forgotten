@@ -4,20 +4,24 @@
 import { pick } from '../../engine/rng.js';
 
 export const HAIRSTYLES = {
-  cropped:  { label: 'Cropped',   cost: 45, blurb: 'Short, tidy, forgettable in a good way.' },
-  buzz:     { label: 'Buzz cut',  cost: 25, blurb: 'Clippers, one setting, four minutes.' },
-  long:     { label: 'Long',      cost: 80, blurb: 'Past the shoulders. Takes work, reads expensive.' },
-  waves:    { label: 'Waves',     cost: 90, blurb: 'Parted in the middle and left to do as it likes.' },
-  bob:      { label: 'Bob',       cost: 65, blurb: 'Sharp line at the jaw. A decision, not an accident.' },
-  curly:    { label: 'Curls',     cost: 70, blurb: 'Big, round, and impossible to ignore in a doorway.' },
-  ponytail: { label: 'Ponytail',  cost: 40, blurb: 'Pulled back and out of the way. Ready to work.' },
-  bun:      { label: 'Top knot',  cost: 50, blurb: 'Wound up on top. Looks deliberate, takes a minute.' },
-  pigtails: { label: 'Pigtails',  cost: 45, blurb: 'Two of them, high. Younger than you are.' },
-  mohawk:   { label: 'Mohawk',    cost: 95, blurb: 'Pink crest, shaved sides. People will have opinions.' },
-  bald:     { label: 'Shaved',    cost: 20, blurb: 'All of it off. Cheapest thing on the list.' },
+  cropped:  { label: 'Cropped',    cost: 45, blurb: 'Short, tidy, forgettable in a good way.' },
+  buzz:     { label: 'Buzz cut',   cost: 25, blurb: 'Clippers, one setting, four minutes.' },
+  undercut: { label: 'Undercut',   cost: 70, blurb: 'Long on top, shaved to the skin at the sides.' },
+  long:     { label: 'Long',       cost: 80, blurb: 'Past the shoulders. Takes work, reads expensive.' },
+  straight: { label: 'Poker straight', cost: 110, blurb: 'Ironed flat to the waist. Two hours, every time.' },
+  waves:    { label: 'Waves',      cost: 90, blurb: 'Parted in the middle and left to do as it likes.' },
+  volume:   { label: 'Blowout',    cost: 130, blurb: 'Big, lifted at the root, and it cost what it looks like.' },
+  bob:      { label: 'Bob',        cost: 65, blurb: 'Sharp line at the jaw. A decision, not an accident.' },
+  curly:    { label: 'Curls',      cost: 70, blurb: 'Big, round, and impossible to ignore in a doorway.' },
+  braid:    { label: 'Braid',      cost: 55, blurb: 'One thick plait over the shoulder. Nothing to fuss with.' },
+  ponytail: { label: 'Ponytail',   cost: 40, blurb: 'Pulled back and out of the way. Ready to work.' },
+  bun:      { label: 'Top knot',   cost: 50, blurb: 'Wound up on top. Looks deliberate, takes a minute.' },
+  pigtails: { label: 'Pigtails',   cost: 45, blurb: 'Two of them, high. Younger than you are.' },
+  mohawk:   { label: 'Mohawk',     cost: 95, blurb: 'Pink crest, shaved sides. People will have opinions.' },
+  bald:     { label: 'Shaved',     cost: 20, blurb: 'All of it off. Cheapest thing on the list.' },
   beard:    { label: 'Shaved + beard', cost: 30, gender: 'male', blurb: 'Clippers on top, everything else grown out.' },
 };
-export const HAIR_ORDER = ['cropped', 'buzz', 'long', 'waves', 'bob', 'curly', 'ponytail', 'bun', 'pigtails', 'mohawk', 'bald', 'beard'];
+export const HAIR_ORDER = ['cropped', 'buzz', 'undercut', 'long', 'straight', 'waves', 'volume', 'bob', 'curly', 'braid', 'ponytail', 'bun', 'pigtails', 'mohawk', 'bald', 'beard'];
 // A beard is the one thing here that is not on offer to everyone.
 export function hairChoices(gender) {
   return HAIR_ORDER.filter((k) => !HAIRSTYLES[k].gender || HAIRSTYLES[k].gender === gender);
@@ -39,11 +43,15 @@ export const OUTFITS = {
   tee:       { label: 'T-shirt and jeans', cost: 0,    blurb: 'What is already in your wardrobe.' },
   hoodie:    { label: 'Hoodie',            cost: 140,  blurb: 'Comfortable. Nobody looks twice.' },
   tracksuit: { label: 'Tracksuit',         cost: 220,  blurb: 'Off duty and not hiding it.' },
+  skirt:     { label: 'Blouse and skirt',  cost: 320,  blurb: 'Everyday, put together, gets you taken seriously.' },
   leather:   { label: 'Leather jacket',    cost: 680,  blurb: 'Reads like you might be somebody.' },
+  coat:      { label: 'Long wool coat',    cost: 1100, blurb: 'Belted, to the knee. Expensive from across a street.' },
+  suit:      { label: 'Tailored suit',     cost: 1500, blurb: 'Navy, fitted, no tie. Works everywhere but a wedding.' },
   tux:       { label: 'Black tie',         cost: 1900, blurb: 'The uniform of the invited.' },
   dress:     { label: 'Red carpet dress',  cost: 2400, blurb: 'Made to be photographed.' },
+  gown:      { label: 'Floor-length gown', cost: 4200, blurb: 'It moves when you do. This is the one they shoot.' },
 };
-export const OUTFIT_ORDER = ['tee', 'hoodie', 'tracksuit', 'leather', 'tux', 'dress'];
+export const OUTFIT_ORDER = ['tee', 'hoodie', 'tracksuit', 'skirt', 'leather', 'coat', 'suit', 'tux', 'dress', 'gown'];
 
 // Low-chroma on purpose. The first pass used saturated oranges and the darker tones
 // came out tomato-red on screen.
