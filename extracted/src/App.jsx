@@ -23,7 +23,8 @@ import { theme } from './ui/theme.js';
 import { Button } from './ui/components/Button.jsx';
 import { Card } from './ui/components/Card.jsx';
 import { Stat } from './ui/components/Stat.jsx';
-import { Avatar } from './ui/components/Avatar.jsx';
+import { Avatar, Garment } from './ui/components/Avatar.jsx';
+import { PARTIES, PARTY_ORDER, partyRisk, canThrowParty, throwParty } from './systems/life/party.js';
 import { lookOf, lookOfPerson, companionOf, HAIRSTYLES, HAIR_ORDER, hairChoices, HAIR_COLORS, EYES, EYE_COLOURS, LIPS, OUTFITS, OUTFIT_ORDER, SKINS, buyHair, setHairColour, wearOutfit, ownsOutfit, DRESS_UP_AGE } from './systems/life/appearance.js';
 import { classOf } from './systems/life/origin.js';
 import { interactionsFor, interact, findPerson, GROUPS } from './systems/life/interactions.js';
@@ -47,7 +48,7 @@ export default function App() {
   if (showGenres) return <GenreScreen g={g} onBack={() => setShowGenres(false)} />;
   if (showHealth) return <HealthScreen g={g} onBack={() => setShowHealth(false)} />;
   if (g.bigMoment) return <BigMoment moment={g.bigMoment} look={lookOf(g)} onClose={() => dispatch(clearBigMoment)} />;
-  if (showRoom) return <RoomScreen g={g} onBack={() => setShowRoom(false)} onStyle={() => { setShowRoom(false); setScreen('style'); }} />;
+  if (showRoom) return <RoomScreen g={g} onBack={() => setShowRoom(false)} />;
   if (confirmEnd) return <EndLifeModal onCancel={() => setConfirmEnd(false)} onConfirm={() => { import('./systems/meta/legacy.js').then(m => { m.enshrine(g); newLife(); setConfirmEnd(false); }); }} />;
   return (
     <div style={{ maxWidth: 440, margin: '0 auto', minHeight: '100vh', background: theme.bg, color: theme.text, padding: 16, paddingBottom: 90, fontFamily: 'system-ui, -apple-system, sans-serif' }}>
@@ -291,9 +292,36 @@ function CareerScreen({ g, teenOnly }) {
     {tab === 'events' && <EventsScreen g={g} />}
   </div>);
 }
+function PartySection({ g }) {
+  const blocked = canThrowParty(g);
+  if (blocked) return <Card><div style={{ fontSize: 12, color: theme.muted, lineHeight: 1.6 }}>{blocked}</div></Card>;
+  return (<div style={{ display: 'grid', gap: 8 }}>
+    {PARTY_ORDER.map((key) => { const p = PARTIES[key]; const risk = partyRisk(g, key);
+      const broke = (g.cash || 0) < p.cost; const noEnergy = (g.ap || 0) <= 0;
+      return (<Card key={key}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline' }}>
+          <div style={{ fontSize: 13.5, fontWeight: 800 }}>{p.label}</div>
+          <div style={{ fontSize: 12, fontWeight: 800, color: theme.gold }}>€{p.cost.toLocaleString()}</div>
+        </div>
+        <div style={{ fontSize: 11.5, color: theme.muted, margin: '3px 0 7px' }}>{p.blurb}</div>
+        <div style={{ display: 'flex', gap: 5, flexWrap: 'wrap', marginBottom: 8 }}>
+          <span style={{ fontSize: 10.5, fontWeight: 800, padding: '3px 7px', borderRadius: 7, background: 'rgba(95,206,138,.14)', color: theme.good }}>mental +</span>
+          <span style={{ fontSize: 10.5, fontWeight: 800, padding: '3px 7px', borderRadius: 7, background: 'rgba(95,206,138,.14)', color: theme.good }}>closeness +</span>
+          <span style={{ fontSize: 10.5, fontWeight: 800, padding: '3px 7px', borderRadius: 7,
+            background: risk > 45 ? 'rgba(255,106,138,.16)' : 'rgba(255,209,102,.14)', color: risk > 45 ? theme.bad : theme.gold }}>{risk}% police</span>
+        </div>
+        <Button kind="pri" disabled={broke || noEnergy} onClick={() => dispatch(throwParty, key)}>
+          {broke ? 'You cannot afford it' : noEnergy ? 'No energy left' : 'Open the door'}
+        </Button>
+      </Card>); })}
+    <div style={{ fontSize: 11, color: theme.muted, textAlign: 'center', padding: '2px 8px 0', lineHeight: 1.55 }}>
+      Thick walls swallow noise. A rented room does not, and the landlord lives downstairs.
+    </div>
+  </div>);
+}
 // Where the player actually lives, with the figure standing in it and everything they
-// own on the shelf. The wardrobe, the medicine, the rent — one place for all of it.
-function RoomScreen({ g, onBack, onStyle }) {
+// own on the shelf. The wardrobe, the medicine, the rent, the parties — one place.
+function RoomScreen({ g, onBack }) {
   const meds = g.meds || {};
   const owned = g.look?.owned || ['tee'];
   const h = HOUSING[g.housing || 'room'];
@@ -352,15 +380,19 @@ function RoomScreen({ g, onBack, onStyle }) {
 
       <div style={{ fontSize: 11, fontWeight: 900, letterSpacing: '.09em', textTransform: 'uppercase', color: theme.muted, margin: '16px 0 6px' }}>Your wardrobe</div>
       <Card>
+        <div style={{ fontSize: 11.5, color: theme.muted, marginBottom: 10 }}>Tap to change into it. New clothes are in the Shop app.</div>
         <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
-          {owned.map((k) => (<div key={k} style={{ textAlign: 'center', background: theme.panel2, borderRadius: 10, padding: '8px 6px 4px',
-            border: (g.look?.outfit === k) ? `1px solid ${theme.gold}` : `1px solid ${theme.line}` }}>
-            <Avatar look={{ ...lookOf(g), outfit: k }} size={54} />
-            <div style={{ fontSize: 9.5, color: theme.muted, marginTop: 3, maxWidth: 54 }}>{OUTFITS[k]?.label || k}</div>
-          </div>))}
+          {owned.map((k) => { const on = (g.look?.outfit || 'tee') === k;
+            return (<div key={k} onClick={() => dispatch(wearOutfit, k)} style={{ textAlign: 'center', background: theme.panel2, borderRadius: 10, padding: '8px 6px 5px', cursor: 'pointer',
+              border: on ? `1px solid ${theme.gold}` : `1px solid ${theme.line}`, width: 82 }}>
+              <Garment id={k} skin={lookOf(g).skin} size={58} style={{ margin: '0 auto' }} />
+              <div style={{ fontSize: 9.5, color: on ? theme.gold : theme.muted, marginTop: 4, lineHeight: 1.25 }}>{OUTFITS[k]?.label || k}{on ? ' · on' : ''}</div>
+            </div>); })}
         </div>
-        <Button onClick={onStyle} style={{ marginTop: 10 }}>Open the wardrobe ›</Button>
       </Card>
+
+      <div style={{ fontSize: 11, fontWeight: 900, letterSpacing: '.09em', textTransform: 'uppercase', color: theme.muted, margin: '16px 0 6px' }}>Have people over</div>
+      <PartySection g={g} />
 
       <Button onClick={onBack} style={{ marginTop: 18 }}>Close the door</Button>
     </div>
@@ -385,63 +417,6 @@ function HeaderFigures({ g, onOpen }) {
       title={`${mate.person.name} · ${mate.married ? 'spouse' : 'partner'}`}
       style={{ opacity: mate.married ? 1 : .82 }} />}
   </div>);
-}
-function WardrobeSection({ g }) {
-  const locked = (g.ageY || 0) < DRESS_UP_AGE;
-  const worn = lookOf(g);   // what is actually drawn — kids are overridden into kid clothes
-  const swatch = (on) => ({ width: 26, height: 26, borderRadius: '50%', cursor: 'pointer',
-    border: on ? `2px solid ${theme.gold}` : '2px solid rgba(255,255,255,.14)' });
-  return (<>
-    <div style={{ fontSize: 11, fontWeight: 900, letterSpacing: '.09em', textTransform: 'uppercase', color: theme.muted, margin: '16px 0 8px' }}>Wardrobe</div>
-    <Card style={{ marginBottom: 10, display: 'flex', alignItems: 'center', gap: 14 }}>
-      <Avatar look={worn} size={96} title={g.name} />
-      <div style={{ flex: 1 }}>
-        <div style={{ fontSize: 13.5, fontWeight: 800 }}>{HAIRSTYLES[worn.hair]?.label || 'Cropped'}</div>
-        <div style={{ fontSize: 11.5, color: theme.muted, marginTop: 2 }}>{OUTFITS[worn.outfit]?.label || 'T-shirt and jeans'}</div>
-        <div style={{ fontSize: 11, color: theme.muted, marginTop: 7, lineHeight: 1.5 }}>
-          {locked ? `You are ${g.ageY}. Your parents still dress you — this opens at ${DRESS_UP_AGE}.`
-            : 'Your figure ages with you, and your partner shows up beside you once you have one.'}
-        </div>
-      </div>
-    </Card>
-    {locked ? null : (<>
-      <div style={{ fontSize: 11, fontWeight: 900, letterSpacing: '.09em', textTransform: 'uppercase', color: theme.muted, margin: '14px 0 8px' }}>Hair</div>
-      <div style={{ display: 'grid', gap: 8 }}>
-        {hairChoices(g.gender).map((key) => { const h = HAIRSTYLES[key]; const active = (g.look?.hair || 'cropped') === key;
-          return (<div key={key} style={{ background: active ? 'rgba(158,116,255,.14)' : theme.panel, border: `1px solid ${active ? theme.accent : theme.line}`, borderRadius: 12, padding: '10px 12px', display: 'flex', alignItems: 'center', gap: 12 }}>
-            <Avatar look={{ ...worn, hair: key }} size={54} />
-            <div style={{ flex: 1 }}>
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline' }}>
-                <div style={{ fontSize: 13.5, fontWeight: 800 }}>{h.label}{active ? ' · now' : ''}</div>
-                <div style={{ fontSize: 12, fontWeight: 800, color: theme.gold }}>€{h.cost}</div>
-              </div>
-              <div style={{ fontSize: 11.5, color: theme.muted, marginTop: 3 }}>{h.blurb}</div>
-              {!active && <Button onClick={() => dispatch(buyHair, key)} style={{ marginTop: 7 }}>Sit in the chair</Button>}
-            </div>
-          </div>); })}
-      </div>
-      <div style={{ fontSize: 11, fontWeight: 900, letterSpacing: '.09em', textTransform: 'uppercase', color: theme.muted, margin: '14px 0 8px' }}>Colour · €60</div>
-      <Card style={{ display: 'flex', gap: 9, alignItems: 'center', flexWrap: 'wrap' }}>
-        {HAIR_COLORS.map((c) => (<div key={c} onClick={() => dispatch(setHairColour, c)} style={{ ...swatch(g.look?.hairColor === c), background: c }} />))}
-        <div style={{ fontSize: 11, color: theme.muted, flexBasis: '100%' }}>Grey arrives on its own after fifty. You cannot buy your way out of that.</div>
-      </Card>
-      <div style={{ fontSize: 11, fontWeight: 900, letterSpacing: '.09em', textTransform: 'uppercase', color: theme.muted, margin: '16px 0 8px' }}>Clothes</div>
-      <div style={{ display: 'grid', gap: 8 }}>
-        {OUTFIT_ORDER.map((key) => { const o = OUTFITS[key]; const active = (g.look?.outfit || 'tee') === key; const owned = ownsOutfit(g, key);
-          return (<div key={key} style={{ background: active ? 'rgba(158,116,255,.14)' : theme.panel, border: `1px solid ${active ? theme.accent : theme.line}`, borderRadius: 12, padding: '10px 12px', display: 'flex', alignItems: 'center', gap: 12 }}>
-            <Avatar look={{ ...worn, outfit: key }} size={54} />
-            <div style={{ flex: 1 }}>
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline' }}>
-                <div style={{ fontSize: 13.5, fontWeight: 800 }}>{o.label}{active ? ' · on you' : ''}</div>
-                <div style={{ fontSize: 12, fontWeight: 800, color: theme.gold }}>{owned ? 'owned' : '€' + o.cost.toLocaleString()}</div>
-              </div>
-              <div style={{ fontSize: 11.5, color: theme.muted, marginTop: 3 }}>{o.blurb}</div>
-              {!active && <Button onClick={() => dispatch(wearOutfit, key)} style={{ marginTop: 7 }}>{owned ? 'Put it on' : 'Buy and wear'}</Button>}
-            </div>
-          </div>); })}
-      </div>
-    </>)}
-  </>);
 }
 // Rent is the biggest standing bill in the game — the player has to be able to see
 // exactly what the extra money buys before spending it.
@@ -511,8 +486,7 @@ function StyleScreen({ g }) {
       <div style={{ fontSize: 11.5, color: theme.muted, margin: '3px 0 8px' }}>Slowly raises your looks and keeps the body in shape. Casting rooms notice.</div>
       {g.hasApartment && <Button onClick={() => dispatch(toggleGym)}>{g.gym ? 'Cancel membership' : 'Join the gym'}</Button>}
     </Card>
-    <WardrobeSection g={g} />
-    <div style={{ fontSize: 11.5, color: theme.muted, textAlign: 'center', padding: '14px 10px', lineHeight: 1.6 }}>Rent, food and the gym come out every month whether you're working or not. Fast food quietly wears your health down; eating well rebuilds it. Clothes and hair are pure vanity — they cost money and change nothing but your reflection.</div>
+    <div style={{ fontSize: 11.5, color: theme.muted, textAlign: 'center', padding: '14px 10px', lineHeight: 1.6 }}>These are the bills that come every month whether you are working or not. Clothes and haircuts are in the Shop app; what you already own is in your room.</div>
   </div>);
 }
 function LegacyScreen({ g }) {

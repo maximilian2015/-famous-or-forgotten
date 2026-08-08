@@ -258,6 +258,16 @@ function Outfit({ id, skin }) {
   }
 }
 
+// Just the clothes, no person in them. A whole 40px figure told you nothing about
+// which jacket you were looking at — this crops the viewBox to the torso and sleeves.
+export function Garment({ id, skin = '#e5bb9a', size = 56, style }) {
+  return (
+    <svg viewBox="12 40 36 34" width={size} height={size * 0.94} style={{ display: 'block', ...style }} role="img" aria-label={id}>
+      <Outfit id={id} skin={skin} />
+    </svg>
+  );
+}
+
 export function Avatar({ look, size = 40, title, style }) {
   const l = look || {};
   const age = l.age || 0;
