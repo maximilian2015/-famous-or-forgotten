@@ -11,6 +11,7 @@ import { homeBond, canRaiseChild, HOUSING } from '../../engine/economy.js';
 import { askFamilyForMoney } from './family.js';
 import { proposeMarriage, tryForBaby } from './dating.js';
 import { bondGain } from './relationships.js';
+import { applyBond } from './bonds.js';
 
 const clamp = (v) => Math.max(0, Math.min(100, v));
 const first = (p) => String(p.name || '').split(' ')[0];
@@ -37,7 +38,9 @@ const isRomantic = (rel) => rel === 'partner' || rel === 'spouse';
 function lands(s, p, base) {
   return chance(clamp(base + (s.charisma || 0) * 0.35 + (p.relationship || 0) * 0.18));
 }
-function move(p, by) { p.relationship = clamp((p.relationship || 0) + by); return by; }
+// Everything routes through applyBond so the diminishing-returns, resistance and
+// decay rules cannot be sidestepped by adding a new interaction later.
+function move(s, p, by) { return applyBond(s, p, by); }
 
 export const GROUPS = [
   { id: 'friendly', label: 'Friendly', tone: 'good' },
@@ -50,23 +53,23 @@ export const INTERACTIONS = [
   // ── friendly ────────────────────────────────────────────────────────────────
   { id: 'chat', group: 'friendly', label: 'Chat', blurb: 'Nothing in particular. That is the point.',
     when: () => true,
-    run: ({ s, p }) => { const g = move(p, rint(2, 5)); s.mental = clamp(s.mental + 1); return `You and ${first(p)} talked about nothing much. (+${g})`; } },
+    run: ({ s, p }) => { const g = move(s, p,rint(2, 5)); s.mental = clamp(s.mental + 1); return `You and ${first(p)} talked about nothing much. (+${g})`; } },
 
   { id: 'joke', group: 'friendly', label: 'Tell a joke', blurb: 'Lands or it does not — that is on you',
     when: () => true,
     run: ({ s, p }) => {
-      if (lands(s, p, 34)) { const g = move(p, rint(4, 9)); s.mental = clamp(s.mental + 2); return `${first(p)} actually laughed. (+${g})`; }
-      const g = move(p, -rint(1, 3)); return `It did not land. ${first(p)} smiled the way people do. (${g})`;
+      if (lands(s, p, 34)) { const g = move(s, p,rint(4, 9)); s.mental = clamp(s.mental + 2); return `${first(p)} actually laughed. (+${g})`; }
+      const g = move(s, p,-rint(1, 3)); return `It did not land. ${first(p)} smiled the way people do. (${g})`;
     } },
 
   { id: 'compliment', group: 'friendly', label: 'Say something kind', blurb: 'Small, sincere, and it works',
     when: () => true,
-    run: ({ s, p }) => { const g = move(p, rint(3, 6)); return `You told ${first(p)} something true and kind. (+${g})`; } },
+    run: ({ s, p }) => { const g = move(s, p,rint(3, 6)); return `You told ${first(p)} something true and kind. (+${g})`; } },
 
   { id: 'advice', group: 'friendly', label: 'Ask their advice', blurb: 'They have lived longer than this year',
     when: ({ p }) => (p.relationship || 0) >= 25,
     run: ({ s, p }) => {
-      const g = move(p, rint(2, 4));
+      const g = move(s, p,rint(2, 4));
       const key = chance(50) ? 'discipline' : 'confidence';
       s[key] = clamp((s[key] || 0) + rint(1, 3));
       return `${first(p)} told you what they would have done. (${key} +, +${g})`;
@@ -75,21 +78,21 @@ export const INTERACTIONS = [
   { id: 'gift', group: 'friendly', label: 'Buy them something', blurb: 'Money into goodwill, honestly',
     cost: ({ kind }) => (kind === 'contact' ? 600 : kind === 'family' ? 220 : 350),
     when: () => true,
-    run: ({ s, p, cost }) => { s.cash -= cost; const g = move(p, rint(8, 15)); return `You bought ${first(p)} something they did not expect. €${cost.toLocaleString()}. (+${g})`; } },
+    run: ({ s, p, cost }) => { s.cash -= cost; const g = move(s, p,rint(8, 15)); return `You bought ${first(p)} something they did not expect. €${cost.toLocaleString()}. (+${g})`; } },
 
   { id: 'evening', group: 'friendly', label: 'Spend the evening together', blurb: 'A whole evening, and it shows', ap: 1,
     when: ({ p }) => (p.relationship || 0) >= 20,
     run: ({ s, p, kind }) => {
       const raw = kind === 'contact' ? bondGain(s, p) : Math.round(rint(5, 11) * homeBond(s));
-      const g = move(p, raw); s.mental = clamp(s.mental + rint(2, 5));
+      const g = move(s, p,raw); s.mental = clamp(s.mental + rint(2, 5));
       return `A long evening with ${first(p)}. You both needed it. (+${g})`;
     } },
 
   { id: 'deep', group: 'friendly', label: 'Talk about something real', blurb: 'The conversation you have been avoiding', ap: 1,
     when: ({ p }) => (p.relationship || 0) >= 40,
     run: ({ s, p }) => {
-      if (lands(s, p, 45)) { const g = move(p, rint(9, 16)); s.mental = clamp(s.mental + 4); return `You told ${first(p)} the truth about something. It went well. (+${g})`; }
-      const g = move(p, -rint(2, 6)); s.mental = clamp(s.mental - 3);
+      if (lands(s, p, 45)) { const g = move(s, p,rint(9, 16)); s.mental = clamp(s.mental + 4); return `You told ${first(p)} the truth about something. It went well. (+${g})`; }
+      const g = move(s, p,-rint(2, 6)); s.mental = clamp(s.mental - 3);
       return `You opened up and ${first(p)} did not know what to do with it. (${g})`;
     } },
 
@@ -97,13 +100,13 @@ export const INTERACTIONS = [
   { id: 'flirt', group: 'romantic', label: 'Flirt', blurb: 'Test the water',
     applies: ({ rel }) => isRomantic(rel),
     run: ({ s, p }) => {
-      if (lands(s, p, 30)) { const g = move(p, rint(6, 12)); s.mental = clamp(s.mental + 2); return `${first(p)} flirted right back. (+${g})`; }
-      const g = move(p, -rint(2, 5)); return `You misread the room. ${first(p)} changed the subject. (${g})`;
+      if (lands(s, p, 30)) { const g = move(s, p,rint(6, 12)); s.mental = clamp(s.mental + 2); return `${first(p)} flirted right back. (+${g})`; }
+      const g = move(s, p,-rint(2, 5)); return `You misread the room. ${first(p)} changed the subject. (${g})`;
     } },
 
   { id: 'kiss', group: 'romantic', label: 'Kiss them', blurb: 'No words involved',
     applies: ({ rel }) => isRomantic(rel), when: ({ p }) => (p.relationship || 0) >= 40,
-    run: ({ s, p }) => { const g = move(p, rint(5, 10)); s.mental = clamp(s.mental + 3); return `You kissed ${first(p)}. (+${g})`; } },
+    run: ({ s, p }) => { const g = move(s, p,rint(5, 10)); s.mental = clamp(s.mental + 3); return `You kissed ${first(p)}. (+${g})`; } },
 
   { id: 'night', group: 'romantic', label: 'Spend the night together', blurb: 'Needs a place of your own', ap: 1,
     applies: ({ rel }) => isRomantic(rel),
@@ -111,7 +114,7 @@ export const INTERACTIONS = [
     lockedWhy: ({ s, p }) => (!s.hasApartment ? 'Not under your parents’ roof — you need a place of your own.'
       : (p.relationship || 0) < 55 ? 'You are not there yet.' : ''),
     run: ({ s, p }) => {
-      const g = move(p, Math.round(rint(10, 18) * homeBond(s)));
+      const g = move(s, p,Math.round(rint(10, 18) * homeBond(s)));
       s.mental = clamp(s.mental + rint(4, 8));
       return `The night was yours. (+${g})`;
     } },
@@ -134,7 +137,7 @@ export const INTERACTIONS = [
   { id: 'favour', group: 'practical', label: 'Ask them to put in a word', blurb: 'Spend the goodwill you built', ap: 1,
     applies: ({ kind }) => kind === 'contact', when: ({ p }) => (p.relationship || 0) >= 50,
     run: ({ s, p }) => {
-      move(p, -rint(4, 9));   // a favour costs goodwill whether it works or not
+      move(s, p,-rint(4, 9));   // a favour costs goodwill whether it works or not
       if (chance(clamp(25 + (p.industryWeight || 30) * 0.4 + (p.relationship || 0) * 0.2))) {
         s.flags = s.flags || {}; s.flags.wordPut = (s.flags.wordPut || 0) + 1;
         s.castingBoost = (s.castingBoost || 0) + 1;
@@ -146,11 +149,11 @@ export const INTERACTIONS = [
   // ── mean ────────────────────────────────────────────────────────────────────
   { id: 'argue', group: 'mean', label: 'Pick a fight', blurb: 'Say the thing you have been holding',
     when: () => true,
-    run: ({ s, p }) => { const g = move(p, -rint(8, 16)); s.mental = clamp(s.mental - 3); return `You and ${first(p)} said things. (${g})`; } },
+    run: ({ s, p }) => { const g = move(s, p,-rint(8, 16)); s.mental = clamp(s.mental - 3); return `You and ${first(p)} said things. (${g})`; } },
 
   { id: 'blame', group: 'mean', label: 'Blame them', blurb: 'For how any of this turned out',
     when: ({ p }) => (p.relationship || 0) >= 20,
-    run: ({ s, p }) => { const g = move(p, -rint(14, 25)); s.mental = clamp(s.mental - 6); return `You told ${first(p)} it was their fault. Some of it was. (${g})`; } },
+    run: ({ s, p }) => { const g = move(s, p,-rint(14, 25)); s.mental = clamp(s.mental - 6); return `You told ${first(p)} it was their fault. Some of it was. (${g})`; } },
 
   { id: 'cutoff', group: 'mean', label: 'Cut them out of your life', blurb: 'Gone, and not coming back',
     applies: ({ kind }) => kind === 'contact',

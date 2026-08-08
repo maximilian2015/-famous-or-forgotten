@@ -27,6 +27,10 @@ import { Avatar } from './ui/components/Avatar.jsx';
 import { lookOf, lookOfPerson, companionOf, HAIRSTYLES, HAIR_ORDER, hairChoices, HAIR_COLORS, EYES, EYE_COLOURS, LIPS, OUTFITS, OUTFIT_ORDER, SKINS, buyHair, setHairColour, wearOutfit, ownsOutfit, DRESS_UP_AGE } from './systems/life/appearance.js';
 import { classOf } from './systems/life/origin.js';
 import { interactionsFor, interact, findPerson, GROUPS } from './systems/life/interactions.js';
+import { relBand } from './systems/life/bonds.js';
+import { BigMoment } from './ui/components/BigMoment.jsx';
+// Big moments live on state so a system can raise one; the UI only clears it.
+function clearBigMoment(s) { s.bigMoment = null; return s; }
 const MON = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
 
 export default function App() {
@@ -36,17 +40,20 @@ export default function App() {
   const [showGenres, setShowGenres] = useState(false);
   const [showHealth, setShowHealth] = useState(false);
   const [openPerson, setOpenPerson] = useState(null);
+  const [showRoom, setShowRoom] = useState(false);
   if (!g.created) return <CreatorScreen />;
   if (!g.alive) return <EndOfLifeScreen g={g} />;
   if (g.pendingArc) return <ArcModal g={g} />;
   if (showGenres) return <GenreScreen g={g} onBack={() => setShowGenres(false)} />;
   if (showHealth) return <HealthScreen g={g} onBack={() => setShowHealth(false)} />;
+  if (g.bigMoment) return <BigMoment moment={g.bigMoment} look={lookOf(g)} onClose={() => dispatch(clearBigMoment)} />;
+  if (showRoom) return <RoomScreen g={g} onBack={() => setShowRoom(false)} onStyle={() => { setShowRoom(false); setScreen('style'); }} />;
   if (confirmEnd) return <EndLifeModal onCancel={() => setConfirmEnd(false)} onConfirm={() => { import('./systems/meta/legacy.js').then(m => { m.enshrine(g); newLife(); setConfirmEnd(false); }); }} />;
   return (
     <div style={{ maxWidth: 440, margin: '0 auto', minHeight: '100vh', background: theme.bg, color: theme.text, padding: 16, paddingBottom: 90, fontFamily: 'system-ui, -apple-system, sans-serif' }}>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 14 }}>
         <div style={{ display: 'flex', alignItems: 'flex-end', gap: 9 }}>
-          <HeaderFigures g={g} />
+          <HeaderFigures g={g} onOpen={() => setShowRoom(true)} />
           <div>
             <div style={{ fontSize: 22, fontWeight: 900, lineHeight: 1.1 }}>{g.name}</div>
             <div style={{ fontSize: 12.5, color: theme.muted, marginTop: 3 }}>{g.ageY} yrs · {MON[g.month]} {g.year}</div>
@@ -284,6 +291,81 @@ function CareerScreen({ g, teenOnly }) {
     {tab === 'events' && <EventsScreen g={g} />}
   </div>);
 }
+// Where the player actually lives, with the figure standing in it and everything they
+// own on the shelf. The wardrobe, the medicine, the rent — one place for all of it.
+function RoomScreen({ g, onBack, onStyle }) {
+  const meds = g.meds || {};
+  const owned = g.look?.owned || ['tee'];
+  const h = HOUSING[g.housing || 'room'];
+  const wall = g.homeless ? '#171232' : g.inheritedHome ? '#2b2450' : ['room', 'studio'].includes(g.housing || 'room') ? '#241d46' : '#2d2657';
+  const line = { display: 'flex', justifyContent: 'space-between', fontSize: 12.5, padding: '7px 0', borderBottom: `1px solid ${theme.line}` };
+  return (<div style={{ position: 'fixed', inset: 0, background: theme.bg, zIndex: 40, overflowY: 'auto' }}>
+    <div style={{ maxWidth: 440, margin: '0 auto', padding: 16, paddingBottom: 110 }}>
+      <div style={{ fontSize: 11, fontWeight: 900, letterSpacing: '.1em', textTransform: 'uppercase', color: theme.accent, marginBottom: 10 }}>Your room</div>
+
+      <div style={{ background: wall, border: `1px solid ${theme.line}`, borderRadius: 16, padding: '14px 12px 0', position: 'relative', overflow: 'hidden' }}>
+        <svg viewBox="0 0 200 120" style={{ width: '100%', display: 'block' }}>
+          {g.homeless ? (<>
+            <path d="M10 108 L190 108" stroke="#3a3160" strokeWidth="3" strokeLinecap="round" />
+            <g transform="translate(158 20)"><path d="M0 0 L0 88" stroke="#4a3f7a" strokeWidth="3" /><circle cx="0" cy="0" r="6" fill="#ffd166" opacity=".85" /></g>
+            <rect x="24" y="92" width="30" height="16" rx="3" fill="#3a3160" />
+          </>) : (<>
+            <rect x="0" y="0" width="200" height="96" fill="none" />
+            <path d="M0 96 L200 96" stroke="#4a3f7a" strokeWidth="2" />
+            <rect x="14" y="30" width="34" height="30" rx="3" fill="#ffd166" opacity=".14" stroke="#5c4f92" strokeWidth="1.5" />
+            <path d="M31 30 L31 60 M14 45 L48 45" stroke="#5c4f92" strokeWidth="1.2" />
+            <rect x="150" y="62" width="38" height="34" rx="2" fill="#1f1a3e" stroke="#5c4f92" strokeWidth="1.5" />
+            <path d="M169 62 L169 96" stroke="#5c4f92" strokeWidth="1.2" />
+            <rect x="62" y="78" width="34" height="18" rx="3" fill="#332b5e" stroke="#5c4f92" strokeWidth="1.2" />
+            {['flat', 'house', 'penthouse'].includes(g.housing) && <rect x="104" y="70" width="30" height="26" rx="2" fill="#241f47" stroke="#5c4f92" strokeWidth="1.2" />}
+            {(g.fame || 0) >= 55 && <><rect x="120" y="26" width="26" height="34" rx="2" fill="#3a2f6e" stroke={theme.gold} strokeWidth="1.2" /><circle cx="133" cy="38" r="5" fill={theme.gold} opacity=".5" /></>}
+          </>)}
+          <g transform="translate(76 32)"><Avatar look={lookOf(g)} size={64} /></g>
+        </svg>
+      </div>
+
+      <Card style={{ marginTop: 12 }}>
+        <div style={{ fontSize: 15, fontWeight: 900 }}>
+          {g.homeless ? 'Nowhere' : !g.hasApartment ? "Your parents' place" : h.label}{g.inheritedHome ? ' · yours outright' : ''}
+        </div>
+        <div style={{ fontSize: 11.5, color: theme.muted, marginTop: 3, lineHeight: 1.5 }}>
+          {g.homeless ? `${g.monthsOnStreet || 0} month${(g.monthsOnStreet || 0) === 1 ? '' : 's'} out here. A room costs €750 and it is the only way back in.`
+            : !g.hasApartment ? 'Your old room, more or less how you left it.'
+            : g.inheritedHome ? 'No rent, ever again. It came the hard way.' : h.perk}
+        </div>
+        {g.hasApartment && !g.inheritedHome && (<div style={{ ...line, borderBottom: 'none', paddingBottom: 0, marginTop: 8 }}>
+          <span style={{ color: theme.muted }}>Rent</span>
+          <span style={{ fontWeight: 800, color: (g.rentMissed || 0) > 0 ? theme.bad : theme.gold }}>
+            €{h.cost.toLocaleString()}/mo{(g.rentMissed || 0) > 0 ? ' · one month behind' : ''}
+          </span>
+        </div>)}
+      </Card>
+
+      <div style={{ fontSize: 11, fontWeight: 900, letterSpacing: '.09em', textTransform: 'uppercase', color: theme.muted, margin: '16px 0 6px' }}>On the shelf</div>
+      <Card>
+        {Object.entries(PILLS).filter(([k]) => (meds[k] || 0) > 0).length === 0
+          ? <div style={{ fontSize: 12, color: theme.muted }}>No medicine. The Shop app sells the basics.</div>
+          : Object.entries(PILLS).map(([k, p]) => (meds[k] || 0) > 0 && (<div key={k} style={line}>
+              <span>{p.label}</span><span style={{ fontWeight: 800, color: theme.good }}>{meds[k]}</span>
+            </div>))}
+      </Card>
+
+      <div style={{ fontSize: 11, fontWeight: 900, letterSpacing: '.09em', textTransform: 'uppercase', color: theme.muted, margin: '16px 0 6px' }}>Your wardrobe</div>
+      <Card>
+        <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+          {owned.map((k) => (<div key={k} style={{ textAlign: 'center', background: theme.panel2, borderRadius: 10, padding: '8px 6px 4px',
+            border: (g.look?.outfit === k) ? `1px solid ${theme.gold}` : `1px solid ${theme.line}` }}>
+            <Avatar look={{ ...lookOf(g), outfit: k }} size={54} />
+            <div style={{ fontSize: 9.5, color: theme.muted, marginTop: 3, maxWidth: 54 }}>{OUTFITS[k]?.label || k}</div>
+          </div>))}
+        </div>
+        <Button onClick={onStyle} style={{ marginTop: 10 }}>Open the wardrobe ›</Button>
+      </Card>
+
+      <Button onClick={onBack} style={{ marginTop: 18 }}>Close the door</Button>
+    </div>
+  </div>);
+}
 function OriginCard({ g }) {
   if (!g.originStory) return null;
   const c = classOf(g);
@@ -295,11 +377,9 @@ function OriginCard({ g }) {
     <div style={{ fontSize: 13.5, lineHeight: 1.6 }}>{g.originStory}</div>
   </Card>);
 }
-// A portrait, not a button. Tapping it used to jump to the rent-and-groceries screen,
-// which is not what anyone expects from their own face.
-function HeaderFigures({ g }) {
+function HeaderFigures({ g, onOpen }) {
   const mate = companionOf(g);
-  return (<div style={{ display: 'flex', alignItems: 'flex-end', gap: 1 }}>
+  return (<div onClick={onOpen} title="Your room" style={{ display: 'flex', alignItems: 'flex-end', gap: 1, cursor: 'pointer' }}>
     <Avatar look={lookOf(g)} size={48} title={g.name} />
     {mate && <Avatar look={lookOfPerson(mate.person)} size={mate.married ? 46 : 42}
       title={`${mate.person.name} · ${mate.married ? 'spouse' : 'partner'}`}
@@ -469,7 +549,20 @@ function EndLifeModal({ onConfirm, onCancel }) {
     </div>
   </div>);
 }
+// Closeness runs -100..+100, so the bar grows out from the middle: right when they
+// like you, left when they do not.
+function BondBar({ value, height = 5 }) {
+  const v = Math.max(-100, Math.min(100, value || 0));
+  const band = relBand(v);
+  const colour = band.tone === 'good' ? theme.good : band.tone === 'bad' ? theme.bad : theme.accent;
+  return (<div style={{ position: 'relative', height, background: 'rgba(255,255,255,.08)', borderRadius: 3, margin: '7px 0 5px' }}>
+    <div style={{ position: 'absolute', left: '50%', top: -1, bottom: -1, width: 1, background: 'rgba(255,255,255,.22)' }} />
+    <div style={{ position: 'absolute', top: 0, bottom: 0, borderRadius: 3, background: colour,
+      left: v >= 0 ? '50%' : `${50 + v / 2}%`, width: `${Math.abs(v) / 2}%` }} />
+  </div>);
+}
 function PersonRow({ g, p, sub, onOpen }) {
+  const band = relBand(p.relationship || 0);
   return (<Card style={{ marginBottom: 8, display: 'flex', gap: 12, alignItems: 'center', cursor: 'pointer' }} onClick={onOpen}>
     <Avatar look={lookOfPerson(p)} size={56} title={p.name} />
     <div style={{ flex: 1 }}>
@@ -477,10 +570,10 @@ function PersonRow({ g, p, sub, onOpen }) {
         <div style={{ fontSize: 14, fontWeight: 800 }}>{p.name} {p.ill && <span style={{ fontSize: 11, color: theme.bad }}>· ill</span>}</div>
         <div style={{ fontSize: 12, color: theme.muted }}>{sub}</div>
       </div>
-      <div style={{ height: 5, background: 'rgba(255,255,255,.08)', borderRadius: 3, margin: '7px 0 5px' }}>
-        <div style={{ width: Math.max(0, Math.min(100, p.relationship || 0)) + '%', height: '100%', background: theme.accent, borderRadius: 3 }} />
+      <BondBar value={p.relationship} />
+      <div style={{ fontSize: 11, fontWeight: 700, color: band.tone === 'bad' ? theme.bad : theme.accent }}>
+        {band.label} · {Math.round(p.relationship || 0)} · tap to talk ›
       </div>
-      <div style={{ fontSize: 11, color: theme.accent, fontWeight: 700 }}>closeness {Math.round(p.relationship || 0)} · tap to talk ›</div>
     </div>
   </Card>);
 }
@@ -499,10 +592,10 @@ function PersonSheet({ g, id, onClose }) {
         <div style={{ flex: 1 }}>
           <div style={{ fontSize: 19, fontWeight: 900 }}>{p.name}</div>
           <div style={{ fontSize: 12, color: theme.muted, marginTop: 2 }}>{p.relation || (rel === 'partner' ? 'Partner' : p.role)}{p.age != null ? ` · ${p.age}` : ''}{p.job ? ` · ${p.job}` : ''}</div>
-          <div style={{ height: 6, background: 'rgba(255,255,255,.08)', borderRadius: 3, margin: '8px 0 4px' }}>
-            <div style={{ width: Math.max(0, Math.min(100, p.relationship || 0)) + '%', height: '100%', background: theme.accent, borderRadius: 3 }} />
+          <BondBar value={p.relationship} height={6} />
+          <div style={{ fontSize: 11, color: relBand(p.relationship || 0).tone === 'bad' ? theme.bad : theme.muted }}>
+            {relBand(p.relationship || 0).label} · {Math.round(p.relationship || 0)}
           </div>
-          <div style={{ fontSize: 11, color: theme.muted }}>closeness {Math.round(p.relationship || 0)}/100</div>
         </div>
       </div>
       {g.lastEvent && g.lastEvent !== before && <Card style={{ margin: '12px 0', borderColor: 'rgba(255,209,102,.3)' }}><div style={{ fontSize: 13, lineHeight: 1.5 }}>{g.lastEvent}</div></Card>}

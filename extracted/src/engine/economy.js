@@ -154,7 +154,9 @@ function checkInsolvency(s) {
   }
   if (s.rentMissed < 2) return;
 
-  const parent = (s.family || []).find((p) => p.alive && (p.relation === 'Mother' || p.relation === 'Father'));
+  // A door only opens if you left it on speaking terms.
+  const parent = (s.family || []).find((p) => p.alive && (p.relation === 'Mother' || p.relation === 'Father') && (p.relationship || 0) > -20);
+  const turnedAway = !parent && (s.family || []).some((p) => p.alive && (p.relation === 'Mother' || p.relation === 'Father'));
   s.hasApartment = false; s.housing = 'room'; s.rentMissed = 0; s.stage = 'moving_out';
   if (parent) {
     s.livingWith = 'parents'; s.homeless = false;
@@ -164,7 +166,11 @@ function checkInsolvency(s) {
   } else {
     s.livingWith = 'street'; s.homeless = true; s.monthsOnStreet = 0;
     s.mental = Math.max(0, (s.mental || 0) - 18);
-    addTimeline(s, 'Evicted, and nobody left to take you in. The first night out is the one you remember.', true);
-    s.lastEvent = 'You lost the flat. There is nobody left to go back to.';
+    addTimeline(s, turnedAway
+      ? 'Evicted. You rang the one number you had left and they did not pick up. The first night out is the one you remember.'
+      : 'Evicted, and nobody left to take you in. The first night out is the one you remember.', true);
+    s.lastEvent = turnedAway ? 'You lost the flat. Your own family would not open the door.'
+      : 'You lost the flat. There is nobody left to go back to.';
   }
+  s.bigMoment = { id: 'evicted', kind: 'bad', title: s.homeless ? 'Out on the street' : 'Evicted', body: s.lastEvent };
 }

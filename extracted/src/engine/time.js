@@ -6,6 +6,7 @@ import { maybeStartArc } from '../systems/life/arcs.js';
 import { maybeYouthEvent } from '../systems/life/youth.js';
 import { familyYear } from '../systems/life/family.js';
 import { allowanceTick } from '../systems/life/origin.js';
+import { bondsTick } from '../systems/life/bonds.js';
 import { datingYear } from '../systems/life/dating.js';
 import { spotlightYear } from '../systems/social/spotlight.js';
 import { productionTick } from '../systems/career/production.js';
@@ -28,6 +29,7 @@ export function advanceMonth(state) {
     if (mortalityCheck(s)) return s;   // life is over — nothing else runs this tick
   }
   applyMonthly(s);
+  bondsTick(s);      // people you did not call drift away
   healthTick(s);
   if (!s.alive) return s;   // sudden collapse ends the month right here
   relevanceDrift(s);
@@ -57,6 +59,7 @@ export function advanceYear(state) {
   agingTick(s);
   if (mortalityCheck(s)) return s;   // life is over — nothing else runs this tick
   for (let m = 0; m < 12 && s.job; m++) workTick(s);   // youth moves a year at a time, but wages are monthly
+  bondsTick(s);
   s.peakFame = Math.max(s.peakFame || 0, s.fame || 0);
   advanceStage(s);
   maybeYouthEvent(s);

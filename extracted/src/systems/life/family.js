@@ -55,11 +55,14 @@ export function inheritFrom(s, p) {
     return { cash: 0, home: false,
       note: `${p.name} left everything to someone else. You had not spoken in years, and it turns out that counts.` };
   }
-  const share = closeness >= 60 ? 1 : 0.45;
+  // Being merely in touch is not the same as being there. The whole estate goes to
+  // someone who actually stayed — 90 is a life spent turning up, not a few good months.
+  const share = closeness >= 90 ? 1 : closeness >= 70 ? 0.6 : 0.3;
   const cash = Math.round(rint(range[0], range[1]) * scale * share);
   const parentsLeft = (s.family || []).some((x) => x.alive && (x.relation === 'Mother' || x.relation === 'Father'));
-  // Only a well-off family leaves a roof, only the last parent to go, only to someone close.
-  const home = isParent && !parentsLeft && closeness >= 60 && !!s.familyLeavesHome;
+  // Only a well-off family leaves a roof, only the last parent to go, only to someone
+  // who was genuinely close to the end.
+  const home = isParent && !parentsLeft && closeness >= 90 && !!s.familyLeavesHome;
   s.cash = (s.cash || 0) + cash;
   if (home) {
     s.inheritedHome = true; s.hasApartment = true; s.livingWith = 'own_place';
@@ -69,7 +72,7 @@ export function inheritFrom(s, p) {
   const note = home
     ? `${p.name} left you the house. No rent again, ever — and a set of keys you did not want this way.${cash > 0 ? ` €${cash.toLocaleString()} came with it.` : ''}`
     : cash > 0
-      ? `${p.name} left you €${cash.toLocaleString()}.${share < 1 ? ' Split with the others — you were not the closest.' : ''}`
+      ? `${p.name} left you €${cash.toLocaleString()}.${share < 1 ? ' Most of it went to whoever was actually there.' : ''}`
       : `${p.name} left nothing behind. There was never anything to leave.`;
   return { cash, home, note };
 }
@@ -99,7 +102,12 @@ export function familyYear(s) {
       s.mental = clamp((s.mental || 50) - (p.relation === 'Mother' || p.relation === 'Father' ? 15 : 8));
       // Whether anything comes to you depends on how close you actually were.
       const left = inheritFrom(s, p);
-      if (left && left.note) events.push(left.note);
+      if (left && left.note) {
+        events.push(left.note);
+        if (left.cash > 0 || left.home) {
+          s.bigMoment = { id: 'inheritance', kind: 'good', title: left.home ? 'They left you the house' : `${p.name} left you something`, body: left.note };
+        }
+      }
     }
   });
   if (s.parentsMarried && (s.ageY || 0) < 20 && chance(3)) { s.parentsMarried = false; events.push('Your parents are getting divorced.'); s.mental = clamp((s.mental || 50) - 10); }
