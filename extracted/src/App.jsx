@@ -7,12 +7,8 @@ import { acceptOffer, declineOffer } from './systems/career/offers.js';
 import { computeAccess } from './systems/career/access.js';
 import { SCHOOLS, train, trainingKey } from './systems/career/training.js';
 import { skillCap } from './systems/career/actions.js';
-import { askFamilyForMoney } from './systems/life/family.js';
 import { seeDoctor, treatmentCost, pushThrough, PILLS, usePills, infectionOdds } from './systems/life/health.js';
 import { resolveArc } from './systems/life/arcs.js';
-import { deepenRelationship } from './systems/life/relationships.js';
-import { spendWithFamily } from './systems/life/family.js';
-import { spendWithPartner } from './systems/life/dating.js';
 import { computeLegacy, getHall } from './systems/meta/legacy.js';
 import { fameTier, setHousing, FAME_TIERS } from './systems/meta/status.js';
 import { rehearse, riskyTake, bondWithCrew, meterTier } from './systems/career/production.js';
@@ -30,6 +26,7 @@ import { Stat } from './ui/components/Stat.jsx';
 import { Avatar } from './ui/components/Avatar.jsx';
 import { lookOf, lookOfPerson, companionOf, HAIRSTYLES, HAIR_ORDER, hairChoices, HAIR_COLORS, EYES, EYE_COLOURS, LIPS, OUTFITS, OUTFIT_ORDER, SKINS, buyHair, setHairColour, wearOutfit, ownsOutfit, DRESS_UP_AGE } from './systems/life/appearance.js';
 import { classOf } from './systems/life/origin.js';
+import { interactionsFor, interact, findPerson, GROUPS } from './systems/life/interactions.js';
 const MON = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
 
 export default function App() {
@@ -38,6 +35,7 @@ export default function App() {
   const [confirmEnd, setConfirmEnd] = useState(false);
   const [showGenres, setShowGenres] = useState(false);
   const [showHealth, setShowHealth] = useState(false);
+  const [openPerson, setOpenPerson] = useState(null);
   if (!g.created) return <CreatorScreen />;
   if (!g.alive) return <EndOfLifeScreen g={g} />;
   if (g.pendingArc) return <ArcModal g={g} />;
@@ -61,7 +59,7 @@ export default function App() {
         </div>
       </div>
 
-      {screen === 'people' ? <PeopleScreen g={g} /> :
+      {screen === 'people' ? <PeopleScreen g={g} openId={openPerson} setOpenId={setOpenPerson} /> :
        screen === 'phone' ? (g.stage === 'career' || g.ageY >= 13 ? <Phone g={g} /> : <ChildPhoneLocked />) :
        screen === 'career' ? (g.stage === 'career' ? <CareerScreen g={g} />
          : g.stage === 'teen' ? <CareerScreen g={g} teenOnly />   /* teens can still take lessons */
@@ -467,22 +465,79 @@ function EndLifeModal({ onConfirm, onCancel }) {
     </div>
   </div>);
 }
-function PeopleScreen({ g }) {
+function PersonRow({ g, p, sub, onOpen }) {
+  return (<Card style={{ marginBottom: 8, display: 'flex', gap: 12, alignItems: 'center', cursor: 'pointer' }} onClick={onOpen}>
+    <Avatar look={lookOfPerson(p)} size={56} title={p.name} />
+    <div style={{ flex: 1 }}>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline' }}>
+        <div style={{ fontSize: 14, fontWeight: 800 }}>{p.name} {p.ill && <span style={{ fontSize: 11, color: theme.bad }}>· ill</span>}</div>
+        <div style={{ fontSize: 12, color: theme.muted }}>{sub}</div>
+      </div>
+      <div style={{ height: 5, background: 'rgba(255,255,255,.08)', borderRadius: 3, margin: '7px 0 5px' }}>
+        <div style={{ width: Math.max(0, Math.min(100, p.relationship || 0)) + '%', height: '100%', background: theme.accent, borderRadius: 3 }} />
+      </div>
+      <div style={{ fontSize: 11, color: theme.accent, fontWeight: 700 }}>closeness {Math.round(p.relationship || 0)} · tap to talk ›</div>
+    </div>
+  </Card>);
+}
+function PersonSheet({ g, id, onClose }) {
+  // Whatever was on the ticker before you walked in is not about this person.
+  const [before] = useState(() => g.lastEvent);
+  const found = findPerson(g, id);
+  if (!found) return null;
+  const { p, rel } = found;
+  const list = interactionsFor(g, id);
+  const tone = { good: theme.good, love: '#ff8ab5', plain: theme.text, bad: theme.bad };
+  return (<div style={{ position: 'fixed', inset: 0, background: theme.bg, zIndex: 40, overflowY: 'auto' }}>
+    <div style={{ maxWidth: 440, margin: '0 auto', padding: 16, paddingBottom: 110 }}>
+      <div style={{ display: 'flex', gap: 12, alignItems: 'center', marginBottom: 4 }}>
+        <Avatar look={lookOfPerson(p)} size={78} title={p.name} />
+        <div style={{ flex: 1 }}>
+          <div style={{ fontSize: 19, fontWeight: 900 }}>{p.name}</div>
+          <div style={{ fontSize: 12, color: theme.muted, marginTop: 2 }}>{p.relation || (rel === 'partner' ? 'Partner' : p.role)}{p.age != null ? ` · ${p.age}` : ''}{p.job ? ` · ${p.job}` : ''}</div>
+          <div style={{ height: 6, background: 'rgba(255,255,255,.08)', borderRadius: 3, margin: '8px 0 4px' }}>
+            <div style={{ width: Math.max(0, Math.min(100, p.relationship || 0)) + '%', height: '100%', background: theme.accent, borderRadius: 3 }} />
+          </div>
+          <div style={{ fontSize: 11, color: theme.muted }}>closeness {Math.round(p.relationship || 0)}/100</div>
+        </div>
+      </div>
+      {g.lastEvent && g.lastEvent !== before && <Card style={{ margin: '12px 0', borderColor: 'rgba(255,209,102,.3)' }}><div style={{ fontSize: 13, lineHeight: 1.5 }}>{g.lastEvent}</div></Card>}
+      {GROUPS.map((grp) => { const items = list.filter((a) => a.group === grp.id); if (!items.length) return null;
+        return (<div key={grp.id} style={{ marginTop: 14 }}>
+          <div style={{ fontSize: 11, fontWeight: 900, letterSpacing: '.09em', textTransform: 'uppercase', color: tone[grp.tone], marginBottom: 7, opacity: .85 }}>{grp.label}</div>
+          <div style={{ display: 'grid', gap: 7 }}>
+            {items.map((a) => { const off = !a.open || !!a.why;
+              return (<button key={a.id} disabled={off} onClick={() => dispatch(interact, id, a.id)}
+                style={{ textAlign: 'left', background: theme.panel, border: `1px solid ${off ? 'rgba(255,255,255,.06)' : theme.line}`, borderRadius: 12,
+                  padding: '10px 13px', cursor: off ? 'default' : 'pointer', color: theme.text, opacity: off ? .42 : 1 }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', gap: 8 }}>
+                  <div style={{ fontSize: 13.5, fontWeight: 800 }}>{a.label}</div>
+                  <div style={{ fontSize: 11, fontWeight: 800, color: theme.gold, whiteSpace: 'nowrap' }}>
+                    {a.cost ? `€${a.cost.toLocaleString()}` : ''}{a.cost && a.ap ? ' · ' : ''}{a.ap ? '1 energy' : ''}
+                  </div>
+                </div>
+                <div style={{ fontSize: 11.5, color: theme.muted, marginTop: 2 }}>{off && a.why ? a.why : a.blurb}</div>
+              </button>); })}
+          </div>
+        </div>); })}
+      <Button onClick={onClose} style={{ marginTop: 20 }}>Back to people</Button>
+    </div>
+  </div>);
+}
+function PeopleScreen({ g, openId, setOpenId }) {
   const family = (g.family || []).filter((p) => p.alive);
   const deceased = (g.family || []).filter((p) => !p.alive);
   const people = g.people || [];
+  if (openId) return <PersonSheet g={g} id={openId} onClose={() => setOpenId(null)} />;
   return (<div>
     {g.partner && (<><div style={{ fontSize: 11, fontWeight: 900, letterSpacing: '.09em', textTransform: 'uppercase', color: theme.muted, marginBottom: 8 }}>Partner</div>
-    <Card style={{ marginBottom: 14, display: 'flex', gap: 12, alignItems: 'flex-start' }}><Avatar look={lookOfPerson(g.partner)} size={56} title={g.partner.name} /><div style={{ flex: 1 }}><div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline' }}><div style={{ fontSize: 14, fontWeight: 800 }}>{g.partner.name}</div><div style={{ fontSize: 12, color: theme.muted }}>closeness {g.partner.relationship}</div></div><div style={{ fontSize: 11.5, color: theme.muted, margin: '3px 0 8px' }}>{g.partner.job} · {g.partner.age}</div><Button onClick={() => dispatch(spendWithPartner)}>Spend time together</Button></div></Card></>)}
-    <div style={{ fontSize: 11, fontWeight: 900, letterSpacing: '.09em', textTransform: 'uppercase', color: theme.muted, marginBottom: 8 }}>Family</div>
-    {family.map((p) => { const isParent = p.relation === 'Mother' || p.relation === 'Father';
-      return (<Card key={p.id} style={{ marginBottom: 8, display: 'flex', gap: 12, alignItems: 'flex-start' }}><Avatar look={lookOfPerson(p)} size={56} title={p.name} /><div style={{ flex: 1 }}><div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline' }}><div style={{ fontSize: 14, fontWeight: 800 }}>{p.name} {p.ill && <span style={{ fontSize: 11, color: theme.bad }}>· ill</span>}</div><div style={{ fontSize: 12, color: theme.muted }}>{p.relation}, {p.age}</div></div><div style={{ fontSize: 11.5, color: theme.muted, margin: '3px 0 8px' }}>{p.job} · closeness {p.relationship} · health {p.health}</div>
-        <Button onClick={() => dispatch(spendWithFamily, p.id)}>Spend time together</Button>
-        {isParent && g.stage !== 'child' && <Button onClick={() => dispatch(askFamilyForMoney)} style={{ marginTop: 7 }}>Ask for money</Button>}
-      </div></Card>); })}
+    <PersonRow g={g} p={g.partner} sub={`${g.partner.job} · ${g.partner.age}`} onOpen={() => setOpenId(g.partner.id)} /></>)}
+    <div style={{ fontSize: 11, fontWeight: 900, letterSpacing: '.09em', textTransform: 'uppercase', color: theme.muted, margin: '14px 0 8px' }}>Family</div>
+    {family.map((p) => (<PersonRow key={p.id} g={g} p={p} sub={`${p.relation}, ${p.age}`} onOpen={() => setOpenId(p.id)} />))}
     {deceased.length > 0 && <div style={{ fontSize: 11, color: theme.muted, marginTop: 4, marginBottom: 10, opacity: .7 }}>In memory: {deceased.map((p) => `${p.name} (${p.relation})`).join(', ')}</div>}
     {people.length > 0 && (<><div style={{ fontSize: 11, fontWeight: 900, letterSpacing: '.09em', textTransform: 'uppercase', color: theme.muted, margin: '14px 0 8px' }}>Industry contacts</div>{people.map((p) => { const opensDoor = p.unlocks === 'aaa' && p.industryWeight >= 80;
-      return (<Card key={p.id} style={{ marginBottom: 8 }}><div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline' }}><div style={{ fontSize: 14, fontWeight: 800 }}>{p.name}{p.fromSchool && <span style={{ fontSize: 10.5, color: theme.accent }}> · from school</span>}</div><div style={{ fontSize: 12, color: theme.muted }}>weight {p.industryWeight}</div></div><div style={{ fontSize: 11.5, color: theme.muted, margin: '3px 0 8px' }}>{p.role} · closeness {p.relationship}{opensDoor && p.relationship >= 60 ? ' · opens A-list ★' : opensDoor ? ' · could open doors' : ''}</div><Button onClick={() => dispatch(deepenRelationship, p.id)}>Spend time together</Button></Card>); })}</>)}
+      return (<PersonRow key={p.id} g={g} p={p} onOpen={() => setOpenId(p.id)}
+        sub={`${p.role}${opensDoor && p.relationship >= 60 ? ' · opens A-list ★' : opensDoor ? ' · could open doors' : ''}`} />); })}</>)}
     {g.stage !== 'career' && <div style={{ fontSize: 11.5, color: theme.muted, textAlign: 'center', padding: '14px 10px', opacity: .8 }}>Industry contacts start once your career begins. Keep school friends close on Spotlight — some of them go far.</div>}
   </div>);
 }
