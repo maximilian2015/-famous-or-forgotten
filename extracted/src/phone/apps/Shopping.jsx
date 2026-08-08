@@ -10,11 +10,11 @@ export function Shopping({ g }) {
     color: off ? '#6b6390' : kind === 'pri' ? '#fff' : '#d9cffa' });
   return (<div>
     <div style={{ fontSize: 11, fontWeight: 900, letterSpacing: '.09em', textTransform: 'uppercase', color: theme.muted, marginBottom: 4 }}>Pharmacy</div>
-    <div style={{ fontSize: 11.5, color: theme.muted, marginBottom: 10, lineHeight: 1.5 }}>Keep a few things in the cabinet. Cheaper than a doctor, and they're there when you need them.</div>
+    <div style={{ fontSize: 11.5, color: theme.muted, marginBottom: 10, lineHeight: 1.5 }}>Buy them now, take them when you need them. Cheaper than a doctor, and they do not run out of appointments.</div>
     {Object.entries(PILLS).map(([key, p]) => { const have = meds[key] || 0; const broke = (g.cash || 0) < p.cost;
       return (<div key={key} style={{ background: theme.panel, border: `1px solid ${theme.line}`, borderRadius: 12, padding: '10px 12px', marginBottom: 8 }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline' }}>
-          <div style={{ fontSize: 13.5, fontWeight: 800 }}>{p.label}{have > 0 ? <span style={{ color: theme.good, fontWeight: 700 }}> · {have} in the cabinet</span> : ''}</div>
+          <div style={{ fontSize: 13.5, fontWeight: 800 }}>{p.label}{have > 0 ? <span style={{ color: theme.good, fontWeight: 700 }}> · you own {have}</span> : ''}</div>
           <div style={{ fontSize: 12.5, fontWeight: 900, color: theme.gold }}>€{p.cost}</div>
         </div>
         <div style={{ fontSize: 11.5, color: theme.muted, margin: '3px 0 8px' }}>{p.blurb}</div>

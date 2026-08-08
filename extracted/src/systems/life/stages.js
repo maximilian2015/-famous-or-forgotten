@@ -21,8 +21,13 @@ export function rentApartment(s) {
   if (s.ageY < 18) { s.lastEvent = 'You are too young to move out yet.'; return s; }
   const rent = HOUSING.room.cost;
   if ((s.cash || 0) < rent) { s.lastEvent = `You need at least €${rent.toLocaleString()} for the first month. Earn a little first.`; return s; }
+  const offStreet = s.homeless;
   s.hasApartment = true; s.livingWith = 'own_place'; s.housing = 'room'; s.stage = 'career';
-  addTimeline(s, `You moved into a rented room at €${rent.toLocaleString()}/month. Your parents helped you carry two boxes and left.`);
-  s.lastEvent = 'You moved out. A room of your own, and the rent is yours now.';
+  s.homeless = false; s.rentMissed = 0; s.monthsOnStreet = 0;
+  addTimeline(s, offStreet
+    ? `A room again, at €${rent.toLocaleString()}/month. A door that locks from the inside.`
+    : `You moved into a rented room at €${rent.toLocaleString()}/month. Your parents helped you carry two boxes and left.`);
+  s.lastEvent = offStreet ? 'You are off the street. A door, a bed, and rent to find again next month.'
+    : 'You moved out. A room of your own, and the rent is yours now.';
   return s;
 }

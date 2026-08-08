@@ -42,6 +42,38 @@ export function makeFamily(s, options = {}) {
   s.family = fam;
   return s;
 }
+// What is left when they go. Two things decide it: what the family had (set at birth by
+// systems/life/origin.js) and whether you were actually there. Money that skips you is
+// the most ordinary tragedy there is.
+export function inheritFrom(s, p) {
+  const range = s.familyEstate || [1500, 11000];
+  const isParent = p.relation === 'Mother' || p.relation === 'Father';
+  const scale = isParent ? 1 : String(p.relation).startsWith('Grand') ? 0.35 : 0;
+  if (scale === 0) return null;   // siblings and children leave you nothing but the memory
+  const closeness = p.relationship || 0;
+  if (closeness < 30) {
+    return { cash: 0, home: false,
+      note: `${p.name} left everything to someone else. You had not spoken in years, and it turns out that counts.` };
+  }
+  const share = closeness >= 60 ? 1 : 0.45;
+  const cash = Math.round(rint(range[0], range[1]) * scale * share);
+  const parentsLeft = (s.family || []).some((x) => x.alive && (x.relation === 'Mother' || x.relation === 'Father'));
+  // Only a well-off family leaves a roof, only the last parent to go, only to someone close.
+  const home = isParent && !parentsLeft && closeness >= 60 && !!s.familyLeavesHome;
+  s.cash = (s.cash || 0) + cash;
+  if (home) {
+    s.inheritedHome = true; s.hasApartment = true; s.livingWith = 'own_place';
+    s.homeless = false; s.housing = 'house'; s.rentMissed = 0;
+    if (s.stage === 'moving_out') s.stage = 'career';
+  }
+  const note = home
+    ? `${p.name} left you the house. No rent again, ever — and a set of keys you did not want this way.${cash > 0 ? ` €${cash.toLocaleString()} came with it.` : ''}`
+    : cash > 0
+      ? `${p.name} left you €${cash.toLocaleString()}.${share < 1 ? ' Split with the others — you were not the closest.' : ''}`
+      : `${p.name} left nothing behind. There was never anything to leave.`;
+  return { cash, home, note };
+}
+
 export function familyYear(s) {
   if (!s.family) return;
   const events = [];
@@ -61,7 +93,14 @@ export function familyYear(s) {
     }
     if (!p.retired && p.age >= 65) { p.retired = true; p.job = 'retired'; events.push(`${p.name} retired.`); }
     const deathChance = p.age > 85 ? 22 : p.age > 78 ? 12 : p.age > 70 ? 6 : (p.health < 20 ? 8 : 0);
-    if (chance(deathChance)) { p.alive = false; p.deathAge = p.age; events.push(`💔 ${p.name}, your ${p.relation.toLowerCase()}, has passed away at ${p.age}.`); s.mental = clamp((s.mental || 50) - (p.relation === 'Mother' || p.relation === 'Father' ? 15 : 8)); }
+    if (chance(deathChance)) {
+      p.alive = false; p.deathAge = p.age;
+      events.push(`💔 ${p.name}, your ${p.relation.toLowerCase()}, has passed away at ${p.age}.`);
+      s.mental = clamp((s.mental || 50) - (p.relation === 'Mother' || p.relation === 'Father' ? 15 : 8));
+      // Whether anything comes to you depends on how close you actually were.
+      const left = inheritFrom(s, p);
+      if (left && left.note) events.push(left.note);
+    }
   });
   if (s.parentsMarried && (s.ageY || 0) < 20 && chance(3)) { s.parentsMarried = false; events.push('Your parents are getting divorced.'); s.mental = clamp((s.mental || 50) - 10); }
   events.forEach((e) => addTimeline(s, e, /passed away|lost their job|divorc|ill/.test(e)));

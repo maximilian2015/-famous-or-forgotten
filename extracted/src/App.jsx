@@ -46,7 +46,7 @@ export default function App() {
     <div style={{ maxWidth: 440, margin: '0 auto', minHeight: '100vh', background: theme.bg, color: theme.text, padding: 16, paddingBottom: 90, fontFamily: 'system-ui, -apple-system, sans-serif' }}>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 14 }}>
         <div style={{ display: 'flex', alignItems: 'flex-end', gap: 9 }}>
-          <HeaderFigures g={g} onOpen={() => setScreen('style')} />
+          <HeaderFigures g={g} />
           <div>
             <div style={{ fontSize: 22, fontWeight: 900, lineHeight: 1.1 }}>{g.name}</div>
             <div style={{ fontSize: 12.5, color: theme.muted, marginTop: 3 }}>{g.ageY} yrs · {MON[g.month]} {g.year}</div>
@@ -55,7 +55,9 @@ export default function App() {
         </div>
         <div style={{ textAlign: 'right' }}>
           <div style={{ fontSize: 11, fontWeight: 800, letterSpacing: '.08em', textTransform: 'uppercase', color: theme.accent }}>{STAGE_LABEL[g.stage]}</div>
-          <div style={{ fontSize: 12, color: theme.muted }}>{g.livingWith === 'parents' ? 'Living with parents' : 'Own apartment'}</div>
+          <div style={{ fontSize: 12, color: g.homeless ? theme.bad : theme.muted }}>
+            {g.homeless ? 'On the street' : g.livingWith === 'parents' ? 'Living with parents' : g.inheritedHome ? 'The family house' : 'Own apartment'}
+          </div>
         </div>
       </div>
 
@@ -199,7 +201,7 @@ function HealthScreen({ g, onBack }) {
       Nothing wrong with you today.{(g.immuneUntil || 0) > ((g.year || 0) * 12 + (g.month || 0)) ? ' Still shrugging off the last thing.' : ''}
     </div>)}
 
-    <div style={{ fontSize: 11, fontWeight: 900, letterSpacing: '.09em', textTransform: 'uppercase', color: theme.muted, marginBottom: 8 }}>Medicine cabinet</div>
+    <div style={{ fontSize: 11, fontWeight: 900, letterSpacing: '.09em', textTransform: 'uppercase', color: theme.muted, marginBottom: 8 }}>Medicine you own</div>
     {Object.entries(PILLS).filter(([k]) => (meds[k] || 0) > 0).length === 0
       ? <div style={{ fontSize: 11.5, color: theme.muted, padding: '4px 2px 10px' }}>Empty. The Shop app on your phone sells the basics.</div>
       : Object.entries(PILLS).map(([k, p]) => (meds[k] || 0) > 0 && (<div key={k} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '7px 0', borderBottom: `1px solid ${theme.line}` }}>
@@ -252,7 +254,7 @@ function LifeCard({ g }) {
     <span style={{ color: theme.muted }}>{k}</span><span style={{ fontWeight: 700, color: tint || theme.text }}>{v}</span></div>);
   return (<Card style={{ marginBottom: 14 }}>
     <div style={{ fontSize: 11, fontWeight: 900, letterSpacing: '.09em', textTransform: 'uppercase', color: theme.muted, marginBottom: 6 }}>Your life right now</div>
-    {row('Living', g.hasApartment ? HOUSING[g.housing || 'room'].label : "At your parents'")}
+    {row('Living', g.homeless ? 'Nowhere — on the street' : g.inheritedHome ? `${HOUSING[g.housing || 'room'].label} · yours outright` : g.hasApartment ? HOUSING[g.housing || 'room'].label : "At your parents'")}
     {g.hasApartment && row('Eating', `${DIET[g.diet || 'cook'].label}${g.gym ? ' · gym' : ''}`)}
     {row('Work', g.job ? `${g.job.title} · ${g.job.employer}` : (g.stage === 'career' ? 'No job' : '—'), g.job ? theme.text : theme.muted)}
     {g.production && row('Filming', `${g.production.title} · ${g.production.monthsLeft} mo left`, theme.gold)}
@@ -293,9 +295,11 @@ function OriginCard({ g }) {
     <div style={{ fontSize: 13.5, lineHeight: 1.6 }}>{g.originStory}</div>
   </Card>);
 }
-function HeaderFigures({ g, onOpen }) {
+// A portrait, not a button. Tapping it used to jump to the rent-and-groceries screen,
+// which is not what anyone expects from their own face.
+function HeaderFigures({ g }) {
   const mate = companionOf(g);
-  return (<div onClick={onOpen} title="Wardrobe" style={{ display: 'flex', alignItems: 'flex-end', gap: 1, cursor: 'pointer' }}>
+  return (<div style={{ display: 'flex', alignItems: 'flex-end', gap: 1 }}>
     <Avatar look={lookOf(g)} size={48} title={g.name} />
     {mate && <Avatar look={lookOfPerson(mate.person)} size={mate.married ? 46 : 42}
       title={`${mate.person.name} · ${mate.married ? 'spouse' : 'partner'}`}

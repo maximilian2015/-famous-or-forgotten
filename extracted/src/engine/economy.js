@@ -35,8 +35,9 @@ export const HOUSING = {
 };
 export const HOUSING_ORDER = ['room', 'studio', 'flat', 'house', 'penthouse'];
 export function home(s) { return HOUSING[s.housing || 'room'] || HOUSING.room; }
-// Read by systems/life/health.js — a damp shared room is a real reason to fall ill.
-export function homeIllness(s) { return s.hasApartment ? (home(s).ill || 0) : 0; }
+// Read by systems/life/health.js — a damp shared room is a real reason to fall ill,
+// and a doorway is a much better one.
+export function homeIllness(s) { return s.homeless ? 26 : (s.hasApartment ? (home(s).ill || 0) : 0); }
 // Read by engine/time.js — space and quiet give you back part of the month.
 export function homeEnergy(s) { return s.hasApartment ? (home(s).ap || 0) : 0; }
 // Read wherever you spend time with someone — you cannot host anyone in a rented room.
@@ -66,7 +67,8 @@ export function toggleGym(s) {
 }
 export function monthlyCosts(s) {
   // Rent is the housing tier — no separate abstract "lifestyle" charge on top of it.
-  const rent = s.hasApartment ? (HOUSING[s.housing || 'room']?.cost || 0) : 0;
+  // A house you inherited is yours: the bills stop, which is the whole point of it.
+  const rent = s.hasApartment && !s.inheritedHome ? (HOUSING[s.housing || 'room']?.cost || 0) : 0;
   const food = s.hasApartment ? (DIET[s.diet || 'cook']?.cost || 0) : 0;
   const gym = s.hasApartment && s.gym ? GYM_COST : 0;
   const team = (s.retainers ? Object.values(s.retainers).filter(Boolean).length : 0) * 1500;
@@ -128,13 +130,41 @@ export function earn(s, amount, note) {
   s.cash = (s.cash || 0) + amount; s.incomeYear = (s.incomeYear || 0) + amount;
   if (note) addTimeline(s, `${note}: +€${Math.round(amount).toLocaleString()}.`);
 }
+// Miss the rent twice and the landlord stops being patient. Where you land depends on
+// whether there is anyone left to take you in.
 function checkInsolvency(s) {
-  if ((s.cash || 0) >= -2000) return;
-  s.flags = s.flags || {}; s.flags.inDebt = (s.flags.inDebt || 0) + 1;
-  s.mental = Math.max(0, (s.mental || 0) - 2);
-  if (s.flags.inDebt === 1) addTimeline(s, 'Your account went red. Letters, calls, that tight feeling in your chest. Fix this before it fixes you.', true);
-  if (s.flags.inDebt >= 3 && s.hasApartment) {
-    s.hasApartment = false; s.livingWith = 'parents'; s.rent = 0; s.stage = 'moving_out'; s.flags.inDebt = 0;
-    addTimeline(s, 'You lost the apartment. Back to your parents\' place, tail between your legs. The climb resets — but you know the way now.', true);
+  if (s.homeless) {
+    // The street bills you in a currency you cannot borrow.
+    s.mental = Math.max(0, (s.mental || 0) - 4);
+    s.health = Math.max(0, (s.health || 0) - 2);
+    s.monthsOnStreet = (s.monthsOnStreet || 0) + 1;
+    if (s.monthsOnStreet === 3) addTimeline(s, 'Three months out here. People you used to know cross the road.', true);
+    return;
+  }
+  if (!s.hasApartment) { s.rentMissed = 0; return; }
+  if (s.inheritedHome) { s.rentMissed = 0; return; }   // nobody evicts you from your own house
+
+  if ((s.cash || 0) >= 0) { s.rentMissed = 0; return; }
+  s.rentMissed = (s.rentMissed || 0) + 1;
+  s.mental = Math.max(0, (s.mental || 0) - 3);
+  if (s.rentMissed === 1) {
+    addTimeline(s, 'You could not cover the rent this month. A letter came, and then another. One more and you are out.', true);
+    s.lastEvent = 'Rent went unpaid. Miss it again and the landlord changes the locks.';
+    return;
+  }
+  if (s.rentMissed < 2) return;
+
+  const parent = (s.family || []).find((p) => p.alive && (p.relation === 'Mother' || p.relation === 'Father'));
+  s.hasApartment = false; s.housing = 'room'; s.rentMissed = 0; s.stage = 'moving_out';
+  if (parent) {
+    s.livingWith = 'parents'; s.homeless = false;
+    s.mental = Math.max(0, (s.mental || 0) - 8);
+    addTimeline(s, `Evicted. ${parent.name} made up your old bed without saying anything about it. The climb resets — but you know the way now.`, true);
+    s.lastEvent = `You lost the flat and moved back in with ${parent.name.split(' ')[0]}.`;
+  } else {
+    s.livingWith = 'street'; s.homeless = true; s.monthsOnStreet = 0;
+    s.mental = Math.max(0, (s.mental || 0) - 18);
+    addTimeline(s, 'Evicted, and nobody left to take you in. The first night out is the one you remember.', true);
+    s.lastEvent = 'You lost the flat. There is nobody left to go back to.';
   }
 }

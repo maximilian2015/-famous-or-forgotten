@@ -10,31 +10,31 @@ export const CLASSES = {
     weight: 18, label: 'Struggling',
     money: 'Money was the thing your parents argued about after you went to bed.',
     jobs: ['cleaner', 'warehouse packer', 'care worker', 'kitchen porter', 'bus driver', 'shelf stacker'],
-    allowance: [30, 90], ask: 0.35, unemployedOdds: 30,
+    allowance: [30, 90], ask: 0.35, unemployedOdds: 30, estate: [0, 1800], leavesHome: false,
   },
   getting_by: {
     weight: 34, label: 'Getting by',
     money: 'There was always food on the table and never quite enough for the rest.',
     jobs: ['nurse', 'mechanic', 'shop manager', 'office clerk', 'postal worker', 'hairdresser'],
-    allowance: [120, 280], ask: 0.7, unemployedOdds: 14,
+    allowance: [120, 280], ask: 0.7, unemployedOdds: 14, estate: [1500, 11000], leavesHome: false,
   },
   comfortable: {
     weight: 28, label: 'Comfortable',
     money: 'Nothing extravagant, but nobody checked the price of things.',
     jobs: ['teacher', 'accountant', 'engineer', 'physiotherapist', 'chef', 'architect'],
-    allowance: [320, 700], ask: 1.4, unemployedOdds: 7,
+    allowance: [320, 700], ask: 1.4, unemployedOdds: 7, estate: [14000, 55000], leavesHome: false,
   },
   well_off: {
     weight: 15, label: 'Well off',
     money: 'Two cars, a house with a garden, and holidays that involved aeroplanes.',
     jobs: ['surgeon', 'lawyer', 'company director', 'dentist', 'university lecturer', 'notary'],
-    allowance: [800, 1700], ask: 3, unemployedOdds: 3,
+    allowance: [800, 1700], ask: 3, unemployedOdds: 3, estate: [70000, 240000], leavesHome: true,
   },
   rich: {
     weight: 5, label: 'Rich',
     money: 'You did not learn what things cost until you were old enough to be embarrassed by it.',
     jobs: ['shipping magnate', 'private banker', 'property developer', 'gallery owner', 'surgeon'],
-    allowance: [1900, 3400], ask: 7, unemployedOdds: 1,
+    allowance: [1900, 3400], ask: 7, unemployedOdds: 1, estate: [280000, 900000], leavesHome: true,
   },
 };
 export const CLASS_ORDER = ['struggling', 'getting_by', 'comfortable', 'well_off', 'rich'];
@@ -69,7 +69,11 @@ const YEARS = ['two', 'three', 'four', 'five', 'six', 'seven', 'eight', 'nine', 
 export function beginLife(s) {
   s.familyClass = rollClass();
   const c = classOf(s);
-  s.familyAsk = c.ask;   // family.js reads this instead of importing back into here
+  // family.js reads these off state instead of importing back into here — this module
+  // already imports makeFamily from there, and the cycle is not worth the tidiness.
+  s.familyAsk = c.ask;
+  s.familyEstate = c.estate;
+  s.familyLeavesHome = c.leavesHome;
 
   // Not every child gets two married parents.
   const setup = chance(76) ? 'married' : chance(58) ? 'together' : 'single';

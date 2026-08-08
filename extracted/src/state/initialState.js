@@ -12,6 +12,8 @@ export function createInitialState(opts = {}) {
     housing: 'room', diet: 'cook', gym: false, genreXP: {},
     // A newborn owns nothing. Money comes from the family — see systems/life/origin.js.
     cash: 0, familyClass: 'getting_by', familyAsk: 1, singleParent: false,
+    familyEstate: null, familyLeavesHome: false, inheritedHome: false,
+    homeless: false, rentMissed: 0, monthsOnStreet: 0,
     originStory: '', origin: null,
     fame: 0, media: 0, respect: 0, scandal: 0,
     mental: 80, health: 90, looks: 50, charisma: 40, confidence: 40,
