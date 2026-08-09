@@ -55,9 +55,25 @@ export function OpenCall({ g, ocTab, setOcTab, teenMode }) {
     {!list.length && <div style={{ fontSize: 12.5, color: theme.muted, textAlign: 'center', padding: 22 }}>Nothing on this shelf right now.</div>}
     {list.map((c) => { const locked = (g.fame || 0) < (c.minFame || 0); const ch = castingChance(g, c); const chipCol = ch >= 70 ? theme.good : ch >= 45 ? theme.accent : theme.gold;
       return (<div key={c.id} style={{ background: theme.panel, border: `1px solid ${theme.line}`, borderRadius: 12, padding: '10px 12px', marginBottom: 8 }}>
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline' }}><div style={{ fontSize: 13.5, fontWeight: 800 }}>{c.title}</div><div style={{ fontSize: 13, fontWeight: 900, color: theme.gold }}>€{c.salary.toLocaleString()}</div></div>
-        <div style={{ fontSize: 11.5, color: theme.muted, marginTop: 3 }}>{c.role} · {c.type} · {c.months} mo</div>
-        <span style={{ display: 'inline-block', fontSize: 10.5, fontWeight: 800, padding: '3px 8px', borderRadius: 20, background: 'rgba(158,116,255,.18)', color: chipCol, marginTop: 6 }}>{locked ? 'Fame too low' : ch + '% shot'}</span>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline' }}>
+          <div style={{ fontSize: 13.5, fontWeight: 800 }}>{c.title}</div>
+          <div style={{ textAlign: 'right' }}>
+            <div style={{ fontSize: 13, fontWeight: 900, color: theme.gold }}>€{(c.monthlyRate || c.salary).toLocaleString()}<span style={{ fontSize: 10, fontWeight: 700, color: theme.muted }}>{c.months > 1 ? '/mo' : ''}</span></div>
+            {c.months > 1 && <div style={{ fontSize: 10, color: theme.muted, fontWeight: 700 }}>€{c.salary.toLocaleString()} total</div>}
+          </div>
+        </div>
+        <div style={{ fontSize: 11.5, color: theme.muted, marginTop: 3 }}>{c.role} · {c.type}</div>
+        {/* How long this eats of your life, before you say yes to it. */}
+        <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginTop: 7 }}>
+          <div style={{ display: 'flex', gap: 2, flex: 1 }}>
+            {Array.from({ length: 14 }).map((_, i) => (<span key={i} style={{ flex: 1, height: 5, borderRadius: 1,
+              background: i < (c.months || 1) ? (c.months >= 8 ? theme.gold : theme.accent) : 'rgba(255,255,255,.09)' }} />))}
+          </div>
+          <span style={{ fontSize: 10.5, fontWeight: 800, color: c.months >= 8 ? theme.gold : theme.muted, whiteSpace: 'nowrap' }}>
+            {c.months > 1 ? `${c.months} mo shoot` : 'one day'}
+          </span>
+        </div>
+        <span style={{ display: 'inline-block', fontSize: 10.5, fontWeight: 800, padding: '3px 8px', borderRadius: 20, background: 'rgba(158,116,255,.18)', color: chipCol, marginTop: 7 }}>{locked ? `Needs fame ${c.minFame}` : ch + '% shot'}</span>
         {!locked && <div style={{ marginTop: 8 }}><button onClick={() => openAudition(c)} disabled={(g.ap||0)<=0} style={{ width: '100%', border: 'none', borderRadius: 10, padding: '9px', fontSize: 12.5, fontWeight: 800, cursor: (g.ap||0)<=0?'default':'pointer', background: (g.ap||0)<=0?'rgba(120,110,150,.15)':`linear-gradient(135deg,${theme.accent2},${theme.accent})`, color: (g.ap||0)<=0?'#6b6390':'#fff' }}>Audition</button></div>}
       </div>); })}
     <div style={{ marginTop: 4 }}><button onClick={() => dispatch((s) => { refreshCastingPool(s, true); return s; })} style={{ width: '100%', border: 'none', borderRadius: 10, padding: '9px', fontSize: 12.5, fontWeight: 800, cursor: 'pointer', background: 'rgba(158,116,255,.16)', color: '#d9cffa' }}>Refresh listings</button></div>

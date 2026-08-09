@@ -86,6 +86,11 @@ export function productionTick(s) {
   }
   p.paused = 0;
   p.monthsLeft -= 1;
+  // You are paid while you work. A fourteen-month blockbuster that only paid on wrap
+  // would starve you out of your flat long before the premiere.
+  const perMonth = Math.round((p.salary || 0) / Math.max(1, p.months || 1));
+  p.paid = (p.paid || 0) + perMonth;
+  if (perMonth > 0) earn(s, perMonth, `"${p.title}" — month ${(p.months - p.monthsLeft)}`);
   if (p.monthsLeft > 0) return;
   wrapProduction(s);
 }
@@ -111,7 +116,10 @@ function wrapProduction(s) {
   const bucket = s.dream === 'singer' ? 'discography' : 'filmography';
   (s[bucket] = s[bucket] || []).unshift(credit);
   addGenreXP(s, p.genre, rating);
-  earn(s, p.salary, `"${credit.title}" paid`);
+  // Whatever the monthly instalments did not cover — rounding, and the offers that were
+  // written before instalments existed.
+  const owed = Math.max(0, (p.salary || 0) - (p.paid || 0));
+  if (owed > 0) earn(s, owed, `"${credit.title}" — final payment`);
   markReleased(s);
   s.fame = clamp((s.fame || 0) + { tentpole: 9, lead: 5, supporting: 2 }[p.tier] + (rating >= 85 ? 4 : 0) + (worldHit ? 25 : 0));
   s.confidence = clamp((s.confidence || 0) + 2);

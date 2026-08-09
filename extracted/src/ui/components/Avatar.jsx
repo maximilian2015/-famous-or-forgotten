@@ -41,9 +41,14 @@ function greyed(colour, age) {
 // The head is a circle at (30,26) r17, so every style is cut against that.
 function Hair({ id, colour, skin }) {
   const hi = lighten(colour, 0.24);
-  // The hairline sits at y≈18 in the middle and drops to the temples. Higher than that
-  // and every style reads as a receding one.
-  const cap = 'M13 23 Q30 2 47 23 L47 28 Q43 19 30 17.5 Q17 19 13 28 Z';
+  // GEOMETRY, because this was wrong in every style at once: the head is a circle at
+  // (30,26) r17, so the scalp runs from y=9 to y=43. The outer edge of any hair has to
+  // clear y=9 or a bare crescent shows above it — which is exactly what "half the head
+  // is bald" looked like. A quadratic from (12,26) to (48,26) peaks at
+  // 0.25*26 + 0.5*ctrlY + 0.25*26, so the control point has to be well negative.
+  // Outer apex here lands at y≈5.5, three units of hair proud of the skull.
+  // The inner edge is the hairline: y≈17.5 in the middle, dropping to 30 at the temples.
+  const cap = 'M12 26 Q30 -15 48 26 L48 30 Q44 20 30 17.5 Q16 20 12 30 Z';
   switch (id) {
     case 'buzz':
       return <path d="M13.5 24 Q30 6 46.5 24 L46.5 27.5 Q42 20 30 19 Q18 20 13.5 27.5 Z" fill={mix(colour, skin, 0.26)} />;
