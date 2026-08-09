@@ -21,8 +21,12 @@ export function seasonCap(type) { return SEASON_CAP[type] || 5; }
 // The network decides on the numbers. A flop is gone; a hit is renewed before the
 // finale airs. Long-running shows also get tired — each season shaves the odds.
 export function renewalOdds(rating, season, type) {
-  const base = rating >= 88 ? 94 : rating >= 78 ? 84 : rating >= 68 ? 66 : rating >= 55 ? 38 : rating >= 45 ? 14 : 3;
-  const fatigue = Math.max(0, season - 2) * 7;                  // seasons 3+ get harder
+  // Anything the audience actually likes comes back — sixty is the line, and above it
+  // renewal is the default rather than a coin toss. Below fifty the network starts
+  // looking for a reason, and below forty it has one.
+  const base = rating >= 88 ? 96 : rating >= 78 ? 93 : rating >= 68 ? 90 : rating >= 60 ? 86
+    : rating >= 50 ? 55 : rating >= 40 ? 20 : 4;
+  const fatigue = Math.max(0, season - 3) * 4;                  // long runs tire slowly
   const room = season >= seasonCap(type) ? -100 : 0;            // the format runs out
   return Math.max(0, Math.min(97, base - fatigue + room));
 }

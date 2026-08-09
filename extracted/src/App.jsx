@@ -763,22 +763,59 @@ function Poster({ title, type }) {
     <span style={{ fontSize: 15, fontWeight: 900, color: 'rgba(255,255,255,.85)', letterSpacing: '.02em' }}>{initials}</span>
   </div>);
 }
-function CreditRow({ c }) {
-  const stars = ((c.rating || 0) / 10).toFixed(1);
-  const starCol = (c.rating || 0) >= 85 ? theme.good : (c.rating || 0) >= 60 ? theme.gold : theme.muted;
-  return (<div style={{ display: 'flex', gap: 11, padding: '10px 2px', borderBottom: `1px solid ${theme.line}` }}>
-    <Poster title={c.title} type={c.type} />
+// Seasons of one show and parts of one franchise are ONE thing on a filmography,
+// not eleven separate lines. Strip the season/part suffix and group on what is left.
+function creditRoot(c) {
+  return String(c.title || '').replace(/\s*·\s*season\s+\d+$/i, '').replace(/\s+(II|III|IV|V|VI)$/, '').trim();
+}
+function groupCredits(list) {
+  const byRoot = new Map();
+  for (const c of list) {
+    const root = creditRoot(c);
+    if (!byRoot.has(root)) byRoot.set(root, { root, parts: [] });
+    byRoot.get(root).parts.push(c);
+  }
+  return [...byRoot.values()].map((g) => {
+    const parts = g.parts;
+    const best = parts.reduce((a, b) => ((b.rating || 0) > (a.rating || 0) ? b : a));
+    const years = parts.map((p) => p.year).filter(Boolean);
+    return { ...g, best, seasons: parts.filter((p) => p.season).length, films: parts.length,
+      from: Math.min(...years), to: Math.max(...years),
+      earned: parts.reduce((n, p) => n + (p.salary || 0), 0),
+      worldHit: parts.some((p) => p.status === 'World Hit') };
+  }).sort((a, b) => b.to - a.to);
+}
+function CreditRow({ group }) {
+  const c = group.best;
+  const r = c.rating || 0;
+  const stars = (r / 10).toFixed(1);
+  const hit = r >= 85 || group.worldHit;
+  const starCol = group.worldHit ? theme.gold : r >= 85 ? theme.good : r >= 60 ? theme.gold : theme.muted;
+  const runs = group.seasons > 1 ? `${group.seasons} seasons` : group.films > 1 ? `${group.films} films` : null;
+  return (<div style={{ display: 'flex', gap: 11, padding: '11px 10px', borderRadius: 12, marginBottom: 6,
+    // A hit should be visible from across the page, not spelled out in small print.
+    background: group.worldHit ? 'linear-gradient(100deg, rgba(255,209,102,.16), rgba(255,209,102,.04))'
+      : hit ? 'rgba(95,206,138,.09)' : 'transparent',
+    border: `1px solid ${group.worldHit ? 'rgba(255,209,102,.45)' : hit ? 'rgba(95,206,138,.28)' : theme.line}` }}>
+    <Poster title={group.root} type={c.type} />
     <div style={{ flex: 1, minWidth: 0 }}>
       <div style={{ display: 'flex', justifyContent: 'space-between', gap: 8 }}>
-        <div style={{ fontSize: 14, fontWeight: 800, lineHeight: 1.25 }}>{c.title}</div>
-        <div style={{ fontSize: 12, color: theme.muted, flex: 'none', fontVariantNumeric: 'tabular-nums' }}>{c.year}</div>
+        <div style={{ fontSize: 14, fontWeight: 800, lineHeight: 1.25 }}>{group.root}</div>
+        <div style={{ fontSize: 12, color: theme.muted, flex: 'none', fontVariantNumeric: 'tabular-nums' }}>
+          {group.from === group.to ? group.to : `${group.from}–${group.to}`}
+        </div>
       </div>
-      <div style={{ display: 'flex', alignItems: 'center', gap: 7, margin: '4px 0 3px' }}>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 7, margin: '4px 0 3px', flexWrap: 'wrap' }}>
         <span style={{ fontSize: 12.5, fontWeight: 800, color: starCol }}>★ {stars}</span>
         <span style={{ fontSize: 11.5, color: theme.muted }}>{c.type}</span>
-        {c.status === 'World Hit' && <span style={{ fontSize: 10, fontWeight: 900, color: theme.gold }}>🌍 WORLD HIT</span>}
+        {runs && <span style={{ fontSize: 10, fontWeight: 900, letterSpacing: '.06em', textTransform: 'uppercase',
+          color: theme.accent, background: 'rgba(158,116,255,.16)', padding: '2px 7px', borderRadius: 20 }}>{runs}</span>}
+        {group.worldHit ? <span style={{ fontSize: 10, fontWeight: 900, color: theme.gold }}>🌍 WORLD HIT</span>
+          : r >= 85 ? <span style={{ fontSize: 10, fontWeight: 900, letterSpacing: '.06em', color: theme.good }}>HIT</span> : null}
       </div>
-      <div style={{ fontSize: 11.5, color: theme.muted }}>{c.role}{c.genre ? ` · ${c.genre}` : ''}</div>
+      <div style={{ fontSize: 11.5, color: theme.muted }}>
+        {c.role}{c.genre ? ` · ${c.genre}` : ''}{group.earned > 0 ? ` · €${group.earned.toLocaleString()}` : ''}
+      </div>
     </div>
   </div>);
 }
@@ -796,12 +833,25 @@ function CreditsList({ g, credits, label }) {
         </div>
       </div>
     </div>)}
-    <div style={{ fontSize: 11, fontWeight: 900, letterSpacing: '.09em', textTransform: 'uppercase', color: theme.muted, marginBottom: 4 }}>
-      {label}{credits.length ? ` · ${credits.length}` : ''}
-    </div>
-    {credits.length === 0
-      ? <div style={{ fontSize: 12.5, color: theme.muted, textAlign: 'center', padding: 20, lineHeight: 1.6 }}>Nothing released yet.<br />Audition in OpenCall, or take an offer in Messages.</div>
-      : credits.map((c, i) => <CreditRow key={i} c={c} />)}
+    {(() => {
+      const groups = groupCredits(credits);
+      const hits = credits.filter((c) => (c.rating || 0) >= 85).length;
+      const world = credits.filter((c) => c.status === 'World Hit').length;
+      return (<>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', marginBottom: 8 }}>
+          <div style={{ fontSize: 11, fontWeight: 900, letterSpacing: '.09em', textTransform: 'uppercase', color: theme.muted }}>
+            {label}{credits.length ? ` · ${credits.length}` : ''}
+          </div>
+          {hits > 0 && <div style={{ fontSize: 10.5, fontWeight: 800 }}>
+            <span style={{ color: theme.good }}>{hits} hit{hits === 1 ? '' : 's'}</span>
+            {world > 0 && <span style={{ color: theme.gold }}> · {world} world</span>}
+          </div>}
+        </div>
+        {credits.length === 0
+          ? <div style={{ fontSize: 12.5, color: theme.muted, textAlign: 'center', padding: 20, lineHeight: 1.6 }}>Nothing released yet.<br />Audition in OpenCall, or take an offer in Messages.</div>
+          : groups.map((gr) => <CreditRow key={gr.root} group={gr} />)}
+      </>);
+    })()}
   </div>);
 }
 // The old prototype had a planner and Maxi missed it: twelve months ahead, with what is
