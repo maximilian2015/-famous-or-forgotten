@@ -1,5 +1,6 @@
 import { rint, chance, pick } from '../../engine/rng.js';
 import { computeAccess } from './access.js';
+import { feeFor } from '../meta/status.js';
 import { addTimeline } from '../../engine/timeline.js';
 import { earn } from '../../engine/economy.js';
 import { GENRES } from '../meta/news.js';
@@ -15,9 +16,11 @@ export function generateOffer(s) {
   let tier;
   if (acc.aaa && fame >= 60 && chance(40)) tier = 'tentpole';
   else if (fame >= 35) tier = 'lead'; else tier = 'supporting';
-  const base = { tentpole: [60000, 200000], lead: [12000, 45000], supporting: [3000, 10000] }[tier];
+  // Base rates are what an unknown would be paid; feeFor scales them to your name, the
+  // same way castings do. An offer that reached you through an agent is worth the money.
+  const base = { tentpole: [90000, 260000], lead: [26000, 70000], supporting: [6000, 16000] }[tier];
   const prestige = { tentpole: rint(70, 95), lead: rint(45, 70), supporting: rint(20, 45) }[tier];
-  const salary = rint(base[0], base[1]);
+  const salary = feeFor(s, rint(base[0], base[1]));
   return { id: 'off' + Date.now() + Math.floor(Math.random() * 1000),
     projectTitle: (tier === 'tentpole' ? '⭐ ' : '') + title(s, tier === 'tentpole'),
     role: tier === 'supporting' ? 'Supporting' : 'Lead',

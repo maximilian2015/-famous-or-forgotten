@@ -4,40 +4,48 @@ import { earn, markReleased } from '../../engine/economy.js';
 import { GENRES } from '../meta/news.js';
 import { addGenreXP, genreBonus } from './genres.js';
 import { startProduction } from './production.js';
+import { feeFor } from '../meta/status.js';
 const clamp = (v) => Math.max(0, Math.min(100, v));
-// How long a shoot runs is the scale of the thing, not a constant. A soap episode is
-// two months; a studio blockbuster can eat a year of your life. Pay is a MONTHLY rate —
-// four months at €3,000 is €12,000, which is the number that has to make sense against
-// rent. Format: [type, role, [minMonths, maxMonths], monthlyRate, scale, minFame]
+// Two things the old table got wrong, both of them real-world facts:
+//   · television is paid PER EPISODE, film is paid for the picture. They are not the
+//     same unit and showing both as "per month" made a soap look like a salary.
+//   · every number here is SCALE — what an unknown gets. A name is paid a multiple of
+//     it (systems/meta/status.js), which is why the same lead role is €45k for a nobody
+//     and several million for an A-lister. That gap is the whole career.
+//
+// series: [type, role, [minMo,maxMo], [minEps,maxEps], perEpisodeBase, scale, minFame]
+// film:   [type, role, [minMo,maxMo], totalBase, scale, minFame]
 const POOLS = {
   actor: {
     series: [
-      ['Soap Opera', 'Recurring', [3, 5], 3000, 'recurring'],
-      ['Drama Series', 'Guest role', [2, 3], 5000, 'episode'],
-      ['Crime Series', 'Episode', [2, 3], 4200, 'episode'],
-      ['Prestige Series', 'Season lead', [7, 10], 12000, 'prestige', 55],
+      ['Soap Opera', 'Recurring', [3, 5], [22, 44], 900, 'recurring'],
+      ['Drama Series', 'Guest role', [2, 3], [2, 4], 2600, 'episode'],
+      ['Crime Series', 'Episode', [2, 3], [1, 3], 3200, 'episode'],
+      ['Prestige Series', 'Season lead', [7, 10], [8, 10], 22000, 'prestige', 55],
     ],
     film: [
-      ['Indie Film', 'Supporting', [2, 4], 3000, 'indie'],
-      ['Horror Movie', 'Victim', [1, 2], 2600, 'small'],
-      ['Feature Film', 'Lead', [5, 8], 6500, 'feature', 30],
-      ['Studio Blockbuster', 'Lead', [10, 14], 14000, 'blockbuster', 65],
+      ['Short Film', 'Lead', [1, 2], 3500, 'small'],
+      ['Horror Movie', 'Victim', [1, 2], 9000, 'small'],
+      ['Indie Film', 'Supporting', [2, 4], 18000, 'indie'],
+      ['Indie Film', 'Lead', [3, 5], 40000, 'indie', 15],
+      ['Feature Film', 'Lead', [5, 8], 120000, 'feature', 30],
+      ['Studio Blockbuster', 'Lead', [10, 14], 600000, 'blockbuster', 65],
     ],
-    ads: [['Brand Campaign', 'Face', [1, 1], 6000, 'oneoff'], ['Commercial', 'Actor', [1, 1], 3500, 'oneoff']],
-    gigs: [['Theatre Slot', 'Stage', [2, 2], 1500, 'small'], ['Voice Session', 'Voice', [1, 1], 1200, 'oneoff'], ['TV Extra', 'Background', [1, 1], 500, 'oneoff']],
+    ads: [['Brand Campaign', 'Face', [1, 1], 25000, 'oneoff'], ['Commercial', 'Actor', [1, 1], 6000, 'oneoff']],
+    gigs: [['Theatre Run', 'Stage', [2, 2], 7000, 'small'], ['Voice Session', 'Voice', [1, 1], 1400, 'oneoff'], ['TV Extra', 'Background', [1, 1], 350, 'oneoff']],
   },
   singer: {
     series: [
-      ['Music Show', 'Guest', [2, 2], 3000, 'episode'],
-      ['Talent Series', 'Judge', [4, 7], 9000, 'recurring', 40],
+      ['Music Show', 'Guest', [1, 2], [1, 2], 3500, 'episode'],
+      ['Talent Series', 'Judge', [4, 7], [10, 16], 14000, 'recurring', 40],
     ],
     film: [
-      ['Music Video', 'Star', [1, 1], 4000, 'oneoff'],
-      ['Concert Film', 'Headliner', [2, 3], 9000, 'feature', 30],
-      ['Stadium Tour', 'Headliner', [8, 12], 16000, 'blockbuster', 65],
+      ['Music Video', 'Star', [1, 1], 9000, 'oneoff'],
+      ['Concert Film', 'Headliner', [2, 3], 60000, 'feature', 30],
+      ['Stadium Tour', 'Headliner', [8, 12], 900000, 'blockbuster', 65],
     ],
-    ads: [['Jingle', 'Voice', [1, 1], 5000, 'oneoff'], ['Brand Song', 'Artist', [1, 1], 6000, 'oneoff']],
-    gigs: [['Open Mic', 'Performer', [1, 1], 800, 'oneoff'], ['Festival Slot', 'Act', [1, 1], 2000, 'oneoff'], ['Session Work', 'Session', [1, 1], 1500, 'oneoff']],
+    ads: [['Jingle', 'Voice', [1, 1], 7000, 'oneoff'], ['Brand Song', 'Artist', [1, 1], 30000, 'oneoff']],
+    gigs: [['Open Mic', 'Performer', [1, 1], 250, 'oneoff'], ['Festival Slot', 'Act', [1, 1], 3000, 'oneoff'], ['Session Work', 'Session', [1, 1], 1800, 'oneoff']],
   },
 };
 // What the shoot is worth to your name, and how the world treats the credit.
@@ -61,11 +69,18 @@ export function refreshCastingPool(s, force) {
   s.castingPool = force ? [] : s.castingPool.filter((c) => (c._expires || 0) > ((s.year || 0) * 12 + (s.month || 0)));
   while (s.castingPool.length < 6) {
     const shelf = pick(Object.keys(shelves));
-    const [type, role, span, rate, scale, minFame] = pick(shelves[shelf]);
+    const row = pick(shelves[shelf]);
+    const perEpisode = shelf === 'series';
+    const [type, role, span] = row;
+    const [eps, base, scale, minFame] = perEpisode ? row.slice(3) : [null, ...row.slice(3)];
     const months = rint(span[0], span[1]);
+    const episodes = perEpisode ? rint(eps[0], eps[1]) : 0;
+    // What YOU would be paid, not what the part is worth to an unknown.
+    const rate = feeFor(s, base);
     s.castingPool.push({
       id: 'cast' + Date.now() + Math.floor(Math.random() * 10000), title: titleFor(), type, role, shelf, scale,
-      months, monthlyRate: rate, salary: rate * months,   // salary is the whole fee, paid across the shoot
+      months, episodes, perEpisode, episodeFee: perEpisode ? rate : 0,
+      salary: perEpisode ? rate * episodes : rate,        // the whole fee, paid across the shoot
       genre: pick(GENRES), minFame: minFame || 0,
       _expires: (s.year || 0) * 12 + (s.month || 0) + rint(2, 4),
     });
@@ -96,7 +111,8 @@ export function auditionFor(s, id, quality = 50) {
         prestigeScore: rint(sc.prestige[0], sc.prestige[1]) + Math.round((quality - 50) * 0.12),
       });
       s.castingPool = (s.castingPool || []).filter((x) => x.id !== id);
-      s.lastEvent = `${quality >= 80 ? 'The room goes quiet — you nailed it. ' : ''}You booked "${c.title}". ${c.months} months of shooting, €${(c.monthlyRate || 0).toLocaleString()} a month.`;
+      s.lastEvent = `${quality >= 80 ? 'The room goes quiet — you nailed it. ' : ''}You booked "${c.title}". ${c.months} months of shooting — `
+        + (c.perEpisode ? `€${c.episodeFee.toLocaleString()} an episode across ${c.episodes}.` : `€${c.salary.toLocaleString()} for the picture.`);
       return s;
     }
     // A voice session or a day as an extra really is over by the evening.

@@ -12,6 +12,12 @@ export function fameTier(fame) {
   for (const t of FAME_TIERS) if ((fame || 0) >= t.min) cur = t;
   return cur;
 }
+
+// The same part pays scale to a nobody and pays a fortune to a name — that gap IS the
+// career. Every fee in the game is a base rate for an unknown, multiplied by this.
+const FEE_MULT = { unknown: 1, rising: 1.8, known: 4, star: 12, alist: 35, icon: 80 };
+export function feeMultiplier(s) { return FEE_MULT[fameTier(s.fame).id] || 1; }
+export function feeFor(s, base) { return Math.round((base || 0) * feeMultiplier(s)); }
 export function setHousing(s, key) {
   if (!HOUSING[key]) return s;
   if (!s.hasApartment) { s.lastEvent = 'You still live with your parents.'; return s; }

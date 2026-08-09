@@ -58,8 +58,14 @@ export function OpenCall({ g, ocTab, setOcTab, teenMode }) {
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline' }}>
           <div style={{ fontSize: 13.5, fontWeight: 800 }}>{c.title}</div>
           <div style={{ textAlign: 'right' }}>
-            <div style={{ fontSize: 13, fontWeight: 900, color: theme.gold }}>€{(c.monthlyRate || c.salary).toLocaleString()}<span style={{ fontSize: 10, fontWeight: 700, color: theme.muted }}>{c.months > 1 ? '/mo' : ''}</span></div>
-            {c.months > 1 && <div style={{ fontSize: 10, color: theme.muted, fontWeight: 700 }}>€{c.salary.toLocaleString()} total</div>}
+            {/* Television is quoted per episode, film for the picture. Same as real life. */}
+            <div style={{ fontSize: 13, fontWeight: 900, color: theme.gold }}>
+              €{(c.perEpisode ? c.episodeFee : c.salary).toLocaleString()}
+              <span style={{ fontSize: 10, fontWeight: 700, color: theme.muted }}>{c.perEpisode ? '/ep' : ''}</span>
+            </div>
+            <div style={{ fontSize: 10, color: theme.muted, fontWeight: 700 }}>
+              {c.perEpisode ? `€${c.salary.toLocaleString()} for ${c.episodes} eps` : 'for the picture'}
+            </div>
           </div>
         </div>
         <div style={{ fontSize: 11.5, color: theme.muted, marginTop: 3 }}>{c.role} · {c.type}</div>
