@@ -3,6 +3,7 @@ import { addTimeline } from '../../engine/timeline.js';
 import { earn, markReleased } from '../../engine/economy.js';
 import { hotGenre } from '../meta/news.js';
 import { addGenreXP, genreBonus } from './genres.js';
+import { maybeContinue } from './franchise.js';
 const clamp = (v) => Math.max(0, Math.min(100, v));
 const TIERS = [
   { min: 0, label: 'Disaster' }, { min: 25, label: 'Rocky' }, { min: 50, label: 'Solid' },
@@ -30,6 +31,11 @@ export function startProduction(s, offer) {
     offerId: offer.id, title: offer.projectTitle.replace('⭐ ', ''), role: offer.role, type: offer.type,
     genre: offer.genre, salary: offer.salary, months: offer.months, monthsLeft: offer.months,
     prestigeScore: offer.prestigeScore, tier: offer.tier, campaign: !!offer.campaign,
+    // Carried so the thing can continue: which season, which part of the franchise,
+    // and whether you signed away the right to say no.
+    episodes: offer.episodes || 0, episodeFee: offer.episodeFee || 0,
+    season: offer.season || (offer.episodes ? 1 : 0), part: offer.part || 1,
+    optioned: !!offer.optioned, optionParts: offer.optionParts || 0,
     crew: makeCrew(s.dream), meter: 20,
   };
   s.lastEvent = `Cameras roll on "${s.production.title}". First day on set.`;
@@ -112,7 +118,8 @@ function wrapProduction(s) {
   }
   if (worldHit) rating = Math.max(rating, 96);
   const status = worldHit ? 'World Hit' : rating >= 85 ? 'Hit' : rating >= 70 ? 'Well-received' : rating >= 50 ? 'Released' : 'Flop';
-  const credit = { title: p.title, role: p.role, type: p.type, genre: p.genre, salary: p.salary, rating, status, year: s.year };
+  const credit = { title: p.title, role: p.role, type: p.type, genre: p.genre, salary: p.salary, rating, status, year: s.year,
+    season: p.season || 0, part: p.part > 1 ? p.part : 0 };
   const bucket = s.dream === 'singer' ? 'discography' : 'filmography';
   (s[bucket] = s[bucket] || []).unshift(credit);
   addGenreXP(s, p.genre, rating);
@@ -135,5 +142,8 @@ function wrapProduction(s) {
     s.lastEvent = `"${credit.title}" wraps. It came out ${status.toLowerCase()} — rating ${Math.round(rating)}.${verdictNote}`;
     addTimeline(s, `${credit.title}: ${status} (${Math.round(rating)}/100).`, rating < 50);
   }
+  // Does this thing carry on? A renewal or a sequel arrives as an offer like any other.
+  const next = maybeContinue(s, credit, p);
+  if (next) (s.offers = s.offers || []).push(next);
   s.production = null;
 }

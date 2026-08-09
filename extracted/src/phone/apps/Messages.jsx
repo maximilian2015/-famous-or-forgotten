@@ -12,10 +12,18 @@ export function Messages({ g }) {
     {offers.map((o) => { const tc = o.prestigeScore >= 70 ? ['A-list', theme.good] : o.prestigeScore >= 45 ? ['Solid', theme.accent] : ['Small', theme.muted];
       const big = o.tier !== 'supporting'; const onTrend = o.genre === trend; const cost = campaignCost(o);
       return (<div key={o.id} style={{ background: theme.panel2, border: `1px solid ${theme.line}`, borderRadius: 14, padding: 12 }}>
-        <div style={{ fontSize: 11, fontWeight: 900, color: theme.accent, textTransform: 'uppercase', marginBottom: 4 }}>{agent || 'Unknown Producer'}</div>
+        <div style={{ fontSize: 11, fontWeight: 900, color: theme.accent, textTransform: 'uppercase', marginBottom: 4 }}>
+          {o.kind === 'renewal' ? 'The network' : o.kind === 'sequel' ? 'The studio' : (agent || 'Unknown Producer')}
+        </div>
         <div style={{ fontSize: 13 }}>{o.projectTitle} — {o.role} · {o.type}</div>
-        <div style={{ fontSize: 11.5, color: theme.muted, marginTop: 5 }}>€{o.salary.toLocaleString()} · {o.months} mo · answer within {o.deadline} mo</div>
+        {/* A returning show or a sequel should read as the same thing coming back. */}
+        {o.note && <div style={{ fontSize: 11.5, color: theme.gold, marginTop: 5, lineHeight: 1.45 }}>{o.note}</div>}
+        <div style={{ fontSize: 11.5, color: theme.muted, marginTop: 5 }}>
+          {o.episodes ? `€${o.episodeFee.toLocaleString()}/ep × ${o.episodes} = €${o.salary.toLocaleString()}` : `€${o.salary.toLocaleString()}`} · {o.months} mo · answer within {o.deadline} mo
+        </div>
         <div style={{ display: 'flex', gap: 6, marginTop: 6, flexWrap: 'wrap' }}>
+          {o.kind === 'renewal' && <span style={{ fontSize: 10.5, fontWeight: 800, padding: '3px 8px', borderRadius: 20, background: 'rgba(255,209,102,.18)', color: theme.gold }}>Season {o.season}</span>}
+          {o.kind === 'sequel' && <span style={{ fontSize: 10.5, fontWeight: 800, padding: '3px 8px', borderRadius: 20, background: 'rgba(255,209,102,.18)', color: theme.gold }}>Part {o.part}{o.optioned ? ' · optioned' : ''}</span>}
           <span style={{ fontSize: 10.5, fontWeight: 800, padding: '3px 8px', borderRadius: 20, background: 'rgba(158,116,255,.18)', color: tc[1] }}>{tc[0]}</span>
           <span style={{ fontSize: 10.5, fontWeight: 800, padding: '3px 8px', borderRadius: 20, background: onTrend ? 'rgba(95,206,138,.18)' : 'rgba(158,116,255,.12)', color: onTrend ? theme.good : theme.muted }}>{o.genre}{onTrend ? ' · trending' : ''}</span>
           {o.campaign && <span style={{ fontSize: 10.5, fontWeight: 800, padding: '3px 8px', borderRadius: 20, background: 'rgba(255,209,102,.18)', color: theme.gold }}>📣 campaign running</span>}
