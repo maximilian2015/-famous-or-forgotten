@@ -119,7 +119,7 @@ function wrapProduction(s) {
   if (worldHit) rating = Math.max(rating, 96);
   const status = worldHit ? 'World Hit' : rating >= 85 ? 'Hit' : rating >= 70 ? 'Well-received' : rating >= 50 ? 'Released' : 'Flop';
   const credit = { title: p.title, role: p.role, type: p.type, genre: p.genre, salary: p.salary, rating, status, year: s.year,
-    season: p.season || 0, part: p.part > 1 ? p.part : 0 };
+    season: p.season || 0, part: p.part > 1 ? p.part : 0, episodes: p.episodes || 0 };
   const bucket = s.dream === 'singer' ? 'discography' : 'filmography';
   (s[bucket] = s[bucket] || []).unshift(credit);
   addGenreXP(s, p.genre, rating);

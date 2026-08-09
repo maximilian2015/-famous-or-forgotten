@@ -763,26 +763,33 @@ function Poster({ title, type }) {
     <span style={{ fontSize: 15, fontWeight: 900, color: 'rgba(255,255,255,.85)', letterSpacing: '.02em' }}>{initials}</span>
   </div>);
 }
-// Seasons of one show and parts of one franchise are ONE thing on a filmography,
-// not eleven separate lines. Strip the season/part suffix and group on what is left.
-function creditRoot(c) {
-  return String(c.title || '').replace(/\s*·\s*season\s+\d+$/i, '').replace(/\s+(II|III|IV|V|VI)$/, '').trim();
+// Grouped the way IMDb does it, which is not the same rule for everything:
+// a series is ONE entry with its year range and total episodes, while films — sequels
+// included — each get their own line. "Golden Echo" and "Golden Echo II" are two films.
+function seriesRoot(c) {
+  return String(c.title || '').replace(/\s*·\s*season\s+\d+$/i, '').trim();
 }
 function groupCredits(list) {
-  const byRoot = new Map();
+  const out = [];
+  const shows = new Map();
   for (const c of list) {
-    const root = creditRoot(c);
-    if (!byRoot.has(root)) byRoot.set(root, { root, parts: [] });
-    byRoot.get(root).parts.push(c);
+    if (c.season) {                                   // television
+      const root = seriesRoot(c);
+      if (!shows.has(root)) { const g = { root, parts: [], series: true }; shows.set(root, g); out.push(g); }
+      shows.get(root).parts.push(c);
+    } else {                                          // film, one line each
+      out.push({ root: c.title, parts: [c], series: false });
+    }
   }
-  return [...byRoot.values()].map((g) => {
-    const parts = g.parts;
-    const best = parts.reduce((a, b) => ((b.rating || 0) > (a.rating || 0) ? b : a));
-    const years = parts.map((p) => p.year).filter(Boolean);
-    return { ...g, best, seasons: parts.filter((p) => p.season).length, films: parts.length,
+  return out.map((g) => {
+    const best = g.parts.reduce((a, b) => ((b.rating || 0) > (a.rating || 0) ? b : a));
+    const years = g.parts.map((p) => p.year).filter(Boolean);
+    return { ...g, best,
+      seasons: g.series ? g.parts.length : 0,
+      episodes: g.series ? g.parts.reduce((n, p) => n + (p.episodes || 0), 0) : 0,
       from: Math.min(...years), to: Math.max(...years),
-      earned: parts.reduce((n, p) => n + (p.salary || 0), 0),
-      worldHit: parts.some((p) => p.status === 'World Hit') };
+      earned: g.parts.reduce((n, p) => n + (p.salary || 0), 0),
+      worldHit: g.parts.some((p) => p.status === 'World Hit') };
   }).sort((a, b) => b.to - a.to);
 }
 function CreditRow({ group }) {
@@ -791,7 +798,10 @@ function CreditRow({ group }) {
   const stars = (r / 10).toFixed(1);
   const hit = r >= 85 || group.worldHit;
   const starCol = group.worldHit ? theme.gold : r >= 85 ? theme.good : r >= 60 ? theme.gold : theme.muted;
-  const runs = group.seasons > 1 ? `${group.seasons} seasons` : group.films > 1 ? `${group.films} films` : null;
+  // IMDb writes "34 episodes" under a series and nothing under a film.
+  const runs = group.series
+    ? `${group.episodes || group.seasons} ${group.episodes ? 'episodes' : 'seasons'}${group.seasons > 1 ? ` · ${group.seasons} seasons` : ''}`
+    : null;
   return (<div style={{ display: 'flex', gap: 11, padding: '11px 10px', borderRadius: 12, marginBottom: 6,
     // A hit should be visible from across the page, not spelled out in small print.
     background: group.worldHit ? 'linear-gradient(100deg, rgba(255,209,102,.16), rgba(255,209,102,.04))'
