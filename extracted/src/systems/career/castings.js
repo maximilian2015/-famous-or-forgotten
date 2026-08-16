@@ -4,7 +4,7 @@ import { earn, markReleased } from '../../engine/economy.js';
 import { GENRES } from '../meta/news.js';
 import { addGenreXP, genreBonus } from './genres.js';
 import { startProduction } from './production.js';
-import { quoteFor } from '../meta/status.js';
+import { quoteFor, episodeRate } from '../meta/status.js';
 const clamp = (v) => Math.max(0, Math.min(100, v));
 // Two things the old table got wrong, both of them real-world facts:
 //   · television is paid PER EPISODE, film is paid for the picture. They are not the
@@ -85,10 +85,13 @@ export function refreshCastingPool(s, force) {
     const [eps, medium, scale, minFame, share] = perEpisode ? row.slice(3) : [null, ...row.slice(3)];
     // What YOU are worth in this medium. Zero means they would not have you at any
     // price yet — the listing simply does not appear.
-    const rate = Math.round(quoteFor(s, medium) * (share || 1));
-    if (rate <= 0) continue;
+    const quoted = Math.round(quoteFor(s, medium) * (share || 1));
+    if (quoted <= 0) continue;
     const months = rint(span[0], span[1]);
     const episodes = perEpisode ? rint(eps[0], eps[1]) : 0;
+    // Bands are quoted against a typical season. A longer order pays less per episode.
+    const rate = perEpisode ? episodeRate(quoted, (eps[0] + eps[1]) / 2, episodes) : quoted;
+    if (rate <= 0) continue;
     s.castingPool.push({
       id: 'cast' + Date.now() + Math.floor(Math.random() * 10000), title: titleFor(), type, role, shelf, scale, medium,
       months, episodes, perEpisode, episodeFee: perEpisode ? rate : 0,

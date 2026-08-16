@@ -23,18 +23,32 @@ export function fameTier(fame) {
 // you have not had yet. `null` means the door is shut: an unknown is not offered a
 // studio feature at any figure, and the listing does not appear at all.
 //
-// The ladder is deliberately steeper than the real industry at the top. That is the
-// point of the game: an icon is paid obscenely for anything, including daytime soap.
+// TELEVISION IS PER EPISODE AND FILM IS PER PICTURE, so these bands are NOT comparable
+// side by side. They were calibrated backwards from what a whole project should pay,
+// against the typical episode count of each format — otherwise a soap season at
+// thirty-three episodes out-earned a blockbuster ten to one and film became pointless.
+// The more episodes a format runs, the lower its rate per episode has to be.
+//
+// The ladder is still far steeper at the top than the real industry. That is the point:
+// an icon is paid obscenely for anything. But film stays the biggest single prize.
 export const QUOTE = {
-  tv_daytime:   { unknown: [900, 4000],    rising: [4000, 12000],     known: [12000, 100000],     star: [100000, 1500000],    alist: [1500000, 8000000],    icon: [10000000, 25000000] },
-  tv_network:   { unknown: [2000, 8800],   rising: [8800, 26400],     known: [26400, 220000],     star: [220000, 3300000],    alist: [3300000, 17600000],   icon: [22000000, 55000000] },
-  tv_prestige:  { unknown: null,           rising: [30000, 60000],    known: [60000, 350000],     star: [350000, 5250000],    alist: [5250000, 28000000],   icon: [35000000, 87500000] },
+  tv_daytime:   { unknown: [900, 2500],    rising: [2500, 9000],      known: [9000, 45000],       star: [45000, 200000],      alist: [200000, 550000],      icon: [550000, 900000] },
+  tv_network:   { unknown: [1500, 4500],   rising: [4500, 25000],     known: [25000, 130000],     star: [130000, 600000],     alist: [600000, 1800000],     icon: [1800000, 3500000] },
+  tv_prestige:  { unknown: null,           rising: [25000, 60000],    known: [60000, 320000],     star: [320000, 1500000],    alist: [1500000, 4000000],    icon: [4000000, 8000000] },
   film_indie:   { unknown: [25000, 60000], rising: [120000, 300000],  known: [300000, 800000],    star: [800000, 2500000],    alist: [2500000, 6000000],    icon: [6000000, 12000000] },
   film_studio:  { unknown: null,           rising: [500000, 1200000], known: [1500000, 4000000],  star: [5000000, 10000000],  alist: [12000000, 20000000],  icon: [20000000, 35000000] },
   film_tentpole:{ unknown: null,           rising: null,              known: [4000000, 8000000],  star: [12000000, 20000000], alist: [25000000, 40000000],  icon: [40000000, 80000000] },
   ad:           { unknown: [4000, 12000],  rising: [25000, 70000],    known: [100000, 400000],    star: [400000, 1500000],    alist: [1500000, 5000000],    icon: [5000000, 15000000] },
   gig:          { unknown: [250, 900],     rising: [900, 3000],       known: [3000, 12000],       star: [12000, 60000],       alist: [60000, 200000],       icon: [200000, 600000] },
 };
+
+// A band is quoted against a format's TYPICAL season length. A longer order pays more
+// in total but less per episode — the studio is buying in bulk. The exponent keeps it
+// from being a pure wash: 33% more episodes is about 11% more money, not 33%.
+export function episodeRate(baseRate, typicalEpisodes, actualEpisodes) {
+  if (!actualEpisodes || !typicalEpisodes) return baseRate;
+  return Math.round(baseRate * Math.pow(typicalEpisodes / actualEpisodes, 0.65));
+}
 export const MEDIA = Object.keys(QUOTE);
 
 export function quoteBand(s, medium) {
