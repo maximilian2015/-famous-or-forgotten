@@ -94,6 +94,7 @@ export function refreshCastingPool(s, force) {
     if (rate <= 0) continue;
     s.castingPool.push({
       id: 'cast' + Date.now() + Math.floor(Math.random() * 10000), title: titleFor(), type, role, shelf, scale, medium,
+      share: share || 1,   // negotiation needs it to know the top of YOUR band for this part
       months, episodes, perEpisode, episodeFee: perEpisode ? rate : 0,
       salary: perEpisode ? rate * episodes : rate,        // the whole fee, paid across the shoot
       genre: pick(GENRES), minFame: minFame || 0,

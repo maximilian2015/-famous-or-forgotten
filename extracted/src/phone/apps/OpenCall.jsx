@@ -4,6 +4,44 @@ import { dispatch, getState } from '../../state/store.js';
 import { refreshCastingPool, auditionFor, castingChance, SHELVES, SHELF_BLURB } from '../../systems/career/castings.js';
 import { TimingBar } from '../../ui/components/TimingBar.jsx';
 import { GridRisk } from '../../ui/components/GridRisk.jsx';
+import { useAccent } from '../../ui/appTheme.js';
+import { negotiationFor, haggleOdds, applyHaggle } from '../../systems/career/negotiate.js';
+
+// Only appears once you are somebody. Below Star you are told the number.
+function Haggle({ g, c }) {
+  const [open, setOpen] = useState(false);
+  const accent = useAccent();
+  const n = negotiationFor(g, c);
+  if (!n) return null;
+  if (c.negotiated) return (<div style={{ fontSize: 10.5, color: theme.muted, marginTop: 7, fontWeight: 700 }}>
+    Terms settled — €{(c.perEpisode ? c.episodeFee : c.salary).toLocaleString()}{c.perEpisode ? '/ep' : ''}
+  </div>);
+  if (!open) return (<button onClick={() => setOpen(true)} style={{ marginTop: 7, width: '100%', border: `1px solid ${accent}44`,
+    borderRadius: 10, padding: '7px', fontSize: 11.5, fontWeight: 800, cursor: 'pointer', background: 'transparent', color: accent }}>
+    Have your people talk to them ›
+  </button>);
+  return (<div style={{ marginTop: 8, border: `1px solid ${accent}33`, borderRadius: 10, padding: '9px 10px', background: 'rgba(255,255,255,.03)' }}>
+    <div style={{ fontSize: 10.5, color: theme.muted, marginBottom: 8, lineHeight: 1.5 }}>
+      They opened at €{n.quoted.toLocaleString()}{n.perEpisode ? '/ep' : ''}. You are worth up to €{n.bandTop.toLocaleString()}
+      {n.ceiling > n.bandTop ? `, and your agent can reach €${n.ceiling.toLocaleString()}` : ''}.
+    </div>
+    <div style={{ display: 'grid', gap: 6 }}>
+      {n.asks.map((a) => { const odds = haggleOdds(g, c, a.amount);
+        return (<button key={a.id} onClick={() => { dispatch(applyHaggle, c.id, a.amount); setOpen(false); }}
+          style={{ textAlign: 'left', border: `1px solid ${theme.line}`, borderRadius: 9, padding: '8px 10px', cursor: 'pointer',
+            background: theme.panel, color: theme.text }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', gap: 8 }}>
+            <span style={{ fontSize: 12, fontWeight: 800 }}>€{a.amount.toLocaleString()}{n.perEpisode ? '/ep' : ''}</span>
+            <span style={{ fontSize: 10, fontWeight: 800, color: odds.accept >= 60 ? theme.good : odds.accept >= 30 ? theme.gold : theme.bad }}>
+              {odds.accept}% yes{odds.walk > 4 ? ` · ${odds.walk}% they walk` : ''}
+            </span>
+          </div>
+          <div style={{ fontSize: 10.5, color: theme.muted, marginTop: 2 }}>{a.label}</div>
+        </button>); })}
+      <button onClick={() => setOpen(false)} style={{ border: 'none', background: 'none', color: theme.muted, fontSize: 11, cursor: 'pointer', padding: 4 }}>Leave it as it is</button>
+    </div>
+  </div>);
+}
 export function OpenCall({ g, ocTab, setOcTab, teenMode }) {
   const [audition, setAudition] = useState(null);
   const [result, setResult] = useState(null);
@@ -80,6 +118,7 @@ export function OpenCall({ g, ocTab, setOcTab, teenMode }) {
           </span>
         </div>
         <span style={{ display: 'inline-block', fontSize: 10.5, fontWeight: 800, padding: '3px 8px', borderRadius: 20, background: 'rgba(158,116,255,.18)', color: chipCol, marginTop: 7 }}>{locked ? `Needs fame ${c.minFame}` : ch + '% shot'}</span>
+        {!locked && <Haggle g={g} c={c} />}
         {!locked && <div style={{ marginTop: 8 }}><button onClick={() => openAudition(c)} disabled={(g.ap||0)<=0} style={{ width: '100%', border: 'none', borderRadius: 10, padding: '9px', fontSize: 12.5, fontWeight: 800, cursor: (g.ap||0)<=0?'default':'pointer', background: (g.ap||0)<=0?'rgba(120,110,150,.15)':`linear-gradient(135deg,${theme.accent2},${theme.accent})`, color: (g.ap||0)<=0?'#6b6390':'#fff' }}>Audition</button></div>}
       </div>); })}
     <div style={{ marginTop: 4 }}><button onClick={() => dispatch((s) => { refreshCastingPool(s, true); return s; })} style={{ width: '100%', border: 'none', borderRadius: 10, padding: '9px', fontSize: 12.5, fontWeight: 800, cursor: 'pointer', background: 'rgba(158,116,255,.16)', color: '#d9cffa' }}>Refresh listings</button></div>

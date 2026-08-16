@@ -11,6 +11,8 @@ export function createInitialState(opts = {}) {
     stage: 'child', livingWith: 'parents', hasApartment: false,
     housing: 'room', diet: 'cook', gym: false, genreXP: {},
     // A newborn owns nothing. Money comes from the family — see systems/life/origin.js.
+    // What you were paid last time. From Star upwards it is what you negotiate against.
+    quote: 0,
     cash: 0, familyClass: 'getting_by', familyAsk: 1, singleParent: false,
     familyEstate: null, familyLeavesHome: false, inheritedHome: false,
     homeless: false, rentMissed: 0, monthsOnStreet: 0, bigMoment: null,
