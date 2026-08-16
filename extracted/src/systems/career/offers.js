@@ -1,6 +1,6 @@
 import { rint, chance, pick } from '../../engine/rng.js';
 import { computeAccess } from './access.js';
-import { feeFor } from '../meta/status.js';
+import { quoteFor } from '../meta/status.js';
 import { addTimeline } from '../../engine/timeline.js';
 import { earn } from '../../engine/economy.js';
 import { GENRES } from '../meta/news.js';
@@ -16,11 +16,13 @@ export function generateOffer(s) {
   let tier;
   if (acc.aaa && fame >= 60 && chance(40)) tier = 'tentpole';
   else if (fame >= 35) tier = 'lead'; else tier = 'supporting';
-  // Base rates are what an unknown would be paid; feeFor scales them to your name, the
-  // same way castings do. An offer that reached you through an agent is worth the money.
-  const base = { tentpole: [90000, 260000], lead: [26000, 70000], supporting: [6000, 16000] }[tier];
+  // An offer that reached you through an agent is priced off the same quote tables as
+  // everything else, so it cannot drift out of step with what OpenCall pays.
+  const medium = tier === 'tentpole' ? 'film_tentpole' : tier === 'lead' ? 'film_studio' : 'film_indie';
+  const share = tier === 'supporting' ? 0.6 : 1;
+  const quote = quoteFor(s, medium) || quoteFor(s, 'film_indie');
   const prestige = { tentpole: rint(70, 95), lead: rint(45, 70), supporting: rint(20, 45) }[tier];
-  const salary = feeFor(s, rint(base[0], base[1]));
+  const salary = Math.round(quote * share * (0.85 + Math.random() * 0.45));
   return { id: 'off' + Date.now() + Math.floor(Math.random() * 1000),
     projectTitle: (tier === 'tentpole' ? '⭐ ' : '') + title(s, tier === 'tentpole'),
     role: tier === 'supporting' ? 'Supporting' : 'Lead',

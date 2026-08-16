@@ -4,7 +4,7 @@ import { earn, markReleased } from '../../engine/economy.js';
 import { GENRES } from '../meta/news.js';
 import { addGenreXP, genreBonus } from './genres.js';
 import { startProduction } from './production.js';
-import { feeFor } from '../meta/status.js';
+import { quoteFor } from '../meta/status.js';
 const clamp = (v) => Math.max(0, Math.min(100, v));
 // Two things the old table got wrong, both of them real-world facts:
 //   · television is paid PER EPISODE, film is paid for the picture. They are not the
@@ -13,39 +13,48 @@ const clamp = (v) => Math.max(0, Math.min(100, v));
 //     it (systems/meta/status.js), which is why the same lead role is €45k for a nobody
 //     and several million for an A-lister. That gap is the whole career.
 //
-// series: [type, role, [minMo,maxMo], [minEps,maxEps], perEpisodeBase, scale, minFame]
-// film:   [type, role, [minMo,maxMo], totalBase, scale, minFame]
+// The fee is no longer a base number here — it is a MEDIUM, and what you are paid in
+// that medium is looked up against your name (systems/meta/status.js). A rising star
+// gets €25,000 an episode of network drama and €500,000 for a studio picture, and no
+// single multiplier produces both.
+//
+// A `share` under 1 is a smaller part in the same medium: a guest spot on a network
+// drama is not a series-regular fee, even though the show pays network rates.
+//
+// series: [type, role, [minMo,maxMo], [minEps,maxEps], medium, scale, minFame, share]
+// film:   [type, role, [minMo,maxMo], medium, scale, minFame, share]
 const POOLS = {
   actor: {
     series: [
-      ['Soap Opera', 'Recurring', [3, 5], [22, 44], 900, 'recurring'],
-      ['Drama Series', 'Guest role', [2, 3], [2, 4], 2600, 'episode'],
-      ['Crime Series', 'Episode', [2, 3], [1, 3], 3200, 'episode'],
-      ['Prestige Series', 'Season lead', [7, 10], [8, 10], 22000, 'prestige', 55],
+      ['Soap Opera', 'Recurring', [3, 5], [22, 44], 'tv_daytime', 'recurring'],
+      ['Drama Series', 'Guest role', [2, 3], [2, 4], 'tv_network', 'episode', 0, 0.45],
+      ['Crime Series', 'Episode', [2, 3], [1, 3], 'tv_network', 'episode', 0, 0.55],
+      ['Network Drama', 'Series regular', [5, 8], [10, 16], 'tv_network', 'recurring', 25],
+      ['Prestige Series', 'Season lead', [7, 10], [8, 10], 'tv_prestige', 'prestige', 55],
     ],
     film: [
-      ['Short Film', 'Lead', [1, 2], 3500, 'small'],
-      ['Horror Movie', 'Victim', [1, 2], 9000, 'small'],
-      ['Indie Film', 'Supporting', [2, 4], 18000, 'indie'],
-      ['Indie Film', 'Lead', [3, 5], 40000, 'indie', 15],
-      ['Feature Film', 'Lead', [5, 8], 120000, 'feature', 30],
-      ['Studio Blockbuster', 'Lead', [10, 14], 600000, 'blockbuster', 65],
+      ['Short Film', 'Lead', [1, 2], 'film_indie', 'small', 0, 0.12],
+      ['Horror Movie', 'Victim', [1, 2], 'film_indie', 'small', 0, 0.3],
+      ['Indie Film', 'Supporting', [2, 4], 'film_indie', 'indie', 0, 0.5],
+      ['Indie Film', 'Lead', [3, 5], 'film_indie', 'indie', 15],
+      ['Feature Film', 'Lead', [5, 8], 'film_studio', 'feature', 30],
+      ['Studio Blockbuster', 'Lead', [10, 14], 'film_tentpole', 'blockbuster', 70],
     ],
-    ads: [['Brand Campaign', 'Face', [1, 1], 25000, 'oneoff'], ['Commercial', 'Actor', [1, 1], 6000, 'oneoff']],
-    gigs: [['Theatre Run', 'Stage', [2, 2], 7000, 'small'], ['Voice Session', 'Voice', [1, 1], 1400, 'oneoff'], ['TV Extra', 'Background', [1, 1], 350, 'oneoff']],
+    ads: [['Brand Campaign', 'Face', [1, 1], 'ad', 'oneoff'], ['Commercial', 'Actor', [1, 1], 'ad', 'oneoff', 0, 0.35]],
+    gigs: [['Theatre Run', 'Stage', [2, 2], 'gig', 'small', 0, 4], ['Voice Session', 'Voice', [1, 1], 'gig', 'oneoff', 0, 2], ['TV Extra', 'Background', [1, 1], 'gig', 'oneoff']],
   },
   singer: {
     series: [
-      ['Music Show', 'Guest', [1, 2], [1, 2], 3500, 'episode'],
-      ['Talent Series', 'Judge', [4, 7], [10, 16], 14000, 'recurring', 40],
+      ['Music Show', 'Guest', [1, 2], [1, 2], 'tv_network', 'episode', 0, 0.4],
+      ['Talent Series', 'Judge', [4, 7], [10, 16], 'tv_network', 'recurring', 40],
     ],
     film: [
-      ['Music Video', 'Star', [1, 1], 9000, 'oneoff'],
-      ['Concert Film', 'Headliner', [2, 3], 60000, 'feature', 30],
-      ['Stadium Tour', 'Headliner', [8, 12], 900000, 'blockbuster', 65],
+      ['Music Video', 'Star', [1, 1], 'ad', 'oneoff', 0, 0.5],
+      ['Concert Film', 'Headliner', [2, 3], 'film_indie', 'feature', 30],
+      ['Stadium Tour', 'Headliner', [8, 12], 'film_tentpole', 'blockbuster', 70],
     ],
-    ads: [['Jingle', 'Voice', [1, 1], 7000, 'oneoff'], ['Brand Song', 'Artist', [1, 1], 30000, 'oneoff']],
-    gigs: [['Open Mic', 'Performer', [1, 1], 250, 'oneoff'], ['Festival Slot', 'Act', [1, 1], 3000, 'oneoff'], ['Session Work', 'Session', [1, 1], 1800, 'oneoff']],
+    ads: [['Jingle', 'Voice', [1, 1], 'ad', 'oneoff', 0, 0.3], ['Brand Song', 'Artist', [1, 1], 'ad', 'oneoff']],
+    gigs: [['Open Mic', 'Performer', [1, 1], 'gig', 'oneoff', 0, 0.4], ['Festival Slot', 'Act', [1, 1], 'gig', 'oneoff', 0, 3], ['Session Work', 'Session', [1, 1], 'gig', 'oneoff', 0, 1.5]],
   },
 };
 // What the shoot is worth to your name, and how the world treats the credit.
@@ -67,18 +76,21 @@ export function refreshCastingPool(s, force) {
   const career = s.dream === 'singer' ? 'singer' : 'actor';
   const shelves = POOLS[career];
   s.castingPool = force ? [] : s.castingPool.filter((c) => (c._expires || 0) > ((s.year || 0) * 12 + (s.month || 0)));
-  while (s.castingPool.length < 6) {
+  let guard = 0;
+  while (s.castingPool.length < 6 && guard++ < 200) {
     const shelf = pick(Object.keys(shelves));
     const row = pick(shelves[shelf]);
     const perEpisode = shelf === 'series';
     const [type, role, span] = row;
-    const [eps, base, scale, minFame] = perEpisode ? row.slice(3) : [null, ...row.slice(3)];
+    const [eps, medium, scale, minFame, share] = perEpisode ? row.slice(3) : [null, ...row.slice(3)];
+    // What YOU are worth in this medium. Zero means they would not have you at any
+    // price yet — the listing simply does not appear.
+    const rate = Math.round(quoteFor(s, medium) * (share || 1));
+    if (rate <= 0) continue;
     const months = rint(span[0], span[1]);
     const episodes = perEpisode ? rint(eps[0], eps[1]) : 0;
-    // What YOU would be paid, not what the part is worth to an unknown.
-    const rate = feeFor(s, base);
     s.castingPool.push({
-      id: 'cast' + Date.now() + Math.floor(Math.random() * 10000), title: titleFor(), type, role, shelf, scale,
+      id: 'cast' + Date.now() + Math.floor(Math.random() * 10000), title: titleFor(), type, role, shelf, scale, medium,
       months, episodes, perEpisode, episodeFee: perEpisode ? rate : 0,
       salary: perEpisode ? rate * episodes : rate,        // the whole fee, paid across the shoot
       genre: pick(GENRES), minFame: minFame || 0,

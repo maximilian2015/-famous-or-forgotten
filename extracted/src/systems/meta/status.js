@@ -13,11 +13,32 @@ export function fameTier(fame) {
   return cur;
 }
 
-// The same part pays scale to a nobody and pays a fortune to a name — that gap IS the
-// career. Every fee in the game is a base rate for an unknown, multiplied by this.
-const FEE_MULT = { unknown: 1, rising: 1.8, known: 4, star: 12, alist: 35, icon: 80 };
-export function feeMultiplier(s) { return FEE_MULT[fameTier(s.fame).id] || 1; }
-export function feeFor(s, base) { return Math.round((base || 0) * feeMultiplier(s)); }
+// One multiplier could not do this job. A rising star is worth €25,000 an episode on a
+// network drama and €500,000 for a studio picture — those are different ratios, because
+// the rate depends on the MEDIUM as much as on the name. Daytime soap and prestige
+// streaming are different businesses that happen to both be television.
+//
+// A zero means the door is shut: an unknown is not offered a studio feature at any price.
+export const QUOTE = {
+  tv_daytime:   { unknown: 900,   rising: 4000,   known: 12000,   star: 30000,    alist: 60000,    icon: 100000 },
+  tv_network:   { unknown: 2500,  rising: 25000,  known: 70000,   star: 150000,   alist: 300000,   icon: 500000 },
+  tv_prestige:  { unknown: 0,     rising: 60000,  known: 180000,  star: 400000,   alist: 800000,   icon: 1500000 },
+  film_indie:   { unknown: 25000, rising: 120000, known: 300000,  star: 700000,   alist: 1500000,  icon: 3000000 },
+  film_studio:  { unknown: 0,     rising: 500000, known: 1500000, star: 5000000,  alist: 12000000, icon: 20000000 },
+  film_tentpole:{ unknown: 0,     rising: 0,      known: 4000000, star: 12000000, alist: 25000000, icon: 40000000 },
+  ad:           { unknown: 6000,  rising: 40000,  known: 150000,  star: 600000,   alist: 2000000,  icon: 5000000 },
+  gig:          { unknown: 350,   rising: 1200,   known: 4000,    star: 12000,    alist: 30000,    icon: 60000 },
+};
+export const MEDIA = Object.keys(QUOTE);
+
+// What YOU are worth in this medium right now. Television returns a per-episode fee;
+// film returns the fee for the whole picture.
+export function quoteFor(s, medium) {
+  const row = QUOTE[medium] || QUOTE.gig;
+  return row[fameTier(s.fame).id] || 0;
+}
+// True when the medium will not have you at any price yet.
+export function shutOutOf(s, medium) { return quoteFor(s, medium) === 0; }
 export function setHousing(s, key) {
   if (!HOUSING[key]) return s;
   if (!s.hasApartment) { s.lastEvent = 'You still live with your parents.'; return s; }
