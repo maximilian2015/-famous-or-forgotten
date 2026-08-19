@@ -31,13 +31,42 @@ export function renewalOdds(rating, season, type) {
   return Math.max(0, Math.min(97, base - fatigue + room));
 }
 
-// Staying gets you paid more. Real series regulars get annual bumps, and after the
-// third season the cast has leverage and uses it.
-export function seasonRaise(season) {
-  if (season <= 2) return 1.18;
-  if (season === 3) return 1.6;        // the renegotiation season
-  if (season <= 6) return 1.35;
-  return 1.22;
+// Staying gets you a bump; being in a hit gets you a raise. A slipping show does not
+// hand out money — the network knows the numbers as well as you do, and a cast with no
+// leverage takes a cut. This is why the same season five can be worth +70% or −10%.
+//
+// Three parts: the automatic bump for coming back, what the last season actually rated,
+// and whether it is climbing or sliding.
+export function seasonBase(season) {
+  if (season <= 2) return 1.10;
+  if (season === 3) return 1.35;       // the season the whole cast renegotiates together
+  if (season <= 6) return 1.15;
+  return 1.08;
+}
+export function performanceFactor(rating) {
+  if (rating >= 88) return 1.45;
+  if (rating >= 78) return 1.25;
+  if (rating >= 68) return 1.10;
+  if (rating >= 60) return 1.00;
+  if (rating >= 50) return 0.92;       // they trim the cast budget
+  return 0.85;
+}
+export function trendFactor(rating, prevRating) {
+  if (prevRating == null) return 1;
+  if (rating >= prevRating + 5) return 1.12;   // the show is growing and you are why
+  if (rating <= prevRating - 5) return 0.94;
+  return 1;
+}
+export function seasonRaise(season, rating = 70, prevRating = null) {
+  return seasonBase(season) * performanceFactor(rating) * trendFactor(rating, prevRating);
+}
+// What the season before this one rated, so a trend can exist at all.
+function previousRating(s, title, season) {
+  if (!season || season < 2) return null;
+  const root = String(title).replace(/\s*·\s*season\s+\d+$/i, '').trim();
+  const prev = [...(s.filmography || []), ...(s.discography || [])]
+    .find((c) => c.season === season - 1 && String(c.title).replace(/\s*·\s*season\s+\d+$/i, '').trim() === root);
+  return prev ? prev.rating : null;
 }
 
 const SEQUEL_WORDS = ['II', 'III', 'IV', 'V', 'VI'];
@@ -69,7 +98,9 @@ export function maybeContinue(s, credit, p) {
       return null;
     }
     const nextSeason = season + 1;
-    const episodeFee = Math.round((p.episodeFee || Math.round(p.salary / Math.max(1, p.episodes || 1))) * seasonRaise(nextSeason));
+    const raise = seasonRaise(nextSeason, credit.rating, previousRating(s, p.title, season));
+    const pct = Math.round((raise - 1) * 100);
+    const episodeFee = Math.round((p.episodeFee || Math.round(p.salary / Math.max(1, p.episodes || 1))) * raise);
     const episodes = Math.max(4, Math.round((p.episodes || 8) * (0.9 + Math.random() * 0.3)));
     addTimeline(s, `"${p.title}" was renewed for season ${nextSeason}.`);
     return {
@@ -80,9 +111,11 @@ export function maybeContinue(s, credit, p) {
       months: Math.max(2, Math.round((p.months || 4) * (0.9 + Math.random() * 0.25))),
       prestigeScore: Math.min(96, (p.prestigeScore || 45) + rint(2, 7)), tier: p.tier || 'lead',
       fame: p.tier === 'tentpole' ? 9 : 5, deadline: rint(2, 3),
-      note: nextSeason === 3
-        ? 'Third season. The whole cast is renegotiating and the network knows it.'
-        : `The network wants you back. Same part, ${Math.round((seasonRaise(nextSeason) - 1) * 100)}% more an episode.`,
+      note: nextSeason === 3 && pct > 0
+        ? `Third season — the whole cast renegotiates together and the network knows it. ${pct}% more an episode.`
+        : pct > 0 ? `The network wants you back. Same part, ${pct}% more an episode.`
+        : pct < 0 ? `The network wants you back — at ${-pct}% less an episode. The numbers were not good.`
+        : 'The network wants you back. Same part, same money.',
     };
   }
 
