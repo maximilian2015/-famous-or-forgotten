@@ -1,9 +1,9 @@
 import { rint, chance, pick } from '../../engine/rng.js';
 import { addTimeline } from '../../engine/timeline.js';
-import { earn, markReleased } from '../../engine/economy.js';
+import { earn } from '../../engine/economy.js';
 import { hotGenre } from '../meta/news.js';
 import { addGenreXP, genreBonus } from './genres.js';
-import { maybeContinue } from './franchise.js';
+import { scheduleRelease } from './release.js';
 const clamp = (v) => Math.max(0, Math.min(100, v));
 const TIERS = [
   { min: 0, label: 'Disaster' }, { min: 25, label: 'Rocky' }, { min: 50, label: 'Solid' },
@@ -31,6 +31,9 @@ export function startProduction(s, offer) {
     offerId: offer.id, title: offer.projectTitle.replace('⭐ ', ''), role: offer.role, type: offer.type,
     genre: offer.genre, salary: offer.salary, months: offer.months, monthsLeft: offer.months,
     prestigeScore: offer.prestigeScore, tier: offer.tier, campaign: !!offer.campaign,
+    // Older offers were written before releases existed and carry no scale of their own.
+    scale: offer.scale || (offer.episodes ? (offer.tier === 'lead' ? 'recurring' : 'episode')
+      : offer.tier === 'tentpole' ? 'blockbuster' : offer.tier === 'lead' ? 'feature' : 'indie'),
     // Carried so the thing can continue: which season, which part of the franchise,
     // and whether you signed away the right to say no.
     episodes: offer.episodes || 0, episodeFee: offer.episodeFee || 0,
@@ -120,30 +123,24 @@ function wrapProduction(s) {
   const status = worldHit ? 'World Hit' : rating >= 85 ? 'Hit' : rating >= 70 ? 'Well-received' : rating >= 50 ? 'Released' : 'Flop';
   const credit = { title: p.title, role: p.role, type: p.type, genre: p.genre, salary: p.salary, rating, status, year: s.year,
     season: p.season || 0, part: p.part > 1 ? p.part : 0, episodes: p.episodes || 0 };
-  const bucket = s.dream === 'singer' ? 'discography' : 'filmography';
-  (s[bucket] = s[bucket] || []).unshift(credit);
+  // The credit does NOT land here. It goes into post and opens months from now —
+  // fame, box office and the score all arrive on premiere night, not on the last
+  // day of shooting. See systems/career/release.js.
+  scheduleRelease(s, credit, p);
   addGenreXP(s, p.genre, rating);
   // Whatever the monthly instalments did not cover — rounding, and the offers that were
   // written before instalments existed.
   const owed = Math.max(0, (p.salary || 0) - (p.paid || 0));
   if (owed > 0) earn(s, owed, `"${credit.title}" — final payment`);
-  markReleased(s);
-  s.fame = clamp((s.fame || 0) + { tentpole: 9, lead: 5, supporting: 2 }[p.tier] + (rating >= 85 ? 4 : 0) + (worldHit ? 25 : 0));
   s.confidence = clamp((s.confidence || 0) + 2);
+  // What the crew says about you travels immediately — long before anyone sees the film.
   const lead = p.crew[0];
   let verdictNote = '';
   if (lead.bond >= 70) { s.respect = clamp((s.respect || 0) + 3); verdictNote = ` ${lead.name} tells anyone who'll listen how good you were.`; }
   else if (lead.bond <= 25) { s.respect = clamp((s.respect || 0) - 3); verdictNote = ` ${lead.name} has quietly started telling a different story about you.`; }
-  if (worldHit) {
-    s.worldHits = (s.worldHits || 0) + 1;
-    s.lastEvent = `🌍 "${credit.title}" wraps — and becomes a genuine world phenomenon.${verdictNote}`;
-    addTimeline(s, `🌍 WORLD HIT: ${credit.title}!`);
-  } else {
-    s.lastEvent = `"${credit.title}" wraps. It came out ${status.toLowerCase()} — rating ${Math.round(rating)}.${verdictNote}`;
-    addTimeline(s, `${credit.title}: ${status} (${Math.round(rating)}/100).`, rating < 50);
-  }
-  // Does this thing carry on? A renewal or a sequel arrives as an offer like any other.
-  const next = maybeContinue(s, credit, p);
-  if (next) (s.offers = s.offers || []).push(next);
+  if (worldHit) s.worldHits = (s.worldHits || 0) + 1;
+  s.lastEvent = `"${credit.title}" is in the can. Now you wait for it to open.${verdictNote}`;
+  // Whether it carries on is decided on the numbers, so that question waits for the
+  // premiere too — release.js asks it once the thing has actually been seen.
   s.production = null;
 }

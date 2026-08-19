@@ -789,8 +789,17 @@ function groupCredits(list) {
       episodes: g.series ? g.parts.reduce((n, p) => n + (p.episodes || 0), 0) : 0,
       from: Math.min(...years), to: Math.max(...years),
       earned: g.parts.reduce((n, p) => n + (p.salary || 0), 0),
+      // A franchise's gross is the whole run; a show's audience is the best season it had.
+      boxOffice: g.parts.reduce((n, p) => n + (p.boxOffice || 0), 0),
+      viewers: g.parts.reduce((n, p) => Math.max(n, p.viewers || 0), 0),
       worldHit: g.parts.some((p) => p.status === 'World Hit') };
   }).sort((a, b) => b.to - a.to);
+}
+export function money(n) {
+  if (n >= 1000000000) return `€${(n / 1000000000).toFixed(2)}bn`;
+  if (n >= 100000000) return `€${Math.round(n / 1000000)}m`;
+  if (n >= 1000000) return `€${(n / 1000000).toFixed(1)}m`;
+  return `€${Math.round(n / 1000)}k`;
 }
 function CreditRow({ group }) {
   const c = group.best;
@@ -826,9 +835,20 @@ function CreditRow({ group }) {
       <div style={{ fontSize: 11.5, color: theme.muted }}>
         {c.role}{c.genre ? ` · ${c.genre}` : ''}{group.earned > 0 ? ` · €${group.earned.toLocaleString()}` : ''}
       </div>
+      {/* What it made is a separate fact from what it scored, and the industry reads it first. */}
+      {(group.boxOffice > 0 || group.viewers > 0) && (
+        <div style={{ fontSize: 11, marginTop: 3, display: 'flex', gap: 7, alignItems: 'center', flexWrap: 'wrap' }}>
+          <span style={{ color: theme.text, fontWeight: 700 }}>
+            {group.boxOffice > 0 ? `${money(group.boxOffice)} box office` : `${group.viewers}m watched`}
+          </span>
+          {c.verdict && <span style={{ fontSize: 9.5, fontWeight: 900, letterSpacing: '.07em', textTransform: 'uppercase',
+            color: VERDICT_COL[c.verdict] || theme.muted }}>{c.verdict}</span>}
+        </div>
+      )}
     </div>
   </div>);
 }
+const VERDICT_COL = { smash: theme.gold, profitable: theme.good, 'broke even': theme.muted, bomb: theme.bad, watched: theme.good, seen: theme.muted, ignored: theme.bad };
 function CreditsList({ g, credits, label }) {
   const p = g.production;
   return (<div>
@@ -843,6 +863,29 @@ function CreditsList({ g, credits, label }) {
         </div>
       </div>
     </div>)}
+    {/* Shot, cut, not out. The wait is half the game now — it should be visible. */}
+    {(g.releases || []).length > 0 && (() => {
+      const now = (g.year || 0) * 12 + (g.month || 0);
+      const queue = [...g.releases].sort((a, b) => a.due - b.due);
+      return (<div style={{ marginBottom: 16 }}>
+        <div style={{ fontSize: 11, fontWeight: 900, letterSpacing: '.09em', textTransform: 'uppercase', color: theme.accent, marginBottom: 8 }}>
+          In post · {queue.length}
+        </div>
+        {queue.map((r) => {
+          const left = Math.max(0, r.due - now);
+          return (<div key={r.id} style={{ display: 'flex', gap: 11, padding: '10px 2px', borderBottom: `1px solid ${theme.line}`, opacity: .85 }}>
+            <Poster title={r.title} type={r.type} />
+            <div style={{ flex: 1, minWidth: 0 }}>
+              <div style={{ fontSize: 14, fontWeight: 800 }}>{r.title}</div>
+              <div style={{ fontSize: 11.5, color: theme.accent, margin: '4px 0 3px' }}>
+                Opens in {left <= 1 ? 'weeks' : `${left} months`}
+              </div>
+              <div style={{ fontSize: 11.5, color: theme.muted }}>{r.role}{r.genre ? ` · ${r.genre}` : ''}</div>
+            </div>
+          </div>);
+        })}
+      </div>);
+    })()}
     {(() => {
       const groups = groupCredits(credits);
       const hits = credits.filter((c) => (c.rating || 0) >= 85).length;

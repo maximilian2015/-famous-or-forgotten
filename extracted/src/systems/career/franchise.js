@@ -77,11 +77,17 @@ function sequelTitle(title, n) {
 
 // Films continue when they made money, and a franchise you optioned continues whether
 // you want it to or not.
-export function sequelOdds(rating, part, obliged) {
+//
+// Reviews are the smaller half of this. A studio greenlights a sequel off the opening
+// weekend, which is why beloved films die and stupid ones run five parts — the verdict
+// can rescue a mediocre picture and can bury a well-reviewed one that nobody bought.
+const SEQUEL_MONEY = { smash: 45, profitable: 18, 'broke even': -8, bomb: -55 };
+export function sequelOdds(rating, part, obliged, verdict = null) {
   if (obliged) return 100;
   if (part > 4) return 0;
   const base = rating >= 92 ? 72 : rating >= 84 ? 52 : rating >= 78 ? 30 : rating >= 70 ? 9 : 0;
-  return Math.max(0, base - (part - 1) * 12);
+  const money = verdict ? (SEQUEL_MONEY[verdict] || 0) : 0;
+  return Math.max(0, Math.min(95, base + money - (part - 1) * 12));
 }
 export function sequelRaise(part) { return part === 2 ? 1.6 : part === 3 ? 2.2 : 2.6; }
 
@@ -105,7 +111,7 @@ export function maybeContinue(s, credit, p) {
     addTimeline(s, `"${p.title}" was renewed for season ${nextSeason}.`);
     return {
       id: 'ren' + Date.now() + Math.floor(Math.random() * 1000),
-      kind: 'renewal', seriesTitle: p.title, season: nextSeason,
+      kind: 'renewal', seriesTitle: p.title, season: nextSeason, scale: p.scale,
       projectTitle: `${p.title} · season ${nextSeason}`, role: p.role, type: p.type, genre: p.genre,
       episodes, episodeFee, salary: episodeFee * episodes,
       months: Math.max(2, Math.round((p.months || 4) * (0.9 + Math.random() * 0.25))),
@@ -120,20 +126,22 @@ export function maybeContinue(s, credit, p) {
   }
 
   const obliged = !!p.optioned && part < (p.optionParts || 3);
-  const odds = sequelOdds(credit.rating, part, obliged);
+  const odds = sequelOdds(credit.rating, part, obliged, credit.verdict);
   if (!chance(odds)) return null;
   const nextPart = part + 1;
   const salary = Math.round((obliged ? p.salary : p.salary * sequelRaise(nextPart)));
   addTimeline(s, `A sequel to "${p.title}" is going ahead.`);
   return {
     id: 'seq' + Date.now() + Math.floor(Math.random() * 1000),
-    kind: 'sequel', part: nextPart, optioned: p.optioned, optionParts: p.optionParts,
+    kind: 'sequel', part: nextPart, optioned: p.optioned, optionParts: p.optionParts, scale: p.scale,
     projectTitle: sequelTitle(p.title, nextPart), role: p.role, type: p.type, genre: p.genre,
     salary, months: Math.max(2, Math.round((p.months || 5) * (0.95 + Math.random() * 0.25))),
     prestigeScore: Math.max(15, (p.prestigeScore || 50) - rint(2, 9)),   // sequels rarely out-prestige the first
     tier: p.tier || 'lead', fame: p.tier === 'tentpole' ? 9 : 5, deadline: rint(2, 3),
     note: obliged
       ? 'You signed for this one. The fee is the fee you agreed to years ago.'
+      : credit.verdict === 'smash'
+      ? `The last one printed money. They are paying ${Math.round((sequelRaise(nextPart) - 1) * 100)}% more and they are not haggling.`
       : `The first one made money. They are paying ${Math.round((sequelRaise(nextPart) - 1) * 100)}% more this time.`,
   };
 }

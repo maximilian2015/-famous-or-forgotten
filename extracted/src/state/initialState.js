@@ -21,6 +21,7 @@ export function createInitialState(opts = {}) {
     mental: 80, health: 90, looks: 50, charisma: 40, confidence: 40,
     discipline: 40, luck: 50, acting: 0, singing: 0,
     filmography: [], discography: [], offers: [], people: [],
+    releases: [],   // shot, in post, not out yet — see systems/career/release.js
     family: [], parentsMarried: true, spotlight: [],
     inbox: [], timeline: [], flags: {},
     look: opts.look || null,   // the creator can hand one in; otherwise ensureAppearance rolls it

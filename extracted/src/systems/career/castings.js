@@ -123,7 +123,7 @@ export function auditionFor(s, id, quality = 50) {
       const sc = scaleOf(c);
       startProduction(s, {
         id: c.id, projectTitle: c.title, role: c.role, type: c.type, genre: c.genre,
-        salary: c.salary, months: c.months, tier: sc.tier,
+        salary: c.salary, months: c.months, tier: sc.tier, scale: c.scale,
         episodes: c.episodes, episodeFee: c.episodeFee, season: c.perEpisode ? 1 : 0,
         prestigeScore: rint(sc.prestige[0], sc.prestige[1]) + Math.round((quality - 50) * 0.12),
       });

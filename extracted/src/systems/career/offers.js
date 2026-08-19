@@ -28,7 +28,10 @@ export function generateOffer(s) {
     role: tier === 'supporting' ? 'Supporting' : 'Lead',
     type: s.dream === 'singer' ? (tier === 'tentpole' ? 'World Tour' : 'Album') : (tier === 'tentpole' ? 'Blockbuster' : 'Feature Film'),
     genre: pick(GENRES),
-    salary, months: rint(3, 8), fame: { tentpole: 9, lead: 5, supporting: 2 }[tier], prestigeScore: prestige, tier, deadline: rint(2, 4) };
+    salary, months: rint(3, 8), fame: { tentpole: 9, lead: 5, supporting: 2 }[tier], prestigeScore: prestige, tier,
+    // What kind of picture it is — decides the post-production wait and the box office it can take.
+    scale: { tentpole: 'blockbuster', lead: 'feature', supporting: 'indie' }[tier],
+    deadline: rint(2, 4) };
 }
 export function campaignCost(o) { return Math.max(800, Math.round(o.salary * 0.15)); }
 export function runCampaign(s, id) {

@@ -114,7 +114,10 @@ export function relevanceDrift(s) {
   if ((s._idleMonths || 0) < 4) return;
   const height = 0.35 + (s.fame || 0) / 95;      // the higher you are, the further there is to fall
   const noise = (s.scandal || 0) / 45;            // bad press speeds the slide
-  s.fame = Math.max(0, Math.min(100, s.fame - (height + noise)));
+  // A film sitting in post is still something the trades write about. A blockbuster can
+  // take a year to open, and you should not be forgotten for having shot one.
+  const shielded = (s.releases || []).length > 0 ? 0.45 : 1;
+  s.fame = Math.max(0, Math.min(100, s.fame - (height + noise) * shielded));
   if ((s._idleMonths === 13 || s._idleMonths === 25) && (s.fame || 0) > 5) {
     addTimeline(s, s._idleMonths > 20
       ? 'Two years without work. People talk about you in the past tense now.'
