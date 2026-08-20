@@ -111,7 +111,9 @@ export function maybeContinue(s, credit, p) {
     addTimeline(s, `"${p.title}" was renewed for season ${nextSeason}.`);
     return {
       id: 'ren' + Date.now() + Math.floor(Math.random() * 1000),
+      // A show that got renewed is a show that works. The money is not the question here.
       kind: 'renewal', seriesTitle: p.title, season: nextSeason, scale: p.scale,
+      stability: Math.max(82, p.stability || 82),
       projectTitle: `${p.title} · season ${nextSeason}`, role: p.role, type: p.type, genre: p.genre,
       episodes, episodeFee, salary: episodeFee * episodes,
       months: Math.max(2, Math.round((p.months || 4) * (0.9 + Math.random() * 0.25))),
@@ -134,6 +136,7 @@ export function maybeContinue(s, credit, p) {
   return {
     id: 'seq' + Date.now() + Math.floor(Math.random() * 1000),
     kind: 'sequel', part: nextPart, optioned: p.optioned, optionParts: p.optionParts, scale: p.scale,
+    stability: Math.max(85, p.stability || 85),   // nobody defunds a sequel to something that made money
     projectTitle: sequelTitle(p.title, nextPart), role: p.role, type: p.type, genre: p.genre,
     salary, months: Math.max(2, Math.round((p.months || 5) * (0.95 + Math.random() * 0.25))),
     prestigeScore: Math.max(15, (p.prestigeScore || 50) - rint(2, 9)),   // sequels rarely out-prestige the first

@@ -1,0 +1,207 @@
+// Not every project that starts gets made. Financing walks, a studio changes its mind,
+// a producer turns out not to have the money he said he had. The player has to be able
+// to SEE that before signing, and be paid for taking it on.
+//
+// Two ways a project can stop, and they are not the same thing:
+//   · frozen   — the crew goes home, the project sits. Months or years later it either
+//                finds money and comes back, or it is quietly declared dead.
+//   · collapsed — it is over on the day. Nothing comes back.
+//
+// The trade is the whole point. A studio tentpole is iron and pays the band. An indie
+// with money nobody can name is shaky, pays a premium, carries better material — and
+// swings wildly at the wrap, which is how an indie becomes the film of the year.
+import { rint, chance } from '../../engine/rng.js';
+import { addTimeline } from '../../engine/timeline.js';
+
+// How solid the money is, by what kind of thing it is. A studio does not lose its own
+// blockbuster; a first-time producer loses everything.
+const BACKING = {
+  oneoff:      [88, 98],   // it is one day. Nothing has time to fall apart.
+  blockbuster: [88, 97],
+  feature:     [76, 92],
+  recurring:   [74, 90],   // a network order is an order
+  prestige:    [66, 86],
+  episode:     [72, 90],
+  small:       [40, 78],
+  indie:       [32, 74],   // the shakiest money in the business
+};
+export function rollStability(scale) {
+  const span = BACKING[scale] || [65, 88];
+  return rint(span[0], span[1]);
+}
+
+// What the player is told before signing. Four bands, and each one says the true thing
+// rather than a number pretending to be a personality.
+const BANDS = [
+  { min: 88, id: 'locked', label: 'Locked', note: 'The money is in the bank. This is happening.' },
+  { min: 74, id: 'solid', label: 'Solid', note: 'Properly financed. Things go wrong on set, not in the accounts.' },
+  { min: 55, id: 'shaky', label: 'Shaky', note: 'Financed, mostly. One backer walking would be felt.' },
+  { min: 0, id: 'fragile', label: 'Held together', note: 'Nobody can name where the money is coming from.' },
+];
+export function stabilityBand(v) {
+  for (const b of BANDS) if ((v || 0) >= b.min) return b;
+  return BANDS[BANDS.length - 1];
+}
+
+// Risk is paid for. Nobody takes a job that might evaporate for the same fee as one
+// that will not — the premium is the reason to say yes.
+export function riskPremium(stability) {
+  const risk = Math.max(0, 90 - (stability || 90)) / 90;    // 0 at locked, ~0.65 at the worst
+  return 1 + risk * 0.75;
+}
+// And the material is better, because that is what a shaky project has to offer instead
+// of money it does not have.
+export function riskPrestige(stability) {
+  return Math.round(Math.max(0, 82 - (stability || 82)) * 0.22);
+}
+// The wide swing at the wrap. This is where an indie either becomes the film of the year
+// or quietly disappears — a locked studio picture does neither.
+export function volatility(stability) {
+  return Math.round(Math.max(0, 92 - (stability || 92)) * 0.34);
+}
+export function volatileSwing(stability) {
+  const v = volatility(stability);
+  return v ? rint(-v, v) : 0;
+}
+
+// What the risk actually costs YOU, which is not the same thing as how risky it is.
+// A nobody with an empty year is gambling months nobody else wanted. A star who takes a
+// shaky project turned down a solid one to do it, and that is what makes it a decision.
+export function riskCostFor(s, stability) {
+  const b = stabilityBand(stability);
+  // Solid money is not a gamble. Only say this where there is something to weigh.
+  if (b.id === 'locked' || b.id === 'solid') return { id: 'none', line: '' };
+  const fame = s.fame || 0;
+  if (fame < 20) return { id: 'nothing', line: 'Nothing else is waiting. The only thing you are risking is months you had no other plan for.' };
+  if (fame < 55) return { id: 'some', line: 'You have other things you could be doing with those months.' };
+  return { id: 'real', line: 'At your level this is a real gamble — you will be turning down work that would definitely get made.' };
+}
+
+// ── while you are shooting ────────────────────────────────────────────────────
+// A month's chance that something goes wrong with the money. Spread across the whole
+// shoot, so a fourteen-month blockbuster is not fourteen times as likely to die as a
+// one-month job of the same standing.
+export function troubleOdds(p) {
+  const risk = Math.max(0, 92 - (p.stability || 92)) / 92;
+  return Math.min(9, risk * risk * 16);
+}
+
+// When it goes wrong, freezing is the commoner outcome — a producer would much rather
+// say "we are pausing" than admit the thing is dead.
+export function productionTrouble(s, p) {
+  if (!chance(troubleOdds(p))) return null;
+  return chance(65) ? freezeProject(s, p) : collapseProject(s, p);
+}
+
+const FROZEN_REASONS = [
+  'the lead financier pulled out three days ago',
+  'the completion bond was never actually signed',
+  'the money was coming from a fund that has stopped returning calls',
+  'the studio has put everything of this size on hold',
+  'a producer has been arrested and the accounts are sealed',
+];
+const DEAD_REASONS = [
+  'the financing was never real and everyone has now admitted it',
+  'the studio wrote it off as a tax loss this morning',
+  'the rights reverted and the new owner does not want it made',
+  'the director walked and took the money with him',
+];
+
+export function freezeProject(s, p) {
+  const why = FROZEN_REASONS[rint(0, FROZEN_REASONS.length - 1)];
+  const frozen = {
+    id: 'frz' + Date.now() + Math.floor(Math.random() * 1000),
+    title: p.title, role: p.role, type: p.type, genre: p.genre, scale: p.scale, tier: p.tier,
+    genrePrestige: p.prestigeScore, prestigeScore: p.prestigeScore,
+    monthsLeft: Math.max(1, p.monthsLeft || 1), episodes: p.episodes || 0, episodeFee: p.episodeFee || 0,
+    season: p.season || 0, part: p.part || 1, optioned: !!p.optioned, optionParts: p.optionParts || 0,
+    stability: p.stability, since: (s.year || 0) * 12 + (s.month || 0),
+    // Whatever is left of the fee, which is what you would be paid if it ever restarts.
+    owed: Math.max(0, (p.salary || 0) - (p.paid || 0)),
+    paid: p.paid || 0, salary: p.salary || 0, why,
+  };
+  (s.frozen = s.frozen || []).push(frozen);
+  s.production = null;
+  s.lastEvent = `"${frozen.title}" has stopped. They say ${why}. Everyone was sent home with no date to come back.`;
+  addTimeline(s, `"${frozen.title}" went into freeze — ${why}.`, true);
+  s.mental = Math.max(0, (s.mental || 50) - 6);
+  s.bigMoment = {
+    id: 'shutdown', kind: 'bad', frozen: true, title: frozen.title,
+    reason: why, months: frozen.monthsLeft, paid: frozen.paid,
+    body: `The crew was sent home this morning — ${why}. It is not cancelled. It is not happening either. `
+      + `You keep the €${Math.round(frozen.paid).toLocaleString()} you were paid, and the rest waits for money that may never come.`,
+  };
+  return frozen;
+}
+
+export function collapseProject(s, p) {
+  const why = DEAD_REASONS[rint(0, DEAD_REASONS.length - 1)];
+  const paid = p.paid || 0;
+  const months = (p.months || 1) - (p.monthsLeft || 0);
+  s.production = null;
+  s.lastEvent = `"${p.title}" is dead — ${why}. ${months} month${months === 1 ? '' : 's'} of your life, and no film at the end of it.`;
+  addTimeline(s, `"${p.title}" collapsed — ${why}.`, true);
+  s.mental = Math.max(0, (s.mental || 50) - 9);
+  s.bigMoment = {
+    id: 'shutdown', kind: 'bad', frozen: false, title: p.title,
+    reason: why, months, paid,
+    body: `It is over — ${why}. You keep the €${Math.round(paid).toLocaleString()} you were paid and nothing else. `
+      + `There is no film, so there is no premiere, and nobody outside the crew will ever know you did it.`,
+  };
+  return { title: p.title, why, paid, months };
+}
+
+// ── the long wait ─────────────────────────────────────────────────────────────
+// A frozen project is not a corpse and not a plan. Every month it might find money,
+// and every month the odds of it ever doing so get a little worse.
+// `since` can legitimately be 0 (month zero of year zero), so it has to be ?? and not ||.
+function waitedBy(frozen, now) { return Math.max(0, now - (frozen.since ?? now)); }
+export function thawOdds(frozen, now) {
+  const waited = waitedBy(frozen, now);
+  if (waited < 2) return 0;                                  // nothing moves for the first couple of months
+  const base = 1.5 + (frozen.stability ?? 50) / 16;          // better projects get rescued
+  return Math.max(1.5, base - waited * 0.15);
+}
+// Nobody formally kills a project for over a year. After that the odds of anyone ever
+// finishing it get worse every month, but slowly — most of these do come back.
+export function deathOdds(frozen, now) {
+  const waited = waitedBy(frozen, now);
+  if (waited < 15) return 0;
+  return Math.min(6, (waited - 15) * 0.18);
+}
+
+export function frozenTick(s) {
+  if (!(s.frozen || []).length) return s;
+  const now = (s.year || 0) * 12 + (s.month || 0);
+  const survivors = [];
+  for (const f of s.frozen) {
+    if (chance(thawOdds(f, now))) {
+      const waited = now - (f.since ?? now);
+      const years = Math.round(waited / 12);
+      (s.offers = s.offers || []).push({
+        id: 'thaw' + Date.now() + Math.floor(Math.random() * 1000),
+        kind: 'thaw', projectTitle: f.title, role: f.role, type: f.type, genre: f.genre,
+        scale: f.scale, tier: f.tier, prestigeScore: f.prestigeScore,
+        salary: f.owed, months: f.monthsLeft, episodes: f.episodes, episodeFee: f.episodeFee,
+        season: f.season, part: f.part, optioned: f.optioned, optionParts: f.optionParts,
+        // Whoever rescued it has real money, or they could not have rescued it.
+        stability: Math.min(95, (f.stability || 50) + rint(12, 26)),
+        fame: f.tier === 'tentpole' ? 9 : 5, deadline: rint(2, 3),
+        note: waited >= 12
+          ? `Somebody found the money. After ${years} year${years === 1 ? '' : 's'} they want to finish it — €${f.owed.toLocaleString()} for the ${f.monthsLeft} month${f.monthsLeft === 1 ? '' : 's'} still owed.`
+          : `The money came back. They want to finish it — €${f.owed.toLocaleString()} for the ${f.monthsLeft} month${f.monthsLeft === 1 ? '' : 's'} still owed.`,
+      });
+      s.lastEvent = `"${f.title}" is alive again. Somebody found the money.`;
+      addTimeline(s, `"${f.title}" came out of freeze after ${waited} months.`);
+      continue;                                              // it leaves the freezer either way
+    }
+    if (chance(deathOdds(f, now))) {
+      addTimeline(s, `"${f.title}" was formally abandoned. It had been frozen ${now - (f.since ?? now)} months.`, true);
+      s.lastEvent = `"${f.title}" will never be finished. They have written it off.`;
+      continue;
+    }
+    survivors.push(f);
+  }
+  s.frozen = survivors;
+  return s;
+}

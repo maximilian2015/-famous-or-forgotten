@@ -5,6 +5,7 @@ import { GENRES } from '../meta/news.js';
 import { addGenreXP, genreBonus } from './genres.js';
 import { startProduction } from './production.js';
 import { quoteFor, episodeRate } from '../meta/status.js';
+import { rollStability, riskPremium, riskPrestige } from './stability.js';
 const clamp = (v) => Math.max(0, Math.min(100, v));
 // Two things the old table got wrong, both of them real-world facts:
 //   · television is paid PER EPISODE, film is paid for the picture. They are not the
@@ -89,12 +90,20 @@ export function refreshCastingPool(s, force) {
     if (quoted <= 0) continue;
     const months = rint(span[0], span[1]);
     const episodes = perEpisode ? rint(eps[0], eps[1]) : 0;
+    // How solid the money behind this one is, and what they have to pay to make you
+    // take that on. The player sees both before signing — that is the whole point.
+    // A job that is over by the evening cannot fall apart, so it is never priced as if
+    // it might — otherwise a one-day short would pay a risk premium for no risk.
+    const stability = months < 2 ? rint(88, 97) : rollStability(scale);
+    const premium = riskPremium(stability);
     // Bands are quoted against a typical season. A longer order pays less per episode.
-    const rate = perEpisode ? episodeRate(quoted, (eps[0] + eps[1]) / 2, episodes) : quoted;
+    const base = perEpisode ? episodeRate(quoted, (eps[0] + eps[1]) / 2, episodes) : quoted;
+    const rate = Math.round(base * premium);
     if (rate <= 0) continue;
     s.castingPool.push({
       id: 'cast' + Date.now() + Math.floor(Math.random() * 10000), title: titleFor(), type, role, shelf, scale, medium,
       share: share || 1,   // negotiation needs it to know the top of YOUR band for this part
+      stability, premium,  // and it needs the premium, or a risky job would have nothing left to argue about
       months, episodes, perEpisode, episodeFee: perEpisode ? rate : 0,
       salary: perEpisode ? rate * episodes : rate,        // the whole fee, paid across the shoot
       genre: pick(GENRES), minFame: minFame || 0,
@@ -125,7 +134,9 @@ export function auditionFor(s, id, quality = 50) {
         id: c.id, projectTitle: c.title, role: c.role, type: c.type, genre: c.genre,
         salary: c.salary, months: c.months, tier: sc.tier, scale: c.scale,
         episodes: c.episodes, episodeFee: c.episodeFee, season: c.perEpisode ? 1 : 0,
-        prestigeScore: rint(sc.prestige[0], sc.prestige[1]) + Math.round((quality - 50) * 0.12),
+        stability: c.stability,
+        // Shaky money buys better material. It is the only thing it has to offer.
+        prestigeScore: rint(sc.prestige[0], sc.prestige[1]) + Math.round((quality - 50) * 0.12) + riskPrestige(c.stability),
       });
       s.castingPool = (s.castingPool || []).filter((x) => x.id !== id);
       s.lastEvent = `${quality >= 80 ? 'The room goes quiet — you nailed it. ' : ''}You booked "${c.title}". ${c.months} months of shooting — `

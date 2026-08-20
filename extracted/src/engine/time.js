@@ -11,6 +11,7 @@ import { datingYear } from '../systems/life/dating.js';
 import { spotlightYear } from '../systems/social/spotlight.js';
 import { productionTick } from '../systems/career/production.js';
 import { releaseTick } from '../systems/career/release.js';
+import { frozenTick } from '../systems/career/stability.js';
 import { maybeGenerateEvent, eventsTick } from '../systems/social/events.js';
 import { agingTick, mortalityCheck } from '../systems/life/mortality.js';
 import { healthTick } from '../systems/life/health.js';
@@ -37,6 +38,7 @@ export function advanceMonth(state) {
   workTick(s);
   productionTick(s);
   releaseTick(s);    // anything that finished shooting months ago opens today
+  frozenTick(s);     // and anything that stopped might find its money again
   eventsTick(s);
   maybeGenerateEvent(s);
   maybeGenerateOffer(s);

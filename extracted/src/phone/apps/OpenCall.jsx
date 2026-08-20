@@ -6,6 +6,7 @@ import { TimingBar } from '../../ui/components/TimingBar.jsx';
 import { GridRisk } from '../../ui/components/GridRisk.jsx';
 import { useAccent } from '../../ui/appTheme.js';
 import { negotiationFor, haggleOdds, applyHaggle } from '../../systems/career/negotiate.js';
+import { stabilityBand, riskCostFor } from '../../systems/career/stability.js';
 
 // Only appears once you are somebody. Below Star you are told the number.
 function Haggle({ g, c }) {
@@ -40,6 +41,28 @@ function Haggle({ g, c }) {
         </button>); })}
       <button onClick={() => setOpen(false)} style={{ border: 'none', background: 'none', color: theme.muted, fontSize: 11, cursor: 'pointer', padding: 4 }}>Leave it as it is</button>
     </div>
+  </div>);
+}
+// How solid the money behind a listing is, said out loud BEFORE you sign. A risky
+// project pays over the band and carries better material — that is the trade, and the
+// player has to be able to see both halves of it to make the decision.
+const BAND_COL = { locked: theme.good, solid: theme.accent, shaky: theme.gold, fragile: theme.bad };
+function Backing({ g, c }) {
+  // A day's work is over by the evening — there is no shoot for the money to walk out of.
+  if (c.stability == null || (c.months || 1) < 2) return null;
+  const band = stabilityBand(c.stability);
+  const cost = riskCostFor(g, c.stability);
+  const over = Math.round(((c.premium || 1) - 1) * 100);
+  const col = BAND_COL[band.id] || theme.muted;
+  return (<div style={{ marginTop: 7, border: `1px solid ${col}33`, borderRadius: 10, padding: '7px 9px', background: 'rgba(255,255,255,.025)' }}>
+    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', gap: 8 }}>
+      <span style={{ fontSize: 10, fontWeight: 900, letterSpacing: '.1em', textTransform: 'uppercase', color: col }}>
+        {band.label}
+      </span>
+      {over >= 4 && <span style={{ fontSize: 10, fontWeight: 800, color: theme.gold, whiteSpace: 'nowrap' }}>+{over}% over the rate</span>}
+    </div>
+    <div style={{ fontSize: 10.5, color: theme.muted, marginTop: 3, lineHeight: 1.45 }}>{band.note}</div>
+    {cost.line && <div style={{ fontSize: 10.5, color: cost.id === 'nothing' ? theme.good : theme.muted, marginTop: 3, lineHeight: 1.45 }}>{cost.line}</div>}
   </div>);
 }
 export function OpenCall({ g, ocTab, setOcTab, teenMode }) {
@@ -118,6 +141,7 @@ export function OpenCall({ g, ocTab, setOcTab, teenMode }) {
           </span>
         </div>
         <span style={{ display: 'inline-block', fontSize: 10.5, fontWeight: 800, padding: '3px 8px', borderRadius: 20, background: 'rgba(158,116,255,.18)', color: chipCol, marginTop: 7 }}>{locked ? `Needs fame ${c.minFame}` : ch + '% shot'}</span>
+        <Backing g={g} c={c} />
         {!locked && <Haggle g={g} c={c} />}
         {!locked && <div style={{ marginTop: 8 }}><button onClick={() => openAudition(c)} disabled={(g.ap||0)<=0} style={{ width: '100%', border: 'none', borderRadius: 10, padding: '9px', fontSize: 12.5, fontWeight: 800, cursor: (g.ap||0)<=0?'default':'pointer', background: (g.ap||0)<=0?'rgba(120,110,150,.15)':`linear-gradient(135deg,${theme.accent2},${theme.accent})`, color: (g.ap||0)<=0?'#6b6390':'#fff' }}>Audition</button></div>}
       </div>); })}

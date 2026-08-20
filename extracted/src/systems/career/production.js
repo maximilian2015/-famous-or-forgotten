@@ -4,6 +4,7 @@ import { earn } from '../../engine/economy.js';
 import { hotGenre } from '../meta/news.js';
 import { addGenreXP, genreBonus } from './genres.js';
 import { scheduleRelease } from './release.js';
+import { rollStability, productionTrouble, volatileSwing } from './stability.js';
 const clamp = (v) => Math.max(0, Math.min(100, v));
 const TIERS = [
   { min: 0, label: 'Disaster' }, { min: 25, label: 'Rocky' }, { min: 50, label: 'Solid' },
@@ -39,6 +40,9 @@ export function startProduction(s, offer) {
     episodes: offer.episodes || 0, episodeFee: offer.episodeFee || 0,
     season: offer.season || (offer.episodes ? 1 : 0), part: offer.part || 1,
     optioned: !!offer.optioned, optionParts: offer.optionParts || 0,
+    // How solid the money is. Decides whether this shoot ever reaches its last day, and
+    // how wildly the finished thing can turn out. See systems/career/stability.js.
+    stability: offer.stability ?? rollStability(offer.scale || 'feature'),
     crew: makeCrew(s.dream), meter: 20,
   };
   s.lastEvent = `Cameras roll on "${s.production.title}". First day on set.`;
@@ -94,6 +98,9 @@ export function productionTick(s) {
     return;
   }
   p.paused = 0;
+  // The money can walk at any point during the shoot. It either freezes or dies, and
+  // either way there is no production left to tick.
+  if (productionTrouble(s, p)) return;
   p.monthsLeft -= 1;
   // You are paid while you work. A fourteen-month blockbuster that only paid on wrap
   // would starve you out of your flat long before the premiere.
@@ -110,7 +117,11 @@ function wrapProduction(s) {
   // be earned on set. Before this, skill 100 alone cleared the 85 hit line on every project.
   const floor = 20 + skill * 0.30;
   const craft = (p.meter - 40) * 0.45;            // how the shoot actually went — can go negative
-  let rating = clamp(floor + craft + p.prestigeScore * 0.18 + (s.looks - 40) * 0.08 + genreBonus(s, p.genre) + rint(-10, 12));
+  // The swing. A locked studio picture comes out roughly as good as it was always going
+  // to be; a project held together with tape can be the film of the year or nothing at
+  // all. This is why an indie is worth the gamble.
+  let rating = clamp(floor + craft + p.prestigeScore * 0.18 + (s.looks - 40) * 0.08 + genreBonus(s, p.genre)
+    + rint(-10, 12) + volatileSwing(p.stability));
   // A genuine cultural moment should be a career highlight, not a monthly occurrence.
   let worldHit = false;
   if (rating >= 90 && p.tier !== 'supporting') {

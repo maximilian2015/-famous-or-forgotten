@@ -100,7 +100,7 @@ export function scheduleRelease(s, credit, p) {
     job: {
       title: p.title, role: p.role, type: p.type, genre: p.genre, salary: p.salary,
       months: p.months, episodes: p.episodes || 0, episodeFee: p.episodeFee || 0,
-      season: p.season || 0, part: p.part || 1, tier: p.tier, scale: p.scale,
+      season: p.season || 0, part: p.part || 1, tier: p.tier, scale: p.scale, stability: p.stability,
       prestigeScore: p.prestigeScore, optioned: !!p.optioned, optionParts: p.optionParts || 0,
     },
   };

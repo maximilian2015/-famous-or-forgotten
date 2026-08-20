@@ -30,7 +30,9 @@ export function negotiationFor(s, job) {
   const unit = job.perEpisode ? (job.episodeFee || 0) : (job.salary || 0);
   if (unit <= 0) return null;
   const share = job.share || 1;
-  const bandTop = Math.round(band[1] * share);
+  // A risky project already opens above the band — arguing against the plain band would
+  // leave a fragile indie with nothing left to ask for.
+  const bandTop = Math.round(band[1] * share * (job.premium || 1));
   const ceiling = Math.round(bandTop * reachOf(s));
   return {
     quoted: unit, bandTop, ceiling,

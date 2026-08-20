@@ -886,6 +886,28 @@ function CreditsList({ g, credits, label }) {
         })}
       </div>);
     })()}
+    {/* Started, stopped, waiting for money. Not dead, not happening. */}
+    {(g.frozen || []).length > 0 && (() => {
+      const now = (g.year || 0) * 12 + (g.month || 0);
+      return (<div style={{ marginBottom: 16 }}>
+        <div style={{ fontSize: 11, fontWeight: 900, letterSpacing: '.09em', textTransform: 'uppercase', color: theme.bad, marginBottom: 8 }}>
+          Frozen · {g.frozen.length}
+        </div>
+        {g.frozen.map((f) => {
+          const waited = Math.max(0, now - (f.since || now));
+          return (<div key={f.id} style={{ display: 'flex', gap: 11, padding: '10px 2px', borderBottom: `1px solid ${theme.line}`, opacity: .8 }}>
+            <Poster title={f.title} type={f.type} />
+            <div style={{ flex: 1, minWidth: 0 }}>
+              <div style={{ fontSize: 14, fontWeight: 800 }}>{f.title}</div>
+              <div style={{ fontSize: 11.5, color: theme.bad, margin: '4px 0 3px' }}>
+                On hold {waited === 0 ? 'since this month' : `${waited} month${waited === 1 ? '' : 's'}`} · {f.monthsLeft} mo left to shoot
+              </div>
+              <div style={{ fontSize: 11, color: theme.muted, lineHeight: 1.45 }}>They say {f.why}.</div>
+            </div>
+          </div>);
+        })}
+      </div>);
+    })()}
     {(() => {
       const groups = groupCredits(credits);
       const hits = credits.filter((c) => (c.rating || 0) >= 85).length;
@@ -918,25 +940,32 @@ function Diary({ g }) {
     const shooting = g.production && i < g.production.monthsLeft;
     const parties = (g.events || []).filter((e) => e.monthsLeft - 1 === i).length;
     const deadlines = (g.offers || []).filter((o) => (o.deadline || 0) - 1 === i).length;
-    cells.push({ i, yr, mo, shooting, parties, deadlines });
+    // A premiere is the single most important date in the year and it was not on here.
+    const premieres = (g.releases || []).filter((r) => r.due === abs);
+    // Post-production is not an event — nothing happens in those months and you are free
+    // to work. It gets a quiet tint so you can see the wait, not an icon of its own.
+    const inPost = (g.releases || []).some((r) => r.due > abs);
+    cells.push({ i, yr, mo, shooting, parties, deadlines, premieres, inPost });
   }
   return (<div style={{ marginBottom: 16 }}>
     <div style={{ fontSize: 11, fontWeight: 900, letterSpacing: '.09em', textTransform: 'uppercase', color: theme.muted, marginBottom: 8 }}>The year ahead</div>
     <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4,1fr)', gap: 6, marginBottom: 8 }}>
       {cells.map((c) => (<div key={c.i} style={{
-        background: c.i === 0 ? 'rgba(158,116,255,.18)' : theme.panel,
-        border: `1px solid ${c.shooting ? 'rgba(255,209,102,.5)' : c.i === 0 ? theme.accent : theme.line}`,
+        background: c.i === 0 ? 'rgba(158,116,255,.18)' : c.inPost && !c.shooting ? 'rgba(158,116,255,.07)' : theme.panel,
+        border: `1px solid ${c.premieres.length ? 'rgba(255,209,102,.75)' : c.shooting ? 'rgba(255,209,102,.5)' : c.i === 0 ? theme.accent : theme.line}`,
         borderRadius: 9, padding: '7px 6px', minHeight: 52 }}>
         <div style={{ fontSize: 10.5, fontWeight: 800, color: c.i === 0 ? theme.accent : theme.muted }}>{MON[c.mo]}{c.mo === 0 ? ` ’${String(c.yr).slice(2)}` : ''}</div>
         <div style={{ display: 'flex', gap: 3, marginTop: 4, flexWrap: 'wrap' }}>
           {c.shooting && <span title="shooting" style={{ fontSize: 11 }}>🎬</span>}
+          {c.premieres.map((r) => <span key={r.id} title={`${r.title} opens`} style={{ fontSize: 11 }}>🍿</span>)}
           {c.parties > 0 && <span title="event expires" style={{ fontSize: 11 }}>🎉</span>}
           {c.deadlines > 0 && <span title="offer expires" style={{ fontSize: 11 }}>⏳</span>}
         </div>
+        {c.premieres.length > 0 && <div style={{ fontSize: 8.5, fontWeight: 800, color: theme.gold, marginTop: 2, lineHeight: 1.2, overflow: 'hidden' }}>{c.premieres[0].title}</div>}
       </div>))}
     </div>
-    <div style={{ display: 'flex', gap: 12, justifyContent: 'center', fontSize: 10.5, color: theme.muted }}>
-      <span>🎬 shooting</span><span>🎉 party ends</span><span>⏳ offer expires</span>
+    <div style={{ display: 'flex', gap: 10, justifyContent: 'center', fontSize: 10.5, color: theme.muted, flexWrap: 'wrap' }}>
+      <span>🎬 shooting</span><span>🍿 premiere</span><span>🎉 party ends</span><span>⏳ offer expires</span>
     </div>
   </div>);
 }

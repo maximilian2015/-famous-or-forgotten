@@ -5,6 +5,7 @@ import { addTimeline } from '../../engine/timeline.js';
 import { earn } from '../../engine/economy.js';
 import { GENRES } from '../meta/news.js';
 import { startProduction } from './production.js';
+import { rollStability } from './stability.js';
 const clamp = (v) => Math.max(0, Math.min(100, v));
 function title(s, big) {
   const A = big ? ['Empire','Legacy','Titan','Eternal','Crown','Apex'] : ['Small','Quiet','Last','Neon','Paper','Golden'];
@@ -31,6 +32,7 @@ export function generateOffer(s) {
     salary, months: rint(3, 8), fame: { tentpole: 9, lead: 5, supporting: 2 }[tier], prestigeScore: prestige, tier,
     // What kind of picture it is — decides the post-production wait and the box office it can take.
     scale: { tentpole: 'blockbuster', lead: 'feature', supporting: 'indie' }[tier],
+    stability: rollStability({ tentpole: 'blockbuster', lead: 'feature', supporting: 'indie' }[tier]),
     deadline: rint(2, 4) };
 }
 export function campaignCost(o) { return Math.max(800, Math.round(o.salary * 0.15)); }
@@ -55,7 +57,9 @@ export function maybeGenerateOffer(s) {
 }
 export function acceptOffer(s, id) {
   const o = (s.offers || []).find((x) => x.id === id); if (!o) return s;
-  if (o.tier !== 'supporting') {
+  // Anything with a real schedule becomes a shoot you live through — same rule as a
+  // casting. Only a day's work resolves in the same click.
+  if (o.tier !== 'supporting' || (o.months || 0) >= 2) {
     if (s.production) { s.lastEvent = `You're already committed to "${s.production.title}" — wrap that one first.`; return s; }
     s.offers = (s.offers || []).filter((x) => x.id !== id);
     startProduction(s, o);

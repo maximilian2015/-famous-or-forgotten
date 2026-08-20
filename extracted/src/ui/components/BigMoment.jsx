@@ -66,6 +66,36 @@ function Scene({ id, look, accent, moment }) {
       <path d="M70 110 L130 110 L122 120 L78 120 Z" fill="#8a3459" opacity=".8" />
     </svg>);
   }
+  // The money walked. An empty stage, a light left on, and the set half struck.
+  if (id === 'shutdown') {
+    return (<svg viewBox="0 0 200 120" style={{ width: '100%', maxWidth: 300, display: 'block', margin: '0 auto' }}>
+      <path d="M14 110 L186 110" stroke="#3a3160" strokeWidth="3" strokeLinecap="round" />
+      <rect x="26" y="24" width="148" height="86" rx="4" fill="#1f1942" stroke="#3a3160" strokeWidth="2" />
+      <g opacity=".35">
+        <path d="M44 110 L44 46 L60 38 L60 110 Z" fill="#2e2758" stroke="#4a3f7a" strokeWidth="1.4" />
+        <path d="M140 110 L140 52 L156 44 L156 110 Z" fill="#2e2758" stroke="#4a3f7a" strokeWidth="1.4" />
+      </g>
+      <g transform="translate(100 30)">
+        <path d="M-9 0 L9 0 L6 13 L-6 13 Z" fill="#2e2758" stroke={accent} strokeWidth="1.6" />
+        <path d="M0 -10 L0 0" stroke="#4a3f7a" strokeWidth="1.6" />
+        <path d="M-14 24 A16 16 0 0 1 14 24 Z" fill={accent} opacity=".13" />
+        <circle cx="0" cy="12" r="3" fill={accent} opacity=".7" />
+      </g>
+      {/* a clapperboard face down on the floor — the shot nobody called */}
+      <g transform="translate(84 92) rotate(-9)">
+        <rect x="0" y="0" width="34" height="20" rx="2" fill="#2a2352" stroke="#5c4f92" strokeWidth="1.5" />
+        <path d="M0 6 L34 6" stroke="#5c4f92" strokeWidth="1.2" />
+        <path d="M6 0 L3 6 M14 0 L11 6 M22 0 L19 6 M30 0 L27 6" stroke="#5c4f92" strokeWidth="1.2" />
+      </g>
+      <g opacity=".55">
+        <rect x="34" y="76" width="16" height="34" rx="2" fill="#241e4a" stroke="#4a3f7a" strokeWidth="1.3" />
+        <rect x="150" y="82" width="16" height="28" rx="2" fill="#241e4a" stroke="#4a3f7a" strokeWidth="1.3" />
+      </g>
+      <text x="100" y="66" textAnchor="middle" fontSize="8" fontWeight="800" fill="#8d80c0" letterSpacing="2.4">
+        {moment.frozen ? 'ON HOLD' : 'STRUCK'}
+      </text>
+    </svg>);
+  }
   if (id === 'inheritance') {
     return (<svg viewBox="0 0 200 120" style={{ width: '100%', maxWidth: 300, display: 'block', margin: '0 auto' }}>
       <rect x="46" y="44" width="108" height="66" rx="4" fill="#2b2450" stroke="#4a3f7a" strokeWidth="2" />
@@ -103,8 +133,12 @@ function Scene({ id, look, accent, moment }) {
   </svg>);
 }
 
-const HEAD = { premiere: 'Opening night' };
-const CTA = { premiere: 'Read the reviews' };
+const CTA = { premiere: 'Read the reviews', shutdown: 'Go home' };
+function headFor(m) {
+  if (m.id === 'premiere') return 'Opening night';
+  if (m.id === 'shutdown') return m.frozen ? 'The shoot has stopped' : 'The project is dead';
+  return m.kind === 'good' ? 'Something came to you' : 'This is happening';
+}
 
 export function BigMoment({ moment, look, onClose }) {
   const good = moment.kind === 'good';
@@ -118,7 +152,7 @@ export function BigMoment({ moment, look, onClose }) {
     color: theme.text, fontFamily: 'system-ui, -apple-system, sans-serif' }}>
     <div style={{ maxWidth: 380, width: '100%', background: theme.panel, border: `1px solid ${accent}55`, borderRadius: 20, padding: '22px 20px 18px', textAlign: 'center' }}>
       <div style={{ fontSize: 11, fontWeight: 900, letterSpacing: '.18em', textTransform: 'uppercase', color: accent, marginBottom: 14 }}>
-        {HEAD[moment.id] || (good ? 'Something came to you' : 'This is happening')}
+        {headFor(moment)}
       </div>
       <Scene id={moment.id} look={look} accent={accent} moment={moment} />
       <div style={{ fontSize: 21, fontWeight: 900, margin: '16px 0 8px' }}>{moment.title}</div>
@@ -126,6 +160,12 @@ export function BigMoment({ moment, look, onClose }) {
         <div style={{ display: 'flex', gap: 8, margin: '0 0 12px' }}>
           <Figure label="Score" value={`${moment.score}/10`} accent={accent} />
           <Figure label={moment.money.includes('watching') ? 'Audience' : 'Box office'} value={moment.money.replace(' at the box office', '').replace(' watching', '')} accent={accent} />
+        </div>
+      )}
+      {moment.id === 'shutdown' && (
+        <div style={{ display: 'flex', gap: 8, margin: '0 0 12px' }}>
+          <Figure label="Kept" value={`€${Math.round(moment.paid || 0).toLocaleString()}`} accent={accent} />
+          <Figure label={moment.frozen ? 'Still to shoot' : 'Months gone'} value={`${moment.months} mo`} accent={accent} />
         </div>
       )}
       <div style={{ fontSize: 13.5, color: theme.muted, lineHeight: 1.6, marginBottom: 20 }}>{moment.body}</div>
