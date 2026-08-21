@@ -169,6 +169,10 @@ function checkInsolvency(s) {
   const parent = (s.family || []).find((p) => p.alive && (p.relation === 'Mother' || p.relation === 'Father') && (p.relationship || 0) > -20);
   const turnedAway = !parent && (s.family || []).some((p) => p.alive && (p.relation === 'Mother' || p.relation === 'Father'));
   s.hasApartment = false; s.housing = 'room'; s.rentMissed = 0; s.stage = 'moving_out';
+  // Losing the flat settles the arrears. A negative balance is only ever the SIGNAL that
+  // you could not make rent — carrying it forward afterwards left the player staring at
+  // −€6,540 they could neither pay off nor act on, on top of having lost the flat.
+  s.cash = Math.max(0, s.cash || 0);
   if (parent) {
     s.livingWith = 'parents'; s.homeless = false;
     s.mental = Math.max(0, (s.mental || 0) - 8);

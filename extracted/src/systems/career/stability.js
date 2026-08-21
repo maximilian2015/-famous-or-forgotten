@@ -136,7 +136,9 @@ export function freezeProject(s, p) {
     id: 'shutdown', kind: 'bad', frozen: true, title: frozen.title,
     reason: why, months: frozen.monthsLeft, paid: frozen.paid,
     body: `The crew was sent home this morning — ${why}. It is not cancelled. It is not happening either. `
-      + `You keep the €${Math.round(frozen.paid).toLocaleString()} you were paid, and the rest waits for money that may never come.`,
+      + (frozen.paid > 0
+        ? `You keep the €${Math.round(frozen.paid).toLocaleString()} you were paid, and the rest waits for money that may never come.`
+        : 'You had not been paid a cent yet. All of it waits for money that may never come.'),
   };
   return frozen;
 }
@@ -152,7 +154,8 @@ export function collapseProject(s, p) {
   s.bigMoment = {
     id: 'shutdown', kind: 'bad', frozen: false, title: p.title,
     reason: why, months, paid,
-    body: `It is over — ${why}. You keep the €${Math.round(paid).toLocaleString()} you were paid and nothing else. `
+    body: `It is over — ${why}. `
+      + (paid > 0 ? `You keep the €${Math.round(paid).toLocaleString()} you were paid and nothing else. ` : 'You were never paid a cent. ')
       + `There is no film, so there is no premiere, and nobody outside the crew will ever know you did it.`,
   };
   return { title: p.title, why, paid, months };

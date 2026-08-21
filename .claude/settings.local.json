@@ -86,7 +86,8 @@
       "Bash(\"/c/Program Files/nodejs/node.exe\" test_stability.mjs)",
       "Bash(rm -f season_titles.mjs)",
       "Bash(\"/c/Program Files/nodejs/node.exe\" test_seasons.mjs)",
-      "Bash(\"/c/Program Files/nodejs/node.exe\" test_minor.mjs)"
+      "Bash(\"/c/Program Files/nodejs/node.exe\" test_minor.mjs)",
+      "Bash(\"/c/Program Files/nodejs/node.exe\" test_titles.mjs)"
     ],
     "defaultMode": "acceptEdits",
     "additionalDirectories": [

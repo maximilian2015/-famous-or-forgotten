@@ -101,16 +101,19 @@ export function productionTick(s) {
     return;
   }
   p.paused = 0;
-  // The money can walk at any point during the shoot. It either freezes or dies, and
-  // either way there is no production left to tick.
-  if (productionTrouble(s, p)) return;
   p.monthsLeft -= 1;
   // You are paid while you work. A fourteen-month blockbuster that only paid on wrap
   // would starve you out of your flat long before the premiere.
   const perMonth = Math.round((p.salary || 0) / Math.max(1, p.months || 1));
   p.paid = (p.paid || 0) + perMonth;
   if (perMonth > 0) earn(s, perMonth, `"${p.title}" — month ${(p.months - p.monthsLeft)}`);
-  if (p.monthsLeft > 0) return;
+  if (p.monthsLeft > 0) {
+    // The money can walk at any point up to the last day, but you are paid for the days
+    // you actually worked — so this is rolled AFTER the month is paid. Rolling it first
+    // meant a shoot that stopped in month one left you with literally nothing.
+    productionTrouble(s, p);
+    return;
+  }
   wrapProduction(s);
 }
 function wrapProduction(s) {

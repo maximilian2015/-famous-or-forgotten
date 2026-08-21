@@ -947,9 +947,10 @@ function CreditsList({ g, credits, label }) {
             {world > 0 && <span style={{ color: theme.gold }}> · {world} world</span>}
           </div>}
         </div>
+        {/* Two films can share a title in an old save, so the row key needs the year too. */}
         {real.length === 0
           ? <div style={{ fontSize: 12.5, color: theme.muted, textAlign: 'center', padding: 20, lineHeight: 1.6 }}>Nothing released yet.<br />Audition in OpenCall, or take an offer in Messages.</div>
-          : groups.map((gr) => <CreditRow key={gr.root} group={gr} />)}
+          : groups.map((gr, i) => <CreditRow key={`${gr.root}-${gr.to}-${i}`} group={gr} />)}
         <OtherWork list={odd} />
       </>);
     })()}
@@ -1164,9 +1165,20 @@ function LegacyPanel({ g }) {
 function StageBody({ g }) {
   if (g.stage === 'child') return <div style={{ fontSize: 14, lineHeight: 1.55 }}>You are a kid living with your parents. School, cartoons, and the first hints of a dream. Live through the years — the real choices come when you grow up.</div>;
   if (g.stage === 'teen') return <div style={{ fontSize: 14, lineHeight: 1.55 }}>A teenager now. You daydream about being {g.dream === 'singer' ? 'on stage' : 'on screen'}. You've got your first phone, you can pick up side work, and a few years left under your parents' roof.</div>;
-  if (g.stage === 'moving_out') return <div><div style={{ fontSize: 14, lineHeight: 1.55, marginBottom: 10 }}>You are {g.ageY}. Staying with your parents is comfortable — and going nowhere. Take a room of your own to actually begin your path.</div>
+  // Eviction drops you back into this stage, and it is reached two very different ways.
+  // Telling someone sleeping rough that staying with their parents is comfortable was
+  // the single worst line in the game.
+  if (g.stage === 'moving_out') return <div><div style={{ fontSize: 14, lineHeight: 1.55, marginBottom: 10 }}>
+      {g.homeless
+        ? `You are ${g.ageY} and you are sleeping rough. Every month out here costs you. A room — any room — is the way back.`
+        : g.livingWith === 'parents' && (g.filmography || []).length > 0
+        ? `You are ${g.ageY} and back in your old bedroom. It happens to more people than admit it. Get the money together and take a room again.`
+        : `You are ${g.ageY}. Staying with your parents is comfortable — and going nowhere. Take a room of your own to actually begin your path.`}
+    </div>
     {!g.job && <div style={{ fontSize: 12, color: theme.gold, lineHeight: 1.5, marginBottom: 10 }}>
-      Get a job in your Phone first — rent is €{HOUSING.room.cost} every month, and nothing else is paying it.
+      {g.homeless
+        ? `Take any job in your Phone — a room is €${HOUSING.room.cost} a month and nothing else is going to pay for it.`
+        : `Get a job in your Phone first — rent is €${HOUSING.room.cost} every month, and nothing else is paying it.`}
     </div>}<Button kind="pri" onClick={() => dispatch(rentApartment)}>Move into a rented room · €{HOUSING.room.cost}/mo</Button></div>;
   return <div style={{ fontSize: 14, lineHeight: 1.55 }}>You have your own place and your own path. Chase auditions and offers through your Phone, build your craft, and make a name. Your story is yours to write.</div>;
 }

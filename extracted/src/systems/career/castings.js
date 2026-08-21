@@ -70,13 +70,38 @@ const SCALE = {
   blockbuster: { prestige: [80, 96], tier: 'tentpole', label: 'Blockbuster' },
 };
 export function scaleOf(c) { return SCALE[c?.scale] || SCALE.episode; }
-function titleFor() { const A=['Late','Golden','Silent','Broken','Bright','Lost']; const B=['River','Avenue','Season','Signal','Harbor','Echo']; return `${pick(A)} ${pick(B)}`; }
+// Six words by six words is thirty-six titles, and six listings drawn out of that
+// collide constantly — the board regularly showed the same film twice on two shelves,
+// and two films of the same name collapsed into one row in the filmography.
+const TITLE_A = ['Late', 'Golden', 'Silent', 'Broken', 'Bright', 'Lost', 'Quiet', 'Last', 'Paper', 'Neon',
+  'Bitter', 'Hollow', 'Certain', 'Northern', 'Second', 'Patient', 'Crooked', 'Tender'];
+const TITLE_B = ['River', 'Avenue', 'Season', 'Signal', 'Harbor', 'Echo', 'Hour', 'Room', 'Line', 'City',
+  'Winter', 'Weather', 'Machine', 'Country', 'Animal', 'Kingdom', 'Daughter', 'Distance'];
+function titleFor(taken) {
+  for (let i = 0; i < 60; i++) {
+    const t = `${pick(TITLE_A)} ${pick(TITLE_B)}`;
+    if (!taken || !taken.has(t)) return t;
+  }
+  // Astronomically unlikely, but a title is never worth an infinite loop.
+  return `${pick(TITLE_A)} ${pick(TITLE_B)} ${rint(2, 99)}`;
+}
 export function refreshCastingPool(s, force) {
   s.castingPool = s.castingPool || [];
   if (!force && s.castingPool.length >= 6) return;
   const career = s.dream === 'singer' ? 'singer' : 'actor';
   const shelves = POOLS[career];
   s.castingPool = force ? [] : s.castingPool.filter((c) => (c._expires || 0) > ((s.year || 0) * 12 + (s.month || 0)));
+  // No two things on the board share a name, and nothing is named after something you
+  // have already made or are already shooting.
+  const taken = new Set([
+    ...s.castingPool.map((c) => c.title),
+    ...(s.filmography || []).map((c) => c.title),
+    ...(s.discography || []).map((c) => c.title),
+    ...(s.releases || []).map((r) => r.title),
+    ...(s.frozen || []).map((f) => f.title),
+    ...(s.offers || []).map((o) => String(o.projectTitle || '').replace('⭐ ', '')),
+    s.production ? s.production.title : '',
+  ]);
   let guard = 0;
   while (s.castingPool.length < 6 && guard++ < 200) {
     const shelf = pick(Object.keys(shelves));
@@ -100,8 +125,10 @@ export function refreshCastingPool(s, force) {
     const base = perEpisode ? episodeRate(quoted, (eps[0] + eps[1]) / 2, episodes) : quoted;
     const rate = Math.round(base * fee);
     if (rate <= 0) continue;
+    const title = titleFor(taken);
+    taken.add(title);
     s.castingPool.push({
-      id: 'cast' + Date.now() + Math.floor(Math.random() * 10000), title: titleFor(), type, role, shelf, scale, medium,
+      id: 'cast' + Date.now() + Math.floor(Math.random() * 10000), title: title, type, role, shelf, scale, medium,
       share: share || 1,   // negotiation needs it to know the top of YOUR band for this part
       stability, feeFactor: fee,   // negotiation argues inside the band this job actually pays in
       months, episodes, perEpisode, episodeFee: perEpisode ? rate : 0,
