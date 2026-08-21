@@ -68,7 +68,8 @@ export function acceptOffer(s, id) {
   const skill = s.dream === 'singer' ? s.singing : s.acting;
   const rating = clamp(35 + skill * 0.4 + o.prestigeScore * 0.2 + (s.looks - 40) * 0.12 + rint(-8, 15));
   const status = rating >= 85 ? 'Hit' : rating >= 70 ? 'Well-received' : rating >= 50 ? 'Released' : 'Flop';
-  const credit = { title: o.projectTitle.replace('⭐ ', ''), role: o.role, type: o.type, genre: o.genre, salary: o.salary, rating, status, year: s.year };
+  const credit = { title: o.projectTitle.replace('⭐ ', ''), role: o.role, type: o.type, genre: o.genre,
+    salary: o.salary, rating, status, year: s.year, minor: true };   // a day's work — Other work, not a film credit
   const bucket = s.dream === 'singer' ? 'discography' : 'filmography';
   (s[bucket] = s[bucket] || []).unshift(credit);
   earn(s, o.salary, `"${credit.title}" paid`);

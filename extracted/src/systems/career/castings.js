@@ -148,7 +148,11 @@ export function auditionFor(s, id, quality = 50) {
     const rating = clamp(25 + skill * 0.30 + (quality - 50) * 0.25 + (s.looks - 40) * 0.1 + genreBonus(s, c.genre) + rint(-8, 14));
     const status = rating >= 85 ? 'Hit' : rating >= 70 ? 'Well-received' : rating >= 50 ? 'Released' : 'Flop';
     const bucket = s.dream === 'singer' ? 'discography' : 'filmography';
-    (s[bucket] = s[bucket] || []).unshift({ title: c.title, role: c.role, type: c.type, genre: c.genre, salary: c.salary, rating, status, year: s.year });
+    // A commercial is not a credit in the sense a film is. It still happened and still
+    // paid, so it is kept — but under Other work, without a score. Nobody rates a
+    // shampoo advert out of ten, and letting them do so dragged the whole filmography.
+    (s[bucket] = s[bucket] || []).unshift({ title: c.title, role: c.role, type: c.type, genre: c.genre,
+      salary: c.salary, rating, status, year: s.year, minor: true });
     addGenreXP(s, c.genre, rating);
     earn(s, c.salary, `"${c.title}" paid`); markReleased(s); s.fame = clamp(s.fame + rint(1, 3)); s.confidence = clamp(s.confidence + 2);
     s.lastEvent = `${quality >= 80 ? 'The room goes quiet — you nailed it. ' : ''}One day's work on "${c.title}". It came out ${status.toLowerCase()} (${Math.round(rating)}/100).`;

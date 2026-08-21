@@ -726,7 +726,7 @@ function EndOfLifeScreen({ g }) {
   const L = computeLegacy(g);
   const hall = getHall();
   const rank = hall.findIndex((h) => h.name === g.name && h.points === L.points) + 1;
-  const credits = [...(g.filmography || []), ...(g.discography || [])];
+  const credits = [...(g.filmography || []), ...(g.discography || [])].filter((c) => !isMinor(c));
   const best = [...credits].sort((a, b) => (b.rating || 0) - (a.rating || 0))[0];
   const spouse = (g.family || []).find((p) => p.relation === 'Spouse');
   const kids = (g.family || []).filter((p) => p.relation === 'Child').length;
@@ -777,6 +777,12 @@ function seriesRoot(c) {
   // "Lost Signal · season 2 · season 3" from before that bug was fixed.
   return String(c.title || '').replace(/(\s*·\s*season\s+\d+)+\s*$/i, '').trim();
 }
+// A commercial, a voice session, a day as an extra. Real work, real money, but not the
+// filmography — and giving them a score out of ten made a career of eight films look
+// like a career of thirteen mediocre ones. Saves written before the flag existed are
+// recognised by what the job was called.
+const MINOR_TYPES = /^(Brand Campaign|Commercial|Jingle|Brand Song|TV Extra|Voice Session|Open Mic|Festival Slot|Session Work|Music Video)$/;
+export function isMinor(c) { return c.minor === true || (c.minor === undefined && MINOR_TYPES.test(c.type || '')); }
 function groupCredits(list) {
   const out = [];
   const shows = new Map();
@@ -926,24 +932,57 @@ function CreditsList({ g, credits, label }) {
       </div>);
     })()}
     {(() => {
-      const groups = groupCredits(credits);
-      const hits = credits.filter((c) => (c.rating || 0) >= 85).length;
-      const world = credits.filter((c) => c.status === 'World Hit').length;
+      const real = credits.filter((c) => !isMinor(c));
+      const odd = credits.filter(isMinor);
+      const groups = groupCredits(real);
+      const hits = real.filter((c) => (c.rating || 0) >= 85).length;
+      const world = real.filter((c) => c.status === 'World Hit').length;
       return (<>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', marginBottom: 8 }}>
           <div style={{ fontSize: 11, fontWeight: 900, letterSpacing: '.09em', textTransform: 'uppercase', color: theme.muted }}>
-            {label}{credits.length ? ` · ${credits.length}` : ''}
+            {label}{real.length ? ` · ${real.length}` : ''}
           </div>
           {hits > 0 && <div style={{ fontSize: 10.5, fontWeight: 800 }}>
             <span style={{ color: theme.good }}>{hits} hit{hits === 1 ? '' : 's'}</span>
             {world > 0 && <span style={{ color: theme.gold }}> · {world} world</span>}
           </div>}
         </div>
-        {credits.length === 0
+        {real.length === 0
           ? <div style={{ fontSize: 12.5, color: theme.muted, textAlign: 'center', padding: 20, lineHeight: 1.6 }}>Nothing released yet.<br />Audition in OpenCall, or take an offer in Messages.</div>
           : groups.map((gr) => <CreditRow key={gr.root} group={gr} />)}
+        <OtherWork list={odd} />
       </>);
     })()}
+  </div>);
+}
+// Ads, voice sessions, days as an extra. Kept — it is part of the story of a career, and
+// "I did shampoo commercials for six years" is worth remembering — but with no score and
+// out of the count, because it is not a filmography.
+function OtherWork({ list }) {
+  const [open, setOpen] = useState(false);
+  if (!list.length) return null;
+  const earned = list.reduce((n, c) => n + (c.salary || 0), 0);
+  return (<div style={{ marginTop: 14 }}>
+    <button onClick={() => setOpen(!open)} style={{ width: '100%', textAlign: 'left', background: 'none', border: 'none', cursor: 'pointer', padding: '6px 0' }}>
+      <span style={{ fontSize: 11, fontWeight: 900, letterSpacing: '.09em', textTransform: 'uppercase', color: theme.muted }}>
+        Other work · {list.length}
+      </span>
+      <span style={{ fontSize: 10.5, color: theme.muted, marginLeft: 8 }}>
+        €{earned.toLocaleString()} · ads, voice, extra work {open ? '▾' : '▸'}
+      </span>
+    </button>
+    {open && list.map((c, i) => (
+      <div key={c.title + c.year + i} style={{ display: 'flex', justifyContent: 'space-between', gap: 10, padding: '7px 2px', borderBottom: `1px solid ${theme.line}`, fontSize: 12 }}>
+        <div style={{ minWidth: 0 }}>
+          <div style={{ fontWeight: 700 }}>{c.title}</div>
+          <div style={{ fontSize: 10.5, color: theme.muted }}>{c.role} · {c.type}</div>
+        </div>
+        <div style={{ textAlign: 'right', flex: 'none' }}>
+          <div style={{ fontSize: 11, color: theme.muted, fontVariantNumeric: 'tabular-nums' }}>{c.year}</div>
+          <div style={{ fontSize: 11, fontWeight: 700, color: theme.gold }}>€{(c.salary || 0).toLocaleString()}</div>
+        </div>
+      </div>
+    ))}
   </div>);
 }
 // The old prototype had a planner and Maxi missed it: twelve months ahead, with what is

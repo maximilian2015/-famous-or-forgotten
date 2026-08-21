@@ -85,7 +85,8 @@
       "Bash(git push *)",
       "Bash(\"/c/Program Files/nodejs/node.exe\" test_stability.mjs)",
       "Bash(rm -f season_titles.mjs)",
-      "Bash(\"/c/Program Files/nodejs/node.exe\" test_seasons.mjs)"
+      "Bash(\"/c/Program Files/nodejs/node.exe\" test_seasons.mjs)",
+      "Bash(\"/c/Program Files/nodejs/node.exe\" test_minor.mjs)"
     ],
     "defaultMode": "acceptEdits",
     "additionalDirectories": [

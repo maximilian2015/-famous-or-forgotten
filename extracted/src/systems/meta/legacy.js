@@ -1,6 +1,11 @@
+// Ads and voice sessions are not a legacy. They paid for a room; they do not go on the
+// stone. Kept in step with the Other work split in the filmography.
+const MINOR_TYPES = /^(Brand Campaign|Commercial|Jingle|Brand Song|TV Extra|Voice Session|Open Mic|Festival Slot|Session Work|Music Video)$/;
+const isMinor = (c) => c.minor === true || (c.minor === undefined && MINOR_TYPES.test(c.type || ''));
 export function computeLegacy(s) {
-  const credits = (s.filmography || []).length + (s.discography || []).length;
-  const hits = [...(s.filmography || []), ...(s.discography || [])].filter((x) => (x.rating || 0) >= 85).length;
+  const all = [...(s.filmography || []), ...(s.discography || [])].filter((c) => !isMinor(c));
+  const credits = all.length;
+  const hits = all.filter((x) => (x.rating || 0) >= 85).length;
   const worldHits = s.worldHits || 0;
   const peakFame = s.peakFame || s.fame || 0;
   // Weighted for QUALITY over volume: grinding out credits barely moves the needle, while a
