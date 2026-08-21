@@ -4,7 +4,7 @@ import { earn } from '../../engine/economy.js';
 import { hotGenre } from '../meta/news.js';
 import { addGenreXP, genreBonus } from './genres.js';
 import { scheduleRelease } from './release.js';
-import { rollStability, productionTrouble, volatileSwing } from './stability.js';
+import { rollStability, productionTrouble, volatileSwing, roughness } from './stability.js';
 const clamp = (v) => Math.max(0, Math.min(100, v));
 const TIERS = [
   { min: 0, label: 'Disaster' }, { min: 25, label: 'Rocky' }, { min: 50, label: 'Solid' },
@@ -38,6 +38,9 @@ export function startProduction(s, offer) {
     // Carried so the thing can continue: which season, which part of the franchise,
     // and whether you signed away the right to say no.
     episodes: offer.episodes || 0, episodeFee: offer.episodeFee || 0,
+    // The name of the show, kept apart from this season's project title so that season
+    // four is not built by appending to the title of season three.
+    seriesTitle: offer.seriesTitle || (offer.episodes ? offer.projectTitle.replace('⭐ ', '') : ''),
     season: offer.season || (offer.episodes ? 1 : 0), part: offer.part || 1,
     optioned: !!offer.optioned, optionParts: offer.optionParts || 0,
     // How solid the money is. Decides whether this shoot ever reaches its last day, and
@@ -120,8 +123,10 @@ function wrapProduction(s) {
   // The swing. A locked studio picture comes out roughly as good as it was always going
   // to be; a project held together with tape can be the film of the year or nothing at
   // all. This is why an indie is worth the gamble.
-  let rating = clamp(floor + craft + p.prestigeScore * 0.18 + (s.looks - 40) * 0.08 + genreBonus(s, p.genre)
-    + rint(-10, 12) + volatileSwing(p.stability));
+  // No money also means no days and no post, so a broke production is rougher — but the
+  // part it gave you was better, and those two roughly cancel. What is left is the swing.
+  let rating = clamp(floor + craft - roughness(p.stability) + p.prestigeScore * 0.18
+    + (s.looks - 40) * 0.08 + genreBonus(s, p.genre) + rint(-10, 12) + volatileSwing(p.stability));
   // A genuine cultural moment should be a career highlight, not a monthly occurrence.
   let worldHit = false;
   if (rating >= 90 && p.tier !== 'supporting') {

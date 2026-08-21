@@ -50,6 +50,10 @@ export function inheritFrom(s, p) {
   const isParent = p.relation === 'Mother' || p.relation === 'Father';
   const scale = isParent ? 1 : String(p.relation).startsWith('Grand') ? 0.35 : 0;
   if (scale === 0) return null;   // siblings and children leave you nothing but the memory
+  // A child does not inherit. Whatever there was goes to the adults who are raising you,
+  // which is the same rule that starts you at zero at birth — and it stops a five-year-old
+  // being stopped mid-game by a full-screen modal about €59.
+  if ((s.ageY || 0) < 18) return { cash: 0, home: false, note: '' };
   const closeness = p.relationship || 0;
   if (closeness < 30) {
     return { cash: 0, home: false,
@@ -92,7 +96,7 @@ export function familyYear(s) {
     if (p.job === 'student' && p.age >= 23) { p.job = chance(80) ? pick(JOBS) : 'unemployed'; if (p.job !== 'unemployed') events.push(`${p.name} started working as a ${p.job}.`); }
     if (!p.retired && p.age >= 23 && p.age < 65 && p.job !== 'in school' && p.job !== 'student') {
       if (p.job !== 'unemployed' && chance(6)) { p.job = 'unemployed'; events.push(`${p.name} lost their job.`); }
-      else if (p.job === 'unemployed' && chance(35)) { p.job = pick(JOBS); events.push(`${p.name} found work as a ${p.job}.`); }
+      else if (p.job === 'unemployed' && chance(35)) { p.job = pick(JOBS); events.push(`${p.name} found work as ${/^[aeiou]/i.test(p.job) ? 'an' : 'a'} ${p.job}.`); }
     }
     if (!p.retired && p.age >= 65) { p.retired = true; p.job = 'retired'; events.push(`${p.name} retired.`); }
     const deathChance = p.age > 85 ? 22 : p.age > 78 ? 12 : p.age > 70 ? 6 : (p.health < 20 ? 8 : 0);

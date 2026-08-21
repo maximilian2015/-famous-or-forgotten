@@ -112,12 +112,20 @@ export function relevanceDrift(s) {
   // Old news fades whether you like it or not.
   if ((s.scandal || 0) > 0) s.scandal = Math.max(0, s.scandal - 0.4);
   if ((s._idleMonths || 0) < 4) return;
-  const height = 0.35 + (s.fame || 0) / 95;      // the higher you are, the further there is to fall
+  // Purely proportional: nobody forgets a person they were never aware of. The flat
+  // 0.35 that used to be here made the bottom of the ladder unclimbable — a supporting
+  // credit is worth +2 fame, and a year of the old drift took 4.4 back, so an actor
+  // could work for twenty years and stay at zero. Play-tested at age 44, acting 100,
+  // ten credits, fame 0.
+  const height = (s.fame || 0) / 55;             // the higher you are, the further there is to fall
   const noise = (s.scandal || 0) / 45;            // bad press speeds the slide
   // A film sitting in post is still something the trades write about. A blockbuster can
   // take a year to open, and you should not be forgotten for having shot one.
   const shielded = (s.releases || []).length > 0 ? 0.45 : 1;
-  s.fame = Math.max(0, Math.min(100, s.fame - (height + noise) * shielded));
+  // Once you have been an Icon the world does not un-know you. The one ceiling that
+  // turns into a floor.
+  const floor = (s.peakFame || 0) >= 90 ? 75 : 0;
+  s.fame = Math.max(floor, Math.min(100, s.fame - (height + noise) * shielded));
   if ((s._idleMonths === 13 || s._idleMonths === 25) && (s.fame || 0) > 5) {
     addTimeline(s, s._idleMonths > 20
       ? 'Two years without work. People talk about you in the past tense now.'

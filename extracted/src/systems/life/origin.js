@@ -121,7 +121,7 @@ export function beginLife(s) {
   lines.push(`In ${s.city}, in ${s.year}. Nobody there had any idea what you would become.`);
 
   s.originStory = lines.join(' ');
-  addTimeline(s, `Born in ${s.city} to ${dad ? `${mum.name} and ${dad.name}` : mum.name}. ${c.label.toLowerCase()} household.`);
+  addTimeline(s, `Born in ${s.city} to ${dad ? `${mum.name} and ${dad.name}` : mum.name} — a ${c.label.toLowerCase()} household.`);
   return s;
 }
 

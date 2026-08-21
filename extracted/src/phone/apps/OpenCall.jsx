@@ -6,7 +6,7 @@ import { TimingBar } from '../../ui/components/TimingBar.jsx';
 import { GridRisk } from '../../ui/components/GridRisk.jsx';
 import { useAccent } from '../../ui/appTheme.js';
 import { negotiationFor, haggleOdds, applyHaggle } from '../../systems/career/negotiate.js';
-import { stabilityBand, riskCostFor } from '../../systems/career/stability.js';
+import { stabilityBand, riskCostFor, volatility } from '../../systems/career/stability.js';
 
 // Only appears once you are somebody. Below Star you are told the number.
 function Haggle({ g, c }) {
@@ -52,16 +52,22 @@ function Backing({ g, c }) {
   if (c.stability == null || (c.months || 1) < 2) return null;
   const band = stabilityBand(c.stability);
   const cost = riskCostFor(g, c.stability);
-  const over = Math.round(((c.premium || 1) - 1) * 100);
+  const under = Math.round((1 - (c.feeFactor || 1)) * 100);
+  const swing = volatility(c.stability);
   const col = BAND_COL[band.id] || theme.muted;
   return (<div style={{ marginTop: 7, border: `1px solid ${col}33`, borderRadius: 10, padding: '7px 9px', background: 'rgba(255,255,255,.025)' }}>
     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', gap: 8 }}>
       <span style={{ fontSize: 10, fontWeight: 900, letterSpacing: '.1em', textTransform: 'uppercase', color: col }}>
         {band.label}
       </span>
-      {over >= 4 && <span style={{ fontSize: 10, fontWeight: 800, color: theme.gold, whiteSpace: 'nowrap' }}>+{over}% over the rate</span>}
+      {under >= 4 && <span style={{ fontSize: 10, fontWeight: 800, color: theme.gold, whiteSpace: 'nowrap' }}>{under}% under the rate</span>}
     </div>
     <div style={{ fontSize: 10.5, color: theme.muted, marginTop: 3, lineHeight: 1.45 }}>{band.note}</div>
+    {/* The reason to say yes: shaky money cannot pay you, so it pays in the part and in
+        the chance the finished thing is something. Both halves have to be visible. */}
+    {swing >= 10 && <div style={{ fontSize: 10.5, color: theme.accent, marginTop: 3, lineHeight: 1.45 }}>
+      Better part than the money deserves — and it could come out anywhere from a disaster to the best thing you have done.
+    </div>}
     {cost.line && <div style={{ fontSize: 10.5, color: cost.id === 'nothing' ? theme.good : theme.muted, marginTop: 3, lineHeight: 1.45 }}>{cost.line}</div>}
   </div>);
 }

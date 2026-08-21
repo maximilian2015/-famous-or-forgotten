@@ -60,12 +60,18 @@ export function trendFactor(rating, prevRating) {
 export function seasonRaise(season, rating = 70, prevRating = null) {
   return seasonBase(season) * performanceFactor(rating) * trendFactor(rating, prevRating);
 }
+// The name of the show itself, with however many season suffixes have accumulated
+// stripped off. Season 3 was being built from the season-2 TITLE, so shows were coming
+// out as "Lost Signal · season 2 · season 3" and growing a segment every year.
+export function seriesRoot(title) {
+  return String(title || '').replace(/(\s*·\s*season\s+\d+)+\s*$/i, '').trim();
+}
 // What the season before this one rated, so a trend can exist at all.
 function previousRating(s, title, season) {
   if (!season || season < 2) return null;
-  const root = String(title).replace(/\s*·\s*season\s+\d+$/i, '').trim();
+  const root = seriesRoot(title);
   const prev = [...(s.filmography || []), ...(s.discography || [])]
-    .find((c) => c.season === season - 1 && String(c.title).replace(/\s*·\s*season\s+\d+$/i, '').trim() === root);
+    .find((c) => c.season === season - 1 && seriesRoot(c.title) === root);
   return prev ? prev.rating : null;
 }
 
@@ -98,23 +104,25 @@ export function maybeContinue(s, credit, p) {
   const part = p.part || 1;
 
   if (isSeries) {
+    // Always build from the name of the SHOW, never from last season's project title.
+    const root = seriesRoot(p.seriesTitle || p.title);
     const odds = renewalOdds(credit.rating, season, p.type);
     if (!chance(odds)) {
-      if (season > 1) addTimeline(s, `"${p.title}" was not renewed after ${season} season${season === 1 ? '' : 's'}.`, true);
+      if (season > 1) addTimeline(s, `"${root}" was not renewed after ${season} season${season === 1 ? '' : 's'}.`, true);
       return null;
     }
     const nextSeason = season + 1;
-    const raise = seasonRaise(nextSeason, credit.rating, previousRating(s, p.title, season));
+    const raise = seasonRaise(nextSeason, credit.rating, previousRating(s, root, season));
     const pct = Math.round((raise - 1) * 100);
     const episodeFee = Math.round((p.episodeFee || Math.round(p.salary / Math.max(1, p.episodes || 1))) * raise);
     const episodes = Math.max(4, Math.round((p.episodes || 8) * (0.9 + Math.random() * 0.3)));
-    addTimeline(s, `"${p.title}" was renewed for season ${nextSeason}.`);
+    addTimeline(s, `"${root}" was renewed for season ${nextSeason}.`);
     return {
       id: 'ren' + Date.now() + Math.floor(Math.random() * 1000),
       // A show that got renewed is a show that works. The money is not the question here.
-      kind: 'renewal', seriesTitle: p.title, season: nextSeason, scale: p.scale,
+      kind: 'renewal', seriesTitle: root, season: nextSeason, scale: p.scale,
       stability: Math.max(82, p.stability || 82),
-      projectTitle: `${p.title} · season ${nextSeason}`, role: p.role, type: p.type, genre: p.genre,
+      projectTitle: `${root} · season ${nextSeason}`, role: p.role, type: p.type, genre: p.genre,
       episodes, episodeFee, salary: episodeFee * episodes,
       months: Math.max(2, Math.round((p.months || 4) * (0.9 + Math.random() * 0.25))),
       prestigeScore: Math.min(96, (p.prestigeScore || 45) + rint(2, 7)), tier: p.tier || 'lead',

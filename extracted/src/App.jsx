@@ -30,6 +30,7 @@ import { classOf } from './systems/life/origin.js';
 import { interactionsFor, interact, findPerson, GROUPS } from './systems/life/interactions.js';
 import { relBand } from './systems/life/bonds.js';
 import { BigMoment } from './ui/components/BigMoment.jsx';
+import { stabilityBand } from './systems/career/stability.js';
 // Big moments live on state so a system can raise one; the UI only clears it.
 function clearBigMoment(s) { s.bigMoment = null; return s; }
 const MON = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
@@ -60,7 +61,7 @@ export default function App() {
             <div style={{ fontSize: 12.5, color: theme.muted, marginTop: 3 }}>{g.ageY} yrs · {MON[g.month]} {g.year}</div>
             {/* "who is that standing next to me" should never be a question */}
             <div style={{ fontSize: 10, color: theme.accent, marginTop: 2, opacity: .75 }}>
-              {companionOf(g) ? `with ${companionOf(g).person.name.split(' ')[0]} · ${companionOf(g).married ? 'married' : 'together'}` : `${g.city} · Step 31`}
+              {companionOf(g) ? `with ${companionOf(g).person.name.split(' ')[0]} · ${companionOf(g).married ? 'married' : 'together'}` : g.city}
             </div>
           </div>
         </div>
@@ -112,7 +113,12 @@ export default function App() {
           <div style={{ fontSize: 14, fontWeight: 800, marginTop: 3 }}>{g.production.title} · {g.production.monthsLeft} mo left</div>
           <div style={{ fontSize: 11, color: theme.muted, marginTop: 4 }}>Manage it from the Career tab.</div>
         </Card>)}
-        {g.stage === 'career' && (g.offers || []).length > 0 && (<div style={{ marginBottom: 14 }}><div style={{ fontSize: 11, fontWeight: 900, letterSpacing: '.09em', textTransform: 'uppercase', color: theme.muted, marginBottom: 8 }}>Offers</div>{g.offers.map((o) => (<Card key={o.id} style={{ marginBottom: 8 }}><div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline' }}><div style={{ fontSize: 14, fontWeight: 800 }}>{o.projectTitle}</div><div style={{ fontSize: 13, fontWeight: 900, color: theme.gold }}>€{o.salary.toLocaleString()}</div></div><div style={{ fontSize: 11.5, color: theme.muted, margin: '3px 0 8px' }}>{o.role} · {o.type} · {o.months} mo · prestige {o.prestigeScore}</div><div style={{ display: 'flex', gap: 7 }}><Button kind="pri" onClick={() => dispatch(acceptOffer, o.id)}>Accept</Button><Button kind="danger" onClick={() => dispatch(declineOffer, o.id)}>Pass</Button></div></Card>))}</div>)}
+        {g.stage === 'career' && (g.offers || []).length > 0 && (<div style={{ marginBottom: 14 }}><div style={{ fontSize: 11, fontWeight: 900, letterSpacing: '.09em', textTransform: 'uppercase', color: theme.muted, marginBottom: 8 }}>Offers</div>{g.offers.map((o) => (<Card key={o.id} style={{ marginBottom: 8 }}><div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline' }}><div style={{ fontSize: 14, fontWeight: 800 }}>{o.projectTitle}</div><div style={{ fontSize: 13, fontWeight: 900, color: theme.gold }}>€{o.salary.toLocaleString()}</div></div><div style={{ fontSize: 11.5, color: theme.muted, margin: '3px 0 4px' }}>{o.role} · {o.type} · {o.months} mo · prestige {o.prestigeScore}</div>
+          {/* An offer can collapse mid-shoot exactly like a casting, so it has to say how
+              solid the money is before you sign, not after. */}
+          <OfferBacking o={o} />
+          {o.note && <div style={{ fontSize: 11, color: theme.accent, margin: '0 0 6px', lineHeight: 1.45 }}>{o.note}</div>}
+          <div style={{ display: 'flex', gap: 7 }}><Button kind="pri" onClick={() => dispatch(acceptOffer, o.id)}>Accept</Button><Button kind="danger" onClick={() => dispatch(declineOffer, o.id)}>Pass</Button></div></Card>))}</div>)}
         {g.stage === 'career' && <AaaTracker g={g} />}
         <LifeCard g={g} />
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
@@ -767,7 +773,9 @@ function Poster({ title, type }) {
 // a series is ONE entry with its year range and total episodes, while films — sequels
 // included — each get their own line. "Golden Echo" and "Golden Echo II" are two films.
 function seriesRoot(c) {
-  return String(c.title || '').replace(/\s*·\s*season\s+\d+$/i, '').trim();
+  // Strip EVERY accumulated season suffix — old saves carry titles like
+  // "Lost Signal · season 2 · season 3" from before that bug was fixed.
+  return String(c.title || '').replace(/(\s*·\s*season\s+\d+)+\s*$/i, '').trim();
 }
 function groupCredits(list) {
   const out = [];
@@ -849,6 +857,15 @@ function CreditRow({ group }) {
   </div>);
 }
 const VERDICT_COL = { smash: theme.gold, profitable: theme.good, 'broke even': theme.muted, bomb: theme.bad, watched: theme.good, seen: theme.muted, ignored: theme.bad };
+const BACKING_COL = { locked: theme.good, solid: theme.accent, shaky: theme.gold, fragile: theme.bad };
+// The same fact the OpenCall board shows, in the one line an offer card has room for.
+function OfferBacking({ o }) {
+  if (o.stability == null || (o.months || 1) < 2) return null;
+  const band = stabilityBand(o.stability);
+  return (<div style={{ fontSize: 10.5, fontWeight: 700, color: BACKING_COL[band.id] || theme.muted, margin: '0 0 6px' }}>
+    {band.label} — {band.note}
+  </div>);
+}
 function CreditsList({ g, credits, label }) {
   const p = g.production;
   return (<div>
@@ -1108,6 +1125,9 @@ function LegacyPanel({ g }) {
 function StageBody({ g }) {
   if (g.stage === 'child') return <div style={{ fontSize: 14, lineHeight: 1.55 }}>You are a kid living with your parents. School, cartoons, and the first hints of a dream. Live through the years — the real choices come when you grow up.</div>;
   if (g.stage === 'teen') return <div style={{ fontSize: 14, lineHeight: 1.55 }}>A teenager now. You daydream about being {g.dream === 'singer' ? 'on stage' : 'on screen'}. You've got your first phone, you can pick up side work, and a few years left under your parents' roof.</div>;
-  if (g.stage === 'moving_out') return <div><div style={{ fontSize: 14, lineHeight: 1.55, marginBottom: 10 }}>You are 18. Staying with your parents is comfortable — and going nowhere. Take a room of your own to actually begin your path.</div><Button kind="pri" onClick={() => dispatch(rentApartment)}>Move into a rented room · €{HOUSING.room.cost}/mo</Button></div>;
+  if (g.stage === 'moving_out') return <div><div style={{ fontSize: 14, lineHeight: 1.55, marginBottom: 10 }}>You are {g.ageY}. Staying with your parents is comfortable — and going nowhere. Take a room of your own to actually begin your path.</div>
+    {!g.job && <div style={{ fontSize: 12, color: theme.gold, lineHeight: 1.5, marginBottom: 10 }}>
+      Get a job in your Phone first — rent is €{HOUSING.room.cost} every month, and nothing else is paying it.
+    </div>}<Button kind="pri" onClick={() => dispatch(rentApartment)}>Move into a rented room · €{HOUSING.room.cost}/mo</Button></div>;
   return <div style={{ fontSize: 14, lineHeight: 1.55 }}>You have your own place and your own path. Chase auditions and offers through your Phone, build your craft, and make a name. Your story is yours to write.</div>;
 }

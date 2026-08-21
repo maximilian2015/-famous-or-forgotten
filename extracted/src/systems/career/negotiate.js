@@ -30,9 +30,13 @@ export function negotiationFor(s, job) {
   const unit = job.perEpisode ? (job.episodeFee || 0) : (job.salary || 0);
   if (unit <= 0) return null;
   const share = job.share || 1;
-  // A risky project already opens above the band — arguing against the plain band would
-  // leave a fragile indie with nothing left to ask for.
-  const bandTop = Math.round(band[1] * share * (job.premium || 1));
+  // A broke production opens below the band and cannot be argued up to studio money —
+  // you are haggling inside the band this job actually pays in, not the one it wishes.
+  //
+  // Never below what they already offered: a short episode order pays over the band per
+  // episode by design, and telling someone "you are worth up to €X" under an offer of
+  // more than €X is nonsense.
+  const bandTop = Math.max(unit, Math.round(band[1] * share * (job.feeFactor || 1)));
   const ceiling = Math.round(bandTop * reachOf(s));
   return {
     quoted: unit, bandTop, ceiling,

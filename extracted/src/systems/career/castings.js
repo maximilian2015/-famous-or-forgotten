@@ -5,7 +5,7 @@ import { GENRES } from '../meta/news.js';
 import { addGenreXP, genreBonus } from './genres.js';
 import { startProduction } from './production.js';
 import { quoteFor, episodeRate } from '../meta/status.js';
-import { rollStability, riskPremium, riskPrestige } from './stability.js';
+import { rollStability, feeFactor, riskPrestige } from './stability.js';
 const clamp = (v) => Math.max(0, Math.min(100, v));
 // Two things the old table got wrong, both of them real-world facts:
 //   · television is paid PER EPISODE, film is paid for the picture. They are not the
@@ -95,15 +95,15 @@ export function refreshCastingPool(s, force) {
     // A job that is over by the evening cannot fall apart, so it is never priced as if
     // it might — otherwise a one-day short would pay a risk premium for no risk.
     const stability = months < 2 ? rint(88, 97) : rollStability(scale);
-    const premium = riskPremium(stability);
+    const fee = feeFactor(stability);
     // Bands are quoted against a typical season. A longer order pays less per episode.
     const base = perEpisode ? episodeRate(quoted, (eps[0] + eps[1]) / 2, episodes) : quoted;
-    const rate = Math.round(base * premium);
+    const rate = Math.round(base * fee);
     if (rate <= 0) continue;
     s.castingPool.push({
       id: 'cast' + Date.now() + Math.floor(Math.random() * 10000), title: titleFor(), type, role, shelf, scale, medium,
       share: share || 1,   // negotiation needs it to know the top of YOUR band for this part
-      stability, premium,  // and it needs the premium, or a risky job would have nothing left to argue about
+      stability, feeFactor: fee,   // negotiation argues inside the band this job actually pays in
       months, episodes, perEpisode, episodeFee: perEpisode ? rate : 0,
       salary: perEpisode ? rate * episodes : rate,        // the whole fee, paid across the shoot
       genre: pick(GENRES), minFame: minFame || 0,

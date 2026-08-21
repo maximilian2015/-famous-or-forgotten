@@ -98,7 +98,7 @@ export function scheduleRelease(s, credit, p) {
     // Whether the thing gets a second season or a sequel is decided on the numbers, so
     // the shoot has to keep enough of itself alive to be asked that question later.
     job: {
-      title: p.title, role: p.role, type: p.type, genre: p.genre, salary: p.salary,
+      title: p.title, seriesTitle: p.seriesTitle, role: p.role, type: p.type, genre: p.genre, salary: p.salary,
       months: p.months, episodes: p.episodes || 0, episodeFee: p.episodeFee || 0,
       season: p.season || 0, part: p.part || 1, tier: p.tier, scale: p.scale, stability: p.stability,
       prestigeScore: p.prestigeScore, optioned: !!p.optioned, optionParts: p.optionParts || 0,
@@ -142,7 +142,10 @@ function open(s, rel) {
   let fame = bySkill + (rel.rating >= 85 ? 4 : 0) + (rel.worldHit ? 25 : 0);
   if (verdict === 'smash') fame += 8;
   else if (verdict === 'profitable') fame += 3;
-  else if (verdict === 'bomb') fame -= 3;
+  // A flop cuts what the film does for your name, but it can never take your name
+  // backwards: a bad film still put your face on a screen. Subtracting here trapped a
+  // low-fame actor at zero forever — every credit made them less known than before it.
+  else if (verdict === 'bomb') fame = Math.max(1, fame - 3);
   s.fame = clamp((s.fame || 0) + fame);
   s.respect = clamp((s.respect || 0) + (rel.rating >= 85 ? 5 : rel.rating >= 70 ? 2 : rel.rating < 45 ? -4 : 0));
 

@@ -36,26 +36,33 @@ const BANDS = [
   { min: 88, id: 'locked', label: 'Locked', note: 'The money is in the bank. This is happening.' },
   { min: 74, id: 'solid', label: 'Solid', note: 'Properly financed. Things go wrong on set, not in the accounts.' },
   { min: 55, id: 'shaky', label: 'Shaky', note: 'Financed, mostly. One backer walking would be felt.' },
-  { min: 0, id: 'fragile', label: 'Held together', note: 'Nobody can name where the money is coming from.' },
+  { min: 0, id: 'fragile', label: 'No real money', note: 'Nobody can name where the money is coming from.' },
 ];
 export function stabilityBand(v) {
   for (const b of BANDS) if ((v || 0) >= b.min) return b;
   return BANDS[BANDS.length - 1];
 }
 
-// Risk is paid for. Nobody takes a job that might evaporate for the same fee as one
-// that will not — the premium is the reason to say yes.
-export function riskPremium(stability) {
-  const risk = Math.max(0, 90 - (stability || 90)) / 90;    // 0 at locked, ~0.65 at the worst
-  return 1 + risk * 0.75;
+// A shaky project does NOT pay more. It has no money — that is why it is shaky. This
+// was backwards to begin with: paying a risk premium is what bonds do, not films. The
+// producer who cannot say where the money is coming from pays you half of scale, and
+// what you get instead is the part.
+// Full rate once the money is properly there — Solid should not feel like a discount.
+// Below that it falls away fast, to half at the very bottom.
+export function feeFactor(stability) {
+  return 0.5 + 0.5 * Math.min(1, Math.max(0, ((stability ?? 88) - 32) / 46));
 }
-// And the material is better, because that is what a shaky project has to offer instead
-// of money it does not have.
+// The part itself. This is the only currency a broke production has, and it has to be
+// worth crossing the room for.
 export function riskPrestige(stability) {
-  return Math.round(Math.max(0, 82 - (stability || 82)) * 0.22);
+  return Math.round(Math.max(0, 88 - (stability ?? 88)) * 0.45);
 }
-// The wide swing at the wrap. This is where an indie either becomes the film of the year
-// or quietly disappears — a locked studio picture does neither.
+// No money also means no days, no reshoots, no post. The finished thing is rougher.
+export function roughness(stability) {
+  return Math.max(0, 88 - (stability ?? 88)) * 0.045;
+}
+// The swing at the wrap. Locked money gives you exactly what you earned; shaky money
+// throws a die on top of it, in both directions. The mean does not move — the width does.
 export function volatility(stability) {
   return Math.round(Math.max(0, 92 - (stability || 92)) * 0.34);
 }
