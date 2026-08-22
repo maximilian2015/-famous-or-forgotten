@@ -55,6 +55,11 @@ export function infectionOdds(s) {
   return clamp(odds);
 }
 
+// What a body of this age can hold when nothing is wrong with it. Recovery runs up to
+// here and no further; the long decline of agingTick still pulls the ceiling down.
+export function naturalCeiling(s) {
+  return Math.max(45, 96 - Math.max(0, (s.ageY || 0) - 25) * 0.6);
+}
 // Immunity: your body fights the same thing off for a while after beating it.
 export function isIll(s) { return !!s.illness; }
 export function illnessBlocks(s) { return !!(s.illness && s.illness.freezes); }
@@ -80,8 +85,18 @@ export function healthTick(s) {
       s.lastEvent = `Left too long, it became something real: ${up.name.toLowerCase()}. Everything else stops.`;
       addTimeline(s, `It got worse: ${up.name.toLowerCase()}.`, true);
     }
-  } else if (((s.year || 0) * 12 + (s.month || 0)) >= (s.immuneUntil || 0)) {
-    if (chance(infectionOdds(s))) {
+  } else {
+    // The body puts itself back together whenever nothing is wrong with it — including
+    // the months right after an illness, which is exactly when it should. Without this
+    // health only ever went down: every illness drained it, nothing but money put it
+    // back, and since being unhealthy is what makes you ill, one bad run started a
+    // spiral nobody escaped. Simulated over three hundred lives, ageing alone got people
+    // to seventy-two and ageing with illness killed them at forty.
+    if ((s.health || 0) < naturalCeiling(s)) {
+      s.health = clamp(Math.min(naturalCeiling(s), (s.health || 0) + 1.3 + ((s.mental || 50) > 70 ? 0.4 : 0)));
+    }
+    const catchable = ((s.year || 0) * 12 + (s.month || 0)) >= (s.immuneUntil || 0);
+    if (catchable && chance(infectionOdds(s))) {
       const serious = h < 35 ? chance(50) : chance(12);
       const ill = pick(serious ? ILLNESSES.serious : ILLNESSES.minor);
       s.illness = { ...ill, serious, months: 0, left: ill.months };

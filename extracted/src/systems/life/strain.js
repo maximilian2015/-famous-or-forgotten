@@ -11,9 +11,16 @@ import { addTimeline } from '../../engine/timeline.js';
 
 const clamp = (v, a = 0, b = 100) => Math.max(a, Math.min(b, v));
 
-// What a month on set takes out of you, by how big the thing is.
-const COST = { blockbuster: 6.5, prestige: 5.5, feature: 5, recurring: 4.5, indie: 4, episode: 3.5, small: 3, oneoff: 2 };
-export function monthlyStrain(p) { return COST[p?.scale] || 4.5; }
+// What a month on set takes out of you, by how big the thing is — and by how much you
+// had left when you walked on. A month is cheap when you are rested and brutal when you
+// are not, which is why one film a year is sustainable forever and four back to back is
+// not. A flat cost made the whole thing linear, and linear meant survivable: two hundred
+// careers averaged twenty-four collapses each and still finished with a hundred and
+// fifty-four credits.
+const COST = { blockbuster: 8, prestige: 7, feature: 6.5, recurring: 6, indie: 5.5, episode: 4.5, small: 4, oneoff: 2.5 };
+export function monthlyStrain(p, current = 0) {
+  return (COST[p?.scale] || 6) * (0.55 + (current || 0) / 68);
+}
 
 // What a month off gives back. Doing nothing is not the same as resting properly.
 export const REST_GAIN = 5.5;
@@ -58,14 +65,18 @@ export function strainTick(s) {
 
   const before = s.strain || 0;
   if (s.production && !(s.illness && s.illness.freezes)) {
-    let up = monthlyStrain(s.production);
+    let up = monthlyStrain(s.production, before);
     if ((s.mental || 50) < 35) up += 1.5;            // running down makes everything cost more
     if ((s.health || 50) < 40) up += 1.5;
     s.strain = clamp(before + up);
   } else {
     // A month with no shoot gives it back; resting properly gives more, and the Rest
-    // action sets this flag.
-    s.strain = clamp(before - (s._rested ? REST_GAIN : IDLE_GAIN));
+    // action sets this flag. But each time you have gone over the edge you come back a
+    // little less able to recover — burnout is not a save point you reload from, and
+    // without this the whole thing was a speed bump: two hundred careers averaged thirty
+    // collapses each and still finished with a hundred and seventy-five credits.
+    const worn = 1 + Math.min(2.0, (s.burnouts || 0) * 0.4);
+    s.strain = clamp(before - (s._rested ? REST_GAIN : IDLE_GAIN) / worn);
   }
   s._rested = false;
 
@@ -90,12 +101,18 @@ export function strainTick(s) {
 export function markRested(s) { s._rested = true; s.strain = clamp((s.strain || 0) - 3); return s; }
 
 function collapse(s) {
-  const months = rint(2, 5);
+  s.burnouts = (s.burnouts || 0) + 1;
+  // Each one takes longer to come back from than the last.
+  const months = rint(2, 5) + Math.min(4, s.burnouts - 1);
   const wasShooting = !!s.production;
   const title = s.production ? s.production.title : '';
   s.burnout = { left: months, since: (s.year || 0) * 12 + (s.month || 0) };
+  // What this costs is TIME and your head — not your body. Stacking a compounding health
+  // hit on top of the months lost and the mental hit killed the simulated population at
+  // twenty-eight: everyone was dead before their career started, which is not a limit on
+  // the grind, it is a bug wearing one as a hat.
   s.mental = clamp((s.mental || 0) - 16);
-  s.health = clamp((s.health || 0) - 8);
+  s.health = clamp((s.health || 0) - 4);
   // A shoot you walk off does not wait for you. It goes into the freezer with everything
   // else that stopped — see systems/career/stability.js.
   if (wasShooting) {

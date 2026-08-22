@@ -27,7 +27,16 @@
       "Bash(\"/c/Program Files/nodejs/node.exe\" board_by_age.mjs)",
       "Bash(sed -i \"s|import { refreshCastingPool, castingChance, scaleOf, boardSize } from 'file:///C:/Users/maximilian/Desktop/game/extracted/src/systems/career/castings.js';|import { refreshCastingPool, castingChance, scaleOf, boardSize } from 'file:///C:/Users/maximilian/Desktop/game/extracted/src/systems/career/castings.js';\\\\nimport { agingTick } from 'file:///C:/Users/maximilian/Desktop/game/extracted/src/systems/life/mortality.js';|\" win_density.mjs)",
       "Bash(sed -i \"s|s.month++; if \\(s.month > 11\\) { s.month = 0; s.year++; s.ageY++; runNominations\\(s\\); }|s.month++; if \\(s.month > 11\\) { s.month = 0; s.year++; s.ageY++; agingTick\\(s\\); runNominations\\(s\\); }|\" win_density.mjs)",
-      "Bash(\"/c/Program Files/nodejs/node.exe\" win_density.mjs)"
+      "Bash(\"/c/Program Files/nodejs/node.exe\" win_density.mjs)",
+      "Bash(\"/c/Program Files/nodejs/node.exe\" asker_recheck.mjs)",
+      "Bash(sed -i 's/ok\\(.a big shoot costs more than a small one., monthlyStrain\\({ scale: .blockbuster. }\\) > monthlyStrain\\({ scale: .small. }\\)\\);/ok\\(\"a big shoot costs more than a small one\", monthlyStrain\\({ scale: \"blockbuster\" }, 40\\) > monthlyStrain\\({ scale: \"small\" }, 40\\)\\);\\\\nok\\(\"and a tired month costs more than a rested one\", monthlyStrain\\({ scale: \"feature\" }, 80\\) > monthlyStrain\\({ scale: \"feature\" }, 10\\) * 1.6, `${monthlyStrain\\({ scale: \"feature\" }, 10\\).toFixed\\(1\\)} rested vs ${monthlyStrain\\({ scale: \"feature\" }, 80\\).toFixed\\(1\\)} tired`\\);/' test_strain.mjs)",
+      "Bash(\"/c/Program Files/nodejs/node.exe\" test_strain.mjs)",
+      "Bash(sed -i \"s|import { agingTick } from 'file:///C:/Users/maximilian/Desktop/game/extracted/src/systems/life/mortality.js';|import { agingTick, mortalityCheck } from 'file:///C:/Users/maximilian/Desktop/game/extracted/src/systems/life/mortality.js';\\\\nimport { healthTick } from 'file:///C:/Users/maximilian/Desktop/game/extracted/src/systems/life/health.js';|\" asker_recheck.mjs)",
+      "Bash(sed -i \"s|s.month++; if \\(s.month > 11\\) { s.month = 0; s.year++; s.ageY++; agingTick\\(s\\);|if \\(!s.alive\\) break;\\\\n    s.month++; if \\(s.month > 11\\) { s.month = 0; s.year++; s.ageY++; agingTick\\(s\\); if \\(mortalityCheck\\(s\\)\\) break;|\" asker_recheck.mjs)",
+      "Bash(sed -i \"s|    strainTick\\(s\\);\\\\n|    healthTick\\(s\\); strainTick\\(s\\);\\\\n|\" asker_recheck.mjs)",
+      "Bash(sed -i \"s|import { healthTick } from 'file:///C:/Users/maximilian/Desktop/game/extracted/src/systems/life/health.js';|import { healthTick, seeDoctor } from 'file:///C:/Users/maximilian/Desktop/game/extracted/src/systems/life/health.js';|\" asker_recheck.mjs)",
+      "Bash(sed -i \"s|    healthTick\\(s\\);\\\\n    if \\(!s.alive\\) break;|XX|\" asker_recheck.mjs)",
+      "Bash(perl -0pi -e \"s/    healthTick\\\\\\(s\\\\\\);\\\\n    if \\\\\\(!s\\\\.alive\\\\\\) break;/    healthTick\\(s\\);\\\\n    if \\(!s.alive\\) break;\\\\n    \\\\/\\\\/ a player who is ill goes to the doctor if they can afford it\\\\n    if \\(s.illness && \\(s.cash || 0\\) > 12000\\) seeDoctor\\(s\\);/\" asker_recheck.mjs)"
     ],
     "defaultMode": "acceptEdits",
     "additionalDirectories": [

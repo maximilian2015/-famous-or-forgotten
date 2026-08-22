@@ -52,6 +52,13 @@ export function startProduction(s, offer) {
   // by taking the job — not only by winning an argument about it. Television is priced
   // per episode and is a different currency, so it does not move this number.
   if (!s.production.episodes) s.quote = Math.max(s.quote || 0, s.production.salary || 0);
+  // Every job costs something before a single day is shot: the prep, the travel, the
+  // press, the moving of your whole life onto somebody's schedule. Charging only by the
+  // month meant ten two-month films were cheaper than four five-month ones, and an actor
+  // could take short work forever — two hundred careers still averaged a hundred and
+  // forty-four credits. And walking onto a call sheet while you are already tired costs
+  // more again: that is the decision the whole system is about.
+  s.strain = Math.min(100, (s.strain || 0) + 6 + ((s.strain || 0) > 48 ? 9 : 0));
   s.lastEvent = `Cameras roll on "${s.production.title}". First day on set.`;
   addTimeline(s, `Production began: ${s.production.title}.`);
   return s;
