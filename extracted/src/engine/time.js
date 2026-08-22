@@ -16,6 +16,7 @@ import { runNominations, ceremonyTick } from '../systems/career/awards.js';
 import { agingNote } from '../systems/career/age.js';
 import { strainTick } from '../systems/life/strain.js';
 import { slotsLost, rehabTick, inRehab } from '../systems/life/depression.js';
+import { drinkTick } from '../systems/life/drink.js';
 import { addTimeline } from './timeline.js';
 import { maybeGenerateEvent, eventsTick } from '../systems/social/events.js';
 import { agingTick, mortalityCheck } from '../systems/life/mortality.js';
@@ -50,6 +51,7 @@ export function advanceMonth(state) {
   workTick(s);
   rehabTick(s);      // a year away, and the hours come back
   strainTick(s);     // the work accumulates in you, and eventually it stops you
+  drinkTick(s);      // and the other way out takes its cut of the craft
   productionTick(s);
   releaseTick(s);    // anything that finished shooting months ago opens today
   frozenTick(s);     // and anything that stopped might find its money again

@@ -167,7 +167,10 @@ export const PILLS = {
   sleeping:    { label: 'Sleeping pills', blurb: 'For the head, not the body.', cost: 110 },
   // Not a cure and not optional. Nothing else about a depression moves while you are not
   // on them, and they take weeks before they do anything at all.
-  antidep:     { label: 'Antidepressants', blurb: 'A month at a time. Weeks before they do anything.', cost: 190 },
+  // Nobody is prescribing a name in this business a generic and a follow-up in six weeks.
+  // It is a private psychiatrist, a monthly review and a repeat script, and it is priced
+  // like everything else that comes to your door.
+  antidep:     { label: 'Antidepressants', blurb: 'Private script, monthly review. A month at a time.', cost: 2400 },
 };
 export function buyPills(s, key, qty = 1) {
   const p = PILLS[key]; if (!p) return s;

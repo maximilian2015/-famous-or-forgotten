@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useGame, dispatch, newLife } from './state/store.js';
 import { advanceTime, stepIsYear } from './engine/time.js';
 import { rentApartment, STAGE_LABEL } from './systems/life/stages.js';
@@ -32,8 +32,9 @@ import { relBand } from './systems/life/bonds.js';
 import { BigMoment } from './ui/components/BigMoment.jsx';
 import { stabilityBand } from './systems/career/stability.js';
 import { strainBand, burnedOut, unreliable, depressed, seeSomebody } from './systems/life/strain.js';
-import { monthsIn, slotsLost, standingOf, onMeds, SCENES, CHECKPOINTS, EVERY_MONTHS, MIN_MONTHS,
-  answerCheckpoint, inRehab, enterRehab, rehabCost, therapyProgress, THERAPY_FOR_A_SLOT } from './systems/life/depression.js';
+import { monthsIn, slotsLost, standingOf, onMeds, TALK, WEEK_TASKS, CHECKPOINTS, EVERY_MONTHS, MIN_MONTHS,
+  answerCheckpoint, inRehab, enterRehab, rehabCost, rehabMonths, needsRehab, therapyProgress, THERAPY_FOR_A_SLOT } from './systems/life/depression.js';
+import { drinkThrough, drankThisMonth, level as drinkLevel, band as drinkBand, dependent } from './systems/life/drink.js';
 // Big moments live on state so a system can raise one; the UI only clears it.
 function clearBigMoment(s) { s.bigMoment = null; return s; }
 const MON = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
@@ -304,8 +305,9 @@ function DepressionCard({ g }) {
         {went ? 'You went this month' : poor ? 'An hour costs €260' : 'A session · €260 · 1 energy'}
       </button>
       <button onClick={() => dispatch(enterRehab)} disabled={!canRehab} style={{ ...softBtn(!canRehab), background: canRehab ? 'rgba(255,106,138,.18)' : 'rgba(120,110,150,.15)', color: canRehab ? theme.bad : '#6b6390' }}>
-        {canRehab ? `A year in a clinic · €${rehabCost(g).toLocaleString()}` : `A clinic costs €${rehabCost(g).toLocaleString()}`}
+        {canRehab ? `${rehabMonths(g)} months in a clinic · €${rehabCost(g).toLocaleString()}` : `A clinic costs €${rehabCost(g).toLocaleString()}`}
       </button>
+      <DrinkButton g={g} />
     </div>);
   }
   if (!depressed(g)) return null;
@@ -334,22 +336,59 @@ function DepressionCard({ g }) {
     <button onClick={() => dispatch(seeSomebody)} disabled={noEnergy || poor || went} style={softBtn(noEnergy || poor || went)}>
       {went ? 'You went this month' : poor ? 'An hour costs €260' : 'Go and talk to somebody · €260 · 1 energy'}
     </button>
+    <DrinkButton g={g} />
   </div>);
 }
 
-// The scene that decides whether the last five months counted for anything.
+// The other way out. It is offered plainly, it works every single month, and the card
+// says exactly what it is taking while it does.
+function DrinkButton({ g }) {
+  const owed = g.depression ? Math.max(0, 2 - (g.depression.passed || 0)) : (g.scarred || 0);
+  if (owed <= 0 && !drinkLevel(g)) return null;
+  const had = drankThisMonth(g);
+  const lv = drinkLevel(g), b = drinkBand(g);
+  return (<div style={{ marginTop: 10, borderTop: `1px solid ${theme.line}`, paddingTop: 9 }}>
+    {lv > 0 && (<div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', marginBottom: 5 }}>
+      <span style={{ fontSize: 11, fontWeight: 800, color: lv >= 45 ? theme.bad : theme.gold }}>{b.label}</span>
+      <span style={{ fontSize: 10.5, color: theme.muted }}>craft −{(lv >= 78 ? 1.1 : lv >= 45 ? 0.7 : 0.35).toFixed(2)}/mo</span>
+    </div>)}
+    {lv > 0 && <div style={{ fontSize: 10.5, color: theme.muted, marginBottom: 6, lineHeight: 1.45 }}>{b.note}</div>}
+    <button onClick={() => dispatch(drinkThrough)} disabled={had}
+      style={{ ...softBtn(had), marginTop: 0, background: had ? 'rgba(120,110,150,.15)' : 'rgba(255,209,102,.16)', color: had ? '#6b6390' : theme.gold }}>
+      {had ? `You drank. The month is open — ${owed} hour${owed === 1 ? '' : 's'} back.`
+        : dependent(g) ? 'Drink — you have to now' : `Drink through it · opens ${owed} hour${owed === 1 ? '' : 's'}`}
+    </button>
+  </div>);
+}
+
+const DAYS = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
+// Three different trials in a random order, so nobody solves this once and coasts. The
+// week is a small puzzle; the names are a small memory; the conversation changes shape
+// depending on whether there is anybody left in your life.
 function CheckpointModal({ g }) {
   const p = g.depression?.pending;
-  const scene = SCENES.find((x) => x.id === p?.scene);
-  if (!scene) return null;
-  return (<div style={{ position: 'fixed', inset: 0, background: 'rgba(8,5,20,.96)', zIndex: 60, display: 'flex',
-    alignItems: 'center', justifyContent: 'center', padding: 16, color: theme.text, fontFamily: 'system-ui, -apple-system, sans-serif' }}>
-    <div style={{ maxWidth: 380, width: '100%', background: theme.panel, border: `1px solid ${theme.bad}55`, borderRadius: 20, padding: '22px 20px 18px' }}>
-      <div style={{ fontSize: 11, fontWeight: 900, letterSpacing: '.18em', textTransform: 'uppercase', color: theme.bad, marginBottom: 12, textAlign: 'center' }}>
-        Five months later
+  const [plan, setPlan] = useState(Array(7).fill(null));
+  const [pen, setPen] = useState(WEEK_TASKS[0].id);
+  const [shown, setShown] = useState(true);
+  useEffect(() => { if (p?.kind === 'hold') { setShown(true); const t = setTimeout(() => setShown(false), 4200); return () => clearTimeout(t); } }, [p?.kind]);
+  if (!p) return null;
+  const wrap = (title, body, inner, foot) => (
+    <div style={{ position: 'fixed', inset: 0, background: 'rgba(8,5,20,.96)', zIndex: 60, display: 'flex',
+      alignItems: 'center', justifyContent: 'center', padding: 16, color: theme.text, fontFamily: 'system-ui, -apple-system, sans-serif' }}>
+      <div style={{ maxWidth: 380, width: '100%', background: theme.panel, border: `1px solid ${theme.bad}55`, borderRadius: 20, padding: '22px 20px 18px' }}>
+        <div style={{ fontSize: 11, fontWeight: 900, letterSpacing: '.18em', textTransform: 'uppercase', color: theme.bad, marginBottom: 12, textAlign: 'center' }}>
+          Five months later
+        </div>
+        <div style={{ fontSize: 20, fontWeight: 900, marginBottom: 8 }}>{title}</div>
+        <div style={{ fontSize: 13.5, color: theme.muted, lineHeight: 1.6, marginBottom: 16 }}>{body}</div>
+        {inner}
+        <div style={{ fontSize: 11, color: theme.muted, textAlign: 'center', marginTop: 12, lineHeight: 1.5 }}>{foot}</div>
       </div>
-      <div style={{ fontSize: 20, fontWeight: 900, marginBottom: 8 }}>{scene.title}</div>
-      <div style={{ fontSize: 13.5, color: theme.muted, lineHeight: 1.6, marginBottom: 16 }}>{scene.body}</div>
+    </div>);
+
+  if (p.kind === 'talk') {
+    const scene = TALK[p.variant || 'alone'];
+    return wrap(scene.title, scene.body, (
       <div style={{ display: 'grid', gap: 8 }}>
         {scene.choices.map((c) => (
           <button key={c.id} onClick={() => dispatch(answerCheckpoint, c.id)} style={{ textAlign: 'left',
@@ -357,11 +396,61 @@ function CheckpointModal({ g }) {
             cursor: 'pointer', color: theme.text, fontSize: 13.5, fontWeight: 700 }}>{c.label}</button>
         ))}
       </div>
-      <div style={{ fontSize: 11, color: theme.muted, textAlign: 'center', marginTop: 12, lineHeight: 1.5 }}>
-        What you choose matters. What you have been doing for five months matters more.
+    ), 'What you choose matters. What you have been doing for five months matters more.');
+  }
+
+  if (p.kind === 'week') {
+    const place = (i) => setPlan(plan.map((v, j) => (j === i ? (v === pen ? null : pen) : v)));
+    return wrap('Lay out one week', 'Put the three things somewhere in it. Not two of the same back to back — '
+      + 'that is how a week like this falls apart.', (<>
+      <div style={{ display: 'flex', gap: 6, marginBottom: 10 }}>
+        {WEEK_TASKS.map((t) => (
+          <button key={t.id} onClick={() => setPen(t.id)} style={{ flex: 1, border: 'none', borderRadius: 9, padding: '8px 4px',
+            fontSize: 11, fontWeight: 800, cursor: 'pointer', background: pen === t.id ? theme.accent : 'rgba(158,116,255,.16)',
+            color: pen === t.id ? '#fff' : '#d9cffa' }}>{t.label}</button>
+        ))}
       </div>
-    </div>
-  </div>);
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7,1fr)', gap: 4 }}>
+        {plan.map((v, i) => (
+          <button key={i} onClick={() => place(i)} style={{ border: `1px solid ${v ? theme.accent : theme.line}`, borderRadius: 8,
+            padding: '10px 2px', fontSize: 9.5, fontWeight: 800, cursor: 'pointer', minHeight: 54,
+            background: v ? 'rgba(158,116,255,.2)' : theme.panel2, color: v ? theme.text : theme.muted }}>
+            <div style={{ opacity: .6 }}>{DAYS[i]}</div>
+            <div style={{ marginTop: 4 }}>{v ? (WEEK_TASKS.find((t) => t.id === v) || {}).label.split(' ')[0] : ''}</div>
+          </button>
+        ))}
+      </div>
+      <button onClick={() => dispatch(answerCheckpoint, plan)} style={{ width: '100%', marginTop: 12, border: 'none',
+        borderRadius: 12, padding: '12px', fontSize: 13.5, fontWeight: 800, cursor: 'pointer',
+        background: `linear-gradient(135deg,${theme.accent2},${theme.accent})`, color: '#fff' }}>Live it</button>
+    </>), 'All three have to be in there, and none of them twice in a row.');
+  }
+
+  // hold — four names for a few seconds, then three of them, and you name the one missing
+  const h = p.hold || { order: [], missing: '' };
+  const left = h.order.filter((n) => n !== h.missing);
+  return wrap('Who has been trying to reach you?', shown
+    ? 'These four have called or written this month. Read them — you get a few seconds.'
+    : 'Three of them are here. Who is the fourth?', (
+    shown
+      ? (<div style={{ display: 'grid', gap: 6 }}>
+          {h.order.map((n) => (<div key={n} style={{ background: theme.panel2, border: `1px solid ${theme.line}`,
+            borderRadius: 10, padding: '10px 12px', fontSize: 14, fontWeight: 700 }}>{n}</div>))}
+        </div>)
+      : (<>
+          <div style={{ display: 'grid', gap: 4, marginBottom: 12 }}>
+            {left.map((n) => (<div key={n} style={{ background: 'rgba(255,255,255,.03)', border: `1px solid ${theme.line}`,
+              borderRadius: 8, padding: '7px 11px', fontSize: 12.5, color: theme.muted }}>{n}</div>))}
+          </div>
+          <div style={{ display: 'grid', gap: 6 }}>
+            {[...h.order].sort().map((n) => (
+              <button key={n} onClick={() => dispatch(answerCheckpoint, n)} style={{ textAlign: 'left',
+                background: theme.panel2, border: `1px solid ${theme.line}`, borderRadius: 10, padding: '11px 13px',
+                cursor: 'pointer', color: theme.text, fontSize: 13.5, fontWeight: 700 }}>{n}</button>
+            ))}
+          </div>
+        </>)
+  ), shown ? 'A few seconds.' : 'Concentration is the first thing this takes. This is the one that asks for it back.');
 }
 function LifeCard({ g }) {
   const c = monthlyCosts(g);
@@ -998,6 +1087,8 @@ function CreditRow({ group }) {
         {/* The one mark that never comes off a credit. */}
         {group.askers > 0 && <span style={{ fontSize: 10, fontWeight: 900, letterSpacing: '.06em', color: theme.gold }}>
           🏆 ASKER{group.askers > 1 ? ` ×${group.askers}` : ''}</span>}
+        {c.comeback > 0 && <span style={{ fontSize: 10, fontWeight: 900, letterSpacing: '.06em', color: theme.accent }}>
+          ↩ COMEBACK · {c.comeback} YEARS AWAY</span>}
       </div>
       <div style={{ fontSize: 11.5, color: theme.muted }}>
         {c.role}{c.genre ? ` · ${c.genre}` : ''}{group.earned > 0 ? ` · €${group.earned.toLocaleString()}` : ''}

@@ -5,6 +5,7 @@ import { hotGenre } from '../meta/news.js';
 import { addGenreXP, genreBonus } from './genres.js';
 import { scheduleRelease } from './release.js';
 import { rollStability, productionTrouble, volatileSwing, roughness } from './stability.js';
+import { drankThisMonth } from '../life/drink.js';
 const clamp = (v) => Math.max(0, Math.min(100, v));
 const TIERS = [
   { min: 0, label: 'Disaster' }, { min: 25, label: 'Rocky' }, { min: 50, label: 'Solid' },
@@ -112,6 +113,9 @@ export function productionTick(s) {
     return;
   }
   p.paused = 0;
+  // A month you drank your way through is a month you were not really there for, and the
+  // footage knows. See systems/life/drink.js.
+  if (drankThisMonth(s)) p.drunkMonths = (p.drunkMonths || 0) + 1;
   p.monthsLeft -= 1;
   // You are paid while you work. A fourteen-month blockbuster that only paid on wrap
   // would starve you out of your flat long before the premiere.
@@ -139,7 +143,7 @@ function wrapProduction(s) {
   // all. This is why an indie is worth the gamble.
   // No money also means no days and no post, so a broke production is rougher — but the
   // part it gave you was better, and those two roughly cancel. What is left is the swing.
-  let rating = clamp(floor + craft - roughness(p.stability) + p.prestigeScore * 0.18
+  let rating = clamp(floor + craft - roughness(p.stability) - (p.drunkMonths || 0) * 1.6 + p.prestigeScore * 0.18
     + (s.looks - 40) * 0.08 + genreBonus(s, p.genre) + rint(-10, 12) + volatileSwing(p.stability));
   // A genuine cultural moment should be a career highlight, not a monthly occurrence.
   let worldHit = false;

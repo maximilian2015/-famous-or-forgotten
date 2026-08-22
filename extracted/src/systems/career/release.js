@@ -139,6 +139,10 @@ function open(s, rel) {
     campaignShare: rel.campaign ? 0.65 : 0,
   };
   const bucket = s.dream === 'singer' ? 'discography' : 'filmography';
+  // Two years without anything coming out and the trades will call the next one a
+  // comeback whether it deserves the word or not.
+  const last = (s[bucket] || [])[0];
+  if (last && (s.year || 0) - (last.year || 0) >= 3) credit.comeback = (s.year || 0) - last.year;
   (s[bucket] = s[bucket] || []).unshift(credit);
   markReleased(s);
 
