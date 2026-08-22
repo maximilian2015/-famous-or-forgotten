@@ -58,7 +58,10 @@ export function infectionOdds(s) {
 // What a body of this age can hold when nothing is wrong with it. Recovery runs up to
 // here and no further; the long decline of agingTick still pulls the ceiling down.
 export function naturalCeiling(s) {
-  return Math.max(45, 96 - Math.max(0, (s.ageY || 0) - 25) * 0.6);
+  // Every collapse past the first takes a little off the top permanently. You do not get
+  // all of it back.
+  const worn = Math.min(14, Math.max(0, (s.burnouts || 0) - 1) * 3.5);
+  return Math.max(40, 96 - Math.max(0, (s.ageY || 0) - 25) * 0.6 - worn);
 }
 // Immunity: your body fights the same thing off for a while after beating it.
 export function isIll(s) { return !!s.illness; }

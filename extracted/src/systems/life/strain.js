@@ -8,6 +8,7 @@
 // project a year never comes near it. It exists to make the grind end somewhere.
 import { rint, chance } from '../../engine/rng.js';
 import { addTimeline } from '../../engine/timeline.js';
+import { patienceFor } from '../career/stability.js';
 
 const clamp = (v, a = 0, b = 100) => Math.max(a, Math.min(b, v));
 
@@ -35,6 +36,23 @@ export const BANDS = [
 export function strainBand(v) {
   for (const b of BANDS) if ((v || 0) >= b.min) return b;
   return BANDS[BANDS.length - 1];
+}
+
+// What walking off a set repeatedly does to you in the eyes of the people who have to
+// insure you. Nothing happened after the fourth collapse before — each one was simply
+// the same event again, which meant a player could grind forever and just absorb them.
+// A production will take a chance on someone who broke down once. Nobody is bonding the
+// actor who has done it four times.
+export function insurability(s) {
+  const n = Math.max(0, (s.burnouts || 0) - 1);
+  return Math.max(0.45, 1 - n * 0.14);
+}
+export function unreliable(s) { return (s.burnouts || 0) >= 3; }
+export function reputationNote(s) {
+  const n = s.burnouts || 0;
+  if (n === 3) return 'Three shoots have stopped because of you now. It is the kind of thing that gets said about people, and it has started being said about you.';
+  if (n === 5) return 'Nobody says it to your face, but the insurance on you costs more than the crew. The parts that come now are the ones nobody else wanted.';
+  return null;
 }
 
 // Whether you are able to take on anything at all.
@@ -89,10 +107,21 @@ export function strainTick(s) {
     addTimeline(s, 'Running on empty. People have started asking whether you are all right.', true);
   }
 
-  // And above that, it stops being your decision.
+  // And above that, it stops being your decision — but not this month, and not next.
+  // Burnout is supposed to be the once-or-twice-in-a-life thing it is in life, not a
+  // recurring illness: the first version fired at six per cent the moment you crossed
+  // the line and rose to thirty-five, which gave a hard-working actor twenty-eight
+  // collapses in a career. You now have to sit in the red for months on end, ignoring
+  // two warnings, before your body makes the decision for you.
+  const shielded = ((s.year || 0) * 12 + (s.month || 0)) < (s._burntUntil || 0);
   if ((s.strain || 0) >= 82) {
-    const risk = 6 + ((s.strain || 0) - 82) * 1.6;
-    if (chance(risk)) collapse(s);
+    s._redMonths = (s._redMonths || 0) + 1;
+    if (s._redMonths >= 6 && !shielded) {
+      const risk = 0.4 + Math.max(0, (s.strain || 0) - 88) * 0.09;
+      if (chance(risk)) collapse(s);
+    }
+  } else if ((s.strain || 0) < 70) {
+    s._redMonths = 0;
   }
   return s;
 }
@@ -107,6 +136,11 @@ function collapse(s) {
   const wasShooting = !!s.production;
   const title = s.production ? s.production.title : '';
   s.burnout = { left: months, since: (s.year || 0) * 12 + (s.month || 0) };
+  s._redMonths = 0;
+  // You do not do this to yourself twice in a row. People who go through it restructure
+  // something, and a game where it recurs every other year is not modelling burnout, it
+  // is modelling a chronic illness.
+  s._burntUntil = (s.year || 0) * 12 + (s.month || 0) + months + 24;
   // What this costs is TIME and your head — not your body. Stacking a compounding health
   // hit on top of the months lost and the mental hit killed the simulated population at
   // twenty-eight: everyone was dead before their career started, which is not a limit on
@@ -124,6 +158,9 @@ function collapse(s) {
       episodes: p.episodes || 0, episodeFee: p.episodeFee || 0, season: p.season || 0, part: p.part || 1,
       optioned: !!p.optioned, optionParts: p.optionParts || 0, stability: p.stability,
       since: (s.year || 0) * 12 + (s.month || 0),
+      // They will hold it for a name and recast an unknown — and this one stopped because
+      // of you, which costs more if it never gets made.
+      patience: patienceFor(s.fame || 0), byYou: true,
       owed: Math.max(0, (p.salary || 0) - (p.paid || 0)), paid: p.paid || 0, salary: p.salary || 0,
       why: 'you could not carry on and the production shut down around you',
     });
@@ -132,6 +169,8 @@ function collapse(s) {
   addTimeline(s, wasShooting
     ? `You stopped. "${title}" shut down around you and the doctor signed you off for ${months} months.`
     : `You stopped. The doctor signed you off for ${months} months.`, true);
+  const rep = reputationNote(s);
+  if (rep) addTimeline(s, rep, true);
   s.lastEvent = wasShooting
     ? `You could not do it any more. "${title}" has been shut down and you are signed off for ${months} months.`
     : `You could not do it any more. Signed off for ${months} months.`;

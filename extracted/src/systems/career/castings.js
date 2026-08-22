@@ -8,7 +8,7 @@ import { quoteFor, episodeRate } from '../meta/status.js';
 import { rollStability, feeFactor, riskPrestige } from './stability.js';
 import { askerStanding } from './awards.js';
 import { ageFit, seenForIt } from './age.js';
-import { canWork } from '../life/strain.js';
+import { canWork, insurability } from '../life/strain.js';
 // What a casting office will see you for. Usually that is fame — but an Asker counts,
 // and it is the one route into work above your level that does not run through
 // blockbusters. An actor with a statuette and forty fame gets read for parts that used
@@ -172,9 +172,10 @@ export function castingChance(s, c) {
   const skill = s.dream === 'singer' ? s.singing : s.acting;
   // Scandal was purely cosmetic before — it accumulated and did nothing.
   const base = clamp(15 + skill * 0.5 + s.charisma * 0.2 + s.looks * 0.15 + s.luck * 0.1 - (s.scandal || 0) * 0.3);
-  // And at the edge of a part's age you are the second choice in the room.
+  // And at the edge of a part's age you are the second choice in the room. And nobody
+  // wants to bond an actor who has walked off three sets — see systems/life/strain.js.
   const fit = c ? ageFit(s, c.role) : 1;
-  return Math.round(base * (0.35 + 0.65 * fit));
+  return Math.round(base * (0.35 + 0.65 * fit) * insurability(s));
 }
 // quality (0-100) comes from the audition minigame: nail the read and your odds jump,
 // fumble it and the room cools on you.

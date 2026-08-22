@@ -13,6 +13,8 @@
 import { rint, chance } from '../../engine/rng.js';
 import { addTimeline } from '../../engine/timeline.js';
 
+const clamp = (v, a = 0, b = 100) => Math.max(a, Math.min(b, v));
+
 // How solid the money is, by what kind of thing it is. A studio does not lose its own
 // blockbuster; a first-time producer loses everything.
 const BACKING = {
@@ -123,6 +125,8 @@ export function freezeProject(s, p) {
     monthsLeft: Math.max(1, p.monthsLeft || 1), episodes: p.episodes || 0, episodeFee: p.episodeFee || 0,
     season: p.season || 0, part: p.part || 1, optioned: !!p.optioned, optionParts: p.optionParts || 0,
     stability: p.stability, since: (s.year || 0) * 12 + (s.month || 0),
+    // How long they will hold it for you, decided by who you were when it stopped.
+    patience: patienceFor(s.fame || 0),
     // Whatever is left of the fee, which is what you would be paid if it ever restarts.
     owed: Math.max(0, (p.salary || 0) - (p.paid || 0)),
     paid: p.paid || 0, salary: p.salary || 0, why,
@@ -166,16 +170,25 @@ export function collapseProject(s, p) {
 // and every month the odds of it ever doing so get a little worse.
 // `since` can legitimately be 0 (month zero of year zero), so it has to be ?? and not ||.
 function waitedBy(frozen, now) { return Math.max(0, now - (frozen.since ?? now)); }
+
+// How long a production will hold a part open for you. A financier will wait years for a
+// name and will not wait eighteen months for somebody nobody has heard of — they recast
+// and move on. Everyone runs out of patience eventually.
+export function patienceFor(fame) {
+  return Math.round(14 + Math.min(90, fame || 0) * 0.42);    // 14 months at nobody, ~52 at icon
+}
 export function thawOdds(frozen, now) {
   const waited = waitedBy(frozen, now);
   if (waited < 2) return 0;                                  // nothing moves for the first couple of months
+  if (waited > (frozen.patience ?? 30)) return 0;            // they have recast it by now
   const base = 1.5 + (frozen.stability ?? 50) / 16;          // better projects get rescued
   return Math.max(1.5, base - waited * 0.15);
 }
 // Nobody formally kills a project for over a year. After that the odds of anyone ever
-// finishing it get worse every month, but slowly — most of these do come back.
+// finishing it get worse every month — and once the patience window is gone, it is gone.
 export function deathOdds(frozen, now) {
   const waited = waitedBy(frozen, now);
+  if (waited > (frozen.patience ?? 30)) return 100;
   if (waited < 15) return 0;
   return Math.min(6, (waited - 15) * 0.18);
 }
@@ -206,8 +219,20 @@ export function frozenTick(s) {
       continue;                                              // it leaves the freezer either way
     }
     if (chance(deathOdds(f, now))) {
-      addTimeline(s, `"${f.title}" was formally abandoned. It had been frozen ${now - (f.since ?? now)} months.`, true);
-      s.lastEvent = `"${f.title}" will never be finished. They have written it off.`;
+      const waited = now - (f.since ?? now);
+      const ranOut = waited > (f.patience ?? 30);
+      // A film that dies with your name on it costs you something. It costs more when it
+      // was you who walked off it, and more again when they held it open and you never
+      // came back for it.
+      const cost = (f.byYou ? 6 : 3) + (ranOut ? 3 : 0);
+      s.respect = clamp((s.respect || 0) - cost);
+      if (ranOut) {
+        addTimeline(s, `"${f.title}" was recast. They held it open ${Math.round(waited / 12)} year${waited >= 24 ? 's' : ''} and you never went back for it.`, true);
+        s.lastEvent = `They recast "${f.title}". It waited as long as anyone was going to wait.`;
+      } else {
+        addTimeline(s, `"${f.title}" was formally abandoned. It had been frozen ${waited} months.`, true);
+        s.lastEvent = `"${f.title}" will never be finished. They have written it off.`;
+      }
       continue;
     }
     survivors.push(f);

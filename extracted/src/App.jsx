@@ -31,7 +31,7 @@ import { interactionsFor, interact, findPerson, GROUPS } from './systems/life/in
 import { relBand } from './systems/life/bonds.js';
 import { BigMoment } from './ui/components/BigMoment.jsx';
 import { stabilityBand } from './systems/career/stability.js';
-import { strainBand, burnedOut } from './systems/life/strain.js';
+import { strainBand, burnedOut, unreliable } from './systems/life/strain.js';
 // Big moments live on state so a system can raise one; the UI only clears it.
 function clearBigMoment(s) { s.bigMoment = null; return s; }
 const MON = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
@@ -281,6 +281,8 @@ function LifeCard({ g }) {
     {/* What the work is costing you. Only shown once it is worth knowing about. */}
     {g.burnout ? row('Signed off', `${g.burnout.left} month${g.burnout.left === 1 ? '' : 's'} left`, theme.bad)
       : (g.strain || 0) >= 34 && row('Energy', strainBand(g.strain).label, (g.strain || 0) >= 82 ? theme.bad : (g.strain || 0) >= 60 ? theme.gold : theme.muted)}
+    {/* Once you have shut down three sets, that is a thing about you. */}
+    {unreliable(g) && row('Insurers', `${g.burnouts} shoots stopped because of you`, theme.bad)}
     {g.hasApartment && row('Out each month', `€${c.total.toLocaleString()}`, theme.bad)}
     {g.job && row('In each month', `€${income.toLocaleString()}`, theme.good)}
     {g.hasApartment && row('Balance', `${net >= 0 ? '+' : ''}€${net.toLocaleString()}`, net >= 0 ? theme.good : theme.bad)}
@@ -976,6 +978,13 @@ function CreditsList({ g, credits, label }) {
                 On hold {waited === 0 ? 'since this month' : `${waited} month${waited === 1 ? '' : 's'}`} · {f.monthsLeft} mo left to shoot
               </div>
               <div style={{ fontSize: 11, color: theme.muted, lineHeight: 1.45 }}>They say {f.why}.</div>
+              {/* How much longer anyone is going to hold your part open. */}
+              {f.patience != null && (() => { const left = f.patience - waited;
+                return (<div style={{ fontSize: 10.5, marginTop: 3, color: left <= 6 ? theme.bad : theme.muted }}>
+                  {left <= 0 ? 'They have stopped waiting for you.'
+                    : left <= 6 ? `They will not hold it much past ${left} more month${left === 1 ? '' : 's'}.`
+                    : `They will hold your part for about ${left} more months.`}
+                </div>); })()}
             </div>
           </div>);
         })}

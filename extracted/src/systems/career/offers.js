@@ -86,6 +86,17 @@ export function acceptOffer(s, id) {
 export function declineOffer(s, id) {
   const o = (s.offers || []).find((x) => x.id === id);
   s.offers = (s.offers || []).filter((x) => x.id !== id);
-  if (o) { s.lastEvent = `You passed on "${o.projectTitle.replace('⭐ ', '')}".`; addTimeline(s, `Passed on ${o.projectTitle.replace('⭐ ', '')}.`); }
+  if (!o) return s;
+  const title = o.projectTitle.replace('⭐ ', '');
+  // Turning down an ordinary offer is your business. Turning down the one they finally
+  // found the money to finish, after holding your part open for years, is not.
+  if (o.kind === 'thaw') {
+    s.respect = clamp((s.respect || 0) - 5);
+    s.lastEvent = `You said no to finishing "${title}". They waited a long time for that answer.`;
+    addTimeline(s, `Refused to go back and finish ${title}. People noticed.`, true);
+    return s;
+  }
+  s.lastEvent = `You passed on "${title}".`;
+  addTimeline(s, `Passed on ${title}.`);
   return s;
 }
