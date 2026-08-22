@@ -31,6 +31,7 @@ import { interactionsFor, interact, findPerson, GROUPS } from './systems/life/in
 import { relBand } from './systems/life/bonds.js';
 import { BigMoment } from './ui/components/BigMoment.jsx';
 import { stabilityBand } from './systems/career/stability.js';
+import { strainBand, burnedOut } from './systems/life/strain.js';
 // Big moments live on state so a system can raise one; the UI only clears it.
 function clearBigMoment(s) { s.bigMoment = null; return s; }
 const MON = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
@@ -277,6 +278,9 @@ function LifeCard({ g }) {
     {g.production && row('Filming', `${g.production.title} · ${g.production.monthsLeft} mo left`, theme.gold)}
     {/* The number your agent says out loud. It only means anything if you can see it. */}
     {(g.quote || 0) > 0 && row('Your quote', money(g.quote), theme.gold)}
+    {/* What the work is costing you. Only shown once it is worth knowing about. */}
+    {g.burnout ? row('Signed off', `${g.burnout.left} month${g.burnout.left === 1 ? '' : 's'} left`, theme.bad)
+      : (g.strain || 0) >= 34 && row('Energy', strainBand(g.strain).label, (g.strain || 0) >= 82 ? theme.bad : (g.strain || 0) >= 60 ? theme.gold : theme.muted)}
     {g.hasApartment && row('Out each month', `€${c.total.toLocaleString()}`, theme.bad)}
     {g.job && row('In each month', `€${income.toLocaleString()}`, theme.good)}
     {g.hasApartment && row('Balance', `${net >= 0 ? '+' : ''}€${net.toLocaleString()}`, net >= 0 ? theme.good : theme.bad)}
@@ -1048,18 +1052,21 @@ function Diary({ g }) {
     // Post-production is not an event — nothing happens in those months and you are free
     // to work. It gets a quiet tint so you can see the wait, not an icon of its own.
     const inPost = (g.releases || []).some((r) => r.due > abs);
-    cells.push({ i, yr, mo, shooting, parties, deadlines, premieres, inPost });
+    // Signed off. These months are not yours to book anything in.
+    const off = g.burnout && i < (g.burnout.left || 0);
+    cells.push({ i, yr, mo, shooting, parties, deadlines, premieres, inPost, off });
   }
   return (<div style={{ marginBottom: 16 }}>
     <div style={{ fontSize: 11, fontWeight: 900, letterSpacing: '.09em', textTransform: 'uppercase', color: theme.muted, marginBottom: 8 }}>The year ahead</div>
     <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4,1fr)', gap: 6, marginBottom: 8 }}>
       {cells.map((c) => (<div key={c.i} style={{
-        background: c.i === 0 ? 'rgba(158,116,255,.18)' : c.inPost && !c.shooting ? 'rgba(158,116,255,.07)' : theme.panel,
-        border: `1px solid ${c.premieres.length ? 'rgba(255,209,102,.75)' : c.shooting ? 'rgba(255,209,102,.5)' : c.i === 0 ? theme.accent : theme.line}`,
-        borderRadius: 9, padding: '7px 6px', minHeight: 52 }}>
-        <div style={{ fontSize: 10.5, fontWeight: 800, color: c.i === 0 ? theme.accent : theme.muted }}>{MON[c.mo]}{c.mo === 0 ? ` ’${String(c.yr).slice(2)}` : ''}</div>
+        background: c.off ? 'rgba(255,106,138,.10)' : c.i === 0 ? 'rgba(158,116,255,.18)' : c.inPost && !c.shooting ? 'rgba(158,116,255,.07)' : theme.panel,
+        border: `1px solid ${c.off ? 'rgba(255,106,138,.45)' : c.premieres.length ? 'rgba(255,209,102,.75)' : c.shooting ? 'rgba(255,209,102,.5)' : c.i === 0 ? theme.accent : theme.line}`,
+        borderRadius: 9, padding: '7px 6px', minHeight: 52, opacity: c.off ? 0.75 : 1 }}>
+        <div style={{ fontSize: 10.5, fontWeight: 800, color: c.off ? theme.bad : c.i === 0 ? theme.accent : theme.muted }}>{MON[c.mo]}{c.mo === 0 ? ` ’${String(c.yr).slice(2)}` : ''}</div>
         <div style={{ display: 'flex', gap: 3, marginTop: 4, flexWrap: 'wrap' }}>
-          {c.shooting && <span title="shooting" style={{ fontSize: 11 }}>🎬</span>}
+          {c.off && <span title="signed off" style={{ fontSize: 11 }}>🚫</span>}
+          {c.shooting && !c.off && <span title="shooting" style={{ fontSize: 11 }}>🎬</span>}
           {c.premieres.map((r) => <span key={r.id} title={`${r.title} opens`} style={{ fontSize: 11 }}>🍿</span>)}
           {c.parties > 0 && <span title="event expires" style={{ fontSize: 11 }}>🎉</span>}
           {c.deadlines > 0 && <span title="offer expires" style={{ fontSize: 11 }}>⏳</span>}
@@ -1068,7 +1075,7 @@ function Diary({ g }) {
       </div>))}
     </div>
     <div style={{ display: 'flex', gap: 10, justifyContent: 'center', fontSize: 10.5, color: theme.muted, flexWrap: 'wrap' }}>
-      <span>🎬 shooting</span><span>🍿 premiere</span><span>🎉 party ends</span><span>⏳ offer expires</span>
+      <span>🎬 shooting</span><span>🍿 premiere</span><span>🎉 party ends</span><span>⏳ offer expires</span>{g.burnout && <span style={{ color: theme.bad }}>🚫 signed off</span>}
     </div>
   </div>);
 }

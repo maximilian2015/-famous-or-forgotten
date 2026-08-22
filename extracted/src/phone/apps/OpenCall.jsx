@@ -8,6 +8,7 @@ import { useAccent } from '../../ui/appTheme.js';
 import { negotiationFor, haggleOdds, applyHaggle } from '../../systems/career/negotiate.js';
 import { stabilityBand, riskCostFor, volatility } from '../../systems/career/stability.js';
 import { ageFit } from '../../systems/career/age.js';
+import { canWork } from '../../systems/life/strain.js';
 
 // Only appears once you are somebody. Below Star you are told the number.
 function Haggle({ g, c }) {
@@ -120,6 +121,11 @@ export function OpenCall({ g, ocTab, setOcTab, teenMode }) {
       return (<button key={id} onClick={() => setOcTab(id)} style={{ flex: 1, border: 'none', borderRadius: 10, padding: '8px 4px', fontSize: 12, fontWeight: 800, cursor: 'pointer', background: cur === id ? `linear-gradient(135deg,${theme.accent2},${theme.accent})` : 'rgba(158,116,255,.16)', color: cur === id ? '#fff' : '#d9cffa' }}>{label}{n ? ` ${n}` : ''}</button>); })}</div>}
     {teenMode && <div style={{ fontSize: 11.5, color: theme.accent, padding: '2px 2px 8px', fontWeight: 700 }}>As a teen you can only take background/extra gigs — real roles come once you're older.</div>}
     <div style={{ fontSize: 11.5, color: theme.muted, padding: '2px 2px 8px' }}>{SHELF_BLURB[cur]}</div>
+    {/* You can look at the board. You cannot take anything off it. */}
+    {!canWork(g).ok && <div style={{ fontSize: 12, color: theme.bad, background: 'rgba(255,106,138,.10)',
+      border: '1px solid rgba(255,106,138,.35)', borderRadius: 10, padding: '9px 11px', marginBottom: 10, lineHeight: 1.5 }}>
+      {canWork(g).why}
+    </div>}
     {!list.length && <div style={{ fontSize: 12.5, color: theme.muted, textAlign: 'center', padding: 22 }}>Nothing on this shelf right now.</div>}
     {list.map((c) => { const locked = reach(g) < (c.minFame || 0); const ch = castingChance(g, c); const chipCol = ch >= 70 ? theme.good : ch >= 45 ? theme.accent : theme.gold;
       // An Asker counts toward the gate, and the player should be told that is why.
@@ -162,7 +168,9 @@ export function OpenCall({ g, ocTab, setOcTab, teenMode }) {
         {byAsker && <span style={{ display: 'inline-block', fontSize: 10, fontWeight: 800, padding: '3px 8px', borderRadius: 20, background: 'rgba(255,209,102,.16)', color: theme.gold, marginTop: 7, marginLeft: 6 }}>🏆 they read you on the Asker</span>}
         <Backing g={g} c={c} />
         {!locked && <Haggle g={g} c={c} />}
-        {!locked && <div style={{ marginTop: 8 }}><button onClick={() => openAudition(c)} disabled={(g.ap||0)<=0} style={{ width: '100%', border: 'none', borderRadius: 10, padding: '9px', fontSize: 12.5, fontWeight: 800, cursor: (g.ap||0)<=0?'default':'pointer', background: (g.ap||0)<=0?'rgba(120,110,150,.15)':`linear-gradient(135deg,${theme.accent2},${theme.accent})`, color: (g.ap||0)<=0?'#6b6390':'#fff' }}>Audition</button></div>}
+        {/* Signed off means the room is closed, not that you play the read and lose it after. */}
+        {!locked && (() => { const off = !canWork(g).ok; const dead = off || (g.ap||0)<=0;
+          return (<div style={{ marginTop: 8 }}><button onClick={() => openAudition(c)} disabled={dead} style={{ width: '100%', border: 'none', borderRadius: 10, padding: '9px', fontSize: 12.5, fontWeight: 800, cursor: dead?'default':'pointer', background: dead?'rgba(120,110,150,.15)':`linear-gradient(135deg,${theme.accent2},${theme.accent})`, color: dead?'#6b6390':'#fff' }}>{off ? 'Signed off' : 'Audition'}</button></div>); })()}
       </div>); })}
     <div style={{ marginTop: 4 }}><button onClick={() => dispatch((s) => { refreshCastingPool(s, true); return s; })} style={{ width: '100%', border: 'none', borderRadius: 10, padding: '9px', fontSize: 12.5, fontWeight: 800, cursor: 'pointer', background: 'rgba(158,116,255,.16)', color: '#d9cffa' }}>Refresh listings</button></div>
   </div>);

@@ -6,6 +6,7 @@ import { earn } from '../../engine/economy.js';
 import { GENRES } from '../meta/news.js';
 import { startProduction } from './production.js';
 import { rollStability } from './stability.js';
+import { canWork } from '../life/strain.js';
 const clamp = (v) => Math.max(0, Math.min(100, v));
 function title(s, big) {
   const A = big ? ['Empire','Legacy','Titan','Eternal','Crown','Apex'] : ['Small','Quiet','Last','Neon','Paper','Golden'];
@@ -59,6 +60,8 @@ export function acceptOffer(s, id) {
   const o = (s.offers || []).find((x) => x.id === id); if (!o) return s;
   // Anything with a real schedule becomes a shoot you live through — same rule as a
   // casting. Only a day's work resolves in the same click.
+  const fit = canWork(s);
+  if (!fit.ok) { s.lastEvent = fit.why; return s; }
   if (o.tier !== 'supporting' || (o.months || 0) >= 2) {
     if (s.production) { s.lastEvent = `You're already committed to "${s.production.title}" — wrap that one first.`; return s; }
     s.offers = (s.offers || []).filter((x) => x.id !== id);

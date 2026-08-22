@@ -14,6 +14,7 @@ import { releaseTick } from '../systems/career/release.js';
 import { frozenTick } from '../systems/career/stability.js';
 import { runNominations, ceremonyTick } from '../systems/career/awards.js';
 import { agingNote } from '../systems/career/age.js';
+import { strainTick } from '../systems/life/strain.js';
 import { addTimeline } from './timeline.js';
 import { maybeGenerateEvent, eventsTick } from '../systems/social/events.js';
 import { agingTick, mortalityCheck } from '../systems/life/mortality.js';
@@ -46,6 +47,7 @@ export function advanceMonth(state) {
   if (!s.alive) return s;   // sudden collapse ends the month right here
   relevanceDrift(s);
   workTick(s);
+  strainTick(s);     // the work accumulates in you, and eventually it stops you
   productionTick(s);
   releaseTick(s);    // anything that finished shooting months ago opens today
   frozenTick(s);     // and anything that stopped might find its money again

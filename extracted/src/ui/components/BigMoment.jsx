@@ -107,6 +107,24 @@ function Scene({ id, look, accent, moment }) {
       )}
     </svg>);
   }
+  // The body said no. An unmade bed and a phone face-down beside it.
+  if (id === 'burnout') {
+    return (<svg viewBox="0 0 200 120" style={{ width: '100%', maxWidth: 300, display: 'block', margin: '0 auto' }}>
+      <path d="M20 108 L180 108" stroke="#3a3160" strokeWidth="3" strokeLinecap="round" />
+      <rect x="34" y="72" width="132" height="36" rx="5" fill="#241e4a" stroke="#4a3f7a" strokeWidth="2" />
+      <path d="M40 72 Q54 56 76 62 Q104 70 132 60 Q152 54 160 72 Z" fill="#2e2758" stroke="#4a3f7a" strokeWidth="1.5" />
+      <rect x="44" y="56" width="34" height="18" rx="6" fill="#332b62" stroke="#5c4f92" strokeWidth="1.5" />
+      <rect x="34" y="66" width="132" height="6" rx="3" fill="#3a3068" />
+      {/* the phone, face down */}
+      <rect x="132" y="96" width="22" height="11" rx="2" fill="#1d1838" stroke={accent} strokeWidth="1.3" opacity=".8" />
+      {/* one window, curtains shut, daylight outside */}
+      <rect x="146" y="16" width="34" height="34" rx="3" fill="#2a2352" stroke="#4a3f7a" strokeWidth="1.6" />
+      <path d="M146 16 L163 16 L163 50 L146 50 Z M180 16 L163 16 L163 50 L180 50 Z" fill="#332b62" opacity=".85" />
+      <circle cx="163" cy="33" r="3" fill={accent} opacity=".18" />
+      <text x="86" y="34" textAnchor="middle" fontSize="8" fontWeight="800" fill="#8d80c0" letterSpacing="2.2">SIGNED OFF</text>
+      <text x="86" y="47" textAnchor="middle" fontSize="15" fontWeight="900" fill={accent}>{moment.months} months</text>
+    </svg>);
+  }
   // The money walked. An empty stage, a light left on, and the set half struck.
   if (id === 'shutdown') {
     return (<svg viewBox="0 0 200 120" style={{ width: '100%', maxWidth: 300, display: 'block', margin: '0 auto' }}>
@@ -174,8 +192,9 @@ function Scene({ id, look, accent, moment }) {
   </svg>);
 }
 
-const CTA = { premiere: 'Read the reviews', shutdown: 'Go home', nomination: 'Let it sink in', ceremony: 'Take the night' };
+const CTA = { premiere: 'Read the reviews', shutdown: 'Go home', nomination: 'Let it sink in', ceremony: 'Take the night', burnout: 'Sleep' };
 function headFor(m) {
+  if (m.id === 'burnout') return 'You could not get up';
   if (m.id === 'premiere') return 'Opening night';
   if (m.id === 'shutdown') return m.frozen ? 'The shoot has stopped' : 'The project is dead';
   if (m.id === 'nomination') return 'The Askers';

@@ -1,5 +1,6 @@
 import { addTimeline } from '../../engine/timeline.js';
 import { rint, chance } from '../../engine/rng.js';
+import { markRested } from '../life/strain.js';
 const clamp = (v) => Math.max(0, Math.min(100, v));
 export function skillCap(s) {
   const credits = (s.filmography || []).length + (s.discography || []).length;
@@ -36,8 +37,11 @@ export const ACTIONS = [
       s.confidence = clamp(s.confidence + rint(2, 4)); s.mental = clamp(s.mental + rint(2, 5));
       return 'Nobody heard a thing. The band was loud and you were somewhere else entirely.';
     } },
-  { id: 'rest', label: () => 'Rest & recover', desc: () => 'Recover mental and health', when: () => true,
-    run: (s) => { s.mental = clamp(s.mental + rint(6, 12)); s.health = clamp(s.health + rint(3, 8)); return 'You took time for yourself. Mind and body thank you.'; } },
+  { id: 'rest', label: () => 'Rest & recover', desc: (s) => (s.strain || 0) >= 60 ? 'You need this more than you think' : 'Recover mental and health', when: () => true,
+    run: (s) => { s.mental = clamp(s.mental + rint(6, 12)); s.health = clamp(s.health + rint(3, 8));
+      // Resting properly is the only thing that pulls the strain down faster than time does.
+      markRested(s);
+      return 'You took time for yourself. Mind and body thank you.'; } },
   { id: 'school', label: () => 'Focus on school', desc: () => 'Build discipline for the road ahead', when: (s) => s.stage === 'teen' || s.stage === 'child',
     run: (s) => { const g = rint(1, 3); s.discipline = clamp(s.discipline + g); return `You put in the work at school. Discipline +${g}.`; } },
 ];
