@@ -6,6 +6,12 @@ import { addGenreXP, genreBonus } from './genres.js';
 import { startProduction } from './production.js';
 import { quoteFor, episodeRate } from '../meta/status.js';
 import { rollStability, feeFactor, riskPrestige } from './stability.js';
+import { askerStanding } from './awards.js';
+// What a casting office will see you for. Usually that is fame — but an Asker counts,
+// and it is the one route into work above your level that does not run through
+// blockbusters. An actor with a statuette and forty fame gets read for parts that used
+// to want seventy.
+export function reach(s) { return (s.fame || 0) + askerStanding(s); }
 const clamp = (v) => Math.max(0, Math.min(100, v));
 // Two things the old table got wrong, both of them real-world facts:
 //   · television is paid PER EPISODE, film is paid for the picture. They are not the
@@ -148,7 +154,7 @@ export function castingChance(s, c) {
 export function auditionFor(s, id, quality = 50) {
   const c = (s.castingPool || []).find((x) => x.id === id); if (!c) return s;
   if (s.production) { s.lastEvent = `You are shooting "${s.production.title}". Nobody can be in two places.`; return s; }
-  if ((s.fame || 0) < (c.minFame || 0)) { s.lastEvent = 'You need more fame before they will see you for this.'; return s; }
+  if (reach(s) < (c.minFame || 0)) { s.lastEvent = 'You need more fame before they will see you for this.'; return s; }
   if ((s.ap || 0) <= 0) { s.lastEvent = 'No energy left this period. Live a bit first.'; return s; }
   s.ap = (s.ap || 0) - 1;
   const odds = clamp(castingChance(s, c) + (quality - 50) * 0.55);

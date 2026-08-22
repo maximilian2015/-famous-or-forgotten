@@ -15,7 +15,9 @@
       "Bash(cp extracted/dist/game.html game.html)",
       "Bash(git add *)",
       "Bash(git commit *)",
-      "Bash(git push *)"
+      "Bash(git push *)",
+      "Bash(sed -i \"/APPEAL_TEST/d\" test_awards.mjs)",
+      "Bash(\"/c/Program Files/nodejs/node.exe\" test_awards.mjs)"
     ],
     "defaultMode": "acceptEdits",
     "additionalDirectories": [

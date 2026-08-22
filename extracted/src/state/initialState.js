@@ -23,6 +23,7 @@ export function createInitialState(opts = {}) {
     filmography: [], discography: [], offers: [], people: [],
     releases: [],   // shot, in post, not out yet — see systems/career/release.js
     frozen: [],     // started, stopped, waiting for money — see systems/career/stability.js
+    awards: { losses: 0, wins: [], nominations: [], pending: null, history: [] },
     family: [], parentsMarried: true, spotlight: [],
     inbox: [], timeline: [], flags: {},
     look: opts.look || null,   // the creator can hand one in; otherwise ensureAppearance rolls it

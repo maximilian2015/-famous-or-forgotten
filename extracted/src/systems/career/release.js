@@ -94,6 +94,8 @@ export function scheduleRelease(s, credit, p) {
     scale: p.scale || 'feature', tier: p.tier || 'lead', season: p.season || 0,
     episodes: p.episodes || 0, part: p.part || 1, salary: credit.salary,
     rating: credit.rating, status: credit.status, worldHit: credit.status === 'World Hit',
+    // Carried for the Asker season: whether it was pushed, and how good the material was.
+    campaign: !!p.campaign, prestigeScore: p.prestigeScore,
     due: (s.year || 0) * 12 + (s.month || 0) + wait, wait,
     // Whether the thing gets a second season or a sequel is decided on the numbers, so
     // the shoot has to keep enough of itself alive to be asked that question later.
@@ -132,6 +134,9 @@ function open(s, rel) {
     rating: rel.rating, status: rel.status, year: s.year, season: rel.season,
     part: rel.part > 1 ? rel.part : 0, episodes: rel.episodes,
     boxOffice: rel.boxOffice || 0, viewers: rel.viewers || 0, verdict, score: Number(score),
+    // Carried for the Asker season: what kind of thing it was, and whether it was pushed.
+    scale: rel.scale, tier: rel.tier, prestigeScore: rel.prestigeScore,
+    campaignShare: rel.campaign ? 0.65 : 0,
   };
   const bucket = s.dream === 'singer' ? 'discography' : 'filmography';
   (s[bucket] = s[bucket] || []).unshift(credit);

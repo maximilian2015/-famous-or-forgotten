@@ -338,6 +338,43 @@ function PartySection({ g }) {
 }
 // Where the player actually lives, with the figure standing in it and everything they
 // own on the shelf. The wardrobe, the medicine, the rent, the parties — one place.
+// One statuette per win, standing on a real shelf. Winning something and only ever
+// seeing it as a number on a results screen is not the same as owning it.
+function AskerShelf({ g }) {
+  const wins = g.awards?.wins || [];
+  const noms = (g.awards?.nominations || []).length;
+  if (!wins.length && !noms) return null;
+  return (<div style={{ marginTop: 16 }}>
+    <div style={{ fontSize: 11, fontWeight: 900, letterSpacing: '.09em', textTransform: 'uppercase', color: theme.gold, marginBottom: 6 }}>
+      The mantelpiece
+    </div>
+    <Card>
+      {wins.length > 0 ? (<>
+        <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap', justifyContent: 'center', padding: '4px 0 10px' }}>
+          {wins.slice(0, 8).map((w, i) => (
+            <svg key={i} viewBox="0 0 40 64" style={{ width: 34, height: 54 }}>
+              <circle cx="20" cy="12" r="7" fill={theme.gold} />
+              <path d="M14 19 L26 19 L24 46 L16 46 Z" fill={theme.gold} />
+              <path d="M14 20 L7 34 M26 20 L33 34" stroke={theme.gold} strokeWidth="3" strokeLinecap="round" />
+              <path d="M11 46 L29 46 L31 58 L9 58 Z" fill="#3a3068" stroke={theme.gold} strokeWidth="1.4" />
+            </svg>
+          ))}
+        </div>
+        {wins.slice(0, 8).map((w, i) => (
+          <div key={i} style={{ display: 'flex', justifyContent: 'space-between', fontSize: 12, padding: '5px 0', borderTop: `1px solid ${theme.line}` }}>
+            <span style={{ fontWeight: 700 }}>{w.title}</span>
+            <span style={{ color: theme.muted }}>{w.year}</span>
+          </div>
+        ))}
+      </>) : (
+        <div style={{ fontSize: 12.5, color: theme.muted, lineHeight: 1.6 }}>
+          {noms === 1 ? 'One nomination, no statuette. The certificate is in a drawer somewhere.'
+            : `${noms} nominations and nothing to put on it yet. People have started to notice.`}
+        </div>
+      )}
+    </Card>
+  </div>);
+}
 function RoomScreen({ g, onBack }) {
   const meds = g.meds || {};
   const owned = g.look?.owned || ['tee'];
@@ -385,6 +422,9 @@ function RoomScreen({ g, onBack }) {
           </span>
         </div>)}
       </Card>
+
+      {/* What you actually won, in the room, where you can look at it. */}
+      <AskerShelf g={g} />
 
       <div style={{ fontSize: 11, fontWeight: 900, letterSpacing: '.09em', textTransform: 'uppercase', color: theme.muted, margin: '16px 0 6px' }}>On the shelf</div>
       <Card>
@@ -801,6 +841,7 @@ function groupCredits(list) {
     return { ...g, best,
       seasons: g.series ? g.parts.length : 0,
       episodes: g.series ? g.parts.reduce((n, p) => n + (p.episodes || 0), 0) : 0,
+      askers: g.parts.reduce((n, p) => n + (p.asker || 0), 0),
       from: Math.min(...years), to: Math.max(...years),
       earned: g.parts.reduce((n, p) => n + (p.salary || 0), 0),
       // A franchise's gross is the whole run; a show's audience is the best season it had.
@@ -845,6 +886,9 @@ function CreditRow({ group }) {
           color: theme.accent, background: 'rgba(158,116,255,.16)', padding: '2px 7px', borderRadius: 20 }}>{runs}</span>}
         {group.worldHit ? <span style={{ fontSize: 10, fontWeight: 900, color: theme.gold }}>🌍 WORLD HIT</span>
           : r >= 85 ? <span style={{ fontSize: 10, fontWeight: 900, letterSpacing: '.06em', color: theme.good }}>HIT</span> : null}
+        {/* The one mark that never comes off a credit. */}
+        {group.askers > 0 && <span style={{ fontSize: 10, fontWeight: 900, letterSpacing: '.06em', color: theme.gold }}>
+          🏆 ASKER{group.askers > 1 ? ` ×${group.askers}` : ''}</span>}
       </div>
       <div style={{ fontSize: 11.5, color: theme.muted }}>
         {c.role}{c.genre ? ` · ${c.genre}` : ''}{group.earned > 0 ? ` · €${group.earned.toLocaleString()}` : ''}
@@ -1160,7 +1204,7 @@ function AaaTracker({ g }) {
 function LegacyPanel({ g }) {
   if (g.stage === 'child' || g.stage === 'teen') return null;
   const L = computeLegacy(g); const hall = getHall();
-  return (<div style={{ marginTop: 18 }}><div style={{ fontSize: 11, fontWeight: 900, letterSpacing: '.09em', textTransform: 'uppercase', color: theme.muted, marginBottom: 8 }}>Legacy</div><Card><div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline' }}><div style={{ fontSize: 15, fontWeight: 900, color: theme.gold }}>{L.tier}</div><div style={{ fontSize: 13, fontWeight: 800, color: theme.muted }}>{L.points} pts</div></div><div style={{ fontSize: 11.5, color: theme.muted, marginTop: 4 }}>Peak fame {Math.round(L.peakFame)} · {L.credits} credits · {L.hits} hit{L.hits !== 1 ? 's' : ''}{L.worldHits > 0 ? ` · 🌍 ${L.worldHits} world hit${L.worldHits !== 1 ? 's' : ''}` : ''}</div></Card>{hall.length > 0 && <div style={{ marginTop: 10 }}><div style={{ fontSize: 10.5, fontWeight: 900, letterSpacing: '.08em', textTransform: 'uppercase', color: theme.muted, marginBottom: 6 }}>Hall of Fame</div>{hall.slice(0, 5).map((h, i) => (<div key={i} style={{ display: 'flex', justifyContent: 'space-between', fontSize: 12, color: theme.muted, padding: '5px 0', borderBottom: `1px solid ${theme.line}` }}><span>{i + 1}. {h.name} · {h.tier}</span><span style={{ color: theme.gold }}>{h.points}</span></div>))}</div>}</div>);
+  return (<div style={{ marginTop: 18 }}><div style={{ fontSize: 11, fontWeight: 900, letterSpacing: '.09em', textTransform: 'uppercase', color: theme.muted, marginBottom: 8 }}>Legacy</div><Card><div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline' }}><div style={{ fontSize: 15, fontWeight: 900, color: theme.gold }}>{L.tier}</div><div style={{ fontSize: 13, fontWeight: 800, color: theme.muted }}>{L.points} pts</div></div><div style={{ fontSize: 11.5, color: theme.muted, marginTop: 4 }}>Peak fame {Math.round(L.peakFame)} · {L.credits} credits · {L.hits} hit{L.hits !== 1 ? 's' : ''}{L.worldHits > 0 ? ` · 🌍 ${L.worldHits} world hit${L.worldHits !== 1 ? 's' : ''}` : ''}{L.askerWins > 0 ? ` · 🏆 ${L.askerWins} Asker${L.askerWins !== 1 ? 's' : ''}` : L.askerNoms > 0 ? ` · ${L.askerNoms} Asker nom${L.askerNoms !== 1 ? 's' : ''}` : ''}</div></Card>{hall.length > 0 && <div style={{ marginTop: 10 }}><div style={{ fontSize: 10.5, fontWeight: 900, letterSpacing: '.08em', textTransform: 'uppercase', color: theme.muted, marginBottom: 6 }}>Hall of Fame</div>{hall.slice(0, 5).map((h, i) => (<div key={i} style={{ display: 'flex', justifyContent: 'space-between', fontSize: 12, color: theme.muted, padding: '5px 0', borderBottom: `1px solid ${theme.line}` }}><span>{i + 1}. {h.name} · {h.tier}</span><span style={{ color: theme.gold }}>{h.points}</span></div>))}</div>}</div>);
 }
 function StageBody({ g }) {
   if (g.stage === 'child') return <div style={{ fontSize: 14, lineHeight: 1.55 }}>You are a kid living with your parents. School, cartoons, and the first hints of a dream. Live through the years — the real choices come when you grow up.</div>;

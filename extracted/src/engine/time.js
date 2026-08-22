@@ -12,6 +12,7 @@ import { spotlightYear } from '../systems/social/spotlight.js';
 import { productionTick } from '../systems/career/production.js';
 import { releaseTick } from '../systems/career/release.js';
 import { frozenTick } from '../systems/career/stability.js';
+import { runNominations, ceremonyTick } from '../systems/career/awards.js';
 import { maybeGenerateEvent, eventsTick } from '../systems/social/events.js';
 import { agingTick, mortalityCheck } from '../systems/life/mortality.js';
 import { healthTick } from '../systems/life/health.js';
@@ -29,6 +30,7 @@ export function advanceMonth(state) {
     applyYearly(s); familyYear(s); allowanceTick(s); datingYear(s); spotlightYear(s);
     agingTick(s);
     if (mortalityCheck(s)) return s;   // life is over — nothing else runs this tick
+    if (s.stage === 'career') runNominations(s);   // the season judges last year's work
   }
   applyMonthly(s);
   bondsTick(s);      // people you did not call drift away
@@ -39,6 +41,7 @@ export function advanceMonth(state) {
   productionTick(s);
   releaseTick(s);    // anything that finished shooting months ago opens today
   frozenTick(s);     // and anything that stopped might find its money again
+  ceremonyTick(s);   // and the Askers land a couple of months after the nominations
   eventsTick(s);
   maybeGenerateEvent(s);
   maybeGenerateOffer(s);

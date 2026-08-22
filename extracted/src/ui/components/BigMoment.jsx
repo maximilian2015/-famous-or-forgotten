@@ -66,6 +66,41 @@ function Scene({ id, look, accent, moment }) {
       <path d="M70 110 L130 110 L122 120 L78 120 Z" fill="#8a3459" opacity=".8" />
     </svg>);
   }
+  // Awards night. A statuette on a lit plinth, and a room of seats facing it.
+  if (id === 'nomination' || id === 'ceremony') {
+    const won = moment.kind === 'good' && id === 'ceremony';
+    return (<svg viewBox="0 0 200 120" style={{ width: '100%', maxWidth: 300, display: 'block', margin: '0 auto' }}>
+      <defs>
+        <radialGradient id="aglow" cx="50%" cy="42%" r="55%">
+          <stop offset="0" stopColor={accent} stopOpacity=".30" /><stop offset="1" stopColor={accent} stopOpacity="0" />
+        </radialGradient>
+      </defs>
+      <rect x="0" y="0" width="200" height="120" fill="url(#aglow)" />
+      {/* rows of seats, facing away */}
+      <g opacity=".4">
+        {[0, 1, 2].map((r) => [0, 1, 2, 3, 4, 5, 6, 7].map((c) => (
+          <rect key={`${r}-${c}`} x={14 + c * 23 + r * 4} y={92 + r * 9} width="15" height="7" rx="2.5"
+            fill="#2c2558" stroke="#463c78" strokeWidth="1" />
+        )))}
+      </g>
+      {/* plinth */}
+      <path d="M78 92 L122 92 L116 78 L84 78 Z" fill="#2e2758" stroke="#5c4f92" strokeWidth="1.6" />
+      {/* the statuette */}
+      <g transform="translate(100 40)">
+        <circle cx="0" cy="0" r="7.5" fill={accent} opacity={won ? 1 : 0.75} />
+        <path d="M-6 8 L6 8 L4.5 30 L-4.5 30 Z" fill={accent} opacity={won ? 1 : 0.75} />
+        <path d="M-6 9 L-12 22 M6 9 L12 22" stroke={accent} strokeWidth="2.6" strokeLinecap="round" opacity={won ? 1 : 0.75} />
+        <path d="M-9 30 L9 30 L9 36 L-9 36 Z" fill="#3a3068" stroke={accent} strokeWidth="1.4" />
+      </g>
+      {/* spill of light down the plinth */}
+      <path d="M86 78 L114 78 L124 92 L76 92 Z" fill={accent} opacity=".08" />
+      {id === 'nomination' && (
+        <text x="100" y="112" textAnchor="middle" fontSize="7" fontWeight="800" fill="#9c8fd4" letterSpacing="2">
+          {moment.count > 1 ? `${moment.count} NOMINATIONS` : 'NOMINATED'}
+        </text>
+      )}
+    </svg>);
+  }
   // The money walked. An empty stage, a light left on, and the set half struck.
   if (id === 'shutdown') {
     return (<svg viewBox="0 0 200 120" style={{ width: '100%', maxWidth: 300, display: 'block', margin: '0 auto' }}>
@@ -133,10 +168,12 @@ function Scene({ id, look, accent, moment }) {
   </svg>);
 }
 
-const CTA = { premiere: 'Read the reviews', shutdown: 'Go home' };
+const CTA = { premiere: 'Read the reviews', shutdown: 'Go home', nomination: 'Let it sink in', ceremony: 'Take the night' };
 function headFor(m) {
   if (m.id === 'premiere') return 'Opening night';
   if (m.id === 'shutdown') return m.frozen ? 'The shoot has stopped' : 'The project is dead';
+  if (m.id === 'nomination') return 'The Askers';
+  if (m.id === 'ceremony') return m.kind === 'good' ? 'And the Asker goes to' : 'And the Asker goes to';
   return m.kind === 'good' ? 'Something came to you' : 'This is happening';
 }
 
@@ -160,6 +197,14 @@ export function BigMoment({ moment, look, onClose }) {
         <div style={{ display: 'flex', gap: 8, margin: '0 0 12px' }}>
           <Figure label="Score" value={`${moment.score}/10`} accent={accent} />
           <Figure label={moment.money.includes('watching') ? 'Audience' : 'Box office'} value={moment.money.replace(' at the box office', '').replace(' watching', '')} accent={accent} />
+        </div>
+      )}
+      {(moment.id === 'nomination' || moment.id === 'ceremony') && moment.lines && (
+        <div style={{ margin: '0 0 12px', textAlign: 'left' }}>
+          {moment.lines.map((l, i) => (
+            <div key={i} style={{ fontSize: 11.5, color: theme.muted, padding: '6px 10px', borderRadius: 8,
+              background: '#1d1838', border: '1px solid #332b60', marginBottom: 5, whiteSpace: 'pre-line', lineHeight: 1.5 }}>{l}</div>
+          ))}
         </div>
       )}
       {moment.id === 'shutdown' && (

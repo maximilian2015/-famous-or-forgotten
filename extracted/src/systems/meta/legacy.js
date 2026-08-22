@@ -10,10 +10,16 @@ export function computeLegacy(s) {
   const peakFame = s.peakFame || s.fame || 0;
   // Weighted for QUALITY over volume: grinding out credits barely moves the needle, while a
   // genuine cultural moment defines a career. The old weights let any life clear Legend.
-  const points = Math.round(peakFame * 2.5 + hits * 25 + worldHits * 400 + credits * 1 + (s.respect || 0) * 1.5 + Math.max(0, (s.cash || 0) / 150000));
+  // An Asker is the heaviest single thing a career can carry — heavier than any one hit,
+  // because it is the industry itself saying so.
+  const askerWins = (s.awards?.wins || []).length;
+  const askerNoms = (s.awards?.nominations || []).length;
+  const points = Math.round(peakFame * 2.5 + hits * 25 + worldHits * 400 + credits * 1
+    + askerWins * 600 + askerNoms * 150
+    + (s.respect || 0) * 1.5 + Math.max(0, (s.cash || 0) / 150000));
   let tier = 'Forgotten';
   if (points >= 2300) tier = 'Legend'; else if (points >= 1500) tier = 'A-list Icon'; else if (points >= 800) tier = 'Established Star'; else if (points >= 350) tier = 'Working Actor'; else if (points >= 120) tier = 'Had a Moment';
-  return { points, tier, credits, hits, worldHits, peakFame };
+  return { points, tier, credits, hits, worldHits, peakFame, askerWins, askerNoms };
 }
 export function enshrine(s) {
   const L = computeLegacy(s); let hall = [];
