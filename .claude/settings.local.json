@@ -19,7 +19,15 @@
       "Bash(sed -i \"/APPEAL_TEST/d\" test_awards.mjs)",
       "Bash(\"/c/Program Files/nodejs/node.exe\" test_awards.mjs)",
       "Bash(sed -i 's/filmography: \\\\[\\\\], discography: \\\\[\\\\], timeline: \\\\[\\\\], year: 2061, month: 0, alive: true,/filmography: [], discography: [], timeline: [], year: 2062, month: 0, alive: true,/; s/prestigeScore: 70, rating: 88, year: 2060, salary: 900000/prestigeScore: 70, rating: 88, year: 2061, salary: 900000/' test_awards.mjs)",
-      "Bash(\"/c/Program Files/nodejs/node.exe\" season_rate.mjs)"
+      "Bash(\"/c/Program Files/nodejs/node.exe\" season_rate.mjs)",
+      "Bash(\"/c/Program Files/nodejs/node.exe\" hundred_lives.mjs)",
+      "Bash(\"/c/Program Files/nodejs/node.exe\" age_power.mjs)",
+      "Bash(sed -i \"s/    version: 'x', name: 'A', ageY: 19, stage: 'career', dream: 'actor',/    version: 'x', name: 'A', ageY: 19, stage: 'career', dream: 'actor', gender: Math.random\\(\\)<0.5?'female':'male',/\" hundred_lives.mjs)",
+      "Bash(sed -i \"s|console.log\\(\\\\`\\\\\\\\\\\\\\\\n  СТО ЖИЗНЕЙ, каждая с 19 до 69 лет\\\\\\\\\\\\\\\\n\\\\`\\);|console.log\\(\\\\`\\\\\\\\\\\\\\\\n  СТО ЖИЗНЕЙ, каждая с 19 до 85 лет\\\\\\\\\\\\\\\\n\\\\`\\);|\" hundred_lives.mjs)",
+      "Bash(\"/c/Program Files/nodejs/node.exe\" board_by_age.mjs)",
+      "Bash(sed -i \"s|import { refreshCastingPool, castingChance, scaleOf, boardSize } from 'file:///C:/Users/maximilian/Desktop/game/extracted/src/systems/career/castings.js';|import { refreshCastingPool, castingChance, scaleOf, boardSize } from 'file:///C:/Users/maximilian/Desktop/game/extracted/src/systems/career/castings.js';\\\\nimport { agingTick } from 'file:///C:/Users/maximilian/Desktop/game/extracted/src/systems/life/mortality.js';|\" win_density.mjs)",
+      "Bash(sed -i \"s|s.month++; if \\(s.month > 11\\) { s.month = 0; s.year++; s.ageY++; runNominations\\(s\\); }|s.month++; if \\(s.month > 11\\) { s.month = 0; s.year++; s.ageY++; agingTick\\(s\\); runNominations\\(s\\); }|\" win_density.mjs)",
+      "Bash(\"/c/Program Files/nodejs/node.exe\" win_density.mjs)"
     ],
     "defaultMode": "acceptEdits",
     "additionalDirectories": [

@@ -7,6 +7,7 @@ import { GridRisk } from '../../ui/components/GridRisk.jsx';
 import { useAccent } from '../../ui/appTheme.js';
 import { negotiationFor, haggleOdds, applyHaggle } from '../../systems/career/negotiate.js';
 import { stabilityBand, riskCostFor, volatility } from '../../systems/career/stability.js';
+import { ageFit } from '../../systems/career/age.js';
 
 // Only appears once you are somebody. Below Star you are told the number.
 function Haggle({ g, c }) {
@@ -138,6 +139,15 @@ export function OpenCall({ g, ocTab, setOcTab, teenMode }) {
           </div>
         </div>
         <div style={{ fontSize: 11.5, color: theme.muted, marginTop: 3 }}>{c.role} · {c.type}</div>
+        {/* Why the odds on this one are worse than on the one below it. */}
+        {(() => { const f = ageFit(g, c.role);
+          if (f >= 0.98) return null;
+          const lateShelf = /Character lead|matriarch|Elder|Grandparent/.test(c.role);
+          return (<div style={{ fontSize: 10.5, color: f < 0.6 ? theme.bad : theme.gold, marginTop: 3, lineHeight: 1.4 }}>
+            {lateShelf ? 'Written for someone who has lived a bit. That is you now.'
+              : f < 0.6 ? 'They are picturing someone younger. You would be a stretch.'
+              : 'You are at the top end of what they had in mind.'}
+          </div>); })()}
         {/* How long this eats of your life, before you say yes to it. */}
         <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginTop: 7 }}>
           <div style={{ display: 'flex', gap: 2, flex: 1 }}>

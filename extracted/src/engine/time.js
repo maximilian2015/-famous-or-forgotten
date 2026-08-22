@@ -13,6 +13,8 @@ import { productionTick } from '../systems/career/production.js';
 import { releaseTick } from '../systems/career/release.js';
 import { frozenTick } from '../systems/career/stability.js';
 import { runNominations, ceremonyTick } from '../systems/career/awards.js';
+import { agingNote } from '../systems/career/age.js';
+import { addTimeline } from './timeline.js';
 import { maybeGenerateEvent, eventsTick } from '../systems/social/events.js';
 import { agingTick, mortalityCheck } from '../systems/life/mortality.js';
 import { healthTick } from '../systems/life/health.js';
@@ -30,7 +32,13 @@ export function advanceMonth(state) {
     applyYearly(s); familyYear(s); allowanceTick(s); datingYear(s); spotlightYear(s);
     agingTick(s);
     if (mortalityCheck(s)) return s;   // life is over — nothing else runs this tick
-    if (s.stage === 'career') runNominations(s);   // the season judges last year's work
+    if (s.stage === 'career') {
+      runNominations(s);   // the season judges last year's work
+      // The board quietly changes shape as you age. Say so once, out loud, rather than
+      // letting the player wonder why the offers dried up.
+      const note = agingNote(s);
+      if (note) { addTimeline(s, note, true); s.lastEvent = note; }
+    }
   }
   applyMonthly(s);
   bondsTick(s);      // people you did not call drift away

@@ -7,6 +7,7 @@ import { startProduction } from './production.js';
 import { quoteFor, episodeRate } from '../meta/status.js';
 import { rollStability, feeFactor, riskPrestige } from './stability.js';
 import { askerStanding } from './awards.js';
+import { ageFit, seenForIt } from './age.js';
 // What a casting office will see you for. Usually that is fame — but an Asker counts,
 // and it is the one route into work above your level that does not run through
 // blockbusters. An actor with a statuette and forty fame gets read for parts that used
@@ -38,6 +39,8 @@ const POOLS = {
       ['Crime Series', 'Episode', [2, 3], [1, 3], 'tv_network', 'episode', 0, 0.55],
       ['Network Drama', 'Series regular', [5, 8], [10, 16], 'tv_network', 'recurring', 25],
       ['Prestige Series', 'Season lead', [7, 10], [8, 10], 'tv_prestige', 'prestige', 55],
+      // Opens late. It pays in standing, and it is the shelf that replaces the one that closes.
+      ['Prestige Series', 'The matriarch', [6, 9], [6, 9], 'tv_prestige', 'prestige', 30, 0.8],
     ],
     film: [
       ['Short Film', 'Lead', [1, 2], 'film_indie', 'small', 0, 0.12],
@@ -46,6 +49,10 @@ const POOLS = {
       ['Indie Film', 'Lead', [3, 5], 'film_indie', 'indie', 15],
       ['Feature Film', 'Lead', [5, 8], 'film_studio', 'feature', 30],
       ['Studio Blockbuster', 'Lead', [10, 14], 'film_tentpole', 'blockbuster', 70],
+      // The late-career shelf: the parts that win things and do not sell tickets.
+      ['Prestige Drama', 'Character lead', [4, 7], 'film_indie', 'indie', 20, 1.6],
+      ['Feature Film', 'Elder statesman', [3, 6], 'film_studio', 'feature', 25, 0.55],
+      ['Indie Film', 'Grandparent', [2, 4], 'film_indie', 'indie', 0, 0.7],
     ],
     ads: [['Brand Campaign', 'Face', [1, 1], 'ad', 'oneoff'], ['Commercial', 'Actor', [1, 1], 'ad', 'oneoff', 0, 0.35]],
     gigs: [['Theatre Run', 'Stage', [2, 2], 'gig', 'small', 0, 4], ['Voice Session', 'Voice', [1, 1], 'gig', 'oneoff', 0, 2], ['TV Extra', 'Background', [1, 1], 'gig', 'oneoff']],
@@ -91,9 +98,23 @@ function titleFor(taken) {
   // Astronomically unlikely, but a title is never worth an infinite loop.
   return `${pick(TITLE_A)} ${pick(TITLE_B)} ${rint(2, 99)}`;
 }
+// How many listings the board carries for you. This is the real shape of a career: not
+// that the work gets worse, but that there is less of it. A board that always held six
+// options meant a seventy-year-old worked exactly as hard as a thirty-year-old, and
+// since fame and craft only climb, the oldest version of you was the strongest — the
+// median Asker across a hundred careers was won at fifty-seven.
+export function boardSize(s) {
+  const age = s.ageY || 0;
+  // It turns for women first, which is the ugly part of this business and worth saying
+  // rather than smoothing away.
+  const peakEnd = 42 - (s.gender === 'female' ? 5 : 0);
+  if (age <= peakEnd) return 6;
+  return Math.max(2, Math.round(6 - 4 * Math.min(1, (age - peakEnd) / 28)));
+}
 export function refreshCastingPool(s, force) {
   s.castingPool = s.castingPool || [];
-  if (!force && s.castingPool.length >= 6) return;
+  const want = boardSize(s);
+  if (!force && s.castingPool.length >= want) return;
   const career = s.dream === 'singer' ? 'singer' : 'actor';
   const shelves = POOLS[career];
   s.castingPool = force ? [] : s.castingPool.filter((c) => (c._expires || 0) > ((s.year || 0) * 12 + (s.month || 0)));
@@ -109,11 +130,13 @@ export function refreshCastingPool(s, force) {
     s.production ? s.production.title : '',
   ]);
   let guard = 0;
-  while (s.castingPool.length < 6 && guard++ < 200) {
+  while (s.castingPool.length < want && guard++ < 200) {
     const shelf = pick(Object.keys(shelves));
     const row = pick(shelves[shelf]);
     const perEpisode = shelf === 'series';
     const [type, role, span] = row;
+    // A casting office reading somebody else's age never sends you the sides at all.
+    if (!seenForIt(s, role)) continue;
     const [eps, medium, scale, minFame, share] = perEpisode ? row.slice(3) : [null, ...row.slice(3)];
     // What YOU are worth in this medium. Zero means they would not have you at any
     // price yet — the listing simply does not appear.
@@ -147,7 +170,10 @@ export function refreshCastingPool(s, force) {
 export function castingChance(s, c) {
   const skill = s.dream === 'singer' ? s.singing : s.acting;
   // Scandal was purely cosmetic before — it accumulated and did nothing.
-  return Math.round(clamp(15 + skill * 0.5 + s.charisma * 0.2 + s.looks * 0.15 + s.luck * 0.1 - (s.scandal || 0) * 0.3));
+  const base = clamp(15 + skill * 0.5 + s.charisma * 0.2 + s.looks * 0.15 + s.luck * 0.1 - (s.scandal || 0) * 0.3);
+  // And at the edge of a part's age you are the second choice in the room.
+  const fit = c ? ageFit(s, c.role) : 1;
+  return Math.round(base * (0.35 + 0.65 * fit));
 }
 // quality (0-100) comes from the audition minigame: nail the read and your odds jump,
 // fumble it and the room cools on you.

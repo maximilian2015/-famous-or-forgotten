@@ -12,6 +12,20 @@ export function agingTick(s) {
   if ((s.mental || 50) < 30) decline += 1;                       // burnout wears you down
   if (['flat', 'house', 'penthouse'].includes(s.housing)) { if (chance(45)) decline = Math.max(0, decline - 1); }
   if (decline > 0) s.health = clamp((s.health || 100) - decline);
+  // Craft slips late. Sixteen-hour days, the stamina a lead role wants, the lines. It is
+  // slow and it has a floor — a great actor at eighty is still a great actor, just not
+  // the one they were at forty-five. Without this, skill only ever climbed, so the oldest
+  // version of a player was always the most capable and the Asker's median win sat at
+  // fifty-seven against a real-world figure in the low forties.
+  if (age >= 66) {
+    const key = s.dream === 'singer' ? 'singing' : 'acting';
+    const floor = Math.min(58, (s.peakSkill || s[key] || 0) * 0.62);
+    if ((s[key] || 0) > floor) s[key] = Math.max(floor, (s[key] || 0) - (age >= 76 ? 1.4 : 0.7));
+  } else {
+    const key = s.dream === 'singer' ? 'singing' : 'acting';
+    s.peakSkill = Math.max(s.peakSkill || 0, s[key] || 0);
+  }
+  if (age === 66) addTimeline(s, 'The days on set are longer than they were. You can still do it — it just costs more than it used to.', true);
   if (age === 40 || age === 55 || age === 70) {
     addTimeline(s, age === 40 ? 'Forty. The mirror is starting to make comments.'
       : age === 55 ? 'Fifty-five. Recovery takes longer than it used to.'
