@@ -151,8 +151,14 @@ function open(s, rel) {
   // backwards: a bad film still put your face on a screen. Subtracting here trapped a
   // low-fame actor at zero forever — every credit made them less known than before it.
   else if (verdict === 'bomb') fame = Math.max(1, fame - 3);
-  s.fame = clamp((s.fame || 0) + fame);
-  s.respect = clamp((s.respect || 0) + (rel.rating >= 85 ? 5 : rel.rating >= 70 ? 2 : rel.rating < 45 ? -4 : 0));
+  // Diminishing at the top. Getting from nobody to known is quick; the last stretch is a
+  // lifetime. Flat gains meant a working lead hit fame 100 and respect 97 by thirty-one,
+  // after four years and eight credits, which made the whole ladder a formality — and
+  // left nothing above it for an Asker to be worth.
+  const headroom = (limit, cur) => Math.max(0.16, 1 - (cur || 0) / limit);
+  s.fame = clamp((s.fame || 0) + fame * headroom(118, s.fame));
+  const respectGain = rel.rating >= 85 ? 5 : rel.rating >= 70 ? 2 : rel.rating < 45 ? -4 : 0;
+  s.respect = clamp((s.respect || 0) + (respectGain > 0 ? respectGain * headroom(112, s.respect) : respectGain));
 
   // A commercial hit raises what you can ask for next time.
   if (film && verdict === 'smash') s.quote = Math.max(s.quote || 0, Math.round((rel.salary || 0) * 1.6));

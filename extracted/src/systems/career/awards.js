@@ -10,6 +10,9 @@ import { rint, chance, pick } from '../../engine/rng.js';
 import { addTimeline } from '../../engine/timeline.js';
 
 const clamp = (v, a = 0, b = 100) => Math.max(a, Math.min(b, v));
+// The same diminishing curve the premieres use. Five nominations at a flat +6 each put a
+// thirty-five-year-old on respect 97 with a career still ahead of her.
+const headroom = (limit, cur) => Math.max(0.16, 1 - (cur || 0) / limit);
 
 // What the voters like. Compare APPEAL in release.js — it runs the other way.
 export const ASKER_GENRE = {
@@ -60,6 +63,15 @@ const RIVAL_TITLE_A = ['The Quiet', 'A Fine', 'The Last', 'Small', 'The Weight o
 const RIVAL_TITLE_B = ['Hours', 'Country', 'Winter', 'Mercies', 'Water', 'Light', 'Animals',
   'Distances', 'Weather', 'Kingdom'];
 
+// The rest of the field is the best work anybody else made that year — it does not care
+// how good yours was. Scaling rivals off the player's own strength was a mistake: it made
+// a flawless 10.0 drama and a marginal 7.8 thriller both come out around twelve per cent,
+// so quality bought nothing on the night. Drawn absolutely, a great film really is the
+// favourite and a lucky nomination really is an outsider.
+// Calibrated against the real thing: Meryl Streep has three from twenty-one, so a strong
+// nomination should convert around one time in six or seven, and even a masterpiece is
+// only ever a one-in-four favourite. Nobody walks into that room certain.
+const FIELD = [50, 305];
 function makeRival(strength, taken) {
   // The rival's film must not be the player's film. "The Weight of" + "Water" really did
   // come out as the title the player was nominated for, and the ceremony then announced
@@ -74,10 +86,7 @@ function makeRival(strength, taken) {
     id: 'riv' + Math.random().toString(36).slice(2, 8),
     name: `${pick(RIVAL_FIRST)} ${pick(RIVAL_LAST)}`,
     work,
-    // The other four in that category are, on average, slightly better than you. They
-    // have to be: an actor who reliably makes one superb drama every eighteen months was
-    // collecting five statuettes a lifetime, and real careers top out at one to three.
-    strength: Math.max(8, strength * (0.9 + Math.random() * 1.1)),
+    strength: FIELD[0] + Math.random() * (FIELD[1] - FIELD[0]),
     losses: rint(0, 3),      // everyone in that room has their own history of not winning
     them: true,
   };
@@ -194,8 +203,8 @@ export function runNominations(s) {
   s.awards.nominations = (s.awards.nominations || []).concat(pending.map((p) => ({ title: p.title, category: p.category, year })));
   // A nomination is a title you keep. It moves what you can ask for, immediately.
   s.quote = Math.round((s.quote || 0) * 1.25) || s.quote;
-  s.respect = clamp((s.respect || 0) + 6);
-  s.fame = clamp((s.fame || 0) + 3);
+  s.respect = clamp((s.respect || 0) + 6 * headroom(112, s.respect));
+  s.fame = clamp((s.fame || 0) + 3 * headroom(118, s.fame));
   const labels = pending.map((p) => CATEGORIES.find((c) => c.id === p.category)?.label || p.category);
   addTimeline(s, `Asker nominations: ${labels.join(', ')} for "${pending[0].title}".`);
   s.bigMoment = {
@@ -233,8 +242,8 @@ export function ceremonyTick(s) {
   for (const r of picture) {
     const c = [...(s.filmography || []), ...(s.discography || [])].find((x) => x.title === r.title);
     if (c) c.bestPicture = true;
-    s.respect = clamp((s.respect || 0) + 6);
-    s.fame = clamp((s.fame || 0) + 4);
+    s.respect = clamp((s.respect || 0) + 6 * headroom(112, s.respect));
+    s.fame = clamp((s.fame || 0) + 4 * headroom(118, s.fame));
     addTimeline(s, `"${r.title}" won Best Picture. You were in it, and everybody knows.`);
   }
   if (won.length) {

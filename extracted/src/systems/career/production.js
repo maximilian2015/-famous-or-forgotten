@@ -48,6 +48,10 @@ export function startProduction(s, offer) {
     stability: offer.stability ?? rollStability(offer.scale || 'feature'),
     crew: makeCrew(s.dream), meter: 20,
   };
+  // Your quote is the biggest fee you have ever commanded for a picture, and it is set
+  // by taking the job — not only by winning an argument about it. Television is priced
+  // per episode and is a different currency, so it does not move this number.
+  if (!s.production.episodes) s.quote = Math.max(s.quote || 0, s.production.salary || 0);
   s.lastEvent = `Cameras roll on "${s.production.title}". First day on set.`;
   addTimeline(s, `Production began: ${s.production.title}.`);
   return s;
