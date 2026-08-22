@@ -165,6 +165,9 @@ export const PILLS = {
   antibiotics: { label: 'Antibiotics', blurb: 'Cuts a minor illness short outright.', cost: 220 },
   vitamins:    { label: 'Vitamins', blurb: 'A slow nudge back toward healthy.', cost: 90 },
   sleeping:    { label: 'Sleeping pills', blurb: 'For the head, not the body.', cost: 110 },
+  // Not a cure and not optional. Nothing else about a depression moves while you are not
+  // on them, and they take weeks before they do anything at all.
+  antidep:     { label: 'Antidepressants', blurb: 'A month at a time. Weeks before they do anything.', cost: 190 },
 };
 export function buyPills(s, key, qty = 1) {
   const p = PILLS[key]; if (!p) return s;
@@ -198,6 +201,13 @@ export function usePills(s, key) {
   } else if (key === 'sleeping') {
     s.mental = clamp((s.mental || 50) + rint(6, 12));
     s.lastEvent = 'You finally slept properly.';
+  } else if (key === 'antidep') {
+    if (!s.depression) { s.lastEvent = 'You put them back in the drawer.'; s.meds[key] = have; return s; }
+    if (s.depression.medsThisMonth) { s.lastEvent = 'You have taken them this month.'; s.meds[key] = have; return s; }
+    s.depression.medsThisMonth = true;
+    const m = (s.depression.medMonths || 0) + 1;
+    s.lastEvent = m < 2 ? 'You started them. It will be weeks before they do anything.'
+      : 'You kept taking them. Nothing dramatic — but nothing else works without them.';
   }
   return s;
 }

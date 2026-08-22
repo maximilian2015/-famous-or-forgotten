@@ -31,7 +31,9 @@ import { interactionsFor, interact, findPerson, GROUPS } from './systems/life/in
 import { relBand } from './systems/life/bonds.js';
 import { BigMoment } from './ui/components/BigMoment.jsx';
 import { stabilityBand } from './systems/career/stability.js';
-import { strainBand, burnedOut, unreliable, depressed, depressionMonths, depressionHelp, seeSomebody } from './systems/life/strain.js';
+import { strainBand, burnedOut, unreliable, depressed, seeSomebody } from './systems/life/strain.js';
+import { monthsIn, slotsLost, standingOf, onMeds, SCENES, CHECKPOINTS, EVERY_MONTHS, MIN_MONTHS,
+  answerCheckpoint, inRehab, enterRehab, rehabCost, therapyProgress, THERAPY_FOR_A_SLOT } from './systems/life/depression.js';
 // Big moments live on state so a system can raise one; the UI only clears it.
 function clearBigMoment(s) { s.bigMoment = null; return s; }
 const MON = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
@@ -50,6 +52,7 @@ export default function App() {
   if (showGenres) return <GenreScreen g={g} onBack={() => setShowGenres(false)} />;
   if (showHealth) return <HealthScreen g={g} onBack={() => setShowHealth(false)} />;
   if (g.bigMoment) return <BigMoment moment={g.bigMoment} look={lookOf(g)} onClose={() => dispatch(clearBigMoment)} />;
+  if (g.depression?.pending) return <CheckpointModal g={g} />;
   if (showRoom) return <RoomScreen g={g} onBack={() => setShowRoom(false)} />;
   if (confirmEnd) return <EndLifeModal onCancel={() => setConfirmEnd(false)} onConfirm={() => { import('./systems/meta/legacy.js').then(m => { m.enshrine(g); newLife(); setConfirmEnd(false); }); }} />;
   return (
@@ -268,30 +271,96 @@ function GenreScreen({ g, onBack }) {
 // The state you are in after ignoring it four times. It is long and slow, so the one
 // thing it must not be is opaque — the player is told exactly what moves it and which of
 // those three things they are currently doing.
+const softBtn = (dead) => ({ width: '100%', marginTop: 8, border: 'none', borderRadius: 10, padding: '9px',
+  fontSize: 12.5, fontWeight: 800, cursor: dead ? 'default' : 'pointer',
+  background: dead ? 'rgba(120,110,150,.15)' : `linear-gradient(135deg,${theme.accent2},${theme.accent})`,
+  color: dead ? '#6b6390' : '#fff' });
+
 function DepressionCard({ g }) {
+  if (inRehab(g)) {
+    return (<div style={{ background: 'rgba(158,116,255,.08)', border: `1px solid ${theme.line}`, borderRadius: 12, padding: '12px 14px' }}>
+      <div style={{ fontSize: 14, fontWeight: 800, color: theme.accent }}>You are away</div>
+      <div style={{ fontSize: 11.5, color: theme.muted, marginTop: 5, lineHeight: 1.55 }}>
+        {g.rehab.left} month{g.rehab.left === 1 ? '' : 's'} left. No cameras, no phone, nobody watching. When you come
+        out you will have your hours back.
+      </div>
+    </div>);
+  }
+  // Cured, but it kept something. The long road back, or living with it.
+  if (!depressed(g) && (g.scarred || 0) > 0) {
+    const noEnergy = (g.ap || 0) <= 0, poor = (g.cash || 0) < 260, went = !!g._therapyThisMonth;
+    const canRehab = (g.cash || 0) >= rehabCost(g);
+    return (<div style={{ background: 'rgba(255,106,138,.06)', border: '1px solid rgba(255,106,138,.28)', borderRadius: 12, padding: '12px 14px' }}>
+      <div style={{ fontSize: 14, fontWeight: 800, color: theme.bad }}>What it left behind</div>
+      <div style={{ fontSize: 11.5, color: theme.muted, margin: '4px 0 8px', lineHeight: 1.55 }}>
+        {g.scarred} hour{g.scarred === 1 ? '' : 's'} a month you no longer have. Two ways back, and both are expensive:
+        a year in a clinic, or roughly two years of sessions for each one.
+      </div>
+      <div style={{ height: 6, background: 'rgba(255,255,255,.08)', borderRadius: 3, overflow: 'hidden' }}>
+        <div style={{ width: `${Math.round(therapyProgress(g) / THERAPY_FOR_A_SLOT * 100)}%`, height: '100%', background: theme.accent }} />
+      </div>
+      <div style={{ fontSize: 10.5, color: theme.muted, marginTop: 4 }}>{therapyProgress(g)} of {THERAPY_FOR_A_SLOT} sessions toward the next hour</div>
+      <button onClick={() => dispatch(seeSomebody)} disabled={noEnergy || poor || went} style={softBtn(noEnergy || poor || went)}>
+        {went ? 'You went this month' : poor ? 'An hour costs €260' : 'A session · €260 · 1 energy'}
+      </button>
+      <button onClick={() => dispatch(enterRehab)} disabled={!canRehab} style={{ ...softBtn(!canRehab), background: canRehab ? 'rgba(255,106,138,.18)' : 'rgba(120,110,150,.15)', color: canRehab ? theme.bad : '#6b6390' }}>
+        {canRehab ? `A year in a clinic · €${rehabCost(g).toLocaleString()}` : `A clinic costs €${rehabCost(g).toLocaleString()}`}
+      </button>
+    </div>);
+  }
   if (!depressed(g)) return null;
-  const help = depressionHelp(g);
-  const months = depressionMonths(g);
+
+  const st = standingOf(g);
+  const months = monthsIn(g);
+  const due = Math.max(0, EVERY_MONTHS - (g.depression.windowMonths || 0));
   const line = (on, text) => (<div style={{ fontSize: 11.5, color: on ? theme.good : theme.muted, padding: '2px 0' }}>
     {on ? '✓' : '·'} {text}
   </div>);
-  const broke = (g.cash || 0) < 260;
-  const noEnergy = (g.ap || 0) <= 0;
+  const noEnergy = (g.ap || 0) <= 0, poor = (g.cash || 0) < 260;
+  const went = !!g.depression.sessionThisMonth;
   return (<div style={{ background: 'rgba(255,106,138,.08)', border: '1px solid rgba(255,106,138,.35)', borderRadius: 12, padding: '12px 14px' }}>
-    <div style={{ fontSize: 14, fontWeight: 800, color: theme.bad }}>You are not well</div>
-    <div style={{ fontSize: 11.5, color: theme.muted, margin: '4px 0 8px', lineHeight: 1.5 }}>
-      {months} month{months === 1 ? '' : 's'} now. It does not run on a clock — these are the things that move it.
+    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline' }}>
+      <div style={{ fontSize: 14, fontWeight: 800, color: theme.bad }}>You are not well</div>
+      <div style={{ fontSize: 10.5, color: theme.muted }}>{g.depression.passed || 0} of {CHECKPOINTS} back</div>
     </div>
-    {line(help.rested, 'Resting this month')}
-    {line(help.treated, 'Talking to somebody this month')}
-    {line(help.close, help.close ? 'Somebody close to you' : `Nobody close to you (best is ${help.closest})`)}
-    <button onClick={() => dispatch(seeSomebody)} disabled={broke || noEnergy || help.treated}
-      style={{ width: '100%', marginTop: 9, border: 'none', borderRadius: 10, padding: '9px', fontSize: 12.5, fontWeight: 800,
-        cursor: (broke || noEnergy || help.treated) ? 'default' : 'pointer',
-        background: (broke || noEnergy || help.treated) ? 'rgba(120,110,150,.15)' : `linear-gradient(135deg,${theme.accent2},${theme.accent})`,
-        color: (broke || noEnergy || help.treated) ? '#6b6390' : '#fff' }}>
-      {help.treated ? 'You went this month' : broke ? 'An hour costs €260' : 'Go and talk to somebody · €260 · 1 energy'}
+    <div style={{ fontSize: 11.5, color: theme.muted, margin: '4px 0 8px', lineHeight: 1.5 }}>
+      {months} month{months === 1 ? '' : 's'}. It is taking {slotsLost(g)} hour{slotsLost(g) === 1 ? '' : 's'} of every month.
+      {months >= MIN_MONTHS ? ` Something will come to a head in about ${due || 1} month${due === 1 ? '' : 's'}.` : ' Nothing is asked of you yet.'}
+    </div>
+    {st.parts.map((p) => <div key={p.id}>{line(p.on, p.label)}</div>)}
+    {!onMeds(g) && <div style={{ fontSize: 11, color: theme.bad, marginTop: 6, lineHeight: 1.45 }}>
+      Nothing else counts for much until you are on the medication. The Shop has it.
+    </div>}
+    <button onClick={() => dispatch(seeSomebody)} disabled={noEnergy || poor || went} style={softBtn(noEnergy || poor || went)}>
+      {went ? 'You went this month' : poor ? 'An hour costs €260' : 'Go and talk to somebody · €260 · 1 energy'}
     </button>
+  </div>);
+}
+
+// The scene that decides whether the last five months counted for anything.
+function CheckpointModal({ g }) {
+  const p = g.depression?.pending;
+  const scene = SCENES.find((x) => x.id === p?.scene);
+  if (!scene) return null;
+  return (<div style={{ position: 'fixed', inset: 0, background: 'rgba(8,5,20,.96)', zIndex: 60, display: 'flex',
+    alignItems: 'center', justifyContent: 'center', padding: 16, color: theme.text, fontFamily: 'system-ui, -apple-system, sans-serif' }}>
+    <div style={{ maxWidth: 380, width: '100%', background: theme.panel, border: `1px solid ${theme.bad}55`, borderRadius: 20, padding: '22px 20px 18px' }}>
+      <div style={{ fontSize: 11, fontWeight: 900, letterSpacing: '.18em', textTransform: 'uppercase', color: theme.bad, marginBottom: 12, textAlign: 'center' }}>
+        Five months later
+      </div>
+      <div style={{ fontSize: 20, fontWeight: 900, marginBottom: 8 }}>{scene.title}</div>
+      <div style={{ fontSize: 13.5, color: theme.muted, lineHeight: 1.6, marginBottom: 16 }}>{scene.body}</div>
+      <div style={{ display: 'grid', gap: 8 }}>
+        {scene.choices.map((c) => (
+          <button key={c.id} onClick={() => dispatch(answerCheckpoint, c.id)} style={{ textAlign: 'left',
+            background: theme.panel2, border: `1px solid ${theme.line}`, borderRadius: 12, padding: '11px 13px',
+            cursor: 'pointer', color: theme.text, fontSize: 13.5, fontWeight: 700 }}>{c.label}</button>
+        ))}
+      </div>
+      <div style={{ fontSize: 11, color: theme.muted, textAlign: 'center', marginTop: 12, lineHeight: 1.5 }}>
+        What you choose matters. What you have been doing for five months matters more.
+      </div>
+    </div>
   </div>);
 }
 function LifeCard({ g }) {
@@ -313,7 +382,8 @@ function LifeCard({ g }) {
       : (g.strain || 0) >= 34 && row('Energy', strainBand(g.strain).label, (g.strain || 0) >= 82 ? theme.bad : (g.strain || 0) >= 60 ? theme.gold : theme.muted)}
     {/* Once you have shut down three sets, that is a thing about you. */}
     {unreliable(g) && row('Insurers', `${g.burnouts} shoots stopped because of you`, theme.bad)}
-    {depressed(g) && row('Carrying', `${depressionMonths(g)} month${depressionMonths(g) === 1 ? '' : 's'} of it`, theme.bad)}
+    {depressed(g) && row('Carrying', `${monthsIn(g)} month${monthsIn(g) === 1 ? '' : 's'} of it`, theme.bad)}
+    {!depressed(g) && (g.scarred || 0) > 0 && row('It kept', `${g.scarred} hour${g.scarred === 1 ? '' : 's'} a month`, theme.bad)}
     {g.hasApartment && row('Out each month', `€${c.total.toLocaleString()}`, theme.bad)}
     {g.job && row('In each month', `€${income.toLocaleString()}`, theme.good)}
     {g.hasApartment && row('Balance', `${net >= 0 ? '+' : ''}€${net.toLocaleString()}`, net >= 0 ? theme.good : theme.bad)}

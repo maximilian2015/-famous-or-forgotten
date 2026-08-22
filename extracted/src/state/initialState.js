@@ -24,7 +24,8 @@ export function createInitialState(opts = {}) {
     releases: [],   // shot, in post, not out yet — see systems/career/release.js
     frozen: [],     // started, stopped, waiting for money — see systems/career/stability.js
     awards: { losses: 0, wins: [], nominations: [], pending: null, history: [] },
-    strain: 0, burnout: null,   // what the work costs you — see systems/life/strain.js
+    strain: 0, burnout: null, burnouts: 0,   // what the work costs you — see systems/life/strain.js
+    depression: null, scarred: 0, scarTherapy: 0, rehab: null,   // and what it leaves — systems/life/depression.js
     family: [], parentsMarried: true, spotlight: [],
     inbox: [], timeline: [], flags: {},
     look: opts.look || null,   // the creator can hand one in; otherwise ensureAppearance rolls it

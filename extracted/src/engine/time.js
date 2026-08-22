@@ -15,6 +15,7 @@ import { frozenTick } from '../systems/career/stability.js';
 import { runNominations, ceremonyTick } from '../systems/career/awards.js';
 import { agingNote } from '../systems/career/age.js';
 import { strainTick } from '../systems/life/strain.js';
+import { slotsLost, rehabTick, inRehab } from '../systems/life/depression.js';
 import { addTimeline } from './timeline.js';
 import { maybeGenerateEvent, eventsTick } from '../systems/social/events.js';
 import { agingTick, mortalityCheck } from '../systems/life/mortality.js';
@@ -47,6 +48,7 @@ export function advanceMonth(state) {
   if (!s.alive) return s;   // sudden collapse ends the month right here
   relevanceDrift(s);
   workTick(s);
+  rehabTick(s);      // a year away, and the hours come back
   strainTick(s);     // the work accumulates in you, and eventually it stops you
   productionTick(s);
   releaseTick(s);    // anything that finished shooting months ago opens today
@@ -60,7 +62,8 @@ export function advanceMonth(state) {
   s.peakFame = Math.max(s.peakFame || 0, s.fame || 0);
   advanceStage(s);
   pruneCooldowns(s);
-  s.apMaxEff = Math.max(1, (s.apMax || 3) + homeEnergy(s) - jobSlots(s));
+  // What the illness is actually taking: hours out of your month.
+  s.apMaxEff = Math.max(1, (s.apMax || 3) + homeEnergy(s) - jobSlots(s) - slotsLost(s));
   s.ap = s.apMaxEff;
   return s;
 }

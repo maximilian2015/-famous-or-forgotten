@@ -109,8 +109,9 @@ function Scene({ id, look, accent, moment }) {
   }
   // It followed you home. The same room as the burnout scene, months later, with the
   // curtains still shut — or, when it lifts, finally open.
-  if (id === 'depression' || id === 'lifted') {
-    const open = id === 'lifted';
+  if (id === 'depression' || id === 'lifted' || id === 'checkpoint' || id === 'rehab') {
+    // The curtains open when something has actually moved.
+    const open = id === 'lifted' || id === 'rehab' || (id === 'checkpoint' && moment.kind === 'good');
     return (<svg viewBox="0 0 200 120" style={{ width: '100%', maxWidth: 300, display: 'block', margin: '0 auto' }}>
       <rect x="34" y="14" width="132" height="96" rx="5" fill="#221c44" stroke="#3a3160" strokeWidth="2" />
       <rect x="62" y="30" width="76" height="60" rx="4" fill={open ? '#3b4f88' : '#2a2352'} stroke="#4a3f7a" strokeWidth="1.8" />
@@ -125,7 +126,8 @@ function Scene({ id, look, accent, moment }) {
       </>)}
       <rect x="52" y="26" width="96" height="5" rx="2.5" fill="#3a3068" />
       <text x="100" y="106" textAnchor="middle" fontSize="7.5" fontWeight="800" fill="#8d80c0" letterSpacing="2">
-        {open ? `${moment.months} MONTHS` : 'STILL HERE'}
+        {id === 'checkpoint' ? (open ? 'A LITTLE BACK' : 'NOTHING YET')
+          : open ? `${moment.months} MONTHS` : 'STILL HERE'}
       </text>
     </svg>);
   }
@@ -215,8 +217,11 @@ function Scene({ id, look, accent, moment }) {
 }
 
 const CTA = { premiere: 'Read the reviews', shutdown: 'Go home', nomination: 'Let it sink in', ceremony: 'Take the night',
-  burnout: 'Sleep', depression: 'Close the curtains', lifted: 'Open them' };
+  burnout: 'Sleep', depression: 'Close the curtains', lifted: 'Open them',
+  checkpoint: 'Keep going', rehab: 'Walk out' };
 function headFor(m) {
+  if (m.id === 'checkpoint') return m.kind === 'good' ? 'A better month' : 'The same as before';
+  if (m.id === 'rehab') return 'You came back';
   if (m.id === 'depression') return 'Four times';
   if (m.id === 'lifted') return 'After a long time';
   if (m.id === 'burnout') return 'You could not get up';

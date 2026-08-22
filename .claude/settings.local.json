@@ -37,7 +37,11 @@
       "Bash(sed -i \"s|import { healthTick } from 'file:///C:/Users/maximilian/Desktop/game/extracted/src/systems/life/health.js';|import { healthTick, seeDoctor } from 'file:///C:/Users/maximilian/Desktop/game/extracted/src/systems/life/health.js';|\" asker_recheck.mjs)",
       "Bash(sed -i \"s|    healthTick\\(s\\);\\\\n    if \\(!s.alive\\) break;|XX|\" asker_recheck.mjs)",
       "Bash(perl -0pi -e \"s/    healthTick\\\\\\(s\\\\\\);\\\\n    if \\\\\\(!s\\\\.alive\\\\\\) break;/    healthTick\\(s\\);\\\\n    if \\(!s.alive\\) break;\\\\n    \\\\/\\\\/ a player who is ill goes to the doctor if they can afford it\\\\n    if \\(s.illness && \\(s.cash || 0\\) > 12000\\) seeDoctor\\(s\\);/\" asker_recheck.mjs)",
-      "Bash(\"/c/Program Files/nodejs/node.exe\" test_stability.mjs)"
+      "Bash(\"/c/Program Files/nodejs/node.exe\" test_stability.mjs)",
+      "Bash(rm -f test_depression.mjs)",
+      "Bash(\"/c/Program Files/nodejs/node.exe\" test_depression2.mjs)",
+      "Bash(sed -i \"s/wholeThing\\({ meds: true, rest: true, therapy: true }, 'honest'\\)/wholeThing\\({ meds: true, rest: true, therapy: true }, BEST\\)/g; s/wholeThing\\({}, 'nothing'\\)/wholeThing\\({}, WORST\\)/g\" test_depression2.mjs)",
+      "Bash(rm -f probe_cp.mjs)"
     ],
     "defaultMode": "acceptEdits",
     "additionalDirectories": [
