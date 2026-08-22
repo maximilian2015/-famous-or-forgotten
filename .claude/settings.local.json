@@ -44,7 +44,8 @@
       "Bash(rm -f probe_cp.mjs)",
       "Bash(\"/c/Program Files/nodejs/node.exe\" -e \"import\\('./src/systems/life/depression.js'\\).then\\(m=>console.log\\('module loads:', Object.keys\\(m\\).length,'exports'\\)\\).catch\\(e=>console.log\\('ERR', e.message\\)\\)\")",
       "Bash(\"/c/Program Files/nodejs/node.exe\" test_drink.mjs)",
-      "Bash(node -e ' *)"
+      "Bash(node -e ' *)",
+      "Bash('/c/Program Files/nodejs/node.exe' -e ' *)"
     ],
     "defaultMode": "acceptEdits",
     "additionalDirectories": [

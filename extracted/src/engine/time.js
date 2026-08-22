@@ -49,7 +49,7 @@ export function advanceMonth(state) {
   if (!s.alive) return s;   // sudden collapse ends the month right here
   relevanceDrift(s);
   workTick(s);
-  rehabTick(s);      // a year away, and the hours come back
+  rehabTick(s);      // a year away, and the Energy comes back
   strainTick(s);     // the work accumulates in you, and eventually it stops you
   drinkTick(s);      // and the other way out takes its cut of the craft
   productionTick(s);
@@ -64,7 +64,7 @@ export function advanceMonth(state) {
   s.peakFame = Math.max(s.peakFame || 0, s.fame || 0);
   advanceStage(s);
   pruneCooldowns(s);
-  // What the illness is actually taking: hours out of your month.
+  // What the illness is actually taking: Energy out of your month.
   s.apMaxEff = Math.max(1, (s.apMax || 3) + homeEnergy(s) - jobSlots(s) - slotsLost(s));
   s.ap = s.apMaxEff;
   return s;

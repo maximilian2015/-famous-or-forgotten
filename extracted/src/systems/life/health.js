@@ -170,11 +170,28 @@ export const PILLS = {
   // Nobody is prescribing a name in this business a generic and a follow-up in six weeks.
   // It is a private psychiatrist, a monthly review and a repeat script, and it is priced
   // like everything else that comes to your door.
-  antidep:     { label: 'Antidepressants', blurb: 'Private script, monthly review. A month at a time.', cost: 2400 },
+  antidep:     { label: 'Antidepressants', blurb: 'Private script, monthly review. A month at a time.', cost: 2400, scales: true },
 };
+
+// Nobody in this business gets better on the public system, and nobody quotes a star the
+// same number they quote anyone else. What the money is actually buying is not the drug —
+// it is the psychiatrist who comes to the house, the review nobody minutes, and the fact
+// that it never reaches a single person who would sell it. That is priced off what you
+// have, because the people selling it can see exactly what you have.
+//
+// It is deliberately worst when you can least carry it: the illness has already taken two
+// of your three Energy, so you are earning least in the months it charges most.
+export const TREATMENT_SHARE = 0.04;        // of everything you have, per month
+export const TREATMENT_CAP = 400000;
+export function priceOf(s, key) {
+  const p = PILLS[key]; if (!p) return 0;
+  if (!p.scales) return p.cost;
+  return Math.max(p.cost, Math.min(TREATMENT_CAP, Math.round((Math.max(0, s.cash || 0) * TREATMENT_SHARE) / 100) * 100));
+}
+
 export function buyPills(s, key, qty = 1) {
   const p = PILLS[key]; if (!p) return s;
-  const cost = p.cost * qty;
+  const cost = priceOf(s, key) * qty;
   if ((s.cash || 0) < cost) { s.lastEvent = `That costs €${cost.toLocaleString()} and you're short.`; return s; }
   s.cash -= cost;
   (s.meds = s.meds || {})[key] = (s.meds[key] || 0) + qty;

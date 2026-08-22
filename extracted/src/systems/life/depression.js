@@ -257,7 +257,7 @@ function finish(s, choice, passed) {
       : scar === 1
       ? `${choice.note} The worst of it is behind you. But you have one hour a month less than you had, every month, `
         + 'and it is not the kind of thing that comes back by itself. A clinic would do it. So would years of talking.'
-      : `${choice.note} You came out the other side without ever really fighting it, and it kept two hours of every `
+      : `${choice.note} You came out the other side without ever really fighting it, and it kept two of your three Energy every `
         + 'month as the price. A year in a clinic will get them back. So will a very long time in therapy. Nothing else will.',
   };
   return s;
@@ -273,8 +273,12 @@ export function rehabMonths(s) {
   const scarPart = (s.scarred || 0) > 0 || s.depression ? REHAB_MONTHS : 0;
   return Math.max(6, Math.min(24, Math.max(drinkPart, scarPart) + (drinkPart && scarPart ? 4 : 0)));
 }
+// Priced the same way the medication is, and for the same reason — a place that takes
+// somebody with your face, keeps it quiet for a year and never has a leak is not billing
+// off a rate card. See systems/life/health.js.
 export function rehabCost(s) {
-  return drinkLevel(s) > 0 ? Math.max(90000, rehabCostFor(s)) : 90000;
+  const flat = drinkLevel(s) > 0 ? Math.max(90000, rehabCostFor(s)) : 90000;
+  return Math.max(flat, Math.min(3500000, Math.round((Math.max(0, s.cash || 0) * 0.30) / 1000) * 1000));
 }
 export function inRehab(s) { return !!(s.rehab && s.rehab.left > 0); }
 export function enterRehab(s) {
@@ -303,14 +307,14 @@ export function rehabTick(s) {
     s.scarred = 0;
     s.depression = null;
     s.drink = null;
-    addTimeline(s, `${months} months in that place, and you have your hours back.`);
-    s.lastEvent = 'You came out with your hours back. It cost the time and everything you had put aside.';
+    addTimeline(s, `${months} months in that place, and you have your Energy back.`);
+    s.lastEvent = 'You came out with your Energy back. It cost the time and everything you had put aside.';
     s.bigMoment = { id: 'rehab', kind: 'good', title: `${months} months later`, months,
       body: both
         ? `${months} months, no cameras, nobody watching, and two things to put down rather than one. You have your `
-          + 'hours back and your craft is where you left it — several years lower than it was. The next thing you do '
+          + 'Energy back and your craft is where you left it — several years lower than it was. The next thing you do '
           + 'will be written about as a comeback, which is a generous word for it.'
-        : `${months} months, no cameras, nobody watching. You have the hours back that it took, and you know exactly `
+        : `${months} months, no cameras, nobody watching. You have back the Energy it took, and you know exactly `
           + 'what they cost — which is the part you will remember next time somebody offers you four films in a row.' };
   }
   return s;
@@ -327,7 +331,7 @@ export function creditTherapy(s) {
     s.scarTherapy = 0;
     s.scarred = Math.max(0, (s.scarred || 0) - 1);
     addTimeline(s, s.scarred > 0
-      ? 'Twenty months of sessions and you have one of your hours back. One left to go.'
+      ? 'Twenty months of sessions and you have one of your two back. One left to go.'
       : 'Twenty months of sessions, and you have yourself back. All of it.');
     s.lastEvent = 'Something you have been working at for nearly two years finally gave.';
   }

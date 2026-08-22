@@ -1,17 +1,54 @@
 // The other way out, and the reason the good one has to be worth taking.
 //
-// A depression takes two hours of your month. You can have them back tonight — the
-// calendar opens, you book what you like, nobody has to know. It works. That is the whole
-// problem with it: it works every single month, and it keeps working right up until the
-// thing it costs is the only thing you were ever selling.
+// A depression takes two of your three Energy every month. You can have them back
+// tonight — the calendar opens, you book what you like, nobody has to know. It works.
+// That is the whole problem with it: it works every single month, and it keeps working
+// right up until the thing it costs is the only thing you were ever selling.
 //
 // What it takes is the craft. Acting comes off a fraction every month and does not come
 // back on its own, and the room can tell. What it demands is that you keep doing it: once
 // you are properly into it, a month without is worse than the depression was.
+//
+// It is bought in the same shop as the medication, and that is the entire argument in one
+// screen: the pills are priced off what you are worth and do nothing for six weeks. The
+// bottle is thirty-five euros and works tonight. Nobody chooses wrong because they are
+// stupid — they choose the one they can afford on the month they are actually having.
 import { rint, chance } from '../../engine/rng.js';
 import { addTimeline } from '../../engine/timeline.js';
 
 const clamp = (v, a = 0, b = 100) => Math.max(a, Math.min(b, v));
+
+export const DRINK_AGE = 18;
+
+// What is in the house. The expensive one is not safer — it climbs exactly the same,
+// because the bottle has never been the thing that decides that. What money buys is how
+// it looks: nobody calls a man with a cellar a drunk, they call him a collector. The
+// cheap one is rougher on you and is the one people notice.
+export const BOTTLES = {
+  cheap: { label: 'Whatever is open', cost: 35, blurb: 'The shop by the flat, at the hour it was still open.', bite: 1.5, seen: 1.0 },
+  good:  { label: 'A bottle with a name', cost: 190, blurb: 'The one you would put on a table if somebody came round.', bite: 1.0, seen: 0.55 },
+  fine:  { label: 'Something from the cellar', cost: 1400, blurb: 'Bought at auction. It photographs as a hobby.', bite: 0.75, seen: 0.3 },
+};
+export const BOTTLE_ORDER = ['cheap', 'good', 'fine'];
+export function bottlesInHouse(s) { return BOTTLE_ORDER.reduce((n, k) => n + ((s.bottles || {})[k] || 0), 0); }
+
+export function buyBottle(s, key, qty = 1) {
+  const b = BOTTLES[key]; if (!b) return s;
+  const cost = b.cost * qty;
+  if ((s.cash || 0) < cost) { s.lastEvent = `That costs €${cost.toLocaleString()} and you're short.`; return s; }
+  s.cash -= cost;
+  (s.bottles = s.bottles || {})[key] = (s.bottles[key] || 0) + qty;
+  s.lastEvent = `You put it in the cupboard. €${cost.toLocaleString()}.`;
+  return s;
+}
+// You drink the good one first. That is what everybody does, and it is why the good one
+// runs out and the cheap one is what is left by the end.
+function takeBottle(s) {
+  for (const k of ['fine', 'good', 'cheap']) {
+    if (((s.bottles || {})[k] || 0) > 0) { s.bottles[k] -= 1; return k; }
+  }
+  return null;
+}
 
 export const DEPENDENT_AT = 45;
 export const BANDS = [
@@ -26,12 +63,16 @@ export function band(s) { for (const b of BANDS) if (level(s) >= b.min) return b
 export function dependent(s) { return level(s) >= DEPENDENT_AT; }
 export function drankThisMonth(s) { return !!s.drink?.thisMonth; }
 
-// Whether tonight buys back the hours the illness took. It always does — that is the trap.
+// Whether tonight buys back the Energy the illness took. It always does — that is the trap.
 export function drinkingCoversSlots(s) { return drankThisMonth(s); }
 
 export function drinkThrough(s) {
+  if ((s.ageY || 0) < DRINK_AGE) { s.lastEvent = `You are ${s.ageY}.`; return s; }
   if (drankThisMonth(s)) { s.lastEvent = 'You have already had tonight.'; return s; }
+  const key = takeBottle(s);
+  if (!key) { s.lastEvent = 'There is nothing in the house. The shop is on your phone.'; return s; }
   s.drink = s.drink || { level: 0, months: 0, dryMonths: 0, worstLevel: 0 };
+  s.drink.lastBottle = key;
   s.drink.thisMonth = true;
   s.drink.months = (s.drink.months || 0) + 1;
   s.drink.dryMonths = 0;
@@ -50,9 +91,21 @@ export function drinkThrough(s) {
         + 'every single month.',
     };
   }
+  // The whole promise is that the calendar opens TONIGHT, not next month. apMaxEff is only
+  // recomputed on the month roll, so without this the Energy came back one month after the
+  // drink that bought it and the button was lying about what it did.
+  //
+  // The owed count is worked out here rather than imported: depression.js already imports
+  // this file to ask whether tonight covers the month, and systems do not import in circles.
+  const owed = s.depression ? Math.max(0, 2 - (s.depression.passed || 0)) : (s.scarred || 0);
+  if (owed > 0) {
+    s.apMaxEff = (s.apMaxEff || s.apMax || 3) + owed;
+    s.ap = (s.ap || 0) + owed;
+  }
   s.lastEvent = before >= DEPENDENT_AT
-    ? 'You drank because you had to. The month is open again.'
-    : 'You drank, and the month opened up. It is that easy, which is the problem.';
+    ? (s.depression ? 'You drank because you had to. The month is open again.' : 'You drank because you had to.')
+    : s.depression ? 'You drank, and the month opened up. It is that easy, which is the problem.'
+    : 'A quiet evening on your own. Nothing happened, which was the idea.';
   return s;
 }
 
@@ -64,13 +117,18 @@ export function drinkTick(s) {
   d.thisMonth = false;
 
   if (drank) {
-    // What it is actually costing: the only thing you had to sell.
+    // What it is actually costing: the only thing you had to sell. The bottle changes how
+    // hard it lands and who notices — it does not change that it lands.
+    // Past a point the label stops covering for you. What people see is the state you are
+    // in, and no cellar has ever explained that away.
+    const raw = BOTTLES[d.lastBottle] || BOTTLES.good;
+    const b = d.level >= 78 ? { bite: raw.bite, seen: 1 } : raw;
     const key = s.dream === 'singer' ? 'singing' : 'acting';
     const bite = d.level >= 78 ? 1.1 : d.level >= DEPENDENT_AT ? 0.7 : 0.35;
-    s[key] = clamp((s[key] || 0) - bite);
-    s.health = clamp((s.health || 0) - (d.level >= DEPENDENT_AT ? 0.8 : 0.3));
-    if (d.level >= DEPENDENT_AT) s.respect = clamp((s.respect || 0) - 0.35);
-    if (d.level >= 78 && chance(6)) {
+    s[key] = clamp((s[key] || 0) - bite * b.bite);
+    s.health = clamp((s.health || 0) - (d.level >= DEPENDENT_AT ? 0.8 : 0.3) * b.bite);
+    if (d.level >= DEPENDENT_AT) s.respect = clamp((s.respect || 0) - 0.35 * b.seen);
+    if (d.level >= 78 && chance(6 * b.seen)) {
       s.scandal = clamp((s.scandal || 0) + rint(6, 14));
       addTimeline(s, 'Somebody filmed you outside a restaurant and it is everywhere by lunchtime.', true);
       s.lastEvent = 'Somebody filmed you. You do not remember the restaurant.';

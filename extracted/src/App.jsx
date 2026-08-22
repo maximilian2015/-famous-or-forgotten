@@ -34,7 +34,7 @@ import { stabilityBand } from './systems/career/stability.js';
 import { strainBand, burnedOut, unreliable, depressed, seeSomebody } from './systems/life/strain.js';
 import { monthsIn, slotsLost, standingOf, onMeds, TALK, WEEK_TASKS, CHECKPOINTS, EVERY_MONTHS, MIN_MONTHS,
   answerCheckpoint, inRehab, enterRehab, rehabCost, rehabMonths, needsRehab, therapyProgress, THERAPY_FOR_A_SLOT } from './systems/life/depression.js';
-import { drinkThrough, drankThisMonth, level as drinkLevel, band as drinkBand, dependent } from './systems/life/drink.js';
+import { drinkThrough, drankThisMonth, level as drinkLevel, band as drinkBand, dependent, bottlesInHouse } from './systems/life/drink.js';
 // Big moments live on state so a system can raise one; the UI only clears it.
 function clearBigMoment(s) { s.bigMoment = null; return s; }
 const MON = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
@@ -283,7 +283,7 @@ function DepressionCard({ g }) {
       <div style={{ fontSize: 14, fontWeight: 800, color: theme.accent }}>You are away</div>
       <div style={{ fontSize: 11.5, color: theme.muted, marginTop: 5, lineHeight: 1.55 }}>
         {g.rehab.left} month{g.rehab.left === 1 ? '' : 's'} left. No cameras, no phone, nobody watching. When you come
-        out you will have your hours back.
+        out you will have your Energy back.
       </div>
     </div>);
   }
@@ -294,7 +294,7 @@ function DepressionCard({ g }) {
     return (<div style={{ background: 'rgba(255,106,138,.06)', border: '1px solid rgba(255,106,138,.28)', borderRadius: 12, padding: '12px 14px' }}>
       <div style={{ fontSize: 14, fontWeight: 800, color: theme.bad }}>What it left behind</div>
       <div style={{ fontSize: 11.5, color: theme.muted, margin: '4px 0 8px', lineHeight: 1.55 }}>
-        {g.scarred} hour{g.scarred === 1 ? '' : 's'} a month you no longer have. Two ways back, and both are expensive:
+        {g.scarred} Energy a month you no longer have. Two ways back, and both are expensive:
         a year in a clinic, or roughly two years of sessions for each one.
       </div>
       <div style={{ height: 6, background: 'rgba(255,255,255,.08)', borderRadius: 3, overflow: 'hidden' }}>
@@ -326,7 +326,7 @@ function DepressionCard({ g }) {
       <div style={{ fontSize: 10.5, color: theme.muted }}>{g.depression.passed || 0} of {CHECKPOINTS} back</div>
     </div>
     <div style={{ fontSize: 11.5, color: theme.muted, margin: '4px 0 8px', lineHeight: 1.5 }}>
-      {months} month{months === 1 ? '' : 's'}. It is taking {slotsLost(g)} hour{slotsLost(g) === 1 ? '' : 's'} of every month.
+      {months} month{months === 1 ? '' : 's'}. It is taking {slotsLost(g)} Energy of every month — you have {g.apMaxEff ?? g.apMax ?? 3} instead of {g.apMax || 3}.
       {months >= MIN_MONTHS ? ` Something will come to a head in about ${due || 1} month${due === 1 ? '' : 's'}.` : ' Nothing is asked of you yet.'}
     </div>
     {st.parts.map((p) => <div key={p.id}>{line(p.on, p.label)}</div>)}
@@ -347,16 +347,18 @@ function DrinkButton({ g }) {
   if (owed <= 0 && !drinkLevel(g)) return null;
   const had = drankThisMonth(g);
   const lv = drinkLevel(g), b = drinkBand(g);
+  const stocked = bottlesInHouse(g) > 0;
   return (<div style={{ marginTop: 10, borderTop: `1px solid ${theme.line}`, paddingTop: 9 }}>
     {lv > 0 && (<div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', marginBottom: 5 }}>
       <span style={{ fontSize: 11, fontWeight: 800, color: lv >= 45 ? theme.bad : theme.gold }}>{b.label}</span>
       <span style={{ fontSize: 10.5, color: theme.muted }}>craft −{(lv >= 78 ? 1.1 : lv >= 45 ? 0.7 : 0.35).toFixed(2)}/mo</span>
     </div>)}
     {lv > 0 && <div style={{ fontSize: 10.5, color: theme.muted, marginBottom: 6, lineHeight: 1.45 }}>{b.note}</div>}
-    <button onClick={() => dispatch(drinkThrough)} disabled={had}
-      style={{ ...softBtn(had), marginTop: 0, background: had ? 'rgba(120,110,150,.15)' : 'rgba(255,209,102,.16)', color: had ? '#6b6390' : theme.gold }}>
-      {had ? `You drank. The month is open — ${owed} hour${owed === 1 ? '' : 's'} back.`
-        : dependent(g) ? 'Drink — you have to now' : `Drink through it · opens ${owed} hour${owed === 1 ? '' : 's'}`}
+    <button onClick={() => dispatch(drinkThrough)} disabled={had || !stocked}
+      style={{ ...softBtn(had || !stocked), marginTop: 0, background: had || !stocked ? 'rgba(120,110,150,.15)' : 'rgba(255,209,102,.16)', color: had || !stocked ? '#6b6390' : theme.gold }}>
+      {had ? `You drank. The month is open — ${owed} Energy back.`
+        : !stocked ? 'Nothing in the house · the Shop delivers'
+        : dependent(g) ? 'Drink — you have to now' : `Drink through it · opens ${owed} Energy`}
     </button>
   </div>);
 }
