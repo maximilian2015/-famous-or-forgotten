@@ -74,8 +74,10 @@ function makeRival(strength, taken) {
     id: 'riv' + Math.random().toString(36).slice(2, 8),
     name: `${pick(RIVAL_FIRST)} ${pick(RIVAL_LAST)}`,
     work,
-    // Spread around the player's own strength so a category is never a walkover either way.
-    strength: Math.max(8, strength * (0.55 + Math.random() * 0.95)),
+    // The other four in that category are, on average, slightly better than you. They
+    // have to be: an actor who reliably makes one superb drama every eighteen months was
+    // collecting five statuettes a lifetime, and real careers top out at one to three.
+    strength: Math.max(8, strength * (0.9 + Math.random() * 1.1)),
     losses: rint(0, 3),      // everyone in that room has their own history of not winning
     them: true,
   };
@@ -129,10 +131,17 @@ export function pickWinner(nominees) {
 }
 
 // ── the season ────────────────────────────────────────────────────────────────
-// Everything you released this calendar year, minus the adverts.
+// The Asker is held every other year, and it judges both of them. Annually it came
+// round too often to mean anything — a specialist could collect five statuettes and
+// sixteen nomination nights in a thirty-year career. Held biennially over a two-year
+// field, a win is rare enough to be the thing it is supposed to be, and two of your own
+// films land in the same race more often, which is when the vote splits.
+export const EVERY = 2;
+export function isSeasonYear(year) { return year % EVERY === 0; }
 export function eligibleWork(s, year) {
+  const from = year - (EVERY - 1);
   return [...(s.filmography || []), ...(s.discography || [])]
-    .filter((c) => c.year === year && !c.minor && (c.rating || 0) >= FLOOR);
+    .filter((c) => c.year >= from && c.year <= year && !c.minor && (c.rating || 0) >= FLOOR);
 }
 
 function categoryFor(c) {
@@ -142,7 +151,8 @@ function categoryFor(c) {
 
 // Called once a year. Decides what, if anything, you are up for.
 export function runNominations(s) {
-  const year = (s.year || 0) - 1;         // the season judges LAST year's releases
+  if (!isSeasonYear(s.year || 0)) return null;
+  const year = (s.year || 0) - 1;         // the season judges the two years just gone
   const work = eligibleWork(s, year);
   s.awards = s.awards || { losses: 0, wins: [], nominations: [], pending: null, history: [] };
   if (!work.length) return null;
@@ -213,7 +223,20 @@ export function ceremonyTick(s) {
   }
   a.pending = null;
 
-  const won = results.filter((r) => r.won);
+  // Best Picture belongs to the producers. Being in it is a fine night and it is worth
+  // something, but it is not your statuette and it never goes on your shelf — counting
+  // it as one was handing out four and five Askers a lifetime when real careers top out
+  // at one to three.
+  const acting = results.filter((r) => r.won && r.category !== 'picture');
+  const picture = results.filter((r) => r.won && r.category === 'picture');
+  const won = acting;
+  for (const r of picture) {
+    const c = [...(s.filmography || []), ...(s.discography || [])].find((x) => x.title === r.title);
+    if (c) c.bestPicture = true;
+    s.respect = clamp((s.respect || 0) + 6);
+    s.fame = clamp((s.fame || 0) + 4);
+    addTimeline(s, `"${r.title}" won Best Picture. You were in it, and everybody knows.`);
+  }
   if (won.length) {
     a.wins = (a.wins || []).concat(won.map((r) => ({ title: r.title, category: r.category, year: s.year })));
     a.losses = 0;
@@ -231,17 +254,18 @@ export function ceremonyTick(s) {
     s.fame = clamp(Math.max((s.fame || 0) + 18, Math.min(70, (s.fame || 0) + 34)));
     s.peakFame = Math.max(s.peakFame || 0, s.fame);
     addTimeline(s, `🏆 Won the Asker for ${won.map((r) => CATEGORIES.find((c) => c.id === r.category)?.label).join(' and ')}.`);
-  } else {
+  } else if (!picture.length) {
     a.losses = (a.losses || 0) + 1;
     addTimeline(s, `Went to the Askers and came home empty-handed. ${results[0].winner} took it.`, true);
   }
   a.history = (a.history || []).concat(results.map((r) => ({ ...r, year: s.year })));
 
   const first = results[0];
+  const anyGood = won.length || picture.length;
   s.bigMoment = {
-    id: 'ceremony', kind: won.length ? 'good' : 'bad',
-    title: won.length ? 'You won' : first.winner,
-    work: won.length ? won[0].title : first.work,
+    id: 'ceremony', kind: anyGood ? 'good' : 'bad',
+    title: won.length ? 'You won' : picture.length ? 'Best Picture' : first.winner,
+    work: won.length ? won[0].title : picture.length ? picture[0].title : first.work,
     category: CATEGORIES.find((c) => c.id === first.category)?.label || '',
     odds: first.odds, losses: a.losses,
     lines: results.map((r) => `${CATEGORIES.find((c) => c.id === r.category)?.label} — ${r.won ? 'YOU' : r.winner}`),
@@ -249,6 +273,8 @@ export function ceremonyTick(s) {
       ? (won.length > 1
         ? `Twice in one night. You are going to be introduced differently for the rest of your life.`
         : `They read your name. The walk to the stage is longer than it looks on television.`)
+      : picture.length
+      ? `"${picture[0].title}" took Best Picture. The producers went up; you stood and clapped from the second row, and every photograph of that stage has you in it.`
       : a.losses >= 4
         ? `Again. ${first.winner} for "${first.work}". You have now sat through this ${a.losses} times, and people have started counting out loud.`
         : `${first.winner} for "${first.work}". You clapped. The camera was on you the whole time.`,

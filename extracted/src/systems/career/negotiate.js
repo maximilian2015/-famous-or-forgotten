@@ -36,7 +36,13 @@ export function negotiationFor(s, job) {
   // Never below what they already offered: a short episode order pays over the band per
   // episode by design, and telling someone "you are worth up to €X" under an offer of
   // more than €X is nonsense.
-  const bandTop = Math.max(unit, Math.round(band[1] * share * (job.feeFactor || 1)));
+  //
+  // And never below your quote. That is the whole meaning of the word in this business —
+  // once you have been paid twenty, nobody gets you for eight, and you can always argue
+  // back up to it. Until now s.quote was written in four places and read in none of them,
+  // so an Asker win raised a number nothing ever looked at.
+  const quoteFloor = job.perEpisode ? 0 : (s.quote || 0);
+  const bandTop = Math.max(unit, quoteFloor, Math.round(band[1] * share * (job.feeFactor || 1)));
   const ceiling = Math.round(bandTop * reachOf(s));
   return {
     quoted: unit, bandTop, ceiling,

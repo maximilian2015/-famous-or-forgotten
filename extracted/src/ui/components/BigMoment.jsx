@@ -13,6 +13,12 @@ const CUES = {
   bad:      { notes: [196, 146.83, 98], type: 'triangle', gain: 0.22, gap: 0.16, tail: 0.8 },
   fanfare:  { notes: [392, 523.25, 659.25, 783.99, 1046.5], type: 'sine', gain: 0.15, gap: 0.13, tail: 0.75 },
   flop:     { notes: [261.63, 220, 174.61, 116.54], type: 'triangle', gain: 0.2, gap: 0.19, tail: 1.0 },
+  // The morning the list is read out: bright, quick, unresolved — it has not happened yet.
+  nominated: { notes: [659.25, 880, 987.77, 1318.5], type: 'sine', gain: 0.13, gap: 0.10, tail: 0.45 },
+  // The envelope. Slow, wide, and it lands on the octave — this one is finished.
+  asker:    { notes: [392, 587.33, 783.99, 987.77, 1174.7, 1568], type: 'sine', gain: 0.17, gap: 0.155, tail: 1.1 },
+  // Somebody else's name. Two chords that resolve politely and go nowhere.
+  applause: { notes: [349.23, 329.63, 293.66], type: 'triangle', gain: 0.15, gap: 0.28, tail: 1.2 },
 };
 function play(kind) {
   try {
@@ -180,7 +186,11 @@ function headFor(m) {
 export function BigMoment({ moment, look, onClose }) {
   const good = moment.kind === 'good';
   useEffect(() => {
-    play(moment.id === 'premiere' ? (good ? 'fanfare' : 'flop') : good ? 'good' : 'bad');
+    const cue = moment.id === 'premiere' ? (good ? 'fanfare' : 'flop')
+      : moment.id === 'nomination' ? 'nominated'
+      : moment.id === 'ceremony' ? (good ? 'asker' : 'applause')
+      : good ? 'good' : 'bad';
+    play(cue);
   }, [moment.id]);
   const accent = good ? theme.gold : theme.bad;
   // This renders OUTSIDE the app shell, so it has to state its own text colour and font —

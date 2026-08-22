@@ -275,6 +275,8 @@ function LifeCard({ g }) {
     {g.hasApartment && row('Eating', `${DIET[g.diet || 'cook'].label}${g.gym ? ' · gym' : ''}`)}
     {row('Work', g.job ? `${g.job.title} · ${g.job.employer}` : (g.stage === 'career' ? 'No job' : '—'), g.job ? theme.text : theme.muted)}
     {g.production && row('Filming', `${g.production.title} · ${g.production.monthsLeft} mo left`, theme.gold)}
+    {/* The number your agent says out loud. It only means anything if you can see it. */}
+    {(g.quote || 0) > 0 && row('Your quote', money(g.quote), theme.gold)}
     {g.hasApartment && row('Out each month', `€${c.total.toLocaleString()}`, theme.bad)}
     {g.job && row('In each month', `€${income.toLocaleString()}`, theme.good)}
     {g.hasApartment && row('Balance', `${net >= 0 ? '+' : ''}€${net.toLocaleString()}`, net >= 0 ? theme.good : theme.bad)}

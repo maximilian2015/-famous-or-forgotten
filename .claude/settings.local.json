@@ -17,7 +17,9 @@
       "Bash(git commit *)",
       "Bash(git push *)",
       "Bash(sed -i \"/APPEAL_TEST/d\" test_awards.mjs)",
-      "Bash(\"/c/Program Files/nodejs/node.exe\" test_awards.mjs)"
+      "Bash(\"/c/Program Files/nodejs/node.exe\" test_awards.mjs)",
+      "Bash(sed -i 's/filmography: \\\\[\\\\], discography: \\\\[\\\\], timeline: \\\\[\\\\], year: 2061, month: 0, alive: true,/filmography: [], discography: [], timeline: [], year: 2062, month: 0, alive: true,/; s/prestigeScore: 70, rating: 88, year: 2060, salary: 900000/prestigeScore: 70, rating: 88, year: 2061, salary: 900000/' test_awards.mjs)",
+      "Bash(\"/c/Program Files/nodejs/node.exe\" season_rate.mjs)"
     ],
     "defaultMode": "acceptEdits",
     "additionalDirectories": [
