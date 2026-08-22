@@ -13,7 +13,11 @@ const FUTURES = [
 function pickFuture() { const total = FUTURES.reduce((a, f) => a + f.p, 0); let r = Math.random() * total; for (const f of FUTURES) { if ((r -= f.p) <= 0) return f; } return FUTURES[FUTURES.length - 1]; }
 export function makeClassmate(s) {
   const fut = pickFuture();
-  return { id: 'sp' + Math.random().toString(36).slice(2, 8), name: `${pick(FIRST)} ${pick(LAST)}`, handle: '@' + pick(FIRST).toLowerCase() + rint(1, 99),
+  const first = pick(FIRST), last = pick(LAST);
+  // The handle has to come from THIS person's name. It used to draw a fresh name of its
+  // own, so "Mia Salt" would be posting as @nadia55.
+  const handle = '@' + (chance(50) ? `${first}${last}` : `${first}${rint(1, 99)}`).toLowerCase();
+  return { id: 'sp' + Math.random().toString(36).slice(2, 8), name: `${first} ${last}`, handle,
     since: s.ageY, closeness: rint(25, 55), future: fut.becomes, futureWeight: rint(fut.weight[0], fut.weight[1]), grownUp: false, industryWeight: 0 };
 }
 export function findClassmates(s, n = 1) {
