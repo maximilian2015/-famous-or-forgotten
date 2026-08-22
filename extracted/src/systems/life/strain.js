@@ -55,6 +55,68 @@ export function reputationNote(s) {
   return null;
 }
 
+// ── the fourth time ───────────────────────────────────────────────────────────
+// Ignore it four times and it stops being about the work. This does not lock you out of
+// the game — a state you cannot act on is not a consequence, it is a wall — but it is
+// long, it is slow, and it does not go away because a counter ran out. What moves it is
+// resting, seeing somebody about it, and having somebody left who is close to you.
+export const DEPRESSION_AT = 4;
+export function depressed(s) { return !!s.depression; }
+export function depressionMonths(s) {
+  if (!s.depression) return 0;
+  return Math.max(0, ((s.year || 0) * 12 + (s.month || 0)) - (s.depression.since || 0));
+}
+// The three things that actually shift it, and the game says which of them you are doing.
+export function depressionHelp(s) {
+  const closest = Math.max(0, ...[...(s.family || []), ...(s.people || [])].map((p) => (p.alive === false ? 0 : p.relationship || 0)),
+    s.partner ? (s.partner.relationship || 0) : 0);
+  return {
+    rested: !!s._rested,
+    treated: !!s.depression?.treatedThisMonth,
+    close: closest >= 55,
+    closest,
+  };
+}
+function depressionTick(s) {
+  const d = s.depression;
+  const help = depressionHelp(s);
+  // It pulls your head down every month it lasts, and it pulls harder if you are alone.
+  s.mental = clamp((s.mental || 0) - (help.close ? 1.4 : 2.6));
+  const months = depressionMonths(s);
+  d.treatedThisMonth = false;
+  if (months < 8) return;                       // it does not lift in a season
+  let odds = 2 + (months - 8) * 0.7;
+  if (help.rested) odds += 5;
+  if (help.treated) odds += 9;
+  if (help.close) odds += 6;
+  if ((s.mental || 0) > 55) odds += 5;
+  if (chance(odds)) {
+    s.depression = null;
+    s.mental = clamp((s.mental || 0) + 12);
+    s.lastEvent = 'Something lifted. Not all at once, and not because anything changed — but you noticed the difference, and that is the first time in a long while you noticed anything.';
+    addTimeline(s, `Came out the other side of it, after ${months} months.`);
+    s.bigMoment = { id: 'lifted', kind: 'good', title: 'It lifted', months,
+      body: 'It did not happen on a particular day. You just found yourself in the middle of something ordinary, '
+        + 'realising you had been there for a while — and that you wanted to be.' };
+  }
+}
+// Therapy. Uses the same doctor the rest of the game uses, but it does not cure anything
+// in one visit; it moves the odds for the month.
+export function seeSomebody(s) {
+  if (!s.depression) { s.lastEvent = 'There is nothing to talk about right now.'; return s; }
+  if ((s.ap || 0) <= 0) { s.lastEvent = 'No energy left this period. Live a bit first.'; return s; }
+  const cost = 260;
+  if ((s.cash || 0) < cost) { s.lastEvent = `An hour costs €${cost}. You do not have it this month.`; return s; }
+  s.cash -= cost; s.ap -= 1;
+  s.depression.treatedThisMonth = true;
+  s.depression.sessions = (s.depression.sessions || 0) + 1;
+  s.mental = clamp((s.mental || 0) + rint(3, 7));
+  s.lastEvent = s.depression.sessions === 1
+    ? 'You went and talked to somebody. It was awkward and it did not fix anything, and you booked another one.'
+    : 'Another hour. It is slow, and it is the only thing that has been moving at all.';
+  return s;
+}
+
 // Whether you are able to take on anything at all.
 export function burnedOut(s) { return !!(s.burnout && s.burnout.left > 0); }
 export function canWork(s) {
@@ -67,6 +129,7 @@ export function canWork(s) {
 // Runs every month.
 export function strainTick(s) {
   if (s.stage !== 'career' && s.stage !== 'moving_out') return s;
+  if (s.depression) depressionTick(s);
 
   if (burnedOut(s)) {
     s.burnout.left -= 1;
@@ -171,6 +234,21 @@ function collapse(s) {
     : `You stopped. The doctor signed you off for ${months} months.`, true);
   const rep = reputationNote(s);
   if (rep) addTimeline(s, rep, true);
+
+  // The fourth time it stops being about the work.
+  if (s.burnouts >= DEPRESSION_AT && !s.depression) {
+    s.depression = { since: (s.year || 0) * 12 + (s.month || 0), sessions: 0, treatedThisMonth: false };
+    s.mental = clamp((s.mental || 0) - 10);
+    addTimeline(s, 'This one did not lift when the months were up. It has stopped being about the work.', true);
+    s.bigMoment = {
+      id: 'depression', kind: 'bad', title: 'It did not lift',
+      body: 'The four months came and went and you are still not up. It is not the schedule any more and it is not '
+        + 'a part you can put down — it followed you home and it has stayed. This is going to take a long time. '
+        + 'Rest helps. Talking to somebody helps more. Having anyone left who is close to you helps most of all.',
+    };
+    s.lastEvent = 'The months were up and you did not get up with them.';
+    return;
+  }
   s.lastEvent = wasShooting
     ? `You could not do it any more. "${title}" has been shut down and you are signed off for ${months} months.`
     : `You could not do it any more. Signed off for ${months} months.`;

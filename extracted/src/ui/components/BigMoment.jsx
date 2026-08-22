@@ -107,6 +107,28 @@ function Scene({ id, look, accent, moment }) {
       )}
     </svg>);
   }
+  // It followed you home. The same room as the burnout scene, months later, with the
+  // curtains still shut — or, when it lifts, finally open.
+  if (id === 'depression' || id === 'lifted') {
+    const open = id === 'lifted';
+    return (<svg viewBox="0 0 200 120" style={{ width: '100%', maxWidth: 300, display: 'block', margin: '0 auto' }}>
+      <rect x="34" y="14" width="132" height="96" rx="5" fill="#221c44" stroke="#3a3160" strokeWidth="2" />
+      <rect x="62" y="30" width="76" height="60" rx="4" fill={open ? '#3b4f88' : '#2a2352'} stroke="#4a3f7a" strokeWidth="1.8" />
+      {open ? (<>
+        <circle cx="100" cy="52" r="11" fill={accent} opacity=".55" />
+        <path d="M62 74 L82 58 L96 70 L114 50 L138 72 L138 90 L62 90 Z" fill="#4a5f96" opacity=".7" />
+        <path d="M62 30 L52 30 L52 90 L62 90 Z M138 30 L148 30 L148 90 L138 90 Z" fill="#332b62" />
+      </>) : (<>
+        <path d="M62 30 L102 30 L102 90 L62 90 Z M138 30 L98 30 L98 90 L138 90 Z" fill="#332b62" />
+        <path d="M100 30 L100 90" stroke="#3a3160" strokeWidth="1.2" />
+        <circle cx="100" cy="56" r="9" fill={accent} opacity=".07" />
+      </>)}
+      <rect x="52" y="26" width="96" height="5" rx="2.5" fill="#3a3068" />
+      <text x="100" y="106" textAnchor="middle" fontSize="7.5" fontWeight="800" fill="#8d80c0" letterSpacing="2">
+        {open ? `${moment.months} MONTHS` : 'STILL HERE'}
+      </text>
+    </svg>);
+  }
   // The body said no. An unmade bed and a phone face-down beside it.
   if (id === 'burnout') {
     return (<svg viewBox="0 0 200 120" style={{ width: '100%', maxWidth: 300, display: 'block', margin: '0 auto' }}>
@@ -192,8 +214,11 @@ function Scene({ id, look, accent, moment }) {
   </svg>);
 }
 
-const CTA = { premiere: 'Read the reviews', shutdown: 'Go home', nomination: 'Let it sink in', ceremony: 'Take the night', burnout: 'Sleep' };
+const CTA = { premiere: 'Read the reviews', shutdown: 'Go home', nomination: 'Let it sink in', ceremony: 'Take the night',
+  burnout: 'Sleep', depression: 'Close the curtains', lifted: 'Open them' };
 function headFor(m) {
+  if (m.id === 'depression') return 'Four times';
+  if (m.id === 'lifted') return 'After a long time';
   if (m.id === 'burnout') return 'You could not get up';
   if (m.id === 'premiere') return 'Opening night';
   if (m.id === 'shutdown') return m.frozen ? 'The shoot has stopped' : 'The project is dead';

@@ -31,7 +31,7 @@ import { interactionsFor, interact, findPerson, GROUPS } from './systems/life/in
 import { relBand } from './systems/life/bonds.js';
 import { BigMoment } from './ui/components/BigMoment.jsx';
 import { stabilityBand } from './systems/career/stability.js';
-import { strainBand, burnedOut, unreliable } from './systems/life/strain.js';
+import { strainBand, burnedOut, unreliable, depressed, depressionMonths, depressionHelp, seeSomebody } from './systems/life/strain.js';
 // Big moments live on state so a system can raise one; the UI only clears it.
 function clearBigMoment(s) { s.bigMoment = null; return s; }
 const MON = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
@@ -127,6 +127,7 @@ export default function App() {
           <div style={{ display: 'flex', gap: 4, alignItems: 'center' }}><span style={{ fontSize: 10, color: theme.muted, marginRight: 4 }}>Energy</span>{Array.from({ length: g.apMaxEff || g.apMax || 3 }).map((_, i) => (<span key={i} style={{ width: 9, height: 9, borderRadius: '50%', background: i < (g.ap || 0) ? theme.accent : 'rgba(255,255,255,.12)' }} />))}</div>
         </div>
         <div style={{ display: 'grid', gap: 8, marginBottom: 14 }}>
+          <DepressionCard g={g} />
           {availableActions(g).map((a) => { const noEnergy = (g.ap || 0) <= 0;
             return (<button key={a.id} onClick={() => dispatch(runAction, a.id)} disabled={noEnergy} style={{ textAlign: 'left', background: theme.panel, border: `1px solid ${theme.line}`, borderRadius: 12, padding: '10px 13px', cursor: noEnergy ? 'default' : 'pointer', color: theme.text, opacity: noEnergy ? .4 : 1 }}><div style={{ fontSize: 14, fontWeight: 800 }}>{a.label(g)}</div><div style={{ fontSize: 11.5, color: theme.muted, marginTop: 2 }}>{a.desc(g)}</div></button>); })}
           {(g.ap || 0) <= 0 && <div style={{ fontSize: 11.5, color: theme.gold, textAlign: 'center', padding: '4px 0' }}>Out of energy — live time to refresh your actions.</div>}
@@ -264,6 +265,35 @@ function GenreScreen({ g, onBack }) {
 }
 // The Home screen is a passport, not a button drawer: who you are, where you live, what
 // you do for money, what's on the horizon. Actions moved to the sections they belong to.
+// The state you are in after ignoring it four times. It is long and slow, so the one
+// thing it must not be is opaque — the player is told exactly what moves it and which of
+// those three things they are currently doing.
+function DepressionCard({ g }) {
+  if (!depressed(g)) return null;
+  const help = depressionHelp(g);
+  const months = depressionMonths(g);
+  const line = (on, text) => (<div style={{ fontSize: 11.5, color: on ? theme.good : theme.muted, padding: '2px 0' }}>
+    {on ? '✓' : '·'} {text}
+  </div>);
+  const broke = (g.cash || 0) < 260;
+  const noEnergy = (g.ap || 0) <= 0;
+  return (<div style={{ background: 'rgba(255,106,138,.08)', border: '1px solid rgba(255,106,138,.35)', borderRadius: 12, padding: '12px 14px' }}>
+    <div style={{ fontSize: 14, fontWeight: 800, color: theme.bad }}>You are not well</div>
+    <div style={{ fontSize: 11.5, color: theme.muted, margin: '4px 0 8px', lineHeight: 1.5 }}>
+      {months} month{months === 1 ? '' : 's'} now. It does not run on a clock — these are the things that move it.
+    </div>
+    {line(help.rested, 'Resting this month')}
+    {line(help.treated, 'Talking to somebody this month')}
+    {line(help.close, help.close ? 'Somebody close to you' : `Nobody close to you (best is ${help.closest})`)}
+    <button onClick={() => dispatch(seeSomebody)} disabled={broke || noEnergy || help.treated}
+      style={{ width: '100%', marginTop: 9, border: 'none', borderRadius: 10, padding: '9px', fontSize: 12.5, fontWeight: 800,
+        cursor: (broke || noEnergy || help.treated) ? 'default' : 'pointer',
+        background: (broke || noEnergy || help.treated) ? 'rgba(120,110,150,.15)' : `linear-gradient(135deg,${theme.accent2},${theme.accent})`,
+        color: (broke || noEnergy || help.treated) ? '#6b6390' : '#fff' }}>
+      {help.treated ? 'You went this month' : broke ? 'An hour costs €260' : 'Go and talk to somebody · €260 · 1 energy'}
+    </button>
+  </div>);
+}
 function LifeCard({ g }) {
   const c = monthlyCosts(g);
   const income = (g.job ? g.job.pay : 0);
@@ -283,6 +313,7 @@ function LifeCard({ g }) {
       : (g.strain || 0) >= 34 && row('Energy', strainBand(g.strain).label, (g.strain || 0) >= 82 ? theme.bad : (g.strain || 0) >= 60 ? theme.gold : theme.muted)}
     {/* Once you have shut down three sets, that is a thing about you. */}
     {unreliable(g) && row('Insurers', `${g.burnouts} shoots stopped because of you`, theme.bad)}
+    {depressed(g) && row('Carrying', `${depressionMonths(g)} month${depressionMonths(g) === 1 ? '' : 's'} of it`, theme.bad)}
     {g.hasApartment && row('Out each month', `€${c.total.toLocaleString()}`, theme.bad)}
     {g.job && row('In each month', `€${income.toLocaleString()}`, theme.good)}
     {g.hasApartment && row('Balance', `${net >= 0 ? '+' : ''}€${net.toLocaleString()}`, net >= 0 ? theme.good : theme.bad)}
