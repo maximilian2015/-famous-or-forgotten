@@ -45,14 +45,42 @@ export const WANTS = {
 };
 export const WANT_KEYS = Object.keys(WANTS);
 
+// ── and what they have ────────────────────────────────────────────────────────
+// Every evening came out of your pocket, which made the whole screen unusable at nineteen
+// with forty euros to your name. Some of the people in it have money. When they have more
+// of it than you do, they pick up the bill — and when you are broke and twenty, somebody
+// who comes from money is not a footnote, it is a way to live.
+export const MEANS = {
+  broke:    { id: 'broke',    weight: 26, label: 'Has nothing behind them', covers: 0,      jobs: ['barista','shop assistant','bike courier','waiter','care worker'] },
+  ordinary: { id: 'ordinary', weight: 40, label: 'Gets by',                 covers: 350,    jobs: ['nurse','teacher','chef','photographer','graphic designer'] },
+  money:    { id: 'money',    weight: 24, label: 'Comes from money',        covers: 22000,  jobs: ['architect','surgeon','lawyer','gallery director','economist'] },
+  serious:  { id: 'serious',  weight: 10, label: 'Serious family money',    covers: 500000, jobs: ['does not have to work','runs the family office','collects things','sits on boards'] },
+};
+export const MEANS_ORDER = ['broke', 'ordinary', 'money', 'serious'];
+export function meansOf(p) { return MEANS[p && p.means] || MEANS.ordinary; }
+function rollMeans() {
+  const total = MEANS_ORDER.reduce((n, k) => n + MEANS[k].weight, 0);
+  let roll = Math.random() * total;
+  for (const k of MEANS_ORDER) { roll -= MEANS[k].weight; if (roll <= 0) return k; }
+  return 'ordinary';
+}
+// Who actually pays. They do when they can cover it and they are better off than you are —
+// which is true early and stops being true the year you become somebody.
+export function whoPays(s, p, key) {
+  const cost = dateCost(s, key);
+  const covers = meansOf(p).covers;
+  return covers >= cost && covers > (s.cash || 0) ? 'them' : 'you';
+}
+
 export function prospect(s) {
   const gender = chance(50) ? 'm' : 'f';
   const name = `${pick(gender === 'm' ? MFIRST : FFIRST)} ${pick(LAST)}`;
   const age = Math.max(18, Math.min(90, (s.ageY || 18) + rint(-4, 4)));
   const wants = pick(WANT_KEYS);
+  const means = rollMeans();
   const w = WANTS[wants];
   return { id: 'date' + Date.now() + Math.floor(Math.random() * 10000), name, gender, age,
-    job: pick(JOBS), charm: rint(30, 85), relationship: 0, dates: 0,
+    job: pick(MEANS[means].jobs), charm: rint(30, 85), relationship: 0, dates: 0, means,
     wants, patience: rint(w.patience[0], w.patience[1]), livingTogether: false, married: false };
 }
 export function refreshDatingPool(s, force) {
@@ -106,9 +134,10 @@ export function goOnDate(s, key, id) {
   if (onCooldown(s, tag)) { s.lastEvent = `You have already had your evening with ${p.name.split(' ')[0]} this month.`; return s; }
   if (d.energy && (s.ap || 0) < d.energy) { s.lastEvent = 'No energy left this period. Live a bit first.'; return s; }
   const cost = dateCost(s, key);
-  if ((s.cash || 0) < cost) { s.lastEvent = `That costs €${cost.toLocaleString()} and you're short.`; return s; }
+  const paying = whoPays(s, p, key) === 'you';
+  if (paying && (s.cash || 0) < cost) { s.lastEvent = `That costs €${cost.toLocaleString()} and you're short.`; return s; }
   markUsed(s, tag);
-  s.cash -= cost;
+  if (paying) s.cash -= cost;
   if (d.energy) s.ap = Math.max(0, (s.ap || 0) - d.energy);
 
   // Getting somebody to say yes in the first place is a different question from how the
@@ -147,7 +176,8 @@ export function goOnDate(s, key, id) {
     addTimeline(s, `Started seeing ${p.name}.`);
     return s;
   }
-  s.lastEvent = `${d.label} with ${p.name.split(' ')[0]}. Closeness +${moved}.${note}`;
+  s.lastEvent = `${d.label} with ${p.name.split(' ')[0]}. Closeness +${moved}.${note}`
+    + (paying ? '' : ` ${p.name.split(' ')[0]} would not hear of you paying.`);
   return s;
 }
 // Kept so old saves and old call sites still work: the plain, cheap version.
@@ -220,9 +250,18 @@ export function proposeMarriage(s, style = 'proper', prenup = false) {
     id: 'fam' + Math.random().toString(36).slice(2, 8), name: partner.name, relation: 'Spouse',
     gender: partner.gender, age: partner.age, alive: true, health: partner.health || rint(70, 95),
     relationship: partner.relationship, job: partner.job, retired: false,
-    wants: partner.wants, patience: partner.patience, livingTogether: true,
+    wants: partner.wants, patience: partner.patience, livingTogether: true, means: partner.means,
     marriedOn: (s.year || 0) * 12 + (s.month || 0), prenup: !!prenup,
   });
+  // Marrying somebody who has it changes what the household has. It is not a payout, it is
+  // that two lives become one account — and it is the thing that makes a rich match matter
+  // at twenty-two, when it is the only way anybody gets a flat.
+  const covers = meansOf(partner).covers;
+  if (covers > (s.cash || 0)) {
+    const brought = Math.round(covers * (prenup ? 0.15 : 0.6));
+    s.cash = (s.cash || 0) + brought;
+    addTimeline(s, `${partner.name.split(' ')[0]} did not come empty-handed. €${brought.toLocaleString()}.`);
+  }
   s.partner = null;
   s.lastEvent = cost < 0
     ? `${partner.name} said yes, and a magazine paid for the whole thing. €${Math.abs(cost).toLocaleString()} and every photograph is theirs.`
@@ -232,46 +271,8 @@ export function proposeMarriage(s, style = 'proper', prenup = false) {
   return s;
 }
 
-export function spouseOf(s) { return (s.family || []).find((p) => p.relation === 'Spouse' && p.alive) || null; }
-
-// ── children ──────────────────────────────────────────────────────────────────
-export function tryForBaby(s) {
-  const spouse = spouseOf(s);
-  if (!spouse) { s.lastEvent = 'You need a spouse first.'; return s; }
-  if (!canRaiseChild(s)) { s.lastEvent = `There is nowhere to put a child. You need at least a ${HOUSING.flat.label.toLowerCase()} first.`; return s; }
-  if (onCooldown(s, 'baby')) { s.lastEvent = 'Give it a month.'; return s; }
-  markUsed(s, 'baby');
-  // It gets harder, which is the truth and also stops eleven children by forty.
-  const kids = (s.family || []).filter((p) => p.relation === 'Child').length;
-  const age = Math.max(s.ageY || 30, spouse.age || 30);
-  let odds = 35 - kids * 6 - Math.max(0, age - 36) * 3;
-  if (chance(Math.max(4, odds))) {
-    const surname = (s.name || 'Alex Moon').split(' ').slice(1).join(' ') || 'Moon';
-    const gender = chance(50) ? 'm' : 'f';
-    const name = `${pick(gender === 'm' ? MFIRST : FFIRST)} ${surname}`;
-    (s.family = s.family || []).push({ id: 'fam' + Math.random().toString(36).slice(2, 8), name,
-      relation: 'Child', gender, age: 0, alive: true, health: rint(85, 99), relationship: 80,
-      job: 'infant', retired: false, bornOn: (s.year || 0) * 12 + (s.month || 0), raisedBy: 'you' });
-    s.mental = clamp((s.mental || 50) + 8);
-    s.lastEvent = `You had a baby. Welcome, ${name.split(' ')[0]}.`;
-    addTimeline(s, `Welcomed a new baby: ${name}.`);
-    s.bigMoment = { id: 'baby', kind: 'good', title: name.split(' ')[0], body: `You have a child. Everything you do from here happens in front of somebody who is watching to find out how it is done.` };
-  } else s.lastEvent = 'Not this time. You keep trying.';
-  return s;
-}
-
-// A child raised by somebody who was always on a set does not hate you. They just do not
-// know you very well, and that shows up twenty years later as a number.
-export function childhoodTick(s) {
-  const kids = (s.family || []).filter((p) => p.relation === 'Child' && p.alive && p.age < 18);
-  if (!kids.length) return s;
-  const away = !!s.production;
-  for (const k of kids) {
-    if (away) applyBond(s, k, -2);
-    if (dependent(s)) applyBond(s, k, -1);
-  }
-  return s;
-}
+export { spouseOf, tryForBaby, childhoodTick } from './children.js';
+import { spouseOf } from './children.js';
 
 // ── it ending ─────────────────────────────────────────────────────────────────
 export const WALKS_AT = -10;
@@ -280,7 +281,11 @@ export const WALKS_AT = -10;
 export function settlement(s, spouse) {
   const married = Math.max(0, ((s.year || 0) * 12 + (s.month || 0)) - (spouse.marriedOn || 0));
   const years = married / 12;
-  if (spouse.prenup) return Math.round(Math.min((s.cash || 0) * 0.18, 250000 + years * 45000));
+  // Somebody who came in with more than you is not leaving with your money. Their lawyers
+  // were only ever there to protect theirs, which is the honest shape of that marriage.
+  const theirs = meansOf(spouse).covers;
+  const rich = theirs > (s.cash || 0);
+  if (spouse.prenup || rich) return Math.round(Math.min((s.cash || 0) * (rich ? 0.08 : 0.18), 250000 + years * 45000));
   return Math.round((s.cash || 0) * 0.5);
 }
 export function divorce(s, filedByThem = false) {

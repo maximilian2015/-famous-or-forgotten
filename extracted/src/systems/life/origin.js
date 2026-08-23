@@ -67,6 +67,9 @@ const YEARS = ['two', 'three', 'four', 'five', 'six', 'seven', 'eight', 'nine', 
 // writes the story FROM the family that actually exists — so it can never contradict
 // what the People screen shows.
 export function beginLife(s) {
+  // Born to somebody the game already played. Nothing here is rolled: the class, the money
+  // and the name all come from a life that actually happened. See systems/meta/legacy.js.
+  if (s.heir) return beginAsHeir(s);
   s.familyClass = rollClass();
   const c = classOf(s);
   // family.js reads these off state instead of importing back into here — this module
@@ -122,6 +125,56 @@ export function beginLife(s) {
 
   s.originStory = lines.join(' ');
   addTimeline(s, `Born in ${s.city} to ${dad ? `${mum.name} and ${dad.name}` : mum.name} — a ${c.label.toLowerCase()} household.`);
+  return s;
+}
+
+// ── the second generation ─────────────────────────────────────────────────────
+// The door is already open. That is the entire inheritance, and it is worth an enormous
+// amount — but the room on the other side has decided in advance that you did not earn
+// being in it, and it will keep deciding that until you make something nobody can argue
+// with. Which is exactly what it is like.
+const HEIR_CLASS = (estate) => estate >= 900000 ? 'rich' : estate >= 240000 ? 'well_off'
+  : estate >= 55000 ? 'comfortable' : estate >= 11000 ? 'getting_by' : 'struggling';
+
+function beginAsHeir(s) {
+  const h = s.heir;
+  s.familyClass = HEIR_CLASS(h.estate || 0);
+  const c = classOf(s);
+  s.familyAsk = c.ask; s.familyEstate = c.estate; s.familyLeavesHome = c.leavesHome;
+  s.parentsMarried = true; s.singleParent = false;
+  // A normal two-parent household, and then the famous one REPLACES whichever of them they
+  // actually were. Generating a single mother and relabelling her "Father" produced a woman
+  // called Sofia listed as the father, which is exactly the kind of thing a player screenshots.
+  makeFamily(s, { jobs: c.jobs, unemployedOdds: c.unemployedOdds, singleParent: false });
+  const famousWas = h.parentGender === 'f' ? 'Mother' : 'Father';
+  const slot = s.family.findIndex((p) => p.relation === famousWas);
+  const dead = { id: 'famheir', name: h.parent, relation: famousWas, gender: h.parentGender || 'f',
+    age: 0, alive: false, health: 0, relationship: h.close || 0, job: s.dream === 'singer' ? 'singer' : 'actor',
+    retired: false, deathAge: 0, wasFamous: true, tier: h.tier };
+  if (slot >= 0) s.family[slot] = dead; else s.family.unshift(dead);
+
+  s.fame = Math.max(0, h.fame || 0);
+  s.peakFame = s.fame;
+  s.respect = Math.max(-40, h.respect || 0);
+  const craftKey = s.dream === 'singer' ? 'singing' : 'acting';
+  s[craftKey] = Math.min(100, (s[craftKey] || 0) + (h.craft || 0));
+  s.cash = 0;                                   // the estate is the family's until you are grown
+  s.origin = { gift: 'heir', giver: h.parent };
+  s.heirOf = { parent: h.parent, tier: h.tier, peak: h.parentPeak, knewThem: !!h.knewThem };
+
+  const knew = h.knewThem
+    ? `You knew them. Properly — they were there for the school runs as well as the premieres, and half of what you know about the work you learned in a kitchen.`
+    : h.close >= 25
+      ? `You knew them the way everybody knew them: from a distance, and mostly from screens.`
+      : `You barely knew them. They were working, and then they were gone, and the obituaries told you things about your own parent that you had not known.`;
+  s.originStory = [
+    `You are ${h.parent}'s child.`,
+    `They were ${h.tier === 'Forgotten' ? 'in the business for years and never quite got there' : an(h.tier.toLowerCase())}, and they are dead.`,
+    knew,
+    `Every casting director in ${s.city} will take your call and not one of them thinks you deserve it.`,
+    `In ${s.city}, in ${s.year}. Everybody there has already decided what you will become.`,
+  ].join(' ');
+  addTimeline(s, `Born to ${h.parent} — ${h.tier}.`);
   return s;
 }
 

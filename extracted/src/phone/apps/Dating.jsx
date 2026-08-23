@@ -3,9 +3,11 @@ import { theme } from '../../ui/theme.js';
 import { dispatch } from '../../state/store.js';
 import { onCooldown } from '../../engine/cooldown.js';
 import { relBand } from '../../systems/life/bonds.js';
-import { refreshDatingPool, goOnDate, proposeMarriage, tryForBaby, moveInTogether, canMoveIn,
-  divorce, settlement, spouseOf, wantsOf, DATES, DATE_ORDER, dateCost, WEDDINGS, WEDDING_ORDER,
+import { refreshDatingPool, goOnDate, proposeMarriage, moveInTogether, canMoveIn,
+  divorce, settlement, wantsOf, meansOf, whoPays, DATES, DATE_ORDER, dateCost, WEDDINGS, WEDDING_ORDER,
   weddingCost, PROPOSE_AT, MOVE_IN_AT } from '../../systems/life/dating.js';
+import { spouseOf, tryForBaby, fertility, fertilityNote, applyToAdopt, adoptCost, adoptionOdds,
+  livingChildren, ADOPT_MONTHS } from '../../systems/life/children.js';
 
 function btn(disabled, kind) {
   return { width: '100%', border: 'none', borderRadius: 10, padding: '9px', fontSize: 12.5, fontWeight: 800,
@@ -27,14 +29,15 @@ function Evenings({ g, person, tag }) {
       const broke = (g.cash || 0) < cost, noEnergy = d.energy && (g.ap || 0) < d.energy;
       const off = used || broke || noEnergy;
       const loves = w.likes.includes(key), hates = w.hates.includes(key);
-      return (<button key={key} onClick={() => dispatch(goOnDate, key, person.id)} disabled={off}
+      const theirs = whoPays(g, person, key) === 'them';
+      return (<button key={key} onClick={() => dispatch(goOnDate, key, person.id)} disabled={used || noEnergy || (broke && !theirs)}
         style={{ ...card, width: '100%', textAlign: 'left', cursor: off ? 'default' : 'pointer',
           opacity: off ? 0.45 : 1, color: theme.text,
           border: `1px solid ${loves ? theme.good + '55' : hates ? theme.bad + '44' : theme.line}` }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline' }}>
           <span style={{ fontSize: 13.5, fontWeight: 800 }}>{d.label}</span>
-          <span style={{ fontSize: 12, fontWeight: 900, color: theme.gold }}>
-            €{cost.toLocaleString()}{d.energy ? ' · 1 energy' : ''}
+          <span style={{ fontSize: 12, fontWeight: 900, color: theirs ? theme.good : theme.gold }}>
+            {theirs ? 'they pay' : `€${cost.toLocaleString()}`}{d.energy ? ' · 1 energy' : ''}
           </span>
         </div>
         <div style={{ fontSize: 11.5, color: theme.muted, marginTop: 3, lineHeight: 1.45 }}>
@@ -64,8 +67,43 @@ function Who({ p, sub }) {
       </div>
     </div>
     <div style={{ fontSize: 11.5, color: theme.muted, marginTop: 2 }}>{sub}</div>
+    <div style={{ fontSize: 11.5, color: theme.gold, marginTop: 4, fontWeight: 700 }}>{meansOf(p).label}</div>
     <div style={{ fontSize: 11.5, color: theme.accent, marginTop: 6, fontWeight: 700 }}>{w.label}</div>
     <div style={{ fontSize: 11.5, color: theme.muted, marginTop: 2, lineHeight: 1.45 }}>{w.blurb}</div>
+  </div>);
+}
+
+// Two ways to have one, and the second is not a consolation prize — it is slower, it costs
+// money, and the child arrives already a person. See systems/life/children.js.
+function Children({ g, spouse }) {
+  const odds = fertility(g, spouse);
+  const note = fertilityNote(g, spouse);
+  const cost = adoptCost(g);
+  const app = g.adoption;
+  return (<div>
+    <div style={{ fontSize: 11, fontWeight: 900, letterSpacing: '.09em', textTransform: 'uppercase', color: theme.muted, margin: '4px 0 7px' }}>
+      Children {livingChildren(g).length ? `· ${livingChildren(g).length}` : ''}
+    </div>
+    <button onClick={() => dispatch(tryForBaby)} disabled={onCooldown(g, 'baby') || odds <= 0} style={btn(onCooldown(g, 'baby') || odds <= 0)}>
+      {odds <= 0 ? 'Not on your own' : onCooldown(g, 'baby') ? 'Give it a month' : `Try for a baby · ${odds}%`}
+    </button>
+    {note && <div style={{ fontSize: 11.5, color: odds <= 0 ? theme.bad : theme.gold, marginTop: 6, lineHeight: 1.45 }}>{note}</div>}
+    {app ? (
+      <div style={{ ...card, marginTop: 9 }}>
+        <div style={{ fontSize: 13, fontWeight: 800 }}>The application is in</div>
+        <div style={{ fontSize: 11.5, color: theme.muted, marginTop: 3, lineHeight: 1.45 }}>
+          {app.left} more month{app.left === 1 ? '' : 's'} of somebody in an office reading about your life. They put your chances at {app.odds}%.
+        </div>
+      </div>
+    ) : (
+      <button onClick={() => dispatch(applyToAdopt)} disabled={(g.cash || 0) < cost}
+        style={{ ...btn((g.cash || 0) < cost), marginTop: 8, background: (g.cash || 0) < cost ? 'rgba(120,110,150,.15)' : 'rgba(158,116,255,.16)', color: (g.cash || 0) < cost ? '#6b6390' : '#d9cffa' }}>
+        {(g.cash || 0) < cost ? `Adopt · €${cost.toLocaleString()}` : `Apply to adopt · €${cost.toLocaleString()} · ${adoptionOdds(g)}%`}
+      </button>
+    )}
+    {!app && <div style={{ fontSize: 11, color: theme.muted, marginTop: 6, lineHeight: 1.45 }}>
+      About {ADOPT_MONTHS} months of waiting, and they look at everything — the drinking, the headlines, all of it.
+    </div>}
   </div>);
 }
 
@@ -104,9 +142,7 @@ export function Dating({ g }) {
       <div style={{ fontSize: 11, fontWeight: 900, letterSpacing: '.09em', textTransform: 'uppercase', color: theme.muted, marginBottom: 8 }}>Married</div>
       <div style={card}>
         <Who p={spouse} sub={`${spouse.job}, ${spouse.age}${spouse.prenup ? ' · signed a prenup' : ''}`} />
-        <button onClick={() => dispatch(tryForBaby)} disabled={onCooldown(g, 'baby')} style={btn(onCooldown(g, 'baby'))}>
-          {onCooldown(g, 'baby') ? 'Give it a month' : 'Try for a baby'}
-        </button>
+        <Children g={g} spouse={spouse} />
       </div>
       <div style={{ fontSize: 11, fontWeight: 900, letterSpacing: '.09em', textTransform: 'uppercase', color: theme.muted, margin: '14px 0 8px' }}>An evening</div>
       <Evenings g={g} person={spouse} tag={'fam:' + spouse.id} />

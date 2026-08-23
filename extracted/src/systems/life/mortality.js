@@ -35,6 +35,9 @@ export function agingTick(s) {
 
 const CAUSES_OLD = ['peacefully, at home', 'in their sleep', 'after a short illness, surrounded by family'];
 const CAUSES_ILL = ['after a long illness', 'from a heart that finally gave out', 'after their health failed for good'];
+const CAUSES_DRINK = ['of what everybody had stopped calling a drink problem',
+  'of liver failure, which surprised nobody who had seen them',
+  'after years of it, in a hospital nobody was told about'];
 
 export function mortalityCheck(s) {
   if (!s.alive) return false;
@@ -43,7 +46,11 @@ export function mortalityCheck(s) {
   const byHealth = h < 15 ? 15 : h < 30 ? 5 : h < 45 ? 1.5 : 0;
   const odds = byAge + byHealth;
   if (odds <= 0 || !chance(odds)) return false;
-  die(s, h < 30 ? pick(CAUSES_ILL) : pick(CAUSES_OLD));
+  // If it was the drinking that took the health, the obituary has to say so. Dying at
+  // fifty-one "after a long illness" when the game has spent five years telling you what
+  // the illness was is the one ending it must not be coy about.
+  const drunk = (s.drink?.worstLevel || 0) >= 45 && h < 35;
+  die(s, drunk ? pick(CAUSES_DRINK) : h < 30 ? pick(CAUSES_ILL) : pick(CAUSES_OLD));
   return true;
 }
 

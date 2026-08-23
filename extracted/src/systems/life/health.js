@@ -61,7 +61,14 @@ export function naturalCeiling(s) {
   // Every collapse past the first takes a little off the top permanently. You do not get
   // all of it back.
   const worn = Math.min(14, Math.max(0, (s.burnouts || 0) - 1) * 3.5);
-  return Math.max(40, 96 - Math.max(0, (s.ageY || 0) - 25) * 0.6 - worn);
+  // And so does the drinking, which is the only way it can actually cost you anything.
+  // Taking it off your health each month did nothing: the monthly +1.3 recovery cancelled
+  // the −1.2 bite almost exactly, so five years of it left a man at sixty-nine. What it has
+  // to do instead is lower the roof — you stop being able to get well, which is the shape
+  // the burnouts already use and the true shape of this.
+  const lv = s.drink?.worstLevel || s.drink?.level || 0;
+  const soaked = lv >= 78 ? 34 : lv >= 45 ? 20 : lv >= 20 ? 7 : 0;
+  return Math.max(22, 96 - Math.max(0, (s.ageY || 0) - 25) * 0.6 - worn - soaked);
 }
 // Immunity: your body fights the same thing off for a while after beating it.
 export function isIll(s) { return !!s.illness; }
@@ -110,7 +117,15 @@ export function healthTick(s) {
 
   // The cliff. At ten health the body can simply quit.
   if ((s.health || 0) <= 10) {
-    if (chance(6)) { die(s, 'suddenly — the body simply quit'); return; }
+    // And if it was the drinking that got you here, say so. This is the second way out of
+    // a life and it was the coy one: mortalityCheck names the drinking, and then most of
+    // the actual deaths came through here instead and called it bad luck.
+    if (chance(6)) {
+      const drunk = (s.drink?.worstLevel || 0) >= 45;
+      die(s, drunk ? 'of liver failure, which surprised nobody who had seen them'
+        : 'suddenly — the body simply quit');
+      return;
+    }
     if (chance(22)) {
       const bill = Math.round(6000 * (1 - INSURANCE[s.insurance || 'none'].covers));
       s.cash = (s.cash || 0) - bill;

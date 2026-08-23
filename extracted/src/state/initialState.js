@@ -27,6 +27,10 @@ export function createInitialState(opts = {}) {
     strain: 0, burnout: null, burnouts: 0,   // what the work costs you — see systems/life/strain.js
     depression: null, scarred: 0, scarTherapy: 0, rehab: null,   // and what it leaves — systems/life/depression.js
     family: [], parentsMarried: true, spotlight: [],
+    // Who you were born to, when the answer is somebody the player already played, and the
+    // paperwork that is in on a child who is not born yet. See systems/meta/legacy.js and
+    // systems/life/children.js.
+    heir: opts.heir || null, heirOf: null, adoption: null, bottles: {}, datingPool: [],
     inbox: [], timeline: [], flags: {},
     look: opts.look || null,   // the creator can hand one in; otherwise ensureAppearance rolls it
     ap: 3, apMax: 3,

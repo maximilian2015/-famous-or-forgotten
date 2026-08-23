@@ -9,7 +9,7 @@ import { SCHOOLS, train, trainingKey } from './systems/career/training.js';
 import { skillCap } from './systems/career/actions.js';
 import { seeDoctor, treatmentCost, pushThrough, PILLS, usePills, infectionOdds } from './systems/life/health.js';
 import { resolveArc } from './systems/life/arcs.js';
-import { computeLegacy, getHall } from './systems/meta/legacy.js';
+import { computeLegacy, getHall, heirsOf, heirOpts, enshrine } from './systems/meta/legacy.js';
 import { fameTier, setHousing, FAME_TIERS } from './systems/meta/status.js';
 import { rehearse, riskyTake, bondWithCrew, meterTier } from './systems/career/production.js';
 import { TimingBar } from './ui/components/TimingBar.jsx';
@@ -1037,7 +1037,45 @@ function EndOfLifeScreen({ g }) {
         : L.tier === 'Legend' ? 'They will be teaching your work long after everyone who knew you is gone.'
         : `The name still means something to the people who were paying attention.`}
     </div>
+    <Heirs g={g} />
     <Button kind="pri" onClick={() => newLife()}>Begin a new life</Button>
+  </div>);
+}
+
+// The only thing an ending is actually worth: somebody who was there for all of it, and who
+// starts with exactly what you left them. See systems/meta/legacy.js.
+function Heirs({ g }) {
+  const kids = heirsOf(g);
+  if (!kids.length) return null;
+  return (<div style={{ marginBottom: 16 }}>
+    <div style={{ fontSize: 11, fontWeight: 900, letterSpacing: '.14em', textTransform: 'uppercase',
+      color: theme.muted, textAlign: 'center', marginBottom: 9 }}>They are still here</div>
+    {kids.map((k) => {
+      const o = heirOpts(g, k.id); if (!o) return null;
+      const h = o.heir;
+      return (<button key={k.id} onClick={() => { enshrine(g); newLife(o); }}
+        style={{ width: '100%', textAlign: 'left', marginBottom: 8, background: theme.panel,
+          border: `1px solid ${theme.line}`, borderRadius: 12, padding: '11px 13px', cursor: 'pointer', color: theme.text }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline' }}>
+          <span style={{ fontSize: 14, fontWeight: 900 }}>Play as {k.name.split(' ')[0]}</span>
+          <span style={{ fontSize: 11.5, color: theme.muted }}>{k.age}{k.adopted ? ' · adopted' : ''}</span>
+        </div>
+        <div style={{ fontSize: 11.5, color: theme.muted, marginTop: 4, lineHeight: 1.5 }}>
+          {h.knewThem ? 'They knew you properly — the school runs as well as the premieres.'
+            : h.close >= 25 ? 'They knew you the way everybody did: mostly from screens.'
+            : 'They barely knew you. You were working, and then you were gone.'}
+        </div>
+        <div style={{ fontSize: 11.5, marginTop: 6, display: 'flex', gap: 12, flexWrap: 'wrap' }}>
+          <span style={{ color: theme.good }}>starts famous {h.fame}</span>
+          {h.craft > 0 && <span style={{ color: theme.good }}>craft +{h.craft}</span>}
+          {h.estate > 0 && <span style={{ color: theme.gold }}>€{h.estate.toLocaleString()} behind them</span>}
+          <span style={{ color: theme.bad }}>respect {h.respect}</span>
+        </div>
+      </button>);
+    })}
+    <div style={{ fontSize: 11, color: theme.muted, textAlign: 'center', lineHeight: 1.5, margin: '2px 0 12px' }}>
+      Every door opens. Nobody on the other side thinks they earned it.
+    </div>
   </div>);
 }
 // Reads like a real filmography page: poster, title, star rating out of 10, role, year.

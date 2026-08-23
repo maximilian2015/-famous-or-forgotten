@@ -30,3 +30,41 @@ export function enshrine(s) {
   return hall;
 }
 export function getHall() { try { return JSON.parse(localStorage.getItem('fof_hall') || '[]'); } catch (e) { return []; } }
+
+// ── the next one ──────────────────────────────────────────────────────────────
+// A life used to end and the next one started from nothing, which threw away the only thing
+// the ending was actually worth: somebody who was there for all of it. Any child of yours
+// who is still alive can be the one you play next, and what they start with is exactly what
+// you left them — the money, the name, and how well they knew you.
+export function heirsOf(s) {
+  return (s.family || [])
+    .filter((p) => p.relation === 'Child' && p.alive !== false)
+    .sort((a, b) => (b.relationship || 0) - (a.relationship || 0));
+}
+
+// What being your child is worth. A famous parent opens the door and nothing else: the room
+// on the other side of it has already decided you did not earn being in it.
+export function heirOpts(s, childId) {
+  const kid = heirsOf(s).find((k) => k.id === childId);
+  if (!kid) return null;
+  const L = computeLegacy(s);
+  const estate = Math.max(0, Math.round((s.cash || 0) / Math.max(1, heirsOf(s).length)));
+  const close = kid.relationship || 0;
+  return {
+    name: kid.name, gender: kid.gender === 'm' ? 'male' : 'female',
+    city: s.city, dream: s.dream, created: true, startYear: s.year,
+    heir: {
+      parent: s.name, parentGender: s.gender === 'female' ? 'f' : 'm',
+      tier: L.tier, parentPeak: Math.round(L.peakFame), estate,
+      // Being close to them is the difference between growing up inside the work and growing
+      // up next to somebody who was never in.
+      close, knewThem: close >= 55,
+      // What the industry hands you before you have done anything.
+      fame: Math.round(Math.min(38, L.peakFame * 0.28 + (L.askerWins || 0) * 6)),
+      craft: close >= 55 ? 12 : close >= 25 ? 6 : 0,
+      // And what it charges for that. Nobody believes you got here on your own, and for a
+      // while nobody is wrong.
+      respect: -Math.round(Math.min(22, L.peakFame * 0.18)),
+    },
+  };
+}

@@ -2,6 +2,7 @@ import { rint, chance, pick } from '../../engine/rng.js';
 import { onCooldown, markUsed } from '../../engine/cooldown.js';
 import { addTimeline } from '../../engine/timeline.js';
 import { homeBond } from '../../engine/economy.js';
+import { childYear } from './children.js';
 const clamp = (v) => Math.max(0, Math.min(100, v));
 const MFIRST = ['James','Michael','David','Robert','Daniel','Andrew','Thomas','Marcus','Viktor','Sergei'];
 const FFIRST = ['Mary','Linda','Susan','Karen','Elena','Anna','Sofia','Olga','Nina','Claire'];
@@ -91,12 +92,19 @@ export function familyYear(s) {
     p.health = clamp(p.health - decline);
     if (p.health < 40 && chance(30) && !p.ill) { p.ill = true; events.push(`${p.name} (${p.relation.toLowerCase()}) has fallen ill.`); }
     else if (p.ill && p.health > 55) { p.ill = false; }
-    if (p.job === 'infant' && p.age >= 5) p.job = 'in school';
-    if (p.job === 'in school' && p.age >= 16) p.job = 'student';
-    if (p.job === 'student' && p.age >= 23) { p.job = chance(80) ? pick(JOBS) : 'unemployed'; if (p.job !== 'unemployed') events.push(`${p.name} started working as a ${p.job}.`); }
-    if (!p.retired && p.age >= 23 && p.age < 65 && p.job !== 'in school' && p.job !== 'student') {
-      if (p.job !== 'unemployed' && chance(6)) { p.job = 'unemployed'; events.push(`${p.name} lost their job.`); }
-      else if (p.job === 'unemployed' && chance(35)) { p.job = pick(JOBS); events.push(`${p.name} found work as ${/^[aeiou]/i.test(p.job) ? 'an' : 'a'} ${p.job}.`); }
+    // Your own children have a life of their own — school, a decision at eighteen, and
+    // possibly the same business you are in. See systems/life/children.js.
+    if (p.relation === 'Child') {
+      const note = childYear(s, p);
+      if (note) events.push(note);
+    } else {
+      if (p.job === 'infant' && p.age >= 5) p.job = 'in school';
+      if (p.job === 'in school' && p.age >= 16) p.job = 'student';
+      if (p.job === 'student' && p.age >= 23) { p.job = chance(80) ? pick(JOBS) : 'unemployed'; if (p.job !== 'unemployed') events.push(`${p.name} started working as a ${p.job}.`); }
+      if (!p.retired && p.age >= 23 && p.age < 65 && p.job !== 'in school' && p.job !== 'student') {
+        if (p.job !== 'unemployed' && chance(6)) { p.job = 'unemployed'; events.push(`${p.name} lost their job.`); }
+        else if (p.job === 'unemployed' && chance(35)) { p.job = pick(JOBS); events.push(`${p.name} found work as ${/^[aeiou]/i.test(p.job) ? 'an' : 'a'} ${p.job}.`); }
+      }
     }
     if (!p.retired && p.age >= 65) { p.retired = true; p.job = 'retired'; events.push(`${p.name} retired.`); }
     const deathChance = p.age > 85 ? 22 : p.age > 78 ? 12 : p.age > 70 ? 6 : (p.health < 20 ? 8 : 0);
