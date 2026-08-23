@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { theme } from '../../ui/theme.js';
 import { dispatch, getState } from '../../state/store.js';
-import { refreshCastingPool, auditionFor, castingChance, reach, SHELVES, SHELF_BLURB, rerollBoard, canReroll } from '../../systems/career/castings.js';
+import { refreshCastingPool, auditionFor, castingChance, reach, SHELVES, SHELF_BLURB, rerollBoard, canReroll, prepareFor, nextPrep, prepBonus } from '../../systems/career/castings.js';
 import { TimingBar } from '../../ui/components/TimingBar.jsx';
 import { GridRisk } from '../../ui/components/GridRisk.jsx';
 import { useAccent } from '../../ui/appTheme.js';
@@ -73,6 +73,27 @@ function Backing({ g, c }) {
     {cost.line && <div style={{ fontSize: 10.5, color: cost.id === 'nothing' ? theme.good : theme.muted, marginTop: 3, lineHeight: 1.45 }}>{cost.line}</div>}
   </div>);
 }
+
+// The months between the read and the phone call. This is the part of the job the game
+// used to skip entirely, and it is where everything else in a life now fits.
+function Waiting({ g }) {
+  const subs = g.submissions || [];
+  if (!subs.length) return null;
+  const now = (g.year || 0) * 12 + (g.month || 0);
+  return (<div style={{ marginBottom: 12 }}>
+    <div style={{ fontSize: 11, fontWeight: 900, letterSpacing: ".09em", textTransform: "uppercase", color: theme.muted, marginBottom: 7 }}>
+      Waiting to hear · {subs.length}
+    </div>
+    {subs.map((x) => { const left = Math.max(0, x.due - now);
+      return (<div key={x.id} style={{ background: theme.panel, border: `1px solid ${theme.line}`, borderRadius: 12, padding: '9px 12px', marginBottom: 7 }}>
+        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline" }}>
+          <span style={{ fontSize: 13, fontWeight: 800 }}>{x.title}</span>
+          <span style={{ fontSize: 11, color: theme.muted }}>{left <= 0 ? "any day now" : left + " mo"}</span>
+        </div>
+        <div style={{ fontSize: 11.5, color: theme.muted, marginTop: 2 }}>{x.role} · you read at {Math.round(x.odds)}%</div>
+      </div>); })}
+  </div>);
+}
 export function OpenCall({ g, ocTab, setOcTab, teenMode }) {
   const [audition, setAudition] = useState(null);
   const [result, setResult] = useState(null);
@@ -117,6 +138,7 @@ export function OpenCall({ g, ocTab, setOcTab, teenMode }) {
   const cur = teenMode ? 'gigs' : (ocTab || (shelves.find(([id]) => pool.some((c) => c.shelf === id)) || ['series'])[0]);
   const list = pool.filter((c) => c.shelf === cur);
   return (<div>
+    <Waiting g={g} />
     {!teenMode && <div style={{ display: 'flex', gap: 6, marginBottom: 6 }}>{shelves.map(([id, label]) => { const n = pool.filter((c) => c.shelf === id).length;
       return (<button key={id} onClick={() => setOcTab(id)} style={{ flex: 1, border: 'none', borderRadius: 10, padding: '8px 4px', fontSize: 12, fontWeight: 800, cursor: 'pointer', background: cur === id ? `linear-gradient(135deg,${theme.accent2},${theme.accent})` : 'rgba(158,116,255,.16)', color: cur === id ? '#fff' : '#d9cffa' }}>{label}{n ? ` ${n}` : ''}</button>); })}</div>}
     {teenMode && <div style={{ fontSize: 11.5, color: theme.accent, padding: '2px 2px 8px', fontWeight: 700 }}>As a teen you can only take background/extra gigs — real roles come once you're older.</div>}
@@ -169,8 +191,29 @@ export function OpenCall({ g, ocTab, setOcTab, teenMode }) {
         <Backing g={g} c={c} />
         {!locked && <Haggle g={g} c={c} />}
         {/* Signed off means the room is closed, not that you play the read and lose it after. */}
+        {/* The months before you walk in are yours to spend. See systems/career/castings.js. */}
+        {!locked && (() => {
+          const step = nextPrep(c); const bonus = prepBonus(c);
+          const cost = step ? Math.round(step.cost * (1 + Math.min(2, (g.fame || 0) / 60))) : 0;
+          const dead = !step || (g.ap || 0) <= 0 || cost > (g.cash || 0);
+          return (<div style={{ marginTop: 7 }}>
+            {bonus > 0 && <div style={{ fontSize: 10.5, fontWeight: 800, color: theme.good, marginBottom: 5 }}>
+              Prepared · +{bonus} to your chances
+            </div>}
+            {step && <button onClick={() => dispatch(prepareFor, c.id)} disabled={dead}
+              style={{ width: '100%', border: `1px solid ${dead ? 'transparent' : theme.line}`, borderRadius: 10, padding: '8px',
+                fontSize: 12, fontWeight: 800, cursor: dead ? 'default' : 'pointer',
+                background: dead ? 'rgba(120,110,150,.12)' : 'rgba(158,116,255,.14)', color: dead ? '#6b6390' : '#d9cffa' }}>
+              {step.label}{cost ? ` · €${cost.toLocaleString()}` : ' · free'} · 1 energy
+            </button>}
+          </div>); })()}
         {!locked && (() => { const off = !canWork(g).ok; const dead = off || (g.ap||0)<=0;
-          return (<div style={{ marginTop: 8 }}><button onClick={() => openAudition(c)} disabled={dead} style={{ width: '100%', border: 'none', borderRadius: 10, padding: '9px', fontSize: 12.5, fontWeight: 800, cursor: dead?'default':'pointer', background: dead?'rgba(120,110,150,.15)':`linear-gradient(135deg,${theme.accent2},${theme.accent})`, color: dead?'#6b6390':'#fff' }}>{off ? 'Signed off' : 'Audition'}</button></div>); })()}
+          const waits = (c.months || 1) >= 2;
+          return (<div style={{ marginTop: 8 }}><button onClick={() => openAudition(c)} disabled={dead} style={{ width: '100%', border: 'none', borderRadius: 10, padding: '9px', fontSize: 12.5, fontWeight: 800, cursor: dead?'default':'pointer', background: dead?'rgba(120,110,150,.15)':`linear-gradient(135deg,${theme.accent2},${theme.accent})`, color: dead?'#6b6390':'#fff' }}>{off ? 'Signed off' : waits ? 'Read for it' : 'Audition'}</button>
+            {waits && !dead && <div style={{ fontSize: 10.5, color: theme.muted, textAlign: 'center', marginTop: 5 }}>
+              They answer in one to three months.
+            </div>}
+          </div>); })()}
       </div>); })}
     <div style={{ marginTop: 4 }}><button onClick={() => dispatch(rerollBoard)} disabled={!canReroll(g)} style={{ width: '100%', border: 'none', borderRadius: 10, padding: '9px', fontSize: 12.5, fontWeight: 800, cursor: canReroll(g) ? 'pointer' : 'default', background: canReroll(g) ? 'rgba(158,116,255,.16)' : 'rgba(120,110,150,.15)', color: canReroll(g) ? '#d9cffa' : '#6b6390' }}>{canReroll(g) ? 'Go through the listings again' : 'You have seen everything going this month'}</button></div>
   </div>);

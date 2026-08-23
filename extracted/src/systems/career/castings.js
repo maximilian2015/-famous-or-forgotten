@@ -191,6 +191,74 @@ export function castingChance(s, c) {
   // And you are not yourself in a room when you are carrying this.
   return Math.round(base * (0.35 + 0.65 * fit) * insurability(s) * (depressed(s) ? 0.62 : 1));
 }
+// ── preparing for one ─────────────────────────────────────────────────────────
+// The months between seeing a part and reading for it are the ones actors actually talk
+// about. You can spend them: learn the sides, work with a coach, turn up knowing more than
+// anybody else in the room. Two levels, and the second one costs real money.
+export const PREP = [
+  { level: 1, label: 'Learn the sides', blurb: 'Read it until you stop reading it.', cost: 0, bonus: 9 },
+  { level: 2, label: 'Work it with a coach', blurb: 'Somebody who has been in that room before.', cost: 2200, bonus: 11 },
+];
+export function prepOf(c) { return c ? (c.prep || 0) : 0; }
+export function prepBonus(c) {
+  const n = prepOf(c);
+  return PREP.slice(0, n).reduce((a, p) => a + p.bonus, 0);
+}
+export function nextPrep(c) { return PREP[prepOf(c)] || null; }
+export function prepareFor(s, id) {
+  const c = (s.castingPool || []).find((x) => x.id === id); if (!c) return s;
+  const step = nextPrep(c);
+  if (!step) { s.lastEvent = 'You know it as well as you are going to.'; return s; }
+  if ((s.ap || 0) <= 0) { s.lastEvent = 'No energy left this period. Live a bit first.'; return s; }
+  const cost = Math.round(step.cost * (1 + Math.min(2, (s.fame || 0) / 60)));
+  if (cost > (s.cash || 0)) { s.lastEvent = `A coach for this costs €${cost.toLocaleString()}. You cannot cover it.`; return s; }
+  s.ap -= 1; s.cash = (s.cash || 0) - cost;
+  c.prep = prepOf(c) + 1;
+  s.lastEvent = step.level === 1
+    ? `You went through "${c.title}" line by line. You will walk in knowing it.`
+    : `You worked "${c.title}" with a coach — €${cost.toLocaleString()}. They found two things you had not.`;
+  return s;
+}
+
+// ── waiting to hear ───────────────────────────────────────────────────────────
+export function submissionsOut(s) { return (s.submissions || []).length; }
+// Runs monthly. Anything whose answer is due gets answered.
+export function submissionsTick(s) {
+  const now = (s.year || 0) * 12 + (s.month || 0);
+  const due = (s.submissions || []).filter((x) => x.due <= now);
+  if (!due.length) return s;
+  s.submissions = (s.submissions || []).filter((x) => x.due > now);
+  for (const sub of due) answerSubmission(s, sub);
+  return s;
+}
+function answerSubmission(s, sub) {
+  const c = sub.casting;
+  if (!chance(sub.odds)) {
+    s.mental = clamp((s.mental || 50) - 2);
+    s.lastEvent = `They went another way on "${c.title}". No reason given, because there never is one.`;
+    addTimeline(s, `Did not get ${c.title}.`);
+    return s;
+  }
+  // A yes is an offer, not a summons. If you are shooting, it waits on the board until it
+  // does not — which is the other half of the job nobody tells you about.
+  const sc = scaleOf(c);
+  (s.offers = s.offers || []).push({
+    id: 'off' + Date.now() + Math.floor(Math.random() * 1000),
+    projectTitle: c.title, role: c.role, type: c.type, genre: c.genre,
+    salary: c.salary, months: c.months, tier: sc.tier, scale: c.scale,
+    episodes: c.episodes, episodeFee: c.episodeFee, season: c.perEpisode ? 1 : 0,
+    stability: c.stability, perEpisode: c.perEpisode, medium: c.medium,
+    prestigeScore: rint(sc.prestige[0], sc.prestige[1]) + Math.round((sub.quality - 50) * 0.12) + riskPrestige(c.stability),
+    expires: (s.year || 0) * 12 + (s.month || 0) + rint(2, 4),
+  });
+  s.lastEvent = `You got "${c.title}". They want you.`;
+  addTimeline(s, `Booked ${c.title}.`);
+  s.bigMoment = { id: 'booked', kind: 'good', title: 'You got it',
+    body: `"${c.title}" is yours. ${c.role}${c.months ? `, ${c.months} months of shooting` : ''}. `
+      + 'Somebody in an office made a list and your name was at the top of it, and you will never find out why.' };
+  return s;
+}
+
 // quality (0-100) comes from the audition minigame: nail the read and your odds jump,
 // fumble it and the room cools on you.
 export function auditionFor(s, id, quality = 50) {
@@ -201,25 +269,25 @@ export function auditionFor(s, id, quality = 50) {
   if (reach(s) < (c.minFame || 0)) { s.lastEvent = 'You need more fame before they will see you for this.'; return s; }
   if ((s.ap || 0) <= 0) { s.lastEvent = 'No energy left this period. Live a bit first.'; return s; }
   s.ap = (s.ap || 0) - 1;
-  const odds = clamp(castingChance(s, c) + (quality - 50) * 0.55);
+  const odds = clamp(castingChance(s, c) + (quality - 50) * 0.55 + prepBonus(c));
+  // Anything with a real schedule does not answer you in the room. You did your read, you
+  // went home, and somewhere between one and three months later a phone rings or it does
+  // not. This is the whole rhythm of the job, and the game used to skip it: audition, book,
+  // shoot, audition, book — 86% of a forty-five-year career was spent on a set.
+  if ((c.months || 1) >= 2) {
+    const wait = rint(1, 3);
+    (s.submissions = s.submissions || []).push({
+      id: 'sub' + Date.now() + Math.floor(Math.random() * 1000),
+      casting: { ...c }, title: c.title, role: c.role, odds,
+      quality, due: (s.year || 0) * 12 + (s.month || 0) + wait, wait,
+    });
+    s.castingPool = (s.castingPool || []).filter((x) => x.id !== id);
+    s.lastEvent = `${quality >= 80 ? 'The room went quiet — you nailed it. ' : ''}You read for "${c.title}". `
+      + `They said they would be in touch. About ${wait} month${wait === 1 ? '' : 's'}.`;
+    addTimeline(s, `Read for ${c.title}.`);
+    return s;
+  }
   if (chance(odds)) {
-    // Anything with a real schedule becomes a shoot you have to live through. Booking used
-    // to hand you the finished rating in the same click, which threw away months of the game.
-    if ((c.months || 1) >= 2) {
-      const sc = scaleOf(c);
-      startProduction(s, {
-        id: c.id, projectTitle: c.title, role: c.role, type: c.type, genre: c.genre,
-        salary: c.salary, months: c.months, tier: sc.tier, scale: c.scale,
-        episodes: c.episodes, episodeFee: c.episodeFee, season: c.perEpisode ? 1 : 0,
-        stability: c.stability,
-        // Shaky money buys better material. It is the only thing it has to offer.
-        prestigeScore: rint(sc.prestige[0], sc.prestige[1]) + Math.round((quality - 50) * 0.12) + riskPrestige(c.stability),
-      });
-      s.castingPool = (s.castingPool || []).filter((x) => x.id !== id);
-      s.lastEvent = `${quality >= 80 ? 'The room goes quiet — you nailed it. ' : ''}You booked "${c.title}". ${c.months} months of shooting — `
-        + (c.perEpisode ? `€${c.episodeFee.toLocaleString()} an episode across ${c.episodes}.` : `€${c.salary.toLocaleString()} for the picture.`);
-      return s;
-    }
     // A voice session or a day as an extra really is over by the evening.
     const skill = s.dream === 'singer' ? s.singing : s.acting;
     const rating = clamp(25 + skill * 0.30 + (quality - 50) * 0.25 + (s.looks - 40) * 0.1 + genreBonus(s, c.genre) + rint(-8, 14));

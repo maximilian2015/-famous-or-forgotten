@@ -76,7 +76,12 @@ export function naturalCeiling(s) {
   // the burnouts already use and the true shape of this.
   const lv = s.drink?.worstLevel || s.drink?.level || 0;
   const soaked = lv >= 78 ? 34 : lv >= 45 ? 20 : lv >= 20 ? 7 : 0;
-  return Math.max(22, 96 - Math.max(0, (s.ageY || 0) - 25) * 0.6 - worn - soaked);
+  // The gym and what you eat raise the ROOF. They used to only cut how often you fell ill,
+  // and once recovery scaled with how far down you were, everybody climbed back to the same
+  // ceiling anyway — a life in the gym on good food ended at 72 health and a life of
+  // takeaways ended at 72. What you do with your body has to change what it can hold.
+  const kept = (s.gym ? 4 : 0) + (s.diet === 'fine' ? 3 : s.diet === 'fast' ? -5 : 0);
+  return Math.max(22, 96 - Math.max(0, (s.ageY || 0) - 25) * 0.6 - worn - soaked + kept - (s.untreated || 0));
 }
 // Immunity: your body fights the same thing off for a while after beating it.
 export function isIll(s) { return !!s.illness; }
@@ -91,8 +96,12 @@ export function healthTick(s) {
     s.health = clamp(h - s.illness.drain);
     s.mental = clamp((s.mental || 50) - (s.illness.freezes ? 2 : 1));
     if (s.illness.months >= s.illness.left) {
-      // Ran its course on its own.
+      // Ran its course on its own — and something you sat out rather than treated leaves a
+      // mark. Once illness became rarer and recovery scaled, a doctor stopped being worth
+      // paying for: whatever an untreated month cost you, you simply climbed back. What it
+      // costs now is the roof, permanently, and only a serious one does it.
       const was = s.illness.name;
+      s.untreated = Math.min(14, (s.untreated || 0) + (s.illness.serious ? 1.6 : 0.32));
       s.illness = null;
       s.immuneUntil = (s.year || 0) * 12 + (s.month || 0) + rint(2, 4);
       s.lastEvent = `${was} has finally passed. You feel human again.`;

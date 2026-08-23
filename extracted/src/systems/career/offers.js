@@ -50,8 +50,12 @@ export function runCampaign(s, id) {
 export function maybeGenerateOffer(s) {
   const acc = computeAccess(s);
   if (s.stage !== 'career') return;
-  if ((s.offers || []).length >= 4) return;
-  let p = acc.agentReach ? 0.5 : (s.fame >= 20 ? 0.18 : 0.05);
+  if ((s.offers || []).length >= 2) return;
+  // An agent brings you things. An agent does not bring you a picture every other month
+  // for forty-five years — which is what 0.5 did, and it meant the casting board, the
+  // reads and the waiting were all decoration: 54 productions started off 16 auditions,
+  // the rest simply arrived. Work has to be gone out and got.
+  let p = acc.agentReach ? 0.14 : (s.fame >= 20 ? 0.06 : 0.02);
   // A name people are nervous about gets fewer calls.
   p *= Math.max(0.25, 1 - (s.scandal || 0) / 90);
   if (chance(p * 100)) (s.offers = s.offers || []).push(generateOffer(s));

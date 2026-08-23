@@ -11,8 +11,9 @@ import { datingYear } from '../systems/life/dating.js';
 import { childhoodTick, adoptionTick } from '../systems/life/children.js';
 import { spotlightYear } from '../systems/social/spotlight.js';
 import { productionTick } from '../systems/career/production.js';
-import { releaseTick } from '../systems/career/release.js';
+import { releaseTick, runTick } from '../systems/career/release.js';
 import { frozenTick } from '../systems/career/stability.js';
+import { submissionsTick } from '../systems/career/castings.js';
 import { runNominations, ceremonyTick } from '../systems/career/awards.js';
 import { agingNote } from '../systems/career/age.js';
 import { strainTick } from '../systems/life/strain.js';
@@ -57,6 +58,8 @@ export function advanceMonth(state) {
   drinkTick(s);      // and the other way out takes its cut of the craft
   productionTick(s);
   releaseTick(s);    // anything that finished shooting months ago opens today
+  runTick(s);        // and anything already open takes another few weeks of money
+  submissionsTick(s); // and somewhere a casting office finally rings back
   frozenTick(s);     // and anything that stopped might find its money again
   ceremonyTick(s);   // and the Askers land a couple of months after the nominations
   eventsTick(s);

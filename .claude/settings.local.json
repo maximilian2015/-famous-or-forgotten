@@ -53,7 +53,11 @@
       "Bash(\"/c/Program Files/nodejs/node.exe\" test_family_sweep.mjs)",
       "Bash(\"/c/Program Files/nodejs/node.exe\" test_release.mjs)",
       "Bash(\"/c/Program Files/nodejs/node.exe\" playtest.mjs)",
-      "Bash(\"/c/Program Files/nodejs/node.exe\" playtest_death.mjs)"
+      "Bash(\"/c/Program Files/nodejs/node.exe\" playtest_death.mjs)",
+      "Bash(\"/c/Program Files/nodejs/node.exe\" probe_rhythm.mjs)",
+      "Bash(grep -n \"SHELVES.map\\\\|<div style={{ display: 'flex', gap: 6\" phone/apps/OpenCall.jsx)",
+      "Bash(\"/c/Program Files/nodejs/node.exe\" test_casting.mjs)",
+      "Bash(\"/c/Program Files/nodejs/node.exe\" test_health.mjs)"
     ],
     "defaultMode": "acceptEdits",
     "additionalDirectories": [

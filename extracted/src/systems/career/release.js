@@ -122,19 +122,31 @@ export function releaseTick(s) {
   return s;
 }
 
+// How long the thing is in front of people before anybody knows what it was. A film runs
+// for weeks and the number climbs every one of them; a season goes out and the audience
+// finds it. Opening night is not the verdict — it is the start of finding out.
+const RUN_WEEKS = { small: 3, indie: 6, feature: 11, blockbuster: 15, oneoff: 2,
+  episode: 6, recurring: 12, prestige: 10 };
+
 function open(s, rel) {
   const film = isFilm(rel.scale);
-  if (film) rel.boxOffice = boxOfficeFor(s, rel);
+  // What it will end up taking. The player does not see this number yet — it arrives a
+  // few thousand at a time, week by week, which is how anybody actually experiences it.
+  if (film) rel.finalGross = boxOfficeFor(s, rel);
   else rel.viewers = viewersFor(s, rel);
-  const verdict = verdictOf(rel);
+  rel.boxOffice = 0;
+  const verdict = verdictOf({ ...rel, boxOffice: rel.finalGross || 0 });
   const score = (rel.rating / 10).toFixed(1);
 
-  // The credit only exists once the thing is out. Until now it was "in post".
+  // The credit exists the night it opens. What it WAS does not — the score and the money
+  // land when the run ends, which is the difference between a premiere and a verdict.
   const credit = {
     title: rel.title, role: rel.role, type: rel.type, genre: rel.genre, salary: rel.salary,
     rating: rel.rating, status: rel.status, year: s.year, season: rel.season,
     part: rel.part > 1 ? rel.part : 0, episodes: rel.episodes,
-    boxOffice: rel.boxOffice || 0, viewers: rel.viewers || 0, verdict, score: Number(score),
+    // In cinemas. Everything below is provisional until runTick closes it.
+    running: true, weeks: 0, weeksTotal: RUN_WEEKS[rel.scale] || 8,
+    boxOffice: 0, viewers: rel.viewers || 0, verdict: 'in cinemas', score: null,
     // Carried for the Asker season: what kind of thing it was, and whether it was pushed.
     scale: rel.scale, tier: rel.tier, prestigeScore: rel.prestigeScore,
     campaignShare: rel.campaign ? 0.65 : 0,
@@ -147,53 +159,96 @@ function open(s, rel) {
   (s[bucket] = s[bucket] || []).unshift(credit);
   markReleased(s);
 
-  // The score buys respect; the money buys reach. They are different currencies.
-  const bySkill = { tentpole: 9, lead: 5, supporting: 2 }[rel.tier] || 2;
-  let fame = bySkill + (rel.rating >= 85 ? 4 : 0) + (rel.worldHit ? 25 : 0);
+  // Opening night is worth something on its own — the carpet, the photographs, the fact
+  // that it exists. The rest of what this film does to your name waits for the run.
+  const headroom = (limit, cur) => Math.max(0.16, 1 - (cur || 0) / limit);
+  const opening = { tentpole: 3, lead: 2, supporting: 1 }[rel.tier] || 1;
+  s.fame = clamp((s.fame || 0) + opening * headroom(118, s.fame));
+  // The finished thing is kept ON the release so runTick can close it out properly.
+  credit._rel = { rating: rel.rating, worldHit: rel.worldHit, tier: rel.tier, scale: rel.scale,
+    salary: rel.salary, finalGross: rel.finalGross || 0, job: rel.job, film };
+  (s.running = s.running || []).push(credit);
+
+  s.lastEvent = film
+    ? `"${rel.title}" opened tonight. Now everybody finds out what it is.`
+    : `"${rel.title}" went out tonight.`;
+  addTimeline(s, `"${rel.title}" opened.`);
+  s.bigMoment = {
+    id: 'premiere', kind: 'good', title: rel.title, verdict: 'opening night',
+    body: 'You stood on a carpet and answered the same four questions eleven times, and then '
+      + 'the lights went down and you watched it with strangers. Nobody knows anything yet — '
+      + 'not the reviews, not the money, not you. That comes over the next few weeks.',
+  };
+  return s;
+}
+
+// ── the run ───────────────────────────────────────────────────────────────────
+// Weeks in front of people. The money climbs, and at the end of it the score settles and
+// the industry finally says what the thing was — which is when it counts for anything.
+export function runTick(s) {
+  const list = s.running || [];
+  if (!list.length) return s;
+  const still = [];
+  for (const c of list) {
+    const r = c._rel || {};
+    c.weeks = Math.min(c.weeksTotal, (c.weeks || 0) + 4);
+    const share = c.weeks / Math.max(1, c.weeksTotal);
+    // Front-loaded, the way opening weekends are: most of it lands early.
+    c.boxOffice = Math.round((r.finalGross || 0) * Math.min(1, Math.pow(share, 0.55)));
+    if (c.weeks < c.weeksTotal) { still.push(c); continue; }
+    closeRun(s, c, r);
+  }
+  s.running = still;
+  return s;
+}
+
+function closeRun(s, credit, r) {
+  credit.running = false;
+  credit.boxOffice = r.finalGross || 0;
+  credit.score = Number((r.rating / 10).toFixed(1));
+  const verdict = verdictOf({ scale: r.scale, rating: r.rating, boxOffice: credit.boxOffice });
+  credit.verdict = verdict;
+  const film = r.film;
+
+  // The score buys respect; the money buys reach. They are different currencies, and both
+  // of them are settled here rather than on opening night.
+  const bySkill = { tentpole: 9, lead: 5, supporting: 2 }[r.tier] || 2;
+  let fame = bySkill + (r.rating >= 85 ? 4 : 0) + (r.worldHit ? 25 : 0);
   if (verdict === 'smash') fame += 8;
   else if (verdict === 'profitable') fame += 3;
   // A flop cuts what the film does for your name, but it can never take your name
-  // backwards: a bad film still put your face on a screen. Subtracting here trapped a
-  // low-fame actor at zero forever — every credit made them less known than before it.
+  // backwards: a bad film still put your face on a screen.
   else if (verdict === 'bomb') fame = Math.max(1, fame - 3);
-  // Diminishing at the top. Getting from nobody to known is quick; the last stretch is a
-  // lifetime. Flat gains meant a working lead hit fame 100 and respect 97 by thirty-one,
-  // after four years and eight credits, which made the whole ladder a formality — and
-  // left nothing above it for an Asker to be worth.
   const headroom = (limit, cur) => Math.max(0.16, 1 - (cur || 0) / limit);
   s.fame = clamp((s.fame || 0) + fame * headroom(118, s.fame));
-  const respectGain = rel.rating >= 85 ? 5 : rel.rating >= 70 ? 2 : rel.rating < 45 ? -4 : 0;
+  const respectGain = r.rating >= 85 ? 5 : r.rating >= 70 ? 2 : r.rating < 45 ? -4 : 0;
   s.respect = clamp((s.respect || 0) + (respectGain > 0 ? respectGain * headroom(112, s.respect) : respectGain));
-
-  // A commercial hit raises what you can ask for next time.
-  if (film && verdict === 'smash') setQuote(s, Math.max(s.quote || 0, (rel.salary || 0) * 1.6));
+  if (film && verdict === 'smash') setQuote(s, Math.max(s.quote || 0, (r.salary || 0) * 1.6));
 
   const money = film
-    ? `€${(rel.boxOffice / 1000000).toFixed(rel.boxOffice >= 100000000 ? 0 : 1)}m at the box office`
-    : `${rel.viewers}m watching`;
-  const line = rel.worldHit
-    ? `🌍 "${rel.title}" is a phenomenon. ${score}/10 · ${money}.`
-    : `"${rel.title}" is out. ${score}/10 · ${money} · ${verdict}.`;
+    ? `€${(credit.boxOffice / 1000000).toFixed(credit.boxOffice >= 100000000 ? 0 : 1)}m across ${credit.weeksTotal} weeks`
+    : `${credit.viewers}m watching`;
+  const score = credit.score.toFixed(1);
+  const line = r.worldHit
+    ? `🌍 "${credit.title}" is a phenomenon. ${score}/10 · ${money}.`
+    : `"${credit.title}" finished its run. ${score}/10 · ${money} · ${verdict}.`;
   s.lastEvent = line;
-  addTimeline(s, line, rel.rating < 50 || verdict === 'bomb');
+  addTimeline(s, line, r.rating < 50 || verdict === 'bomb');
 
-  // Only now does anyone know whether there is a second one. The credit carries the
-  // verdict, so a beloved film that nobody bought can still fail to get a sequel.
-  if (rel.job) {
-    const next = maybeContinue(s, credit, rel.job);
+  // Only now does anyone know whether there is a second one.
+  if (r.job) {
+    const next = maybeContinue(s, credit, r.job);
     if (next) (s.offers = s.offers || []).push(next);
   }
 
-  // Opening night stops the game. It is the only thing you worked a year for.
   s.bigMoment = {
-    id: 'premiere', kind: rel.rating >= 70 || verdict === 'smash' ? 'good' : 'bad',
-    title: rel.title,
-    score, money, verdict,
-    body: rel.worldHit
+    id: 'verdict', kind: r.rating >= 70 || verdict === 'smash' ? 'good' : 'bad',
+    title: credit.title, score, money, verdict,
+    body: r.worldHit
       ? 'Nobody expected this. It has stopped being a film and started being an event.'
-      : rel.rating >= 85 ? 'The reviews are the kind people screenshot.'
-      : rel.rating >= 70 ? 'Well received. Not the one they will remember you for, but a good night.'
-      : rel.rating >= 50 ? 'It came and went. Some people liked it.'
+      : r.rating >= 85 ? 'The reviews are the kind people screenshot.'
+      : r.rating >= 70 ? 'Well received. Not the one they will remember you for, but a good run.'
+      : r.rating >= 50 ? 'It came and went. Some people liked it.'
       : verdict === 'bomb' ? 'The reviews are bad and the numbers are worse. Somebody will be blamed.'
       : 'It did not land. These are the ones you leave off the reel.',
   };

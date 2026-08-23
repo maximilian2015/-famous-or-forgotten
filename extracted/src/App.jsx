@@ -1177,7 +1177,13 @@ function CreditRow({ group }) {
         </div>
       </div>
       <div style={{ display: 'flex', alignItems: 'center', gap: 7, margin: '4px 0 3px', flexWrap: 'wrap' }}>
-        <span style={{ fontSize: 12.5, fontWeight: 800, color: starCol }}>★ {stars}</span>
+        {/* A film in cinemas has no score yet. Nobody has decided, including the reviews —
+            that lands when the run ends. See systems/career/release.js. */}
+        {c.running
+          ? <span style={{ fontSize: 11, fontWeight: 900, letterSpacing: '.06em', textTransform: 'uppercase', color: theme.gold }}>
+              ★ — · week {c.weeks || 0} of {c.weeksTotal}
+            </span>
+          : <span style={{ fontSize: 12.5, fontWeight: 800, color: starCol }}>★ {stars}</span>}
         <span style={{ fontSize: 11.5, color: theme.muted }}>{c.type}</span>
         {runs && <span style={{ fontSize: 10, fontWeight: 900, letterSpacing: '.06em', textTransform: 'uppercase',
           color: theme.accent, background: 'rgba(158,116,255,.16)', padding: '2px 7px', borderRadius: 20 }}>{runs}</span>}
@@ -1199,7 +1205,8 @@ function CreditRow({ group }) {
             {group.boxOffice > 0 ? `${money(group.boxOffice)} box office` : `${group.viewers}m watched`}
           </span>
           {c.verdict && <span style={{ fontSize: 9.5, fontWeight: 900, letterSpacing: '.07em', textTransform: 'uppercase',
-            color: VERDICT_COL[c.verdict] || theme.muted }}>{c.verdict}</span>}
+            color: c.running ? theme.gold : VERDICT_COL[c.verdict] || theme.muted }}>
+            {c.running ? 'still running' : c.verdict}</span>}
         </div>
       )}
     </div>
