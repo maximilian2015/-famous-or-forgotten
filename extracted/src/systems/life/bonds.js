@@ -24,7 +24,10 @@ export function relBand(v) { const n = Number(v) || 0; return BANDS.find((b) => 
 // How fast someone forgets you when you do not turn up. Blood is slowest, the
 // industry is fastest — a casting director who has not heard from you in a year
 // does not remember you fondly, they do not remember you.
-const FADE = { parent: 0.7, spouse: 1.1, child: 0.8, sibling: 1.1, grandparent: 0.9, partner: 1.6, contact: 2.4 };
+const FADE = { parent: 0.7, spouse: 1.1, child: 0.8, sibling: 1.1, grandparent: 0.9, partner: 1.6,
+  // Somebody you were married to and are not any more drifts fastest of anyone, because
+  // neither of you has a reason to ring and both of you know it.
+  ex: 2.0, contact: 2.4 };
 
 // Repeat attention in the same month is worth less each time. This is the whole
 // answer to "you can just keep clicking".
@@ -70,7 +73,7 @@ export function bondsTick(s) {
   for (const p of (s.family || [])) {
     if (!p.alive) continue;
     const r = p.relation || '';
-    const rel = r === 'Spouse' ? 'spouse' : (r === 'Mother' || r === 'Father') ? 'parent'
+    const rel = r === 'Spouse' ? 'spouse' : r === 'Ex-spouse' ? 'ex' : (r === 'Mother' || r === 'Father') ? 'parent'
       : (r === 'Brother' || r === 'Sister') ? 'sibling' : r === 'Child' ? 'child' : 'grandparent';
     const note = fadeOne(s, p, rel, now); if (note) notes.push(note);
   }

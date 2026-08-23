@@ -47,7 +47,8 @@
       "Bash(node -e ' *)",
       "Bash('/c/Program Files/nodejs/node.exe' -e ' *)",
       "Bash(\"/c/Program Files/nodejs/node.exe\" test_illness_live.mjs)",
-      "Bash(\"/c/Program Files/nodejs/node.exe\" test_ultimatum.mjs)"
+      "Bash(\"/c/Program Files/nodejs/node.exe\" test_ultimatum.mjs)",
+      "Bash(\"/c/Program Files/nodejs/node.exe\" test_love.mjs)"
     ],
     "defaultMode": "acceptEdits",
     "additionalDirectories": [

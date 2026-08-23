@@ -7,7 +7,7 @@ import { maybeYouthEvent } from '../systems/life/youth.js';
 import { familyYear } from '../systems/life/family.js';
 import { allowanceTick } from '../systems/life/origin.js';
 import { bondsTick } from '../systems/life/bonds.js';
-import { datingYear } from '../systems/life/dating.js';
+import { datingYear, childhoodTick } from '../systems/life/dating.js';
 import { spotlightYear } from '../systems/social/spotlight.js';
 import { productionTick } from '../systems/career/production.js';
 import { releaseTick } from '../systems/career/release.js';
@@ -45,6 +45,7 @@ export function advanceMonth(state) {
   }
   applyMonthly(s);
   bondsTick(s);      // people you did not call drift away
+  childhoodTick(s);  // and a childhood spent watching you leave for a set counts double
   healthTick(s);
   if (!s.alive) return s;   // sudden collapse ends the month right here
   relevanceDrift(s);
