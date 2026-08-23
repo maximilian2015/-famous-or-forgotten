@@ -31,8 +31,16 @@ export function monthsIn(s) {
 // tonight, in which case none of them, which is exactly why that road is worth taking
 // and exactly why it ends where it does. See systems/life/drink.js.
 export function slotsLost(s) {
-  const owed = s.depression ? Math.max(0, 2 - (s.depression.passed || 0)) : (s.scarred || 0);
-  return drinkingCoversSlots(s) ? 0 : owed;
+  // Winning a checkpoint gives one back. It does NOT give both back — passing two of three
+  // used to leave you at full strength and then the illness lifted and took one away again,
+  // so the month it stopped was the month you got worse. What the last checkpoint decides
+  // is whether the one still missing comes back at all.
+  return drinkingCoversSlots(s) ? 0 : owedSlots(s);
+}
+// What it is taking before tonight is taken into account. drink.js keeps its own copy of
+// this because depression.js already imports drink.js and systems do not import in circles.
+export function owedSlots(s) {
+  return s.depression ? ((s.depression.passed || 0) >= 1 ? 1 : 2) : (s.scarred || 0);
 }
 
 // ── the pills ─────────────────────────────────────────────────────────────────
@@ -100,9 +108,9 @@ export const TALK = {
     body: 'Somebody from an old crew has messaged. Not about work. They want to know how you are, and they have '
       + 'asked twice now. There is nobody else asking.',
     choices: [
-      { id: 'honest', label: 'Tell them the truth', bonus: 18, note: 'You typed it out before you could stop yourself. They rang within the minute.' },
+      { id: 'honest', label: 'Tell them the truth', bonus: 8, note: 'You typed it out before you could stop yourself. They rang within the minute.' },
       { id: 'fine', label: 'Say you are fine', bonus: 0, note: 'You said you were fine. They said good, and that was that.' },
-      { id: 'nothing', label: 'Leave it', bonus: -10, note: 'You left it. You will read it again tonight and leave it again.' },
+      { id: 'nothing', label: 'Leave it', bonus: -18, note: 'You left it. You will read it again tonight and leave it again.' },
     ],
   },
   held: {
@@ -110,9 +118,9 @@ export const TALK = {
     body: 'The person who has been carrying you through this asks how you are, again. They have been asking every '
       + 'week for a year, and lately you can hear how tired they are of the answer.',
     choices: [
-      { id: 'honest', label: 'Tell them the truth, again', bonus: 2, note: 'You told them the truth again. They listened again. Something in the room was heavier afterwards.' },
-      { id: 'fine', label: 'Ask how THEY are', bonus: 18, note: 'You asked about them instead, and meant it. They talked for an hour. So did you, afterwards.' },
-      { id: 'nothing', label: 'Say nothing at all', bonus: -8, note: 'You said nothing. They filled the silence, the way they always do.' },
+      { id: 'honest', label: 'Tell them the truth, again', bonus: 1, note: 'You told them the truth again. They listened again. Something in the room was heavier afterwards.' },
+      { id: 'fine', label: 'Ask how THEY are', bonus: 8, note: 'You asked about them instead, and meant it. They talked for an hour. So did you, afterwards.' },
+      { id: 'nothing', label: 'Say nothing at all', bonus: -16, note: 'You said nothing. They filled the silence, the way they always do.' },
     ],
   },
 };
@@ -129,15 +137,15 @@ export const WEEK_TASKS = [
 export function scoreWeek(plan) {
   // plan is an array of 7 entries: null or a task id.
   const used = WEEK_TASKS.map((t) => plan.filter((p) => p === t.id).length);
-  if (used.some((n) => n < 1)) return { ok: false, bonus: -6, note: 'You left a week with nothing in it. It went the way those go.' };
+  if (used.some((n) => n < 1)) return { ok: false, bonus: -18, note: 'You left a week with nothing in it. It went the way those go.' };
   let clashes = 0;
   for (let i = 1; i < plan.length; i++) if (plan[i] && plan[i] === plan[i - 1]) clashes++;
   const spread = plan.filter(Boolean).length;
   if (clashes === 0 && spread >= 3) {
-    return { ok: true, bonus: 16, note: 'You laid the week out and then actually lived it. Seven days you can account for.' };
+    return { ok: true, bonus: 8, note: 'You laid the week out and then actually lived it. Seven days you can account for.' };
   }
-  if (clashes <= 1) return { ok: true, bonus: 6, note: 'Most of the week held together. Two days ran into each other.' };
-  return { ok: false, bonus: -4, note: 'You put it all on top of itself and then did none of it.' };
+  if (clashes <= 1) return { ok: true, bonus: 2, note: 'Most of the week held together. Two days ran into each other.' };
+  return { ok: false, bonus: -14, note: 'You put it all on top of itself and then did none of it.' };
 }
 
 // ── trial three: holding something in your head ───────────────────────────────
@@ -155,9 +163,9 @@ export function makeHold(s) {
 }
 export function scoreHold(hold, answer) {
   if (answer === hold.missing) {
-    return { ok: true, bonus: 15, note: 'You held it. A small thing, and it is the first small thing in months that stayed put.' };
+    return { ok: true, bonus: 8, note: 'You held it. A small thing, and it is the first small thing in months that stayed put.' };
   }
-  return { ok: false, bonus: -5, note: 'It slid straight out of your head, the way everything has been doing.' };
+  return { ok: false, bonus: -16, note: 'It slid straight out of your head, the way everything has been doing.' };
 }
 
 // Called monthly. Raises a checkpoint when one is due; the UI answers it.

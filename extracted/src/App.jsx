@@ -32,7 +32,7 @@ import { relBand } from './systems/life/bonds.js';
 import { BigMoment } from './ui/components/BigMoment.jsx';
 import { stabilityBand } from './systems/career/stability.js';
 import { strainBand, burnedOut, unreliable, depressed, seeSomebody } from './systems/life/strain.js';
-import { monthsIn, slotsLost, standingOf, onMeds, TALK, WEEK_TASKS, CHECKPOINTS, EVERY_MONTHS, MIN_MONTHS,
+import { monthsIn, slotsLost, owedSlots, standingOf, onMeds, TALK, WEEK_TASKS, CHECKPOINTS, EVERY_MONTHS, MIN_MONTHS,
   answerCheckpoint, inRehab, enterRehab, rehabCost, rehabMonths, needsRehab, therapyProgress, THERAPY_FOR_A_SLOT } from './systems/life/depression.js';
 import { drinkThrough, drankThisMonth, level as drinkLevel, band as drinkBand, dependent, bottlesInHouse } from './systems/life/drink.js';
 // Big moments live on state so a system can raise one; the UI only clears it.
@@ -343,7 +343,7 @@ function DepressionCard({ g }) {
 // The other way out. It is offered plainly, it works every single month, and the card
 // says exactly what it is taking while it does.
 function DrinkButton({ g }) {
-  const owed = g.depression ? Math.max(0, 2 - (g.depression.passed || 0)) : (g.scarred || 0);
+  const owed = owedSlots(g);
   if (owed <= 0 && !drinkLevel(g)) return null;
   const had = drankThisMonth(g);
   const lv = drinkLevel(g), b = drinkBand(g);

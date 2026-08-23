@@ -97,7 +97,7 @@ export function drinkThrough(s) {
   //
   // The owed count is worked out here rather than imported: depression.js already imports
   // this file to ask whether tonight covers the month, and systems do not import in circles.
-  const owed = s.depression ? Math.max(0, 2 - (s.depression.passed || 0)) : (s.scarred || 0);
+  const owed = s.depression ? ((s.depression.passed || 0) >= 1 ? 1 : 2) : (s.scarred || 0);
   if (owed > 0) {
     s.apMaxEff = (s.apMaxEff || s.apMax || 3) + owed;
     s.ap = (s.ap || 0) + owed;
@@ -115,6 +115,11 @@ export function drinkTick(s) {
   if (!d) return s;
   const drank = !!d.thisMonth;
   d.thisMonth = false;
+
+  // The shoot has to be told here, not in productionTick. The monthly order is drinkTick
+  // then productionTick, so by the time the production asked whether you had been drinking
+  // the flag had already been cleared — and every film shot drunk came out unpunished.
+  if (drank && s.production) s.production.drunkMonths = (s.production.drunkMonths || 0) + 1;
 
   if (drank) {
     // What it is actually costing: the only thing you had to sell. The bottle changes how

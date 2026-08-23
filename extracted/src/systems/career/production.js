@@ -5,7 +5,6 @@ import { hotGenre } from '../meta/news.js';
 import { addGenreXP, genreBonus } from './genres.js';
 import { scheduleRelease } from './release.js';
 import { rollStability, productionTrouble, volatileSwing, roughness } from './stability.js';
-import { drankThisMonth } from '../life/drink.js';
 const clamp = (v) => Math.max(0, Math.min(100, v));
 const TIERS = [
   { min: 0, label: 'Disaster' }, { min: 25, label: 'Rocky' }, { min: 50, label: 'Solid' },
@@ -114,8 +113,8 @@ export function productionTick(s) {
   }
   p.paused = 0;
   // A month you drank your way through is a month you were not really there for, and the
-  // footage knows. See systems/life/drink.js.
-  if (drankThisMonth(s)) p.drunkMonths = (p.drunkMonths || 0) + 1;
+  // footage knows — but the counting happens in drinkTick, which runs first and is the last
+  // place the flag is still true. See systems/life/drink.js.
   p.monthsLeft -= 1;
   // You are paid while you work. A fourteen-month blockbuster that only paid on wrap
   // would starve you out of your flat long before the premiere.
