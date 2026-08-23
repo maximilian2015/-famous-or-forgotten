@@ -119,11 +119,29 @@ export function sequelRaise(part) { return part === 2 ? 1.6 : part === 3 ? 2.2 :
 //
 // This is the CEILING the next part is written against — the material gets thinner even
 // when the money gets bigger.
-export function sequelMaterial(prevPrestige, part) {
-  // A rare second one that is better than the first. It happens; it is not the rule.
-  if (part === 2 && chance(18)) return Math.min(96, prevPrestige + rint(2, 9));
-  const slide = part === 2 ? rint(4, 12) : part === 3 ? rint(9, 18) : rint(14, 26);
-  return Math.max(10, prevPrestige - slide);
+// A franchise has a CHARACTER, rolled once when the second one is greenlit, and then it
+// behaves like that. "Every part is a bit worse than the last" is a formula, not a life —
+// some of these hold up for five films and some fall off a cliff after the second, and
+// which one you are in is the thing nobody knows at the time.
+export const ARCS = {
+  holds:      { weight: 26, label: 'holds up',   drift: [-4, 4] },    // Fast & Furious: it just keeps going
+  slides:     { weight: 42, label: 'slides',     drift: [-14, -2] },  // the usual story
+  collapses:  { weight: 20, label: 'collapses',  drift: [-30, -12] }, // everything after the second one
+  climbs:     { weight: 12, label: 'gets better', drift: [1, 10] },   // Terminator 2, and not many others
+};
+export function rollArc() {
+  const keys = Object.keys(ARCS);
+  const total = keys.reduce((n, k) => n + ARCS[k].weight, 0);
+  let r = Math.random() * total;
+  for (const k of keys) { r -= ARCS[k].weight; if (r <= 0) return k; }
+  return 'slides';
+}
+export function sequelMaterial(prevPrestige, part, arc = 'slides') {
+  const a = ARCS[arc] || ARCS.slides;
+  // Even a franchise that holds up gets tired eventually, and one that is collapsing has
+  // further to fall each time. The arc sets the shape; the part number tilts it.
+  const tilt = arc === 'holds' ? -(part - 2) * 2 : arc === 'climbs' ? -(part - 2) * 4 : -(part - 2) * 3;
+  return Math.max(8, Math.min(96, prevPrestige + rint(a.drift[0], a.drift[1]) + tilt));
 }
 // And nobody shoots them back to back. Two to five years, sometimes far longer, and the
 // gap is why a franchise is a thing that happens ACROSS a career rather than instead of one.
@@ -132,10 +150,13 @@ export function sequelGap(part) { return part === 2 ? rint(18, 40) : rint(24, 54
 // A show does not peak in its last season. It finds itself around two or three, holds, and
 // then everybody can feel it going — which is when the network cancels it. Rating 9.4 in
 // season seven, immediately followed by the end, was the exact opposite of how this reads.
-export function seasonMaterial(prevPrestige, season) {
-  if (season <= 3) return Math.min(94, prevPrestige + rint(0, 7));   // it finds itself
-  if (season <= 5) return Math.max(12, prevPrestige - rint(0, 6));   // it holds, mostly
-  return Math.max(10, prevPrestige - rint(5, 14));                   // and then it does not
+// Same for a show, and for the same reason: nine seasons of Friends were not nine slow
+// declines. A show gets a character too — some hold their whole run, some rot from four on.
+export function seasonMaterial(prevPrestige, season, arc = 'slides') {
+  if (season <= 3) return Math.min(94, prevPrestige + rint(-2, 8));  // everything finds itself
+  const a = ARCS[arc] || ARCS.slides;
+  const tilt = arc === 'holds' ? -(season - 4) : -(season - 4) * 2;
+  return Math.max(10, Math.min(94, prevPrestige + rint(a.drift[0], a.drift[1]) + tilt));
 }
 
 // Anything a franchise offers you arrives LATER, not the month the last one closed.
@@ -189,6 +210,8 @@ export function maybeContinue(s, credit, p) {
       return null;
     }
     const nextSeason = season + 1;
+    // Rolled once, when the show first comes back, and it is what the show IS from then on.
+    const arc = p.arc || rollArc();
     const raise = seasonRaise(nextSeason, credit.rating, previousRating(s, root, season));
     const pct = Math.round((raise - 1) * 100);
     // Television does compound season on season, and it still cannot outrun what somebody
@@ -204,7 +227,7 @@ export function maybeContinue(s, credit, p) {
       stability: Math.max(82, p.stability || 82),
       projectTitle: `${root} · season ${nextSeason}`, role: p.role, type: p.type, genre: p.genre,
       episodes, episodeFee, salary: episodeFee * episodes, baseSalary: p.baseSalary || p.salary,
-      prestigeScore: seasonMaterial(p.prestigeScore || 50, nextSeason),
+      prestigeScore: seasonMaterial(p.prestigeScore || 50, nextSeason, arc), arc,
       months: Math.max(2, Math.round((p.months || 4) * (0.9 + Math.random() * 0.25))),
       prestigeScore: Math.min(96, (p.prestigeScore || 45) + rint(2, 7)), tier: p.tier || 'lead',
       fame: p.tier === 'tentpole' ? 9 : 5, deadline: rint(2, 3),
@@ -220,6 +243,7 @@ export function maybeContinue(s, credit, p) {
   const odds = sequelOdds(credit.rating, part, obliged, credit.verdict);
   if (!chance(odds)) return null;
   const nextPart = part + 1;
+  const arc = p.arc || rollArc();
   // Against the first part, never against the last one. See ceilingFor above.
   const first = p.baseSalary || p.salary;
   const raw = obliged ? p.salary : Math.round(first * sequelRaise(nextPart));
@@ -235,7 +259,7 @@ export function maybeContinue(s, credit, p) {
     stability: Math.max(85, p.stability || 85),   // nobody defunds a sequel to something that made money
     projectTitle: sequelTitle(p.title, nextPart), role: p.role, type: p.type, genre: p.genre,
     salary, baseSalary: first, months: Math.max(2, Math.round((p.months || 5) * (0.95 + Math.random() * 0.25))),
-    prestigeScore: sequelMaterial(p.prestigeScore || 50, nextPart),
+    prestigeScore: sequelMaterial(p.prestigeScore || 50, nextPart, arc), arc,
     tier: p.tier || 'lead', fame: p.tier === 'tentpole' ? 9 : 5, deadline: rint(2, 3),
     note: obliged
       ? 'You signed for this one. The fee is the fee you agreed to years ago.'

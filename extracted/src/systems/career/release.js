@@ -123,7 +123,7 @@ export function scheduleRelease(s, credit, p) {
     // the shoot has to keep enough of itself alive to be asked that question later.
     job: {
       title: p.title, seriesTitle: p.seriesTitle, role: p.role, type: p.type, genre: p.genre, salary: p.salary,
-      months: p.months, episodes: p.episodes || 0, episodeFee: p.episodeFee || 0, baseSalary: p.baseSalary || p.salary,
+      months: p.months, episodes: p.episodes || 0, episodeFee: p.episodeFee || 0, baseSalary: p.baseSalary || p.salary, arc: p.arc || null,
       season: p.season || 0, part: p.part || 1, tier: p.tier, scale: p.scale, stability: p.stability,
       prestigeScore: p.prestigeScore, optioned: !!p.optioned, optionParts: p.optionParts || 0,
     },

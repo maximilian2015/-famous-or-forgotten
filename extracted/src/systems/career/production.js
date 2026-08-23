@@ -35,7 +35,7 @@ export function startProduction(s, offer) {
     prestigeScore: offer.prestigeScore, tier: offer.tier, campaign: !!offer.campaign,
     // What part one was paid. Every sequel raise is measured against THIS, not against
     // whatever the last one happened to earn. See systems/career/franchise.js.
-    baseSalary: offer.baseSalary || offer.salary,
+    baseSalary: offer.baseSalary || offer.salary, arc: offer.arc || null,
     // Older offers were written before releases existed and carry no scale of their own.
     scale: offer.scale || (offer.episodes ? (offer.tier === 'lead' ? 'recurring' : 'episode')
       : offer.tier === 'tentpole' ? 'blockbuster' : offer.tier === 'lead' ? 'feature' : 'indie'),

@@ -66,12 +66,15 @@ export function riskPrestige(stability) {
 // prestige half of the pair started outrunning the roughness half and no-money projects
 // were simply better: 62.5 against 56.3. Both numbers move together or neither does.
 export function roughness(stability) {
-  return Math.max(0, 88 - (stability ?? 88)) * 0.045;
+  return Math.max(0, 88 - (stability ?? 88)) * 0.065;
 }
 // The swing at the wrap. Locked money gives you exactly what you earned; shaky money
 // throws a die on top of it, in both directions. The mean does not move — the width does.
 export function volatility(stability) {
-  return Math.round(Math.max(0, 92 - (stability || 92)) * 0.34);
+  // Wider than it was. A film with no money behind it now also has a real chance of losing
+  // itself in the edit, and if that is going to happen the upside has to be bigger to match —
+  // otherwise the risky project is all cost, and the one thing it exists to offer is gone.
+  return Math.round(Math.max(0, 92 - (stability || 92)) * 0.44);
 }
 export function volatileSwing(stability) {
   const v = volatility(stability);
@@ -95,9 +98,14 @@ export function riskCostFor(s, stability) {
 // A month's chance that something goes wrong with the money. Spread across the whole
 // shoot, so a fourteen-month blockbuster is not fourteen times as likely to die as a
 // one-month job of the same standing.
+// A blockbuster is paid for by a studio that already has the money. An indie is people
+// looking for it, and that search is the actual difference between the two — not a slightly
+// higher chance of trouble on set. Measured before this, an indie froze 4% of the time and
+// a film with NO REAL MONEY behind it froze 2%, which made the backing band the player is
+// shown before signing very nearly decorative.
 export function troubleOdds(p) {
   const risk = Math.max(0, 92 - (p.stability || 92)) / 92;
-  return Math.min(9, risk * risk * 16);
+  return Math.min(17, risk * risk * 30);
 }
 
 // When it goes wrong, freezing is the commoner outcome — a producer would much rather
