@@ -68,9 +68,30 @@ export function boxOfficeFor(s, rel) {
 }
 export function viewersFor(s, rel) {
   const span = VIEWERS[rel.scale] || VIEWERS.episode;
-  const base = span[0] + Math.random() * (span[1] - span[0]);
   const star = 0.8 + (s.fame || 0) / 250;
+  // A show that is coming back already HAS an audience. Rolling a fresh number every season
+  // meant a season rated 7.2 drew 8.9m, the next one rated 9.1 drew 3m and the one after
+  // that drew 18m — the same programme, on the same night, with no explanation. An audience
+  // is inherited and then it moves: a better season brings people, a worse one loses them.
+  const prev = previousAudience(s, rel);
+  if (prev != null) {
+    const move = rel.rating >= 85 ? 1.16 + Math.random() * 0.2
+      : rel.rating >= 72 ? 1.02 + Math.random() * 0.12
+      : rel.rating >= 60 ? 0.9 + Math.random() * 0.12
+      : 0.68 + Math.random() * 0.16;
+    return Math.round(Math.max(0.2, prev * move) * 10) / 10;
+  }
+  const base = span[0] + Math.random() * (span[1] - span[0]);
   return Math.round(base * qualityPull(rel.rating) * star * 10) / 10;
+}
+// What the season before this one drew, if there was one.
+function previousAudience(s, rel) {
+  if (!rel.season || rel.season < 2) return null;
+  const root = String(rel.title || '').replace(/(\s*·\s*season\s+\d+)+\s*$/i, '').trim();
+  const prev = [...(s.filmography || []), ...(s.discography || [])]
+    .find((c) => c.season === rel.season - 1
+      && String(c.title || '').replace(/(\s*·\s*season\s+\d+)+\s*$/i, '').trim() === root);
+  return prev && prev.viewers > 0 ? prev.viewers : null;
 }
 
 // Did it make its money back? This is what the industry actually remembers.
@@ -167,7 +188,12 @@ function open(s, rel) {
   // The finished thing is kept ON the release so runTick can close it out properly.
   credit._rel = { rating: rel.rating, worldHit: rel.worldHit, tier: rel.tier, scale: rel.scale,
     salary: rel.salary, finalGross: rel.finalGross || 0, job: rel.job, film };
-  (s.running = s.running || []).push(credit);
+  // BY ID, never by reference. A save is JSON, and JSON.parse hands back a fresh object for
+  // every entry — so a list holding the credit itself pointed at a copy the moment anybody
+  // reloaded, and the run finished on the copy while the credit in the filmography sat at
+  // week four with no score, forever. Any film in cinemas when you closed the game was lost.
+  credit.id = rel.id;
+  (s.running = s.running || []).push(rel.id);
 
   s.lastEvent = film
     ? `"${rel.title}" opened tonight. Now everybody finds out what it is.`
@@ -188,14 +214,17 @@ function open(s, rel) {
 export function runTick(s) {
   const list = s.running || [];
   if (!list.length) return s;
+  const shelf = [...(s.filmography || []), ...(s.discography || [])];
   const still = [];
-  for (const c of list) {
+  for (const id of list) {
+    const c = shelf.find((x) => x.id === id);
+    if (!c) continue;                       // the credit is gone; nothing left to finish
     const r = c._rel || {};
     c.weeks = Math.min(c.weeksTotal, (c.weeks || 0) + 4);
     const share = c.weeks / Math.max(1, c.weeksTotal);
     // Front-loaded, the way opening weekends are: most of it lands early.
     c.boxOffice = Math.round((r.finalGross || 0) * Math.min(1, Math.pow(share, 0.55)));
-    if (c.weeks < c.weeksTotal) { still.push(c); continue; }
+    if (c.weeks < c.weeksTotal) { still.push(id); continue; }
     closeRun(s, c, r);
   }
   s.running = still;
@@ -204,6 +233,7 @@ export function runTick(s) {
 
 function closeRun(s, credit, r) {
   credit.running = false;
+  delete credit._rel;
   credit.boxOffice = r.finalGross || 0;
   credit.score = Number((r.rating / 10).toFixed(1));
   const verdict = verdictOf({ scale: r.scale, rating: r.rating, boxOffice: credit.boxOffice });

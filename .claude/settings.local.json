@@ -57,7 +57,9 @@
       "Bash(\"/c/Program Files/nodejs/node.exe\" probe_rhythm.mjs)",
       "Bash(grep -n \"SHELVES.map\\\\|<div style={{ display: 'flex', gap: 6\" phone/apps/OpenCall.jsx)",
       "Bash(\"/c/Program Files/nodejs/node.exe\" test_casting.mjs)",
-      "Bash(\"/c/Program Files/nodejs/node.exe\" test_health.mjs)"
+      "Bash(\"/c/Program Files/nodejs/node.exe\" test_health.mjs)",
+      "Bash(\"/c/Program Files/nodejs/node.exe\" probe_franchise.mjs)",
+      "Bash(sed -n '/HOW FAR/,$p')"
     ],
     "defaultMode": "acceptEdits",
     "additionalDirectories": [
