@@ -14,7 +14,8 @@
 // there is anybody left who is close to you.
 import { rint, chance, pick } from '../../engine/rng.js';
 import { addTimeline } from '../../engine/timeline.js';
-import { drinkingCoversSlots, level as drinkLevel, dependent, rehabMonthsFor, rehabCostFor } from './drink.js';
+import { drinkingCoversSlots, level as drinkLevel, dependent, rehabMonthsFor, rehabCostFor,
+  answerUltimatum } from './drink.js';
 
 const clamp = (v, a = 0, b = 100) => Math.max(a, Math.min(b, v));
 
@@ -289,20 +290,50 @@ export function rehabCost(s) {
   return Math.max(flat, Math.min(3500000, Math.round((Math.max(0, s.cash || 0) * 0.30) / 1000) * 1000));
 }
 export function inRehab(s) { return !!(s.rehab && s.rehab.left > 0); }
+
+// What walking off a running production costs. A season of television is the same object as
+// a film here, so it is written out the same way — they recast, or they kill the character,
+// and either way the episodes you had not shot are somebody else's now.
+export function breakContract(s) {
+  const p = s.production;
+  if (!p) return null;
+  const owed = Math.max(0, (p.salary || 0) - (p.paid || 0));
+  const series = (p.episodes || 0) > 0;
+  s.production = null;
+  s.respect = clamp((s.respect || 0) - (series ? 7 : 9));
+  addTimeline(s, series
+    ? `Walked off "${p.title}" mid-season. They wrote the character out in two episodes.`
+    : `Walked off "${p.title}". They recast within the week and you never saw the rest of the money.`, true);
+  return { title: p.title, owed, series, monthsLeft: p.monthsLeft || 0 };
+}
 export function enterRehab(s) {
   if (!needsRehab(s)) { s.lastEvent = 'There is nothing a clinic could do for you right now.'; return s; }
   if (inRehab(s)) return s;
   const cost = rehabCost(s), months = rehabMonths(s);
   if ((s.cash || 0) < cost) { s.lastEvent = `That place costs €${cost.toLocaleString()}. You cannot cover it.`; return s; }
   s.cash -= cost;
+  // You cannot check into a clinic for a year and have a film wait for you. canWork already
+  // stops you SIGNING anything while you are in there, but a shoot already running carried
+  // straight on — it kept paying you, and it wrapped, from inside the clinic. Walking out
+  // mid-contract is the real price of going, and it is why you time this between projects.
+  const walked = breakContract(s);
   const both = drinkLevel(s) > 0 && ((s.scarred || 0) > 0 || !!s.depression);
-  s.rehab = { left: months, months, since: (s.year || 0) * 12 + (s.month || 0), both };
+  s.rehab = { left: months, months, since: (s.year || 0) * 12 + (s.month || 0), both, walked };
   addTimeline(s, `Checked into a clinic for ${months} months. €${cost.toLocaleString()}, and nobody is going to hear from you.`, true);
-  s.lastEvent = both
+  s.lastEvent = walked
+    ? `You checked in, and "${walked.title}" carried on without you. ${months} months.`
+    : both
     ? `You checked in. ${months} months — there are two things to undo, and they will not do one without the other.`
     : `You checked in. ${months} months of your life and €${cost.toLocaleString()}.`;
   return s;
 }
+// Saying yes to the person in the kitchen is one action, not two — the answer and the car
+// journey are the same decision, and splitting them would let you agree and then not go.
+export function takeTheUltimatum(s) {
+  answerUltimatum(s, 'clinic');
+  return enterRehab(s);
+}
+
 export function rehabTick(s) {
   if (!inRehab(s)) return s;
   s.rehab.left -= 1;

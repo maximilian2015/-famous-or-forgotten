@@ -59,8 +59,19 @@ export const BANDS = [
   { min: 0, id: 'dry', label: 'Dry', note: '' },
 ];
 export function level(s) { return s.drink?.level || 0; }
-export function band(s) { for (const b of BANDS) if (level(s) >= b.min) return b; return BANDS[BANDS.length - 1]; }
-export function dependent(s) { return level(s) >= DEPENDENT_AT; }
+// Once it has had you it has had you, and the current number does not get to say otherwise.
+// Dependence used to be read straight off the level, and the level falls 0.6 in a dry month
+// — so somebody who had just crossed the line was out of it again in two months, with the
+// withdrawal switching itself off on the way. Crossing sets a flag, and only getting all
+// the way to zero clears it.
+export function hooked(s) { return !!s.drink?.hooked; }
+export function dependent(s) { return level(s) >= DEPENDENT_AT || hooked(s); }
+export function band(s) {
+  const floor = hooked(s) ? DEPENDENT_AT : 0;
+  const lv = Math.max(level(s), floor);
+  for (const b of BANDS) if (lv >= b.min) return b;
+  return BANDS[BANDS.length - 1];
+}
 export function drankThisMonth(s) { return !!s.drink?.thisMonth; }
 
 // Whether tonight buys back the Energy the illness took. It always does — that is the trap.
@@ -80,8 +91,13 @@ export function drinkThrough(s) {
   // It escalates faster once it has a hold, which is the only honest curve for it.
   s.drink.level = clamp(before + (before >= DEPENDENT_AT ? rint(5, 9) : rint(4, 7)));
   s.drink.worstLevel = Math.max(s.drink.worstLevel || 0, s.drink.level);
-  s.mental = clamp((s.mental || 0) + (before >= DEPENDENT_AT ? 1 : 4));
+  // Early on it genuinely lifts the evening, which is the entire reason anybody starts.
+  // Once it has you it stops lifting anything — it only stops the withdrawal, and a
+  // dependent drinker used to sit pinned at a hundred mental for the rest of their life,
+  // which quietly cancelled the biggest pressure in the game.
+  s.mental = clamp((s.mental || 0) + (hooked(s) ? 0 : 4));
   if (before < DEPENDENT_AT && s.drink.level >= DEPENDENT_AT) {
+    s.drink.hooked = true;
     addTimeline(s, 'It stopped being a decision you make in the evening. You need it now to get through a month at all.', true);
     s.bigMoment = {
       id: 'dependent', kind: 'bad', title: 'You need it now',
@@ -114,6 +130,10 @@ export function drinkTick(s) {
   const d = s.drink;
   if (!d) return s;
   const drank = !!d.thisMonth;
+  // Anything that judges this month has to run before the flag is cleared.
+  promiseTick(s);
+  const said = maybeUltimatum(s);
+  if (said) d.pending = said;
   d.thisMonth = false;
 
   // The shoot has to be told here, not in productionTick. The monthly order is drinkTick
@@ -132,6 +152,8 @@ export function drinkTick(s) {
     const bite = d.level >= 78 ? 1.1 : d.level >= DEPENDENT_AT ? 0.7 : 0.35;
     s[key] = clamp((s[key] || 0) - bite * b.bite);
     s.health = clamp((s.health || 0) - (d.level >= DEPENDENT_AT ? 0.8 : 0.3) * b.bite);
+    // And past the point where everyone can see it, it is a depressant and nothing else.
+    if (d.level >= 78) s.mental = clamp((s.mental || 0) - 2.5);
     if (d.level >= DEPENDENT_AT) s.respect = clamp((s.respect || 0) - 0.35 * b.seen);
     if (d.level >= 78 && chance(6 * b.seen)) {
       s.scandal = clamp((s.scandal || 0) + rint(6, 14));
@@ -149,12 +171,143 @@ export function drinkTick(s) {
         addTimeline(s, 'Tried to stop on your own. The month went sideways.', true);
       }
       d.level = clamp(d.level - 0.6);
+      // Six tenths a month. The door out on your own is open and it is a decade long, which
+      // is the honest length of it and the reason the clinic exists.
+      if (d.level <= 0) {
+        const years = Math.round((d.dryMonths || 0) / 12);
+        s.drink = null;
+        addTimeline(s, `${d.dryMonths} months dry, without a clinic and without anybody making you.`);
+        s.lastEvent = 'You did it the long way, on your own, and it took years.';
+        s.bigMoment = { id: 'dryalone', kind: 'good', title: 'You did it on your own',
+          body: `${d.dryMonths} months. No clinic, no announcement, nobody driving you anywhere — just every `
+            + `single month for ${years > 1 ? `${years} years` : 'a year'} deciding it again. Your craft is where `
+            + 'you left it, which is a long way down from where it was, and none of that is coming back by itself. '
+            + 'But it is not going any further down either.' };
+        return s;
+      }
     } else {
       d.level = clamp(d.level - 2.2);
       if (d.level <= 0) { s.drink = null; return s; }
     }
   }
   return s;
+}
+
+// ── the person who notices ────────────────────────────────────────────────────
+// Nobody in this game reacted to any of it. You could drink for four years next to someone
+// who loved you and the only number that moved was your own. So: the closest person to you
+// says something, once, at the point where it stops being an evening habit.
+//
+// If there is nobody close, nobody says it. That is not a gap — it is the answer. What
+// stops you then is the work drying up instead, which is a colder wall and a later one.
+export const ULTIMATUM_AT = DEPENDENT_AT;
+export const GRACE_MONTHS = 6;
+
+// The closest living person, wherever they live in the save. Partner first — they are the
+// one in the house.
+export function closestPerson(s) {
+  const pool = [];
+  if (s.partner) pool.push({ ref: s.partner, id: s.partner.id, where: 'partner', name: s.partner.name, rel: s.partner.relationship || 0 });
+  for (const p of (s.family || [])) if (p.alive !== false) pool.push({ ref: p, id: p.id, where: 'family', name: p.name, rel: p.relationship || 0, relation: p.relation });
+  for (const p of (s.people || [])) if (p.alive !== false) pool.push({ ref: p, id: p.id, where: 'people', name: p.name, rel: p.relationship || 0 });
+  pool.sort((a, b) => b.rel - a.rel);
+  // Somebody you live with notices whatever the number says — a bond drifts −3 every month
+  // you do not spend an evening on it, which meant a partner reliably fell out of "close"
+  // in the eight months the drinking took to escalate, and nobody was ever there to say it.
+  // Anybody else has to actually still be in your life.
+  const best = pool[0];
+  if (!best) return null;
+  if (best.where === 'partner' || best.rel >= 50) return best;
+  return null;
+}
+// Once somebody has sat you down it has to stay THAT person. Re-asking "who is closest"
+// months later meant a partner who drifted under the 55 line during the promise quietly
+// stopped counting, and the promise resolved against nobody — nobody left, nobody forgave.
+export function personById(s, id) {
+  if (!id) return null;
+  if (s.partner && s.partner.id === id) return { ref: s.partner, id, where: 'partner', name: s.partner.name, rel: s.partner.relationship || 0 };
+  for (const p of (s.family || [])) if (p.id === id && p.alive !== false) return { ref: p, id, where: 'family', name: p.name, rel: p.relationship || 0 };
+  for (const p of (s.people || [])) if (p.id === id && p.alive !== false) return { ref: p, id, where: 'people', name: p.name, rel: p.relationship || 0 };
+  return null;
+}
+
+// Raised once, the month you cross the line, and never again — this is not a nag.
+export function maybeUltimatum(s) {
+  const d = s.drink;
+  if (!d || d.ultimatum || level(s) < ULTIMATUM_AT) return null;
+  const who = closestPerson(s);
+  d.ultimatum = who ? 'asked' : 'nobody';
+  if (!who) return null;
+  d.who = who.name; d.whoId = who.id;
+  return {
+    id: 'ultimatum', kind: 'bad', title: `${who.name} is waiting up`,
+    who: who.name,
+    body: `${who.name} is sitting in the kitchen with the light on, and they have clearly been there a while. `
+      + 'They know how many months this has been going on. They are not angry, which is worse, and they have '
+      + 'already said the part they came to say: they cannot keep doing this next to you.',
+  };
+}
+
+// Three answers, and the game holds you to all of them.
+export function answerUltimatum(s, choice) {
+  const d = s.drink; if (!d) return s;
+  const who = personById(s, d.whoId);
+  d.ultimatum = 'answered';
+  d.pending = null;
+  if (choice === 'clinic') {
+    // The UI sends them to the clinic itself; here we only record that they went willingly.
+    d.promised = false;
+    if (who) { who.ref.relationship = clamp((who.ref.relationship || 0) + 8); }
+    s.lastEvent = who ? `${who.name} drove you there and did not let go of your hand in the car park.` : 'You went.';
+    return s;
+  }
+  if (choice === 'promise') {
+    // A promise made to nobody is not a promise, and it must not later cost you a person
+    // who was never in the room.
+    if (!who) { s.lastEvent = 'There was nobody to promise.'; return s; }
+    d.promised = (s.year || 0) * 12 + (s.month || 0) + GRACE_MONTHS;
+    s.lastEvent = who ? `You promised ${who.name}. They wanted to believe it, so they did.` : 'You promised.';
+    addTimeline(s, `Promised ${who ? who.name : 'them'} you would stop.`);
+    return s;
+  }
+  // Told them to leave it alone. They do.
+  if (who) leave(s, who, 'You told them it was not their business. They did not argue. They just went.');
+  else s.lastEvent = 'There was nobody to have that conversation with.';
+  return s;
+}
+
+// A promise you break costs you the person, which is the only way a promise means anything.
+export function promiseTick(s) {
+  const d = s.drink;
+  if (!d || !d.promised) return s;
+  const now = (s.year || 0) * 12 + (s.month || 0);
+  if (d.thisMonth) {
+    const who = personById(s, d.whoId);
+    d.promised = false;
+    if (who) leave(s, who, `${who.name} found the bottle. They did not shout, and they did not stay.`);
+    return s;
+  }
+  if (now >= d.promised) {
+    d.promised = false;
+    const who = personById(s, d.whoId);
+    if (who) {
+      who.ref.relationship = clamp((who.ref.relationship || 0) + 10);
+      addTimeline(s, `Six months dry. ${who.name} has started sleeping properly again.`);
+      s.lastEvent = `Six months. ${who.name} has stopped checking the recycling.`;
+    }
+  }
+  return s;
+}
+
+function leave(s, who, line) {
+  if (who.where === 'partner') s.partner = null;
+  else who.ref.relationship = clamp((who.ref.relationship || 0) - 60);
+  s.mental = clamp((s.mental || 0) - 12);
+  s.lastEvent = line;
+  addTimeline(s, `${who.name} is gone.`, true);
+  s.bigMoment = { id: 'theyleft', kind: 'bad', title: `${who.name} is gone`,
+    body: line + ' The flat is very quiet now, and there is nobody left who is going to ask you '
+      + 'how you are — which means there is nobody left whose asking could have helped.' };
 }
 
 // A month you drank through is a month you were not really there for. The shoot notices.

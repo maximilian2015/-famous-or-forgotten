@@ -10,6 +10,7 @@ import { rint, chance } from '../../engine/rng.js';
 import { addTimeline } from '../../engine/timeline.js';
 import { patienceFor } from '../career/stability.js';
 import { depressionTick, creditTherapy, therapyProgress, THERAPY_FOR_A_SLOT, inRehab } from './depression.js';
+import { level as drinkLevel } from './drink.js';
 
 const clamp = (v, a = 0, b = 100) => Math.max(a, Math.min(b, v));
 
@@ -46,7 +47,14 @@ export function strainBand(v) {
 // actor who has done it four times.
 export function insurability(s) {
   const n = Math.max(0, (s.burnouts || 0) - 1);
-  return Math.max(0.45, 1 - n * 0.14);
+  let v = Math.max(0.45, 1 - n * 0.14);
+  // The colder wall. If there is nobody close enough to sit you down, nothing personal ever
+  // stops you — so what stops you is the phone going quiet. A completion bond on somebody
+  // the crew has started talking about is not something a studio wants to buy.
+  const lv = drinkLevel(s);
+  if (lv >= 78) v *= 0.5;
+  else if (lv >= 45) v *= 0.72;
+  return v;
 }
 export function unreliable(s) { return (s.burnouts || 0) >= 3; }
 export function reputationNote(s) {

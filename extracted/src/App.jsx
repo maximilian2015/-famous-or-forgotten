@@ -33,8 +33,10 @@ import { BigMoment } from './ui/components/BigMoment.jsx';
 import { stabilityBand } from './systems/career/stability.js';
 import { strainBand, burnedOut, unreliable, depressed, seeSomebody } from './systems/life/strain.js';
 import { monthsIn, slotsLost, owedSlots, standingOf, onMeds, TALK, WEEK_TASKS, CHECKPOINTS, EVERY_MONTHS, MIN_MONTHS,
-  answerCheckpoint, inRehab, enterRehab, rehabCost, rehabMonths, needsRehab, therapyProgress, THERAPY_FOR_A_SLOT } from './systems/life/depression.js';
-import { drinkThrough, drankThisMonth, level as drinkLevel, band as drinkBand, dependent, bottlesInHouse } from './systems/life/drink.js';
+  answerCheckpoint, inRehab, enterRehab, rehabCost, rehabMonths, needsRehab, therapyProgress, THERAPY_FOR_A_SLOT,
+  takeTheUltimatum } from './systems/life/depression.js';
+import { drinkThrough, drankThisMonth, level as drinkLevel, band as drinkBand, dependent, bottlesInHouse,
+  answerUltimatum, GRACE_MONTHS } from './systems/life/drink.js';
 // Big moments live on state so a system can raise one; the UI only clears it.
 function clearBigMoment(s) { s.bigMoment = null; return s; }
 const MON = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
@@ -54,6 +56,7 @@ export default function App() {
   if (showHealth) return <HealthScreen g={g} onBack={() => setShowHealth(false)} />;
   if (g.bigMoment) return <BigMoment moment={g.bigMoment} look={lookOf(g)} onClose={() => dispatch(clearBigMoment)} />;
   if (g.depression?.pending) return <CheckpointModal g={g} />;
+  if (g.drink?.pending) return <UltimatumModal g={g} />;
   if (showRoom) return <RoomScreen g={g} onBack={() => setShowRoom(false)} />;
   if (confirmEnd) return <EndLifeModal onCancel={() => setConfirmEnd(false)} onConfirm={() => { import('./systems/meta/legacy.js').then(m => { m.enshrine(g); newLife(); setConfirmEnd(false); }); }} />;
   return (
@@ -367,6 +370,44 @@ const DAYS = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
 // Three different trials in a random order, so nobody solves this once and coasts. The
 // week is a small puzzle; the names are a small memory; the conversation changes shape
 // depending on whether there is anybody left in your life.
+// The one time anybody in your life says it out loud. Three answers, and the game holds you
+// to all three — see systems/life/drink.js.
+function UltimatumModal({ g }) {
+  const p = g.drink?.pending;
+  if (!p) return null;
+  const cost = rehabCost(g), months = rehabMonths(g);
+  const canPay = (g.cash || 0) >= cost;
+  const shooting = !!g.production;
+  const opt = (label, sub, onClick, off) => (
+    <button onClick={onClick} disabled={off} style={{ width: '100%', textAlign: 'left', marginTop: 9,
+      background: off ? 'rgba(120,110,150,.12)' : 'rgba(158,116,255,.14)', border: `1px solid ${off ? 'transparent' : theme.line}`,
+      borderRadius: 12, padding: '11px 13px', cursor: off ? 'default' : 'pointer', color: off ? '#6b6390' : theme.text }}>
+      <div style={{ fontSize: 13.5, fontWeight: 800 }}>{label}</div>
+      <div style={{ fontSize: 11.5, color: theme.muted, marginTop: 3, lineHeight: 1.45 }}>{sub}</div>
+    </button>);
+  return (
+    <div style={{ position: 'fixed', inset: 0, background: 'rgba(8,5,20,.96)', zIndex: 60, display: 'flex',
+      alignItems: 'center', justifyContent: 'center', padding: 16, color: theme.text, fontFamily: 'system-ui, -apple-system, sans-serif' }}>
+      <div style={{ maxWidth: 380, width: '100%', background: theme.panel, border: `1px solid ${theme.bad}55`, borderRadius: 20, padding: '22px 20px 18px' }}>
+        <div style={{ fontSize: 11, fontWeight: 900, letterSpacing: '.18em', textTransform: 'uppercase', color: theme.bad, marginBottom: 12, textAlign: 'center' }}>
+          The light is still on
+        </div>
+        <div style={{ fontSize: 17, fontWeight: 900, marginBottom: 8 }}>{p.title}</div>
+        <div style={{ fontSize: 12.5, color: theme.muted, lineHeight: 1.6 }}>{p.body}</div>
+        {opt(canPay ? `Go with them · €${cost.toLocaleString()}` : `You cannot cover the clinic · €${cost.toLocaleString()}`,
+          canPay ? `${months} months, starting tonight.${shooting ? ` "${g.production.title}" carries on without you.` : ''}`
+            : 'They looked it up too. Neither of you can find the money.',
+          () => dispatch(takeTheUltimatum), !canPay)}
+        {opt('Promise them you will stop',
+          `No drinking for ${GRACE_MONTHS} months. If they find a bottle before then, they go — and they will not ask again.`,
+          () => dispatch(answerUltimatum, 'promise'))}
+        {opt('Tell them to leave it alone',
+          'They will. Tonight.',
+          () => dispatch(answerUltimatum, 'refuse'))}
+      </div>
+    </div>);
+}
+
 function CheckpointModal({ g }) {
   const p = g.depression?.pending;
   const [plan, setPlan] = useState(Array(7).fill(null));
