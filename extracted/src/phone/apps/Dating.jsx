@@ -76,18 +76,26 @@ function Who({ p, sub }) {
 // Two ways to have one, and the second is not a consolation prize — it is slower, it costs
 // money, and the child arrives already a person. See systems/life/children.js.
 function Children({ g, spouse }) {
-  const odds = fertility(g, spouse);
-  const note = fertilityNote(g, spouse);
+  const odds = spouse ? fertility(g, spouse) : 0;
+  const note = spouse ? fertilityNote(g, spouse) : '';
   const cost = adoptCost(g);
   const app = g.adoption;
+  const young = (g.ageY || 0) < 21;
+  if (young) return null;
   return (<div>
     <div style={{ fontSize: 11, fontWeight: 900, letterSpacing: '.09em', textTransform: 'uppercase', color: theme.muted, margin: '4px 0 7px' }}>
       Children {livingChildren(g).length ? `· ${livingChildren(g).length}` : ''}
     </div>
-    <button onClick={() => dispatch(tryForBaby)} disabled={onCooldown(g, 'baby') || odds <= 0} style={btn(onCooldown(g, 'baby') || odds <= 0)}>
+    {spouse && <button onClick={() => dispatch(tryForBaby)} disabled={onCooldown(g, 'baby') || odds <= 0} style={btn(onCooldown(g, 'baby') || odds <= 0)}>
       {odds <= 0 ? 'Not on your own' : onCooldown(g, 'baby') ? 'Give it a month' : `Try for a baby · ${odds}%`}
-    </button>
+    </button>}
     {note && <div style={{ fontSize: 11.5, color: odds <= 0 ? theme.bad : theme.gold, marginTop: 6, lineHeight: 1.45 }}>{note}</div>}
+    {/* Adopting on your own is harder and it is allowed — 52% against 78%. It was written
+        that way and then only ever rendered inside the married branch, so nobody single
+        could reach the button at all. */}
+    {!spouse && <div style={{ fontSize: 11.5, color: theme.muted, marginBottom: 7, lineHeight: 1.5 }}>
+      They would rather there were two of you. They do not require it.
+    </div>}
     {app ? (
       <div style={{ ...card, marginTop: 9 }}>
         <div style={{ fontSize: 13, fontWeight: 800 }}>The application is in</div>
@@ -189,6 +197,7 @@ export function Dating({ g }) {
       </div>
       <div style={card}><Who p={p} sub={`${p.job}, ${p.age}`} /></div>
       <Evenings g={g} person={p} tag="partner" />
+      <Children g={g} spouse={null} />
       {!p.livingTogether && <button onClick={() => dispatch(moveInTogether)} disabled={!move.ok} style={{ ...btn(!move.ok), marginBottom: 8 }}>
         {move.ok ? 'Ask them to move in' : `Move in together · needs ${MOVE_IN_AT} closeness`}
       </button>}
@@ -206,6 +215,7 @@ export function Dating({ g }) {
       but they are all looking for something different, and one of them is looking for your name.
     </div>
     {!pool.length && <div style={{ fontSize: 12.5, color: theme.muted, textAlign: 'center', padding: 22 }}>Nobody new right now. Check back later.</div>}
+    <Children g={g} spouse={null} />
     {pool.map((p) => (<div key={p.id} style={card}>
       <Who p={p} sub={`${p.job}, ${p.age}${p.dates ? ` · ${p.dates} evening${p.dates > 1 ? 's' : ''} so far` : ''}`} />
       <Evenings g={g} person={p} tag={'date:' + p.id} />

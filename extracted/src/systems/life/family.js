@@ -3,6 +3,7 @@ import { onCooldown, markUsed } from '../../engine/cooldown.js';
 import { addTimeline } from '../../engine/timeline.js';
 import { homeBond } from '../../engine/economy.js';
 import { childYear } from './children.js';
+import { meansOf } from './dating.js';
 const clamp = (v) => Math.max(0, Math.min(100, v));
 const MFIRST = ['James','Michael','David','Robert','Daniel','Andrew','Thomas','Marcus','Viktor','Sergei'];
 const FFIRST = ['Mary','Linda','Susan','Karen','Elena','Anna','Sofia','Olga','Nina','Claire'];
@@ -49,8 +50,12 @@ export function makeFamily(s, options = {}) {
 export function inheritFrom(s, p) {
   const range = s.familyEstate || [1500, 11000];
   const isParent = p.relation === 'Mother' || p.relation === 'Father';
+  // A husband or wife is not a distant relative and their estate is not a lottery ticket
+  // scaled off the family you were born into. It is their money, it comes to you, and how
+  // much of it there was depends on what they had when you married them.
+  if (p.relation === 'Spouse') return inheritFromSpouse(s, p);
   const scale = isParent ? 1 : String(p.relation).startsWith('Grand') ? 0.35 : 0;
-  if (scale === 0) return null;   // siblings and children leave you nothing but the memory
+  if (scale === 0) return null;   // siblings, children and exes leave you nothing but the memory
   // A child does not inherit. Whatever there was goes to the adults who are raising you,
   // which is the same rule that starts you at zero at birth — and it stops a five-year-old
   // being stopped mid-game by a full-screen modal about €59.
@@ -82,6 +87,27 @@ export function inheritFrom(s, p) {
   return { cash, home, note };
 }
 
+// What a marriage leaves behind. Closeness barely matters here — you were married, the law
+// does not ask whether it was a good one — but a prenup cuts both ways and cuts here too.
+function inheritFromSpouse(s, p) {
+  const had = meansOf(p).covers;
+  const years = Math.max(0, (((s.year || 0) * 12 + (s.month || 0)) - (p.marriedOn || 0)) / 12);
+  // What they were still holding after a life of it, plus what a life of it built together.
+  const own = Math.round(had * (p.prenup ? 0.35 : 1) * (0.5 + Math.random() * 0.6));
+  const shared = Math.round(Math.min(years, 40) * rint(900, 4200));
+  const cold = (p.relationship || 0) < -20;
+  if (cold) {
+    return { cash: 0, home: false,
+      note: `${p.name} changed the will at some point and did not mention it. You find out in an office, with a stranger reading it to you.` };
+  }
+  const cash = own + shared;
+  s.cash = (s.cash || 0) + cash;
+  return { cash, home: false,
+    note: cash > 0
+      ? `${p.name} left you everything. €${cash.toLocaleString()}, and a flat full of things you now have to decide about.`
+      : `${p.name} left you everything, which was nothing. You knew that. It was never the point.` };
+}
+
 export function familyYear(s) {
   if (!s.family) return;
   const events = [];
@@ -111,7 +137,10 @@ export function familyYear(s) {
     if (chance(deathChance)) {
       p.alive = false; p.deathAge = p.age;
       events.push(`💔 ${p.name}, your ${p.relation.toLowerCase()}, has passed away at ${p.age}.`);
-      s.mental = clamp((s.mental || 50) - (p.relation === 'Mother' || p.relation === 'Father' ? 15 : 8));
+      // Not all of these are the same size, and burying a child is not an eight.
+      const grief = p.relation === 'Child' ? 34 : p.relation === 'Spouse' ? 24
+        : (p.relation === 'Mother' || p.relation === 'Father') ? 15 : 8;
+      s.mental = clamp((s.mental || 50) - grief);
       // Whether anything comes to you depends on how close you actually were.
       const left = inheritFrom(s, p);
       if (left && left.note) {

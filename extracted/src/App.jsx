@@ -870,6 +870,24 @@ function PersonSheet({ g, id, onClose }) {
           </div>
         </div>
       </div>
+      {/* A child who went into the business has a career of their own, and watching it is
+          most of the point of having raised one. See systems/life/children.js. */}
+      {p.path === 'industry' && (
+        <Card style={{ margin: '12px 0', borderColor: 'rgba(255,209,102,.3)' }}>
+          <div style={{ fontSize: 12, fontWeight: 800, color: theme.gold }}>
+            {(p.ownFame || 0) >= 70 ? 'A star in their own right'
+              : (p.ownFame || 0) >= 40 ? 'Working, and people know the name'
+              : 'Going up for parts'}
+          </div>
+          <div style={{ fontSize: 11.5, color: theme.muted, marginTop: 4, lineHeight: 1.5 }}>
+            {(p.ownFame || 0) >= 70
+              ? 'They get asked about you in interviews and they change the subject.'
+              : (p.ownFame || 0) >= 40
+              ? 'Far enough along that it is their work being discussed, not whose child they are.'
+              : 'Every casting director in the city knows whose child they are, which is the problem and the reason.'}
+          </div>
+          <div style={{ fontSize: 11, color: theme.muted, marginTop: 6 }}>Their fame · {Math.round(p.ownFame || 0)}</div>
+        </Card>)}
       {g.lastEvent && g.lastEvent !== before && <Card style={{ margin: '12px 0', borderColor: 'rgba(255,209,102,.3)' }}><div style={{ fontSize: 13, lineHeight: 1.5 }}>{g.lastEvent}</div></Card>}
       {GROUPS.map((grp) => { const items = list.filter((a) => a.group === grp.id); if (!items.length) return null;
         return (<div key={grp.id} style={{ marginTop: 14 }}>

@@ -49,7 +49,10 @@ export function mortalityCheck(s) {
   // If it was the drinking that took the health, the obituary has to say so. Dying at
   // fifty-one "after a long illness" when the game has spent five years telling you what
   // the illness was is the one ending it must not be coy about.
-  const drunk = (s.drink?.worstLevel || 0) >= 45 && h < 35;
+  // The threshold has to match the one that actually caused the death. At h < 35 a drunk
+  // who died on the 1.5% roll at health 40 — which is the health-driven roll, triggered by
+  // the drinking — got filed under "after a long illness".
+  const drunk = (s.drink?.worstLevel || 0) >= 45 && h < 45;
   die(s, drunk ? pick(CAUSES_DRINK) : h < 30 ? pick(CAUSES_ILL) : pick(CAUSES_OLD));
   return true;
 }
