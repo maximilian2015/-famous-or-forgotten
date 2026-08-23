@@ -65,6 +65,21 @@ export function quoteFor(s, medium) {
 }
 // True when the medium will not have you at any price yet.
 export function shutOutOf(s, medium) { return quoteBand(s, medium) === null; }
+
+// The most anybody at your standing could ever be paid for a picture. Your quote was
+// written in five places and clamped in none of them: a smash multiplied it by 1.6, a
+// nomination by 1.25 and an Asker by 1.85, each one compounding on the last, so a long
+// career ended up quoting ten BILLION euros a film. It is a real number that people read,
+// so it has to mean something. Twice the top of what your tier commands, and no further.
+export function quoteCeiling(s) {
+  const tiers = ['film_tentpole', 'film_studio', 'film_indie'];
+  for (const m of tiers) { const b = quoteBand(s, m); if (b) return Math.round(b[1] * 2); }
+  return 250000;
+}
+export function setQuote(s, value) {
+  s.quote = Math.min(Math.round(value || 0), quoteCeiling(s));
+  return s.quote;
+}
 export function setHousing(s, key) {
   if (!HOUSING[key]) return s;
   if (!s.hasApartment) { s.lastEvent = 'You still live with your parents.'; return s; }

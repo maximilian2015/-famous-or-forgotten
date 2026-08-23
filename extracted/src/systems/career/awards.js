@@ -7,6 +7,7 @@
 // sells. That single opposition is what makes choosing a project a decision rather than
 // an arithmetic problem.
 import { rint, chance, pick } from '../../engine/rng.js';
+import { setQuote } from '../meta/status.js';
 import { addTimeline } from '../../engine/timeline.js';
 
 const clamp = (v, a = 0, b = 100) => Math.max(a, Math.min(b, v));
@@ -202,7 +203,7 @@ export function runNominations(s) {
   s.awards.pending = pending;
   s.awards.nominations = (s.awards.nominations || []).concat(pending.map((p) => ({ title: p.title, category: p.category, year })));
   // A nomination is a title you keep. It moves what you can ask for, immediately.
-  s.quote = Math.round((s.quote || 0) * 1.25) || s.quote;
+  setQuote(s, (s.quote || 0) * 1.25 || s.quote);
   s.respect = clamp((s.respect || 0) + 6 * headroom(112, s.respect));
   s.fame = clamp((s.fame || 0) + 3 * headroom(118, s.fame));
   const labels = pending.map((p) => CATEGORIES.find((c) => c.id === p.category)?.label || p.category);
@@ -258,7 +259,7 @@ export function ceremonyTick(s) {
     // The first version of this gave +8 and called it "not about tickets", which was
     // wrong: winning one moves you into the room where the A-list is, whatever your
     // box office says. So it lifts you toward the top of Star even from nowhere.
-    s.quote = Math.round((s.quote || 0) * 1.85) || s.quote;
+    setQuote(s, (s.quote || 0) * 1.85 || s.quote);
     s.respect = clamp((s.respect || 0) + 15);
     s.fame = clamp(Math.max((s.fame || 0) + 18, Math.min(70, (s.fame || 0) + 34)));
     s.peakFame = Math.max(s.peakFame || 0, s.fame);

@@ -43,16 +43,24 @@ export function treatmentCost(s, ill) {
 // Immunity IS health: at 90 you shrug things off, at 25 you catch everything going.
 // One definition, used by the monthly roll AND by the number shown on the health screen —
 // the two used to be written out separately and had already drifted apart.
+// Being run down makes you ill. It must not make you ill so much more that there is no way
+// back — which is what `100 - health * 1.05` did: at 60 health it was a 44% chance EVERY
+// month of an illness that drains 3 a month for three months, against a recovery of 1.3.
+// Every point of health you lost bought you more illness, which cost more health. Nobody
+// escaped it. Simulated over thirty careers, thirty of them died, the median at 38, with
+// health between 4 and 8 — while the same character doing nothing at all sat at 96 forever.
+// The slope is gentle now and the whole thing is capped.
 export function infectionOdds(s) {
   const h = s.health || 100;
-  let odds = h <= 15 ? 99 : Math.max(2, 100 - h * 1.05);
+  let odds = Math.max(2, (100 - h) * 0.42);
   if (s.diet === 'fast') odds += 6;
   if (s.diet === 'fine') odds -= 5;
   if (s.gym) odds -= 5;
   if ((s.ageY || 0) >= 55) odds += 5;
   if ((s.ageY || 0) >= 70) odds += 8;
   odds += homeIllness(s);   // thin walls and damp are a reason to be ill
-  return clamp(odds);
+  // A hard ceiling, so no combination of bad luck turns into a month-after-month certainty.
+  return Math.max(0, Math.min(48, odds));
 }
 
 // What a body of this age can hold when nothing is wrong with it. Recovery runs up to
@@ -102,8 +110,14 @@ export function healthTick(s) {
     // back, and since being unhealthy is what makes you ill, one bad run started a
     // spiral nobody escaped. Simulated over three hundred lives, ageing alone got people
     // to seventy-two and ageing with illness killed them at forty.
-    if ((s.health || 0) < naturalCeiling(s)) {
-      s.health = clamp(Math.min(naturalCeiling(s), (s.health || 0) + 1.3 + ((s.mental || 50) > 70 ? 0.4 : 0)));
+    // And the further below your ceiling you are, the faster the body climbs back — which is
+    // both true and the other half of breaking the spiral. A flat +1.3 could not out-earn
+    // the illnesses that being low health invited, so low health was a one-way door.
+    const roof = naturalCeiling(s);
+    if ((s.health || 0) < roof) {
+      const gap = roof - (s.health || 0);
+      const back = 1.3 + Math.min(1.9, gap * 0.05) + ((s.mental || 50) > 70 ? 0.4 : 0);
+      s.health = clamp(Math.min(roof, (s.health || 0) + back));
     }
     const catchable = ((s.year || 0) * 12 + (s.month || 0)) >= (s.immuneUntil || 0);
     if (catchable && chance(infectionOdds(s))) {

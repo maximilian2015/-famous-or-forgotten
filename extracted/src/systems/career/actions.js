@@ -2,10 +2,23 @@ import { addTimeline } from '../../engine/timeline.js';
 import { rint, chance } from '../../engine/rng.js';
 import { markRested } from '../life/strain.js';
 const clamp = (v) => Math.max(0, Math.min(100, v));
+// What teaching can take you to. It has to be earned on real jobs, because the alternative
+// is what this used to do: start every actor at a ceiling of 50 and count a deodorant
+// commercial as worth as much as a lead — which put a player at acting 100 by twenty-four,
+// with the whole training system finished before the career had started.
+//
+// A voice session is not a masterclass. Minor work is the same list the Hall of Fame
+// already refuses to engrave. See systems/meta/legacy.js.
+const MINOR = /^(Brand Campaign|Commercial|Jingle|Brand Song|TV Extra|Voice Session|Open Mic|Festival Slot|Session Work|Music Video)$/;
+const isMinor = (c) => c.minor === true || (c.minor === undefined && MINOR.test(c.type || ''));
 export function skillCap(s) {
-  const credits = (s.filmography || []).length + (s.discography || []).length;
-  const hits = [...(s.filmography || []), ...(s.discography || [])].filter((x) => (x.rating || 0) >= 70).length;
-  return Math.min(100, 50 + credits * 6 + hits * 4);
+  const all = [...(s.filmography || []), ...(s.discography || [])];
+  const real = all.filter((c) => !isMinor(c));
+  const hits = real.filter((x) => (x.rating || 0) >= 70).length;
+  // Minor work counts for a little and stops counting quickly — you learn something on your
+  // fourth commercial, and nothing at all on your fortieth.
+  const minor = Math.min(6, all.length - real.length);
+  return Math.min(100, 40 + real.length * 5 + hits * 5 + minor);
 }
 // Everything that exists elsewhere has been moved out and must NOT come back here:
 // askmoney is on the parent's card in People; networking is Career → Events; practice is

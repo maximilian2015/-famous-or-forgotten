@@ -51,7 +51,9 @@
       "Bash(\"/c/Program Files/nodejs/node.exe\" test_love.mjs)",
       "Bash(\"/c/Program Files/nodejs/node.exe\" test_dynasty.mjs)",
       "Bash(\"/c/Program Files/nodejs/node.exe\" test_family_sweep.mjs)",
-      "Bash(\"/c/Program Files/nodejs/node.exe\" test_release.mjs)"
+      "Bash(\"/c/Program Files/nodejs/node.exe\" test_release.mjs)",
+      "Bash(\"/c/Program Files/nodejs/node.exe\" playtest.mjs)",
+      "Bash(\"/c/Program Files/nodejs/node.exe\" playtest_death.mjs)"
     ],
     "defaultMode": "acceptEdits",
     "additionalDirectories": [

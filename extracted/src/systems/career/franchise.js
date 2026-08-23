@@ -4,6 +4,7 @@
 // Nothing here existed: a series wrapped and vanished, a film never had a sequel.
 import { rint, chance, pick } from '../../engine/rng.js';
 import { addTimeline } from '../../engine/timeline.js';
+import { quoteBand } from '../meta/status.js';
 
 // How long a format can plausibly run. Daytime soaps run for decades; prestige
 // streaming shows are written to end. This is the ceiling, not the expectation —
@@ -97,6 +98,27 @@ export function sequelOdds(rating, part, obliged, verdict = null) {
 }
 export function sequelRaise(part) { return part === 2 ? 1.6 : part === 3 ? 2.2 : 2.6; }
 
+// The ceiling on any of this. Franchise money is real money — a fourth outing pays far more
+// than the first — but it is still bounded by what somebody of your standing can command,
+// and it was not bounded by anything at all: the raise multiplied the PREVIOUS part's fee,
+// so part 4 paid nine times the first, part 8 four hundred times, and part 12 nineteen
+// thousand times. A €5m picture became a €95bn one and the player ended a career on a
+// billion euros. Every raise is measured against the FIRST part now, and capped here.
+// A fourth outing pays a premium over the top of your band. Half again, not triple — the
+// top of the icon band is already €80m for a tentpole, and tripling that put a career on
+// nine figures a picture.
+const FRANCHISE_PREMIUM = 1.5;
+function ceilingFor(s, medium, share = 1) {
+  const band = quoteBand(s, medium);
+  if (!band) return Infinity;
+  return Math.round(band[1] * share * FRANCHISE_PREMIUM);
+}
+function mediumOf(p) {
+  if (p.episodes || p.season) return p.scale === 'prestige' ? 'tv_prestige' : 'tv_network';
+  return p.tier === 'tentpole' ? 'film_tentpole' : p.scale === 'blockbuster' ? 'film_studio'
+    : p.scale === 'feature' ? 'film_studio' : 'film_indie';
+}
+
 // Called at the end of every production. Returns an offer to push, or null.
 export function maybeContinue(s, credit, p) {
   const isSeries = !!p.episodes || !!p.season;
@@ -114,7 +136,10 @@ export function maybeContinue(s, credit, p) {
     const nextSeason = season + 1;
     const raise = seasonRaise(nextSeason, credit.rating, previousRating(s, root, season));
     const pct = Math.round((raise - 1) * 100);
-    const episodeFee = Math.round((p.episodeFee || Math.round(p.salary / Math.max(1, p.episodes || 1))) * raise);
+    // Television does compound season on season, and it still cannot outrun what somebody
+    // of your standing is paid — twelve renewals used to reach numbers with no meaning.
+    const wasFee = p.episodeFee || Math.round(p.salary / Math.max(1, p.episodes || 1));
+    const episodeFee = Math.min(Math.round(wasFee * raise), ceilingFor(s, mediumOf(p)));
     const episodes = Math.max(4, Math.round((p.episodes || 8) * (0.9 + Math.random() * 0.3)));
     addTimeline(s, `"${root}" was renewed for season ${nextSeason}.`);
     return {
@@ -123,7 +148,7 @@ export function maybeContinue(s, credit, p) {
       kind: 'renewal', seriesTitle: root, season: nextSeason, scale: p.scale,
       stability: Math.max(82, p.stability || 82),
       projectTitle: `${root} · season ${nextSeason}`, role: p.role, type: p.type, genre: p.genre,
-      episodes, episodeFee, salary: episodeFee * episodes,
+      episodes, episodeFee, salary: episodeFee * episodes, baseSalary: p.baseSalary || p.salary,
       months: Math.max(2, Math.round((p.months || 4) * (0.9 + Math.random() * 0.25))),
       prestigeScore: Math.min(96, (p.prestigeScore || 45) + rint(2, 7)), tier: p.tier || 'lead',
       fame: p.tier === 'tentpole' ? 9 : 5, deadline: rint(2, 3),
@@ -139,14 +164,17 @@ export function maybeContinue(s, credit, p) {
   const odds = sequelOdds(credit.rating, part, obliged, credit.verdict);
   if (!chance(odds)) return null;
   const nextPart = part + 1;
-  const salary = Math.round((obliged ? p.salary : p.salary * sequelRaise(nextPart)));
+  // Against the first part, never against the last one. See ceilingFor above.
+  const first = p.baseSalary || p.salary;
+  const raw = obliged ? p.salary : Math.round(first * sequelRaise(nextPart));
+  const salary = Math.min(raw, ceilingFor(s, mediumOf(p)));
   addTimeline(s, `A sequel to "${p.title}" is going ahead.`);
   return {
     id: 'seq' + Date.now() + Math.floor(Math.random() * 1000),
     kind: 'sequel', part: nextPart, optioned: p.optioned, optionParts: p.optionParts, scale: p.scale,
     stability: Math.max(85, p.stability || 85),   // nobody defunds a sequel to something that made money
     projectTitle: sequelTitle(p.title, nextPart), role: p.role, type: p.type, genre: p.genre,
-    salary, months: Math.max(2, Math.round((p.months || 5) * (0.95 + Math.random() * 0.25))),
+    salary, baseSalary: first, months: Math.max(2, Math.round((p.months || 5) * (0.95 + Math.random() * 0.25))),
     prestigeScore: Math.max(15, (p.prestigeScore || 50) - rint(2, 9)),   // sequels rarely out-prestige the first
     tier: p.tier || 'lead', fame: p.tier === 'tentpole' ? 9 : 5, deadline: rint(2, 3),
     note: obliged

@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { theme } from '../../ui/theme.js';
 import { dispatch, getState } from '../../state/store.js';
-import { refreshCastingPool, auditionFor, castingChance, reach, SHELVES, SHELF_BLURB } from '../../systems/career/castings.js';
+import { refreshCastingPool, auditionFor, castingChance, reach, SHELVES, SHELF_BLURB, rerollBoard, canReroll } from '../../systems/career/castings.js';
 import { TimingBar } from '../../ui/components/TimingBar.jsx';
 import { GridRisk } from '../../ui/components/GridRisk.jsx';
 import { useAccent } from '../../ui/appTheme.js';
@@ -172,6 +172,6 @@ export function OpenCall({ g, ocTab, setOcTab, teenMode }) {
         {!locked && (() => { const off = !canWork(g).ok; const dead = off || (g.ap||0)<=0;
           return (<div style={{ marginTop: 8 }}><button onClick={() => openAudition(c)} disabled={dead} style={{ width: '100%', border: 'none', borderRadius: 10, padding: '9px', fontSize: 12.5, fontWeight: 800, cursor: dead?'default':'pointer', background: dead?'rgba(120,110,150,.15)':`linear-gradient(135deg,${theme.accent2},${theme.accent})`, color: dead?'#6b6390':'#fff' }}>{off ? 'Signed off' : 'Audition'}</button></div>); })()}
       </div>); })}
-    <div style={{ marginTop: 4 }}><button onClick={() => dispatch((s) => { refreshCastingPool(s, true); return s; })} style={{ width: '100%', border: 'none', borderRadius: 10, padding: '9px', fontSize: 12.5, fontWeight: 800, cursor: 'pointer', background: 'rgba(158,116,255,.16)', color: '#d9cffa' }}>Refresh listings</button></div>
+    <div style={{ marginTop: 4 }}><button onClick={() => dispatch(rerollBoard)} disabled={!canReroll(g)} style={{ width: '100%', border: 'none', borderRadius: 10, padding: '9px', fontSize: 12.5, fontWeight: 800, cursor: canReroll(g) ? 'pointer' : 'default', background: canReroll(g) ? 'rgba(158,116,255,.16)' : 'rgba(120,110,150,.15)', color: canReroll(g) ? '#d9cffa' : '#6b6390' }}>{canReroll(g) ? 'Go through the listings again' : 'You have seen everything going this month'}</button></div>
   </div>);
 }

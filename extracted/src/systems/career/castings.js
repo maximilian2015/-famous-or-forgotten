@@ -1,5 +1,6 @@
 import { rint, chance, pick } from '../../engine/rng.js';
 import { addTimeline } from '../../engine/timeline.js';
+import { onCooldown, markUsed } from '../../engine/cooldown.js';
 import { earn, markReleased } from '../../engine/economy.js';
 import { GENRES } from '../meta/news.js';
 import { addGenreXP, genreBonus } from './genres.js';
@@ -112,6 +113,18 @@ export function boardSize(s) {
   if (age <= peakEnd) return 6;
   return Math.max(2, Math.round(6 - 4 * Math.min(1, (age - peakEnd) / 28)));
 }
+// Rerolling the whole board cost nothing and had no limit, so the correct play was to press
+// it until something with ninety per cent odds appeared — every month, for a whole career.
+// The board is what the board is this month. It refills on its own as things expire.
+export function canReroll(s) { return !onCooldown(s, 'castingReroll'); }
+export function rerollBoard(s) {
+  if (!canReroll(s)) { s.lastEvent = 'You have already been through everything going this month.'; return s; }
+  markUsed(s, 'castingReroll');
+  refreshCastingPool(s, true);
+  s.lastEvent = 'You went back through the listings. Some of it is new.';
+  return s;
+}
+
 export function refreshCastingPool(s, force) {
   s.castingPool = s.castingPool || [];
   const want = boardSize(s);

@@ -7,6 +7,7 @@
 // A film can be adored and lose money, or panned and take a billion. They pull your
 // career in different directions, and that is the whole point of having both.
 import { rint } from '../../engine/rng.js';
+import { setQuote } from '../meta/status.js';
 import { addTimeline } from '../../engine/timeline.js';
 import { markReleased } from '../../engine/economy.js';
 import { hotGenre } from '../meta/news.js';
@@ -101,7 +102,7 @@ export function scheduleRelease(s, credit, p) {
     // the shoot has to keep enough of itself alive to be asked that question later.
     job: {
       title: p.title, seriesTitle: p.seriesTitle, role: p.role, type: p.type, genre: p.genre, salary: p.salary,
-      months: p.months, episodes: p.episodes || 0, episodeFee: p.episodeFee || 0,
+      months: p.months, episodes: p.episodes || 0, episodeFee: p.episodeFee || 0, baseSalary: p.baseSalary || p.salary,
       season: p.season || 0, part: p.part || 1, tier: p.tier, scale: p.scale, stability: p.stability,
       prestigeScore: p.prestigeScore, optioned: !!p.optioned, optionParts: p.optionParts || 0,
     },
@@ -165,7 +166,7 @@ function open(s, rel) {
   s.respect = clamp((s.respect || 0) + (respectGain > 0 ? respectGain * headroom(112, s.respect) : respectGain));
 
   // A commercial hit raises what you can ask for next time.
-  if (film && verdict === 'smash') s.quote = Math.max(s.quote || 0, Math.round((rel.salary || 0) * 1.6));
+  if (film && verdict === 'smash') setQuote(s, Math.max(s.quote || 0, (rel.salary || 0) * 1.6));
 
   const money = film
     ? `€${(rel.boxOffice / 1000000).toFixed(rel.boxOffice >= 100000000 ? 0 : 1)}m at the box office`

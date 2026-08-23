@@ -1,4 +1,5 @@
 import { rint, chance, pick } from '../../engine/rng.js';
+import { setQuote } from "../meta/status.js";
 import { addTimeline } from '../../engine/timeline.js';
 import { earn } from '../../engine/economy.js';
 import { hotGenre } from '../meta/news.js';
@@ -32,6 +33,9 @@ export function startProduction(s, offer) {
     offerId: offer.id, title: offer.projectTitle.replace('⭐ ', ''), role: offer.role, type: offer.type,
     genre: offer.genre, salary: offer.salary, months: offer.months, monthsLeft: offer.months,
     prestigeScore: offer.prestigeScore, tier: offer.tier, campaign: !!offer.campaign,
+    // What part one was paid. Every sequel raise is measured against THIS, not against
+    // whatever the last one happened to earn. See systems/career/franchise.js.
+    baseSalary: offer.baseSalary || offer.salary,
     // Older offers were written before releases existed and carry no scale of their own.
     scale: offer.scale || (offer.episodes ? (offer.tier === 'lead' ? 'recurring' : 'episode')
       : offer.tier === 'tentpole' ? 'blockbuster' : offer.tier === 'lead' ? 'feature' : 'indie'),
@@ -51,7 +55,7 @@ export function startProduction(s, offer) {
   // Your quote is the biggest fee you have ever commanded for a picture, and it is set
   // by taking the job — not only by winning an argument about it. Television is priced
   // per episode and is a different currency, so it does not move this number.
-  if (!s.production.episodes) s.quote = Math.max(s.quote || 0, s.production.salary || 0);
+  if (!s.production.episodes) setQuote(s, Math.max(s.quote || 0, s.production.salary || 0));
   // Every job costs something before a single day is shot: the prep, the travel, the
   // press, the moving of your whole life onto somebody's schedule. Charging only by the
   // month meant ten two-month films were cheaper than four five-month ones, and an actor
