@@ -249,10 +249,26 @@ function closeRun(s, credit, r) {
   // A flop cuts what the film does for your name, but it can never take your name
   // backwards: a bad film still put your face on a screen.
   else if (verdict === 'bomb') fame = Math.max(1, fame - 3);
-  const headroom = (limit, cur) => Math.max(0.16, 1 - (cur || 0) / limit);
-  s.fame = clamp((s.fame || 0) + fame * headroom(118, s.fame));
+  // The last stretch is the whole point of the ladder and it was the cheapest part of it.
+  // A limit of 118 with a floor of 0.16 meant an A-lister still banked a sixth of every
+  // credit forever: measured across 25 careers, A-list arrived at a median age of 33 and
+  // Icon at 36, and ten of the twenty-five made Icon. In life almost nobody does, and the
+  // ones who do are twenty years in. Above seventy this now costs several times what it
+  // did, and a small credit is worth almost nothing at the top — which is true: nobody
+  // becomes an icon by working a lot, they become one by being in something enormous.
+  // Getting known is not the hard part and must not become it — a single steep curve pushed
+  // "Known Face" down to five careers in twenty-five, which is nonsense: anybody who works
+  // for twenty years becomes a face people recognise. The wall belongs between Star and
+  // A-list, and again between A-list and Icon.
+  const headroom = (cur) => {
+    const f = cur || 0;
+    if (f < 55) return 1 - f / 130;                 // the climb to Star is ordinary work
+    return Math.max(0.03, 0.577 * Math.pow(Math.max(0, (104 - f) / 49), 1.9));
+  };
+  s.fame = clamp((s.fame || 0) + fame * headroom(s.fame));
   const respectGain = r.rating >= 85 ? 5 : r.rating >= 70 ? 2 : r.rating < 45 ? -4 : 0;
-  s.respect = clamp((s.respect || 0) + (respectGain > 0 ? respectGain * headroom(112, s.respect) : respectGain));
+  const soft = (limit, cur) => Math.max(0.16, 1 - (cur || 0) / limit);
+  s.respect = clamp((s.respect || 0) + (respectGain > 0 ? respectGain * soft(112, s.respect) : respectGain));
   if (film && verdict === 'smash') setQuote(s, Math.max(s.quote || 0, (r.salary || 0) * 1.6));
 
   // The gross means nothing on its own — "a billion" is only a triumph next to what it cost.

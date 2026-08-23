@@ -12,6 +12,16 @@ export function agingTick(s) {
   if ((s.mental || 50) < 30) decline += 1;                       // burnout wears you down
   if (['flat', 'house', 'penthouse'].includes(s.housing)) { if (chance(45)) decline = Math.max(0, decline - 1); }
   if (decline > 0) s.health = clamp((s.health || 100) - decline);
+  // And a name goes quiet on its own. The biggest star of twenty years ago is not the
+  // biggest star now, however hard they are still working — a new generation arrives and
+  // the room turns to look at somebody else. Without this the top of the ladder was a
+  // permanent address: eleven careers in twenty-five ended sitting on exactly fame 100.
+  // It only bites at the top, and only from the forties, which is when it starts in life.
+  if (age >= 42 && (s.fame || 0) > 60) {
+    const pull = ((s.fame || 0) - 60) / 40;                   // nothing at 60, full at 100
+    const years = Math.min(1, (age - 42) / 22);               // ramps in over twenty years
+    s.fame = clamp((s.fame || 0) - (0.9 + Math.random() * 1.8) * pull * years);
+  }
   // Craft slips late. Sixteen-hour days, the stamina a lead role wants, the lines. It is
   // slow and it has a floor — a great actor at eighty is still a great actor, just not
   // the one they were at forty-five. Without this, skill only ever climbed, so the oldest
