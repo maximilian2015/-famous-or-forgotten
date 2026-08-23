@@ -60,6 +60,11 @@ export function riskPrestige(stability) {
   return Math.round(Math.max(0, 88 - (stability ?? 88)) * 0.45);
 }
 // No money also means no days, no reshoots, no post. The finished thing is rougher.
+// The two are a matched pair on purpose: shaky money buys you a better part and takes the
+// polish away, and the AVERAGE is meant to come out the same — the point of a risky project
+// is the spread, not a free upgrade. When the script's weight in the rating went up, the
+// prestige half of the pair started outrunning the roughness half and no-money projects
+// were simply better: 62.5 against 56.3. Both numbers move together or neither does.
 export function roughness(stability) {
   return Math.max(0, 88 - (stability ?? 88)) * 0.045;
 }

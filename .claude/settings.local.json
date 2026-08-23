@@ -59,7 +59,8 @@
       "Bash(\"/c/Program Files/nodejs/node.exe\" test_casting.mjs)",
       "Bash(\"/c/Program Files/nodejs/node.exe\" test_health.mjs)",
       "Bash(\"/c/Program Files/nodejs/node.exe\" probe_franchise.mjs)",
-      "Bash(sed -n '/HOW FAR/,$p')"
+      "Bash(sed -n '/HOW FAR/,$p')",
+      "Bash(\"/c/Program Files/nodejs/node.exe\" test_franchise.mjs)"
     ],
     "defaultMode": "acceptEdits",
     "additionalDirectories": [

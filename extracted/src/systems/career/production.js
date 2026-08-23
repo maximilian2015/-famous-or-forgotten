@@ -139,7 +139,12 @@ function wrapProduction(s) {
   const skill = s.dream === 'singer' ? s.singing : s.acting;
   // Skill is a FLOOR, not a ceiling: a master never embarrasses themselves, but a hit has to
   // be earned on set. Before this, skill 100 alone cleared the 85 hit line on every project.
-  const floor = 20 + skill * 0.30;
+  // The script decides most of it. That is the thing the game had backwards: skill and a
+  // month of rehearsal were the two biggest terms, both fully under the player's control,
+  // so an actor at 88 who rehearsed every month made a Hit 36 times in 60 and the WORST
+  // film they could physically produce was a 7.5. No actor alive has that record. You take
+  // a part expecting a hit and it comes out as nothing, and the reason is almost never you.
+  const floor = 20 + skill * 0.30;                // you never embarrass yourself — that is all
   const craft = (p.meter - 40) * 0.45;            // how the shoot actually went — can go negative
   // The swing. A locked studio picture comes out roughly as good as it was always going
   // to be; a project held together with tape can be the film of the year or nothing at
@@ -147,7 +152,31 @@ function wrapProduction(s) {
   // No money also means no days and no post, so a broke production is rougher — but the
   // part it gave you was better, and those two roughly cancel. What is left is the swing.
   let rating = clamp(floor + craft - roughness(p.stability) - (p.drunkMonths || 0) * 1.6 + p.prestigeScore * 0.18
-    + (s.looks - 40) * 0.08 + genreBonus(s, p.genre) + rint(-10, 12) + volatileSwing(p.stability));
+    + (s.looks - 40) * 0.08 + genreBonus(s, p.genre) + rint(-16, 12) + volatileSwing(p.stability));
+  // And then the material has the last word. Nobody has ever acted a bad script into a good
+  // film — an actor at 88 who rehearsed every month used to make a Hit 36 times in 60 and
+  // the WORST thing they could physically produce was a 7.5, whatever they were handed.
+  // Rebalancing the weights instead just moved the whole scale and broke every threshold
+  // downstream of it: the awards floor, renewals, the risk bands. This is the one honest
+  // sentence — you cannot come out much above what you were given.
+  // And sometimes it simply does not come together, and none of it is your fault. The edit,
+  // the director's cut, a score that fights the film, a release nobody wanted — you did the
+  // work, you walked off that set thinking it was the one, and then you sat in a screening
+  // and watched something else. Every actor alive has two or three of these.
+  //
+  // This is the honest version of "a great actor can still make garbage". Capping the rating
+  // against the script was the other attempt and it was wrong twice over: it flattened every
+  // mediocre film to exactly the same number, and prestigeScore is how prestigious the JOB
+  // is, not how good the writing is — a small film can be a masterpiece and that table
+  // cannot tell the difference.
+  // And a production nobody could pay for is likelier to lose it in the edit than one that
+  // could afford the days. A flat chance made a locked studio picture and a film with no
+  // money behind it flop at exactly the same rate — 22.4% against 22.5% — which erased the
+  // whole point of the backing you were shown before signing.
+  if (chance(11 + Math.max(0, 88 - (p.stability ?? 88)) * 0.22)) {
+    rating = clamp(rating - rint(16, 32));
+    p.fellApart = true;
+  }
   // A genuine cultural moment should be a career highlight, not a monthly occurrence.
   let worldHit = false;
   if (rating >= 90 && p.tier !== 'supporting') {

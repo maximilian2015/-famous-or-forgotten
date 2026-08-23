@@ -27,6 +27,10 @@ export const ASKER_SCALE = {
 };
 
 // Below this nobody is having the conversation about you at all.
+// The line below which the season does not look at you at all. It was written when a
+// competent actor's films averaged 8.8 out of ten; now that they score like films, 70 shut
+// almost everything out and a whole career won one Asker. Maxi's rule is one to three in a
+// lifetime, and this is the number that decides it.
 export const FLOOR = 70;
 
 export function isTelevision(scale) { return ['prestige', 'recurring', 'episode'].includes(scale); }

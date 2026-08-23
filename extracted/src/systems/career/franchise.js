@@ -92,11 +92,66 @@ const SEQUEL_MONEY = { smash: 45, profitable: 18, 'broke even': -8, bomb: -55 };
 export function sequelOdds(rating, part, obliged, verdict = null) {
   if (obliged) return 100;
   if (part > 4) return 0;
-  const base = rating >= 92 ? 72 : rating >= 84 ? 52 : rating >= 78 ? 30 : rating >= 70 ? 9 : 0;
-  const money = verdict ? (SEQUEL_MONEY[verdict] || 0) : 0;
-  return Math.max(0, Math.min(95, base + money - (part - 1) * 12));
+  // MONEY first, and it is not close. A studio greenlights a sequel off what the last one
+  // took; the reviews are a rounding error beside that. It is why beloved films die and
+  // stupid ones run five parts, and it is the whole reason franchises exist at all.
+  //
+  // These thresholds used to be written against ratings that averaged 8.8 out of ten. Once
+  // films started scoring like films, nothing cleared them and franchises simply stopped
+  // happening — thirty-six of sixty got no second part.
+  // With no verdict to hand — an old save, or anybody asking the question directly — fall
+  // back to the reviews rather than answering "almost never" to everything.
+  const base = verdict === 'smash' ? 76 : verdict === 'profitable' ? 44
+    : verdict === 'broke even' ? 14 : verdict === 'bomb' ? 2
+    : rating >= 92 ? 72 : rating >= 84 ? 52 : rating >= 78 ? 30 : rating >= 70 ? 9 : 0;
+  const liked = rating >= 85 ? 10 : rating >= 72 ? 4 : rating >= 55 ? 0 : -10;
+  return Math.max(0, Math.min(92, base + liked - (part - 1) * 10));
 }
 export function sequelRaise(part) { return part === 2 ? 1.6 : part === 3 ? 2.2 : 2.6; }
+
+// ── what a sequel is actually FOR ─────────────────────────────────────────────
+// A studio does not make a fourth one because the third was a masterpiece. It makes it
+// because the idea still sells tickets, and by then everyone involved is squeezing. The
+// game had Creepy Man rating 8.8, 9.7, 8.6, 9.5, 9.0 — five in a row, every one adored,
+// every one over a billion, and no explanation for why it ever stopped. Real franchises
+// slide: the second is occasionally the better film (Terminator 2 is the reason anybody
+// argues about this) and after that it is almost always downhill.
+//
+// This is the CEILING the next part is written against — the material gets thinner even
+// when the money gets bigger.
+export function sequelMaterial(prevPrestige, part) {
+  // A rare second one that is better than the first. It happens; it is not the rule.
+  if (part === 2 && chance(18)) return Math.min(96, prevPrestige + rint(2, 9));
+  const slide = part === 2 ? rint(4, 12) : part === 3 ? rint(9, 18) : rint(14, 26);
+  return Math.max(10, prevPrestige - slide);
+}
+// And nobody shoots them back to back. Two to five years, sometimes far longer, and the
+// gap is why a franchise is a thing that happens ACROSS a career rather than instead of one.
+export function sequelGap(part) { return part === 2 ? rint(18, 40) : rint(24, 54); }
+
+// A show does not peak in its last season. It finds itself around two or three, holds, and
+// then everybody can feel it going — which is when the network cancels it. Rating 9.4 in
+// season seven, immediately followed by the end, was the exact opposite of how this reads.
+export function seasonMaterial(prevPrestige, season) {
+  if (season <= 3) return Math.min(94, prevPrestige + rint(0, 7));   // it finds itself
+  if (season <= 5) return Math.max(12, prevPrestige - rint(0, 6));   // it holds, mostly
+  return Math.max(10, prevPrestige - rint(5, 14));                   // and then it does not
+}
+
+// Anything a franchise offers you arrives LATER, not the month the last one closed.
+export function laterOffersTick(s) {
+  const now = (s.year || 0) * 12 + (s.month || 0);
+  const due = (s.laterOffers || []).filter((x) => x.due <= now);
+  if (!due.length) return s;
+  s.laterOffers = (s.laterOffers || []).filter((x) => x.due > now);
+  for (const x of due) {
+    const o = { ...x.offer, expires: now + rint(3, 6) };
+    (s.offers = s.offers || []).push(o);
+    addTimeline(s, `They are finally making "${o.projectTitle}", and they want you back.`);
+    s.lastEvent = `"${o.projectTitle}" is happening. After all this time, they called.`;
+  }
+  return s;
+}
 
 // The ceiling on any of this. Franchise money is real money — a fourth outing pays far more
 // than the first — but it is still bounded by what somebody of your standing can command,
@@ -149,6 +204,7 @@ export function maybeContinue(s, credit, p) {
       stability: Math.max(82, p.stability || 82),
       projectTitle: `${root} · season ${nextSeason}`, role: p.role, type: p.type, genre: p.genre,
       episodes, episodeFee, salary: episodeFee * episodes, baseSalary: p.baseSalary || p.salary,
+      prestigeScore: seasonMaterial(p.prestigeScore || 50, nextSeason),
       months: Math.max(2, Math.round((p.months || 4) * (0.9 + Math.random() * 0.25))),
       prestigeScore: Math.min(96, (p.prestigeScore || 45) + rint(2, 7)), tier: p.tier || 'lead',
       fame: p.tier === 'tentpole' ? 9 : 5, deadline: rint(2, 3),
@@ -168,19 +224,26 @@ export function maybeContinue(s, credit, p) {
   const first = p.baseSalary || p.salary;
   const raw = obliged ? p.salary : Math.round(first * sequelRaise(nextPart));
   const salary = Math.min(raw, ceilingFor(s, mediumOf(p)));
-  addTimeline(s, `A sequel to "${p.title}" is going ahead.`);
-  return {
+  // Nobody shoots them back to back. It is announced, and then it is years.
+  const gap = sequelGap(nextPart);
+  addTimeline(s, `There is talk of a sequel to "${p.title}". These things take years.`);
+  (s.laterOffers = s.laterOffers || []).push({
+    due: (s.year || 0) * 12 + (s.month || 0) + gap,
+    offer: {
     id: 'seq' + Date.now() + Math.floor(Math.random() * 1000),
     kind: 'sequel', part: nextPart, optioned: p.optioned, optionParts: p.optionParts, scale: p.scale,
     stability: Math.max(85, p.stability || 85),   // nobody defunds a sequel to something that made money
     projectTitle: sequelTitle(p.title, nextPart), role: p.role, type: p.type, genre: p.genre,
     salary, baseSalary: first, months: Math.max(2, Math.round((p.months || 5) * (0.95 + Math.random() * 0.25))),
-    prestigeScore: Math.max(15, (p.prestigeScore || 50) - rint(2, 9)),   // sequels rarely out-prestige the first
+    prestigeScore: sequelMaterial(p.prestigeScore || 50, nextPart),
     tier: p.tier || 'lead', fame: p.tier === 'tentpole' ? 9 : 5, deadline: rint(2, 3),
     note: obliged
       ? 'You signed for this one. The fee is the fee you agreed to years ago.'
       : credit.verdict === 'smash'
-      ? `The last one printed money. They are paying ${Math.round((sequelRaise(nextPart) - 1) * 100)}% more and they are not haggling.`
-      : `The first one made money. They are paying ${Math.round((sequelRaise(nextPart) - 1) * 100)}% more this time.`,
-  };
+      ? `That one printed money — years ago now. They are paying ${Math.round((sequelRaise(nextPart) - 1) * 100)}% more and they are not haggling.`
+      : `The first one made money, and somebody has finally got the script working. ${Math.round((sequelRaise(nextPart) - 1) * 100)}% more this time.`,
+    },
+  });
+  // Nothing lands on the board today. laterOffersTick brings it when it is real.
+  return null;
 }

@@ -255,8 +255,11 @@ function closeRun(s, credit, r) {
   s.respect = clamp((s.respect || 0) + (respectGain > 0 ? respectGain * headroom(112, s.respect) : respectGain));
   if (film && verdict === 'smash') setQuote(s, Math.max(s.quote || 0, (r.salary || 0) * 1.6));
 
+  // The gross means nothing on its own — "a billion" is only a triumph next to what it cost.
+  // The industry never quotes one without the other and neither should this.
+  const bud = budgetFor({ scale: r.scale });
   const money = film
-    ? `€${(credit.boxOffice / 1000000).toFixed(credit.boxOffice >= 100000000 ? 0 : 1)}m across ${credit.weeksTotal} weeks`
+    ? `€${(credit.boxOffice / 1000000).toFixed(credit.boxOffice >= 100000000 ? 0 : 1)}m on a €${(bud / 1000000).toFixed(0)}m film, ${credit.weeksTotal} weeks`
     : `${credit.viewers}m watching`;
   const score = credit.score.toFixed(1);
   const line = r.worldHit

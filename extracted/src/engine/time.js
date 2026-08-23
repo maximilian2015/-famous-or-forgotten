@@ -13,6 +13,7 @@ import { spotlightYear } from '../systems/social/spotlight.js';
 import { productionTick } from '../systems/career/production.js';
 import { releaseTick, runTick } from '../systems/career/release.js';
 import { frozenTick } from '../systems/career/stability.js';
+import { laterOffersTick } from '../systems/career/franchise.js';
 import { submissionsTick } from '../systems/career/castings.js';
 import { runNominations, ceremonyTick } from '../systems/career/awards.js';
 import { agingNote } from '../systems/career/age.js';
@@ -61,6 +62,7 @@ export function advanceMonth(state) {
   runTick(s);        // and anything already open takes another few weeks of money
   submissionsTick(s); // and somewhere a casting office finally rings back
   frozenTick(s);     // and anything that stopped might find its money again
+  laterOffersTick(s); // and a sequel announced years ago finally has a script
   ceremonyTick(s);   // and the Askers land a couple of months after the nominations
   eventsTick(s);
   maybeGenerateEvent(s);
