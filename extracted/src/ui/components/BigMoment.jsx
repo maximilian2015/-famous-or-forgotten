@@ -45,7 +45,10 @@ function play(kind) {
 function Scene({ id, look, accent, moment }) {
   // Opening night: searchlights, a lit marquee, and the score up where the title goes,
   // because on the night that number IS the title.
-  if (id === 'premiere') {
+  // The marquee serves both nights now: the one where nothing is known yet, and the one
+  // weeks later where it is. On opening night the board carries the title instead of a
+  // score, because there is no score — that is the entire point of the split.
+  if (id === 'premiere' || id === 'verdict') {
     const bulbs = [];
     for (let i = 0; i < 11; i++) bulbs.push(<circle key={i} cx={44 + i * 11.2} cy={40 + Math.abs(i - 5) * 1.4} r="2.1" fill={accent} opacity={0.45 + (i % 2) * 0.45} />);
     return (<svg viewBox="0 0 200 120" style={{ width: '100%', maxWidth: 300, display: 'block', margin: '0 auto' }}>
@@ -63,9 +66,12 @@ function Scene({ id, look, accent, moment }) {
       <path d="M26 52 L44 36 L156 36 L174 52 Z" fill="#332b62" stroke="#5c4f92" strokeWidth="2" />
       {bulbs}
       <rect x="52" y="56" width="96" height="34" rx="3" fill="#1d1838" stroke={accent} strokeWidth="1.6" />
-      <text x="100" y="76" textAnchor="middle" fontSize="19" fontWeight="900" fill={accent}>{moment.score}</text>
+      <text x="100" y={moment.score != null ? 76 : 78} textAnchor="middle"
+        fontSize={moment.score != null ? 19 : 10} fontWeight="900" fill={accent}>
+        {moment.score != null ? moment.score : 'TONIGHT'}
+      </text>
       <text x="100" y="86" textAnchor="middle" fontSize="7" fontWeight="800" fill="#9c8fd4" letterSpacing="1.8">
-        {String(moment.verdict || '').toUpperCase()}
+        {String(moment.verdict || 'nobody knows yet').toUpperCase()}
       </text>
       <rect x="86" y="96" width="28" height="14" rx="1.5" fill="#2c2558" stroke="#6b5cb0" strokeWidth="1.3" />
       <path d="M100 96 L100 110" stroke="#6b5cb0" strokeWidth="1.1" />
@@ -226,6 +232,9 @@ function headFor(m) {
   if (m.id === 'lifted') return 'After a long time';
   if (m.id === 'burnout') return 'You could not get up';
   if (m.id === 'premiere') return 'Opening night';
+  // The night it opens and the night everybody has decided are two different moments now.
+  if (m.id === 'verdict') return 'The run is over';
+  if (m.id === 'booked') return 'They rang back';
   if (m.id === 'shutdown') return m.frozen ? 'The shoot has stopped' : 'The project is dead';
   if (m.id === 'nomination') return 'The Askers';
   if (m.id === 'ceremony') return m.kind === 'good' ? 'And the Asker goes to' : 'And the Asker goes to';
@@ -252,10 +261,14 @@ export function BigMoment({ moment, look, onClose }) {
       </div>
       <Scene id={moment.id} look={look} accent={accent} moment={moment} />
       <div style={{ fontSize: 21, fontWeight: 900, margin: '16px 0 8px' }}>{moment.title}</div>
-      {moment.id === 'premiere' && (
+      {/* Opening night has no numbers on it any more — that is the whole point of splitting
+          it from the verdict — so this must not assume they are there. It crashed the modal
+          outright the first time a film opened. See systems/career/release.js. */}
+      {(moment.id === 'premiere' || moment.id === 'verdict') && moment.score != null && moment.money && (
         <div style={{ display: 'flex', gap: 8, margin: '0 0 12px' }}>
           <Figure label="Score" value={`${moment.score}/10`} accent={accent} />
-          <Figure label={moment.money.includes('watching') ? 'Audience' : 'Box office'} value={moment.money.replace(' at the box office', '').replace(' watching', '')} accent={accent} />
+          <Figure label={String(moment.money).includes('watching') ? 'Audience' : 'Box office'}
+            value={String(moment.money).replace(' at the box office', '').replace(' watching', '')} accent={accent} />
         </div>
       )}
       {(moment.id === 'nomination' || moment.id === 'ceremony') && moment.lines && (

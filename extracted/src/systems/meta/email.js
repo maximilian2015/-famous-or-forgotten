@@ -3,7 +3,14 @@ import { addTimeline } from '../../engine/timeline.js';
 const clamp = (v) => Math.max(0, Math.min(100, v));
 export function emUnread(s) { return (s.inbox || []).filter((m) => !m.read).length; }
 function has(s, tag) { return (s.inbox || []).some((m) => m.tag === tag); }
-function push(s, m) { m.id = 'em' + (s._emSeq = (s._emSeq || 0) + 1); m.read = false; (s.inbox = s.inbox || []).unshift(m); }
+function push(s, m) {
+  m.id = 'em' + (s._emSeq = (s._emSeq || 0) + 1); m.read = false;
+  (s.inbox = s.inbox || []).unshift(m);
+  // Post you never answered stops being post. Bills you ignored pile up for a while and
+  // then the pile stops growing — an inbox of fifteen unanswered rent notices is not a
+  // game telling you anything, it is a list.
+  if (s.inbox.length > 8) s.inbox = s.inbox.slice(0, 8);
+}
 
 // An invitation that arrives at fifty per cent a month, in exactly the same words, for
 // twenty years, stops reading as an invitation and starts reading as a bug. Once you have

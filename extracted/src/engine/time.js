@@ -14,7 +14,7 @@ import { productionTick } from '../systems/career/production.js';
 import { releaseTick, runTick } from '../systems/career/release.js';
 import { frozenTick } from '../systems/career/stability.js';
 import { laterOffersTick } from '../systems/career/franchise.js';
-import { submissionsTick } from '../systems/career/castings.js';
+import { submissionsTick, refreshCastingPool } from '../systems/career/castings.js';
 import { runNominations, ceremonyTick } from '../systems/career/awards.js';
 import { agingNote } from '../systems/career/age.js';
 import { strainTick } from '../systems/life/strain.js';
@@ -61,6 +61,11 @@ export function advanceMonth(state) {
   releaseTick(s);    // anything that finished shooting months ago opens today
   runTick(s);        // and anything already open takes another few weeks of money
   submissionsTick(s); // and somewhere a casting office finally rings back
+  // The board lives on its own clock. It was only ever swept when the player opened the
+  // app, so listings sat on it past their own expiry until somebody looked.
+  // Guarded on the board itself, not on the stage: a player who loses the flat drops to
+  // 'moving_out' and the sweep stopped running, so their listings sat there expired.
+  if ((s.castingPool || []).length) refreshCastingPool(s);
   frozenTick(s);     // and anything that stopped might find its money again
   laterOffersTick(s); // and a sequel announced years ago finally has a script
   ceremonyTick(s);   // and the Askers land a couple of months after the nominations

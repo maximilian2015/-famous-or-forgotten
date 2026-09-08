@@ -64,7 +64,8 @@
       "Bash(\"/c/Program Files/nodejs/node.exe\" probe_audit.mjs)",
       "Bash(\"/c/Program Files/nodejs/node.exe\" probe_ladder.mjs)",
       "Bash(\"/c/Program Files/nodejs/node.exe\" test_story.mjs)",
-      "Bash(\"/c/Program Files/nodejs/node.exe\" test_negotiate.mjs)"
+      "Bash(\"/c/Program Files/nodejs/node.exe\" test_negotiate.mjs)",
+      "Bash(\"/c/Program Files/nodejs/node.exe\" sweep_now.mjs)"
     ],
     "defaultMode": "acceptEdits",
     "additionalDirectories": [
