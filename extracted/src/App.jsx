@@ -1413,7 +1413,12 @@ function Diary({ g }) {
     const inPost = (g.releases || []).some((r) => r.due > abs);
     // Signed off. These months are not yours to book anything in.
     const off = g.burnout && i < (g.burnout.left || 0);
-    cells.push({ i, yr, mo, shooting, parties, deadlines, premieres, inPost, off });
+    // A carpet or a talk show sitting unanswered in the inbox is a thing you are supposed
+    // to be doing THIS month, and it was nowhere on the calendar at all.
+    const invites = i === 0 ? (g.inbox || []).filter((m) => m.kind === 'invite') : [];
+    // And the answer to a read you did comes back on a month you can see coming.
+    const hearing = (g.submissions || []).filter((x) => x.due === abs);
+    cells.push({ i, yr, mo, shooting, parties, deadlines, premieres, inPost, off, invites, hearing });
   }
   return (<div style={{ marginBottom: 16 }}>
     <div style={{ fontSize: 11, fontWeight: 900, letterSpacing: '.09em', textTransform: 'uppercase', color: theme.muted, marginBottom: 8 }}>The year ahead</div>
@@ -1429,7 +1434,15 @@ function Diary({ g }) {
           {c.premieres.map((r) => <span key={r.id} title={`${r.title} opens`} style={{ fontSize: 11 }}>🍿</span>)}
           {c.parties > 0 && <span title="event expires" style={{ fontSize: 11 }}>🎉</span>}
           {c.deadlines > 0 && <span title="offer expires" style={{ fontSize: 11 }}>⏳</span>}
+          {c.invites.length > 0 && <span title="an invitation waiting in your inbox" style={{ fontSize: 11 }}>✉️</span>}
+          {c.hearing.length > 0 && <span title="you hear back about a part" style={{ fontSize: 11 }}>📞</span>}
         </div>
+        {c.invites.length > 0 && <div style={{ fontSize: 8.5, fontWeight: 800, color: theme.accent, marginTop: 2, lineHeight: 1.2 }}>
+          {c.invites[0].subj}
+        </div>}
+        {c.hearing.length > 0 && <div style={{ fontSize: 8.5, fontWeight: 800, color: theme.accent, marginTop: 2, lineHeight: 1.2 }}>
+          {c.hearing[0].title} — they answer
+        </div>}
         {/* A premiere was named and a shoot was not, so eight months of the year said
             nothing but "🎬". What you are actually on is the thing you want to read. */}
         {c.shooting && !c.off && <div style={{ fontSize: 8.5, fontWeight: 800, color: theme.gold, marginTop: 2, lineHeight: 1.2, overflow: 'hidden' }}>
@@ -1441,7 +1454,7 @@ function Diary({ g }) {
       </div>))}
     </div>
     <div style={{ display: 'flex', gap: 10, justifyContent: 'center', fontSize: 10.5, color: theme.muted, flexWrap: 'wrap' }}>
-      <span>🎬 shooting</span><span>🍿 premiere</span><span>🎉 party ends</span><span>⏳ offer expires</span>{g.burnout && <span style={{ color: theme.bad }}>🚫 signed off</span>}
+      <span>🎬 shooting</span><span>🍿 premiere</span><span>✉️ invitation</span><span>📞 they answer</span><span>🎉 party ends</span><span>⏳ offer expires</span>{g.burnout && <span style={{ color: theme.bad }}>🚫 signed off</span>}
     </div>
   </div>);
 }

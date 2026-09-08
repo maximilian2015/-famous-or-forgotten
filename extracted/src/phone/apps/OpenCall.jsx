@@ -209,7 +209,7 @@ export function OpenCall({ g, ocTab, setOcTab, teenMode }) {
           </div>); })()}
         {!locked && (() => { const off = !canWork(g).ok; const dead = off || (g.ap||0)<=0;
           const waits = (c.months || 1) >= 2;
-          return (<div style={{ marginTop: 8 }}><button onClick={() => openAudition(c)} disabled={dead} style={{ width: '100%', border: 'none', borderRadius: 10, padding: '9px', fontSize: 12.5, fontWeight: 800, cursor: dead?'default':'pointer', background: dead?'rgba(120,110,150,.15)':`linear-gradient(135deg,${theme.accent2},${theme.accent})`, color: dead?'#6b6390':'#fff' }}>{off ? 'Signed off' : waits ? 'Read for it' : 'Audition'}</button>
+          return (<div style={{ marginTop: 8 }}><button onClick={() => openAudition(c)} disabled={dead} style={{ width: '100%', border: 'none', borderRadius: 10, padding: '9px', fontSize: 12.5, fontWeight: 800, cursor: dead?'default':'pointer', background: dead?'rgba(120,110,150,.15)':`linear-gradient(135deg,${theme.accent2},${theme.accent})`, color: dead?'#6b6390':'#fff' }}>{off ? 'Signed off' : 'Audition'}</button>
             {waits && !dead && <div style={{ fontSize: 10.5, color: theme.muted, textAlign: 'center', marginTop: 5 }}>
               They answer in one to three months.
             </div>}
