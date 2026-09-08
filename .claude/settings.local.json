@@ -62,7 +62,8 @@
       "Bash(sed -n '/HOW FAR/,$p')",
       "Bash(\"/c/Program Files/nodejs/node.exe\" test_franchise.mjs)",
       "Bash(\"/c/Program Files/nodejs/node.exe\" probe_audit.mjs)",
-      "Bash(\"/c/Program Files/nodejs/node.exe\" probe_ladder.mjs)"
+      "Bash(\"/c/Program Files/nodejs/node.exe\" probe_ladder.mjs)",
+      "Bash(\"/c/Program Files/nodejs/node.exe\" test_story.mjs)"
     ],
     "defaultMode": "acceptEdits",
     "additionalDirectories": [

@@ -12,6 +12,7 @@ import { addTimeline } from '../../engine/timeline.js';
 import { markReleased } from '../../engine/economy.js';
 import { hotGenre } from '../meta/news.js';
 import { maybeContinue } from './franchise.js';
+import { appealShift } from './story.js';
 
 const clamp = (v, a = 0, b = 100) => Math.max(a, Math.min(b, v));
 
@@ -63,7 +64,7 @@ export function boxOfficeFor(s, rel) {
   if (!budget) return 0;
   const star = 0.7 + (s.fame || 0) / 180;                  // 0.7 at nobody, 1.26 at icon
   const trend = rel.genre === hotGenre(s) ? 1.25 : 1;
-  const gross = budget * PAR * qualityPull(rel.rating) * (APPEAL[rel.genre] || 1) * star * trend * luck();
+  const gross = budget * PAR * qualityPull(rel.rating) * (APPEAL[rel.genre] || 1) * (rel.appealMod ?? 1) * star * trend * luck();
   return Math.round(gross * 1000000);
 }
 export function viewersFor(s, rel) {
@@ -118,6 +119,8 @@ export function scheduleRelease(s, credit, p) {
     rating: credit.rating, status: credit.status, worldHit: credit.status === 'World Hit',
     // Carried for the Asker season: whether it was pushed, and how good the material was.
     campaign: !!p.campaign, prestigeScore: p.prestigeScore,
+    // What the version you shot does to the box office, and the line it was pitched on.
+    appealMod: appealShift(p), premise: p.premise || credit.premise || null, take: credit.take || null,
     due: (s.year || 0) * 12 + (s.month || 0) + wait, wait,
     // Whether the thing gets a second season or a sequel is decided on the numbers, so
     // the shoot has to keep enough of itself alive to be asked that question later.
@@ -170,6 +173,7 @@ function open(s, rel) {
     boxOffice: 0, viewers: rel.viewers || 0, verdict: 'in cinemas', score: null,
     // Carried for the Asker season: what kind of thing it was, and whether it was pushed.
     scale: rel.scale, tier: rel.tier, prestigeScore: rel.prestigeScore,
+    premise: rel.premise || null, take: rel.take || null,
     campaignShare: rel.campaign ? 0.65 : 0,
   };
   const bucket = s.dream === 'singer' ? 'discography' : 'filmography';

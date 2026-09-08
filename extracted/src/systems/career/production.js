@@ -6,6 +6,7 @@ import { hotGenre } from '../meta/news.js';
 import { addGenreXP, genreBonus } from './genres.js';
 import { scheduleRelease } from './release.js';
 import { rollStability, productionTrouble, volatileSwing, roughness } from './stability.js';
+import { makePremise, prestigeShift, ratingShift, swingShift, apartShift, appealShift } from './story.js';
 const clamp = (v) => Math.max(0, Math.min(100, v));
 const TIERS = [
   { min: 0, label: 'Disaster' }, { min: 25, label: 'Rocky' }, { min: 50, label: 'Solid' },
@@ -51,6 +52,9 @@ export function startProduction(s, offer) {
     // how wildly the finished thing can turn out. See systems/career/stability.js.
     stability: offer.stability ?? rollStability(offer.scale || 'feature'),
     crew: makeCrew(s.dream), meter: 20,
+    // What it is about, and which version of it you end up shooting. See story.js — the
+    // argument happens on day one and the room decides whether you are listened to.
+    premise: makePremise(), take: null, takeWon: false,
   };
   // Your quote is the biggest fee you have ever commanded for a picture, and it is set
   // by taking the job — not only by winning an argument about it. Television is priced
@@ -151,8 +155,10 @@ function wrapProduction(s) {
   // all. This is why an indie is worth the gamble.
   // No money also means no days and no post, so a broke production is rougher — but the
   // part it gave you was better, and those two roughly cancel. What is left is the swing.
-  let rating = clamp(floor + craft - roughness(p.stability) - (p.drunkMonths || 0) * 1.6 + p.prestigeScore * 0.18
-    + (s.looks - 40) * 0.08 + genreBonus(s, p.genre) + rint(-16, 12) + volatileSwing(p.stability));
+  const material = clamp((p.prestigeScore || 50) + prestigeShift(p));
+  let rating = clamp(floor + craft - roughness(p.stability) - (p.drunkMonths || 0) * 1.6 + material * 0.18
+    + (s.looks - 40) * 0.08 + genreBonus(s, p.genre) + rint(-16, 12) + volatileSwing(p.stability)
+    + ratingShift(p) + (swingShift(p) ? rint(-swingShift(p), swingShift(p)) : 0));
   // And then the material has the last word. Nobody has ever acted a bad script into a good
   // film — an actor at 88 who rehearsed every month used to make a Hit 36 times in 60 and
   // the WORST thing they could physically produce was a 7.5, whatever they were handed.
@@ -173,7 +179,7 @@ function wrapProduction(s) {
   // could afford the days. A flat chance made a locked studio picture and a film with no
   // money behind it flop at exactly the same rate — 22.4% against 22.5% — which erased the
   // whole point of the backing you were shown before signing.
-  if (chance(11 + Math.max(0, 88 - (p.stability ?? 88)) * 0.22)) {
+  if (chance(Math.max(2, 11 + Math.max(0, 88 - (p.stability ?? 88)) * 0.22 + apartShift(p)))) {
     rating = clamp(rating - rint(16, 32));
     p.fellApart = true;
   }
@@ -192,6 +198,7 @@ function wrapProduction(s) {
   // The credit does NOT land here. It goes into post and opens months from now —
   // fame, box office and the score all arrive on premiere night, not on the last
   // day of shooting. See systems/career/release.js.
+  credit.premise = p.premise; credit.take = p.takeWon ? p.take : null;
   scheduleRelease(s, credit, p);
   addGenreXP(s, p.genre, rating);
   // Whatever the monthly instalments did not cover — rounding, and the offers that were
