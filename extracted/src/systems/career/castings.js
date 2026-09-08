@@ -45,8 +45,8 @@ const POOLS = {
       ['Prestige Series', 'The matriarch', [6, 9], [6, 9], 'tv_prestige', 'prestige', 30, 0.8],
     ],
     film: [
-      ['Short Film', 'Lead', [1, 2], 'film_indie', 'small', 0, 0.12],
-      ['Horror Movie', 'Victim', [1, 2], 'film_indie', 'small', 0, 0.3],
+      ['Short Film', 'Lead', [1, 2], 'film_indie', 'small', 0, 0.12, 42],
+      ['Horror Movie', 'Victim', [1, 2], 'film_indie', 'small', 0, 0.3, 52],
       ['Indie Film', 'Supporting', [2, 4], 'film_indie', 'indie', 0, 0.5],
       ['Indie Film', 'Lead', [3, 5], 'film_indie', 'indie', 15],
       ['Feature Film', 'Lead', [5, 8], 'film_studio', 'feature', 30],
@@ -56,8 +56,23 @@ const POOLS = {
       ['Feature Film', 'Elder statesman', [3, 6], 'film_studio', 'feature', 25, 0.55],
       ['Indie Film', 'Grandparent', [2, 4], 'film_indie', 'indie', 0, 0.7],
     ],
-    ads: [['Brand Campaign', 'Face', [1, 1], 'ad', 'oneoff'], ['Commercial', 'Actor', [1, 1], 'ad', 'oneoff', 0, 0.35]],
-    gigs: [['Theatre Run', 'Stage', [2, 2], 'gig', 'small', 0, 4], ['Voice Session', 'Voice', [1, 1], 'gig', 'oneoff', 0, 2], ['TV Extra', 'Background', [1, 1], 'gig', 'oneoff']],
+    // The eighth number is a CEILING. Nobody sends an A-lister a background call, and the
+    // things that only start arriving once people know your face have to arrive from
+    // somewhere — a star was being offered TV Extra work and no brand campaigns at all.
+    ads: [
+      ['Brand Campaign', 'Face', [1, 1], 'ad', 'oneoff'],
+      ['Commercial', 'Actor', [1, 1], 'ad', 'oneoff', 0, 0.35],
+      ['Talk Show', 'Guest on the sofa', [1, 1], 'ad', 'oneoff', 35, 0.22],
+      ['Magazine Cover', 'The cover', [1, 1], 'ad', 'oneoff', 40, 0.3],
+      ['Awards Show', 'Presenting', [1, 1], 'ad', 'oneoff', 58, 0.45],
+      ['Fashion House', 'The face of it', [1, 1], 'ad', 'oneoff', 66, 1.4],
+    ],
+    gigs: [
+      ['Theatre Run', 'Stage', [2, 2], 'gig', 'small', 0, 4],
+      ['Voice Session', 'Voice', [1, 1], 'gig', 'oneoff', 0, 2],
+      ['TV Extra', 'Background', [1, 1], 'gig', 'oneoff', 0, 1, 38],
+      ['Student Film', 'Lead', [1, 1], 'gig', 'oneoff', 0, 1.5, 30],
+    ],
   },
   singer: {
     series: [
@@ -107,11 +122,17 @@ function titleFor(taken) {
 // median Asker across a hundred careers was won at fifty-seven.
 export function boardSize(s) {
   const age = s.ageY || 0;
+  // A name gets sent more, and that was missing entirely: the board held six things whether
+  // you were nobody or an A-lister, and six things spread across four shelves reads as
+  // "Series 1 · Film 1 · Ads 0 · Gigs 2" — which looks like an empty game rather than a
+  // career. Standing buys volume, and then age takes it away again.
+  const standing = Math.min(1, reach(s) / 78);
+  const base = 6 + Math.round(standing * 6);            // 6 at nobody, 12 at the top
   // It turns for women first, which is the ugly part of this business and worth saying
   // rather than smoothing away.
   const peakEnd = 42 - (s.gender === 'female' ? 5 : 0);
-  if (age <= peakEnd) return 6;
-  return Math.max(2, Math.round(6 - 4 * Math.min(1, (age - peakEnd) / 28)));
+  if (age <= peakEnd) return base;
+  return Math.max(3, Math.round(base * (1 - 0.62 * Math.min(1, (age - peakEnd) / 28))));
 }
 // Rerolling the whole board cost nothing and had no limit, so the correct play was to press
 // it until something with ninety per cent odds appeared — every month, for a whole career.
@@ -127,11 +148,15 @@ export function rerollBoard(s) {
 
 export function refreshCastingPool(s, force) {
   s.castingPool = s.castingPool || [];
+  const now = (s.year || 0) * 12 + (s.month || 0);
+  // Throw out anything whose window has closed BEFORE deciding there is nothing to do.
+  // The early return was above this line, so a full board never expired anything and the
+  // same four listings sat there for the rest of the life.
+  s.castingPool = force ? [] : s.castingPool.filter((c) => (c._expires || 0) > now);
   const want = boardSize(s);
   if (!force && s.castingPool.length >= want) return;
   const career = s.dream === 'singer' ? 'singer' : 'actor';
   const shelves = POOLS[career];
-  s.castingPool = force ? [] : s.castingPool.filter((c) => (c._expires || 0) > ((s.year || 0) * 12 + (s.month || 0)));
   // No two things on the board share a name, and nothing is named after something you
   // have already made or are already shooting.
   const taken = new Set([
@@ -143,15 +168,26 @@ export function refreshCastingPool(s, force) {
     ...(s.offers || []).map((o) => String(o.projectTitle || '').replace('⭐ ', '')),
     s.production ? s.production.title : '',
   ]);
+  // Picking a shelf at random for every slot left whole tabs empty — six listings spread
+  // across four shelves regularly came out as "Series 1 · Film 1 · Ads 0 · Gigs 2", which
+  // reads as an empty game rather than a career. Every shelf is filled to a floor first,
+  // and only what is left over goes wherever it goes.
+  const shelfNames = Object.keys(shelves);
+  const SHELF_FLOOR = 2;
+  const countOn = (id) => s.castingPool.filter((x) => x.shelf === id).length;
   let guard = 0;
-  while (s.castingPool.length < want && guard++ < 200) {
-    const shelf = pick(Object.keys(shelves));
+  while (s.castingPool.length < want && guard++ < 400) {
+    const short = shelfNames.filter((id) => countOn(id) < SHELF_FLOOR);
+    const shelf = short.length ? pick(short) : pick(shelfNames);
     const row = pick(shelves[shelf]);
     const perEpisode = shelf === 'series';
     const [type, role, span] = row;
     // A casting office reading somebody else's age never sends you the sides at all.
     if (!seenForIt(s, role)) continue;
-    const [eps, medium, scale, minFame, share] = perEpisode ? row.slice(3) : [null, ...row.slice(3)];
+    const [eps, medium, scale, minFame, share, maxFame] = perEpisode ? row.slice(3) : [null, ...row.slice(3)];
+    // Above the ceiling this kind of work simply stops being sent to you. Nobody offers an
+    // A-lister a background call.
+    if (maxFame != null && reach(s) > maxFame) continue;
     // What YOU are worth in this medium. Zero means they would not have you at any
     // price yet — the listing simply does not appear.
     const quoted = Math.round(quoteFor(s, medium) * (share || 1));
