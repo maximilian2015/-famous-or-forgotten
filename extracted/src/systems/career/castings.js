@@ -263,7 +263,14 @@ function answerSubmission(s, sub) {
 // fumble it and the room cools on you.
 export function auditionFor(s, id, quality = 50) {
   const c = (s.castingPool || []).find((x) => x.id === id); if (!c) return s;
-  if (s.production) { s.lastEvent = `You are shooting "${s.production.title}". Nobody can be in two places.`; return s; }
+  // One real job at a time — you cannot be on two call sheets. But a voice session or a day
+  // as an extra is an afternoon, and an actor in the middle of a fourteen-month blockbuster
+  // does those on a Saturday. Blocking them meant the longest shoots were also the emptiest
+  // months in the game: three Energy and nothing whatsoever to spend it on.
+  if (s.production && (c.months || 1) >= 2) {
+    s.lastEvent = `You are shooting "${s.production.title}". Nobody can be in two places.`;
+    return s;
+  }
   const fit = canWork(s);
   if (!fit.ok) { s.lastEvent = fit.why; return s; }
   if (reach(s) < (c.minFame || 0)) { s.lastEvent = 'You need more fame before they will see you for this.'; return s; }

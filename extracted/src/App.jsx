@@ -1430,7 +1430,14 @@ function Diary({ g }) {
           {c.parties > 0 && <span title="event expires" style={{ fontSize: 11 }}>🎉</span>}
           {c.deadlines > 0 && <span title="offer expires" style={{ fontSize: 11 }}>⏳</span>}
         </div>
+        {/* A premiere was named and a shoot was not, so eight months of the year said
+            nothing but "🎬". What you are actually on is the thing you want to read. */}
+        {c.shooting && !c.off && <div style={{ fontSize: 8.5, fontWeight: 800, color: theme.gold, marginTop: 2, lineHeight: 1.2, overflow: 'hidden' }}>
+          {g.production.title}{c.i === (g.production.monthsLeft - 1) ? ' · wraps' : ''}
+        </div>}
         {c.premieres.length > 0 && <div style={{ fontSize: 8.5, fontWeight: 800, color: theme.gold, marginTop: 2, lineHeight: 1.2, overflow: 'hidden' }}>{c.premieres[0].title}</div>}
+        {/* And the quiet months are not empty either — something of yours is in post. */}
+        {!c.shooting && !c.off && !c.premieres.length && c.inPost && <div style={{ fontSize: 8.5, color: theme.muted, marginTop: 2, lineHeight: 1.2 }}>in post</div>}
       </div>))}
     </div>
     <div style={{ display: 'flex', gap: 10, justifyContent: 'center', fontSize: 10.5, color: theme.muted, flexWrap: 'wrap' }}>
