@@ -231,7 +231,25 @@ export function castingChance(s, c) {
   // wants to bond an actor who has walked off three sets — see systems/life/strain.js.
   const fit = c ? ageFit(s, c.role) : 1;
   // And you are not yourself in a room when you are carrying this.
-  return Math.round(base * (0.35 + 0.65 * fit) * insurability(s) * (depressed(s) ? 0.62 : 1));
+  const raw = base * (0.35 + 0.65 * fit) * insurability(s) * (depressed(s) ? 0.62 : 1);
+  return Math.round(raw * reachFactor(s, c));
+}
+// How far above you the part is.
+//
+// Nothing in this function used to know what the part WAS. A soap opera and the lead of a
+// prestige series returned the same number — on the board at fame 82 they both read
+// "88% shot" — so above the minFame gate every job in the game was equally easy, and the
+// only thing standing between an unknown and a tentpole was a hard lock.
+//
+// This only ever bites UPWARDS: a part at or below your standing is untouched, so nothing
+// about the early game gets harder. What changes is that reaching over your head is a long
+// shot rather than a coin flip, which is the whole texture of the climb.
+function reachFactor(s, c) {
+  if (!c) return 1;
+  const demand = (scaleOf(c).prestige || [40, 55])[1];
+  const gap = demand - reach(s);
+  if (gap <= 0) return 1;
+  return Math.max(0.45, 1 - gap / 90);
 }
 // ── preparing for one ─────────────────────────────────────────────────────────
 // The months between seeing a part and reading for it are the ones actors actually talk

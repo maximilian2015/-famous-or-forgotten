@@ -1298,7 +1298,9 @@ function CreditRow({ group }) {
         {group.askers > 0 && <span style={{ fontSize: 10, fontWeight: 900, letterSpacing: '.06em', color: theme.gold }}>
           🏆 ASKER{group.askers > 1 ? ` ×${group.askers}` : ''}</span>}
         {c.comeback > 0 && <span style={{ fontSize: 10, fontWeight: 900, letterSpacing: '.06em', color: theme.accent }}>
-          ↩ COMEBACK · {c.comeback} YEARS AWAY</span>}
+          {/* "12 YEARS AWAY" read like something still to come. It is the gap this one
+              closed, and that is what it should say. */}
+          ↩ COMEBACK · AFTER {c.comeback} YEARS</span>}
       </div>
       <div style={{ fontSize: 11.5, color: theme.muted }}>
         {c.role}{c.genre ? ` · ${c.genre}` : ''}{group.earned > 0 ? ` · €${group.earned.toLocaleString()}` : ''}
@@ -1640,7 +1642,7 @@ function ProductionCard({ g }) {
 }
 function AaaTracker({ g }) {
   const acc = computeAccess(g);
-  return (<Card style={{ marginBottom: 14, borderColor: acc.aaa ? 'rgba(95,206,138,.4)' : theme.line }}><div style={{ fontSize: 11, fontWeight: 900, letterSpacing: '.08em', textTransform: 'uppercase', color: acc.aaa ? theme.good : theme.muted, marginBottom: 6 }}>{acc.aaa ? '★ A-list access unlocked' : 'A-list access — locked'}</div><div style={{ fontSize: 12.5, color: theme.muted, lineHeight: 1.5 }}>{acc.aaa ? (acc.aaaReason === 'hit' ? 'You made a hit. Studios take your calls now.' : 'You know the right person. Doors open through them.') : 'Two ways in: land a hit (rating 85+), or befriend someone powerful in the industry (weight 80+, close ties). Either opens the tentpoles.'}</div></Card>);
+  return (<Card style={{ marginBottom: 14, borderColor: acc.aaa ? 'rgba(95,206,138,.4)' : theme.line }}><div style={{ fontSize: 11, fontWeight: 900, letterSpacing: '.08em', textTransform: 'uppercase', color: acc.aaa ? theme.good : theme.muted, marginBottom: 6 }}>{acc.aaa ? '★ The tentpoles are open to you' : 'The tentpoles — closed to you'}</div><div style={{ fontSize: 12.5, color: theme.muted, lineHeight: 1.5 }}>{acc.aaa ? (acc.aaaReason === 'hit' ? 'You made a hit. Studios take your calls now.' : 'You know the right person. Doors open through them.') : 'The biggest pictures do not audition strangers. Two ways in: land a hit (rating 85+), or get genuinely close to somebody powerful in the industry (weight 80+).'}</div></Card>);
 }
 function LegacyPanel({ g }) {
   if (g.stage === 'child' || g.stage === 'teen') return null;
