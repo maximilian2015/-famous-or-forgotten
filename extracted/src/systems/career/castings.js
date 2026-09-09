@@ -6,7 +6,7 @@ import { earn, markReleased } from '../../engine/economy.js';
 import { GENRES } from '../meta/news.js';
 import { addGenreXP, genreBonus } from './genres.js';
 import { startProduction } from './production.js';
-import { quoteFor, episodeRate } from '../meta/status.js';
+import { quoteFor, episodeRate, setFame } from '../meta/status.js';
 import { rollStability, feeFactor, riskPrestige } from './stability.js';
 import { askerStanding } from './awards.js';
 import { ageFit, seenForIt } from './age.js';
@@ -374,7 +374,7 @@ export function auditionFor(s, id, quality = 50) {
     (s[bucket] = s[bucket] || []).unshift({ title: c.title, role: c.role, type: c.type, genre: c.genre,
       salary: c.salary, rating, status, year: s.year, minor: true });
     addGenreXP(s, c.genre, rating);
-    earn(s, c.salary, `"${c.title}" paid`); markReleased(s); s.fame = clamp(s.fame + rint(1, 3)); s.confidence = clamp(s.confidence + 2);
+    earn(s, c.salary, `"${c.title}" paid`); markReleased(s); setFame(s, s.fame + rint(1, 3)); s.confidence = clamp(s.confidence + 2);
     s.lastEvent = `${quality >= 80 ? 'The room goes quiet — you nailed it. ' : ''}One day's work on "${c.title}". It came out ${status.toLowerCase()} (${Math.round(rating)}/100).`;
     addTimeline(s, `Booked ${c.title}: ${status}.`, rating < 50);
   } else {

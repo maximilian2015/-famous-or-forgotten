@@ -1,4 +1,6 @@
+import { inCareer } from '../../engine/stage.js';
 import { an } from '../../engine/text.js';
+import { addTimeline } from '../../engine/timeline.js';
 import { HOUSING, HOUSING_ORDER } from '../../engine/economy.js';
 export const FAME_TIERS = [
   { id: 'unknown', label: 'Unknown', min: 0, housingMax: 'studio' },
@@ -80,6 +82,66 @@ export function quoteCeiling(s) {
 export function setQuote(s, value) {
   s.quote = Math.min(Math.round(value || 0), quoteCeiling(s));
   return s.quote;
+}
+
+// ── the last step ─────────────────────────────────────────────────────────────────────
+//
+// Fame was bought with volume and nothing else. Measured over twenty-five careers played
+// by an optimiser: A-lister at a median age of 34, Icon at 38, twenty-five out of
+// twenty-five, every one of them finishing between 97 and 100. Make ninety films and Icon
+// is not a question of whether, only of when.
+//
+// Nobody becomes an icon by working a lot. They become one by being in something enormous,
+// or by being handed the statuette in front of everybody. So the last stretch of the
+// ladder is not something you can grind at all — it is a door, and it opens on an event.
+//
+// This is a GATE, not a curve: no threshold anywhere downstream moves, because the shape
+// of the climb below it is untouched. And it only limits fame going UP — losing it is
+// never blocked, or an icon who stopped working could never fade.
+export const ICON_WALL = 89;
+export function iconKey(s) {
+  if ((s.worldHits || 0) > 0) return 'hit';
+  if (((s.awards && s.awards.wins) || []).length > 0) return 'asker';
+  return null;
+}
+export function fameCeiling(s) { return iconKey(s) ? 100 : ICON_WALL; }
+// What is still in the way, in one line, for the Fame tile. A wall the player cannot see
+// is not a design, it is a bug they will report.
+export function iconBlurb(s) {
+  if (iconKey(s)) return null;
+  return 'Icon needs a world hit or an Asker — not more work';
+}
+
+// The only place fame is allowed to go up. It was written in fifteen files and clamped in
+// none, which is exactly how the quote ran to ten billion before setQuote existed.
+export function setFame(s, value) {
+  const v = Math.max(0, Math.min(100, value || 0));
+  const cur = s.fame || 0;
+  s.fame = v <= cur ? v : Math.min(v, Math.max(cur, fameCeiling(s)));
+  return s.fame;
+}
+
+// Say it out loud, once each way. A ceiling the player runs into with no explanation is
+// the single worst thing a progression system can do — they will assume the game is broken,
+// and they will be right to.
+export function iconTick(s) {
+  if (!inCareer(s)) return;
+  const key = iconKey(s);
+  if (!key && (s.fame || 0) >= ICON_WALL - 0.5 && !s._iconWallSaid) {
+    s._iconWallSaid = true;
+    addTimeline(s, 'You are as known as work alone can make you. The last step is not another credit — '
+      + 'it is one enormous picture or a statuette, and neither of those can be scheduled.');
+    if (!s.lastEvent) s.lastEvent = 'As far as work alone goes, you are there. The rest is not something you can book.';
+  }
+  if (key && !s._iconDoorSaid) {
+    s._iconDoorSaid = true;
+    // Only worth saying if they were actually against it.
+    if (s._iconWallSaid) {
+      addTimeline(s, key === 'hit'
+        ? 'The whole world saw that one. The ceiling you had been sitting under is gone.'
+        : 'They read your name out. Whatever was left between you and the very top went with it.');
+    }
+  }
 }
 export function setHousing(s, key) {
   if (!HOUSING[key]) return s;

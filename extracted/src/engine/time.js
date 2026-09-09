@@ -1,3 +1,4 @@
+import { inCareer } from './stage.js';
 import { advanceStage } from '../systems/life/stages.js';
 import { applyMonthly, applyYearly, relevanceDrift, homeEnergy } from './economy.js';
 import { maybeGenerateOffer, offersTick } from '../systems/career/offers.js';
@@ -17,6 +18,7 @@ import { laterOffersTick } from '../systems/career/franchise.js';
 import { submissionsTick, refreshCastingPool } from '../systems/career/castings.js';
 import { runNominations, ceremonyTick } from '../systems/career/awards.js';
 import { agingNote } from '../systems/career/age.js';
+import { iconTick } from '../systems/meta/status.js';
 import { strainTick } from '../systems/life/strain.js';
 import { slotsLost, rehabTick, inRehab } from '../systems/life/depression.js';
 import { drinkTick } from '../systems/life/drink.js';
@@ -38,7 +40,7 @@ export function advanceMonth(state) {
     applyYearly(s); familyYear(s); allowanceTick(s); datingYear(s); spotlightYear(s);
     agingTick(s);
     if (mortalityCheck(s)) return s;   // life is over — nothing else runs this tick
-    if (s.stage === 'career') {
+    if (inCareer(s)) {
       runNominations(s);   // the season judges last year's work
       // The board quietly changes shape as you age. Say so once, out loud, rather than
       // letting the player wonder why the offers dried up.
@@ -75,6 +77,7 @@ export function advanceMonth(state) {
   maybeGenerateOffer(s);
   emailTick(s);
   maybeStartArc(s);
+  iconTick(s);        // and the last rung says why it is out of reach
   s.peakFame = Math.max(s.peakFame || 0, s.fame || 0);
   advanceStage(s);
   pruneCooldowns(s);

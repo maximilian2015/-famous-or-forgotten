@@ -11,7 +11,7 @@ import { skillCap } from './systems/career/actions.js';
 import { seeDoctor, treatmentCost, pushThrough, PILLS, usePills, infectionOdds } from './systems/life/health.js';
 import { resolveArc } from './systems/life/arcs.js';
 import { computeLegacy, getHall, heirsOf, heirOpts, enshrine } from './systems/meta/legacy.js';
-import { fameTier, setHousing, FAME_TIERS } from './systems/meta/status.js';
+import { fameTier, setHousing, FAME_TIERS, ICON_WALL, iconBlurb, iconKey } from './systems/meta/status.js';
 import { rehearse, riskyTake, bondWithCrew, meterTier } from './systems/career/production.js';
 import { TimingBar } from './ui/components/TimingBar.jsx';
 import { GridRisk } from './ui/components/GridRisk.jsx';
@@ -21,6 +21,7 @@ import { GENRES, hotGenre } from './systems/meta/news.js';
 import { genreXP, genreBonus, genreLabel } from './systems/career/genres.js';
 import { Phone } from './phone/Phone.jsx';
 import { an } from './engine/text.js';
+import { inCareer } from './engine/stage.js';
 import { theme, setSkin, skinId, onSkinChange } from './ui/theme.js';
 import { THEMES, THEME_ORDER } from './ui/skins.js';
 import { FONT, FONT_DISPLAY } from './ui/chrome.js';
@@ -96,7 +97,7 @@ export default function App() {
       <div key={screen} className="fof-in">
       {screen === 'people' ? <PeopleScreen g={g} openId={openPerson} setOpenId={setOpenPerson} /> :
        screen === 'phone' ? (g.stage === 'career' || g.ageY >= 13 ? <Phone g={g} /> : <ChildPhoneLocked />) :
-       screen === 'career' ? (g.stage === 'career' ? <CareerScreen g={g} />
+       screen === 'career' ? (inCareer(g) ? <CareerScreen g={g} />
          : g.stage === 'teen' ? <CareerScreen g={g} teenOnly />   /* teens can still take lessons */
          : <LockedScreen label="Career" />) :
        screen === 'style' ? <StyleScreen g={g} /> :
@@ -113,7 +114,7 @@ export default function App() {
           <Stat vital label="Mental" value={g.mental} />
           <Stat label="Fame" value={g.fame} sub={fameSub(g)} />
           <Stat label={g.dream === 'singer' ? 'Singing' : 'Acting'} value={g.dream === 'singer' ? g.singing : g.acting}
-            sub={g.stage === 'career' ? 'tap for genres ›' : undefined} onClick={g.stage === 'career' ? () => setShowGenres(true) : undefined} />
+            sub={inCareer(g) ? 'tap for genres ›' : undefined} onClick={inCareer(g) ? () => setShowGenres(true) : undefined} />
           <Stat label="Charisma" value={g.charisma} />
           <Stat label="Looks" value={g.looks} />
           <Stat label="Respect" value={g.respect} />
@@ -126,7 +127,7 @@ export default function App() {
           </div>
           <Button kind="pri" onClick={() => setShowHealth(true)}>Deal with it ›</Button>
         </Card>)}
-        {g.stage === 'career' && g.production && (<Card style={{ marginBottom: 14, borderColor: 'rgba(255,209,102,.35)' }}>
+        {inCareer(g) && g.production && (<Card style={{ marginBottom: 14, borderColor: 'rgba(255,209,102,.35)' }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline' }}>
             <div style={{ fontSize: 11, fontWeight: 900, letterSpacing: '.08em', textTransform: 'uppercase', color: theme.gold }}>🎬 On set</div>
             <div style={{ fontSize: 11.5, color: theme.muted }}>{meterTier(g.production.meter).label}</div>
@@ -134,13 +135,13 @@ export default function App() {
           <div style={{ fontSize: 14, fontWeight: 800, marginTop: 3 }}>{g.production.title} · {g.production.monthsLeft} mo left</div>
           <div style={{ fontSize: 11, color: theme.muted, marginTop: 4 }}>Manage it from the Career tab.</div>
         </Card>)}
-        {g.stage === 'career' && (g.offers || []).length > 0 && (<div style={{ marginBottom: 14 }}><div style={{ fontSize: 11, fontWeight: 900, letterSpacing: '.09em', textTransform: 'uppercase', color: theme.muted, marginBottom: 8 }}>Offers</div>{g.offers.map((o) => (<Card key={o.id} style={{ marginBottom: 8 }}><div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline' }}><div style={{ fontSize: 14, fontWeight: 800 }}>{o.projectTitle}</div><div style={{ fontSize: 13, fontWeight: 900, color: theme.gold }}>€{o.salary.toLocaleString()}</div></div><div style={{ fontSize: 11.5, color: theme.muted, margin: '3px 0 4px' }}>{o.role} · {o.type} · {o.months} mo · prestige {o.prestigeScore}</div>
+        {inCareer(g) && (g.offers || []).length > 0 && (<div style={{ marginBottom: 14 }}><div style={{ fontSize: 11, fontWeight: 900, letterSpacing: '.09em', textTransform: 'uppercase', color: theme.muted, marginBottom: 8 }}>Offers</div>{g.offers.map((o) => (<Card key={o.id} style={{ marginBottom: 8 }}><div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline' }}><div style={{ fontSize: 14, fontWeight: 800 }}>{o.projectTitle}</div><div style={{ fontSize: 13, fontWeight: 900, color: theme.gold }}>€{o.salary.toLocaleString()}</div></div><div style={{ fontSize: 11.5, color: theme.muted, margin: '3px 0 4px' }}>{o.role} · {o.type} · {o.months} mo · prestige {o.prestigeScore}</div>
           {/* An offer can collapse mid-shoot exactly like a casting, so it has to say how
               solid the money is before you sign, not after. */}
           <OfferBacking o={o} />
           {o.note && <div style={{ fontSize: 11, color: theme.accent, margin: '0 0 6px', lineHeight: 1.45 }}>{o.note}</div>}
           <div style={{ display: 'flex', gap: 7 }}><Button kind="pri" onClick={() => dispatch(acceptOffer, o.id)}>Accept</Button><Button kind="danger" onClick={() => dispatch(declineOffer, o.id)}>Pass</Button></div></Card>))}</div>)}
-        {g.stage === 'career' && <AaaTracker g={g} />}
+        {inCareer(g) && <AaaTracker g={g} />}
         <LifeCard g={g} />
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
           <div style={{ fontSize: 11, fontWeight: 900, letterSpacing: '.09em', textTransform: 'uppercase', color: theme.muted }}>What now</div>
@@ -151,7 +152,7 @@ export default function App() {
           {availableActions(g).map((a) => { const noEnergy = (g.ap || 0) <= 0;
             return (<button key={a.id} onClick={() => dispatch(runAction, a.id)} disabled={noEnergy} style={{ textAlign: 'left', background: theme.panel, border: `1px solid ${theme.line}`, borderRadius: 12, padding: '10px 13px', cursor: noEnergy ? 'default' : 'pointer', color: theme.text, opacity: noEnergy ? .4 : 1 }}><div style={{ fontSize: 14, fontWeight: 800 }}>{a.label(g)}</div><div style={{ fontSize: 11.5, color: theme.muted, marginTop: 2 }}>{a.desc(g)}</div></button>); })}
           {(g.ap || 0) <= 0 && <div style={{ fontSize: 11.5, color: theme.gold, textAlign: 'center', padding: '4px 0' }}>Out of energy — live time to refresh your actions.</div>}
-          {g.stage === 'career' && <div style={{ fontSize: 11, color: theme.muted, textAlign: 'center', padding: '6px 8px', lineHeight: 1.55, opacity: .85 }}>
+          {inCareer(g) && <div style={{ fontSize: 11, color: theme.muted, textAlign: 'center', padding: '6px 8px', lineHeight: 1.55, opacity: .85 }}>
             Auditions and shifts are in your Phone. Training and parties are under Career. Family is under People.
           </div>}
           {g.stage === 'teen' && <div style={{ fontSize: 11, color: theme.muted, textAlign: 'center', padding: '6px 8px', lineHeight: 1.55, opacity: .85 }}>
@@ -185,7 +186,7 @@ function BottomNav({ screen, setScreen, g }) {
     background: `${theme.bgDeep || theme.bg}f2`, backdropFilter: 'blur(14px)', WebkitBackdropFilter: 'blur(14px)',
     borderTop: `1px solid ${theme.line}`, boxShadow: '0 -14px 30px -22px #000',
     display: 'flex', padding: '8px 6px 10px', zIndex: 40 }}>
-    {NAV.map((n) => { const active = screen === n.id; const badge = n.id === 'career' && g.stage === 'career' ? (g.offers || []).length : n.id === 'phone' && g.stage === 'career' ? ((g.inbox||[]).filter(m=>!m.read).length) : 0;
+    {NAV.map((n) => { const active = screen === n.id; const badge = n.id === 'career' && inCareer(g) ? (g.offers || []).length : n.id === 'phone' && inCareer(g) ? ((g.inbox||[]).filter(m=>!m.read).length) : 0;
       return (<button key={n.id} data-sfx="nav" onClick={() => setScreen(n.id)} style={{ flex: 1, background: 'none', border: 'none', cursor: 'pointer', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 3, padding: '4px 0', position: 'relative' }}>
         <span style={{ fontSize: 20, filter: active ? 'none' : 'grayscale(.55) opacity(.55)', transition: 'filter .2s' }}>{n.icon}</span>
         <span style={{ fontSize: 10, fontWeight: active ? 800 : 600, color: active ? theme.accent : theme.muted, transition: 'color .2s' }}>{n.label}</span>
@@ -296,6 +297,10 @@ function HealthScreen({ g, onBack }) {
 function fameSub(g) {
   const t = fameTier(g.fame);
   const next = FAME_TIERS[FAME_TIERS.indexOf(t) + 1];
+  // The last rung is not a number of points away, so it must not be described as one. Once
+  // you are up against the wall the tile says what the wall is instead of counting down to
+  // something that counting cannot reach.
+  if (next && next.id === 'icon' && (g.fame || 0) >= ICON_WALL - 4 && iconBlurb(g)) return iconBlurb(g);
   return next ? `${t.label} · ${Math.max(1, Math.ceil(next.min - (g.fame || 0)))} to ${next.label}` : t.label;
 }
 // Acting isn't one number — it's the lanes you've actually worked in. Genre experience
@@ -610,7 +615,7 @@ function LifeCard({ g }) {
     <div style={{ fontSize: 11, fontWeight: 900, letterSpacing: '.09em', textTransform: 'uppercase', color: theme.muted, marginBottom: 6 }}>Your life right now</div>
     {row('Living', g.homeless ? 'Nowhere — on the street' : g.inheritedHome ? `${HOUSING[g.housing || 'room'].label} · yours outright` : g.hasApartment ? HOUSING[g.housing || 'room'].label : "At your parents'")}
     {g.hasApartment && row('Eating', `${DIET[g.diet || 'cook'].label}${g.gym ? ' · gym' : ''}`)}
-    {row('Work', g.job ? `${g.job.title} · ${g.job.employer}` : (g.stage === 'career' ? 'No job' : '—'), g.job ? theme.text : theme.muted)}
+    {row('Work', g.job ? `${g.job.title} · ${g.job.employer}` : (inCareer(g) ? 'No job' : '—'), g.job ? theme.text : theme.muted)}
     {g.production && row('Filming', `${g.production.title} · ${g.production.monthsLeft} mo left`, theme.gold)}
     {/* The number your agent says out loud. It only means anything if you can see it. */}
     {(g.quote || 0) > 0 && row('Your quote', money(g.quote), theme.gold)}
@@ -1030,7 +1035,7 @@ function PeopleScreen({ g, openId, setOpenId }) {
     {people.length > 0 && (<><div style={{ fontSize: 11, fontWeight: 900, letterSpacing: '.09em', textTransform: 'uppercase', color: theme.muted, margin: '14px 0 8px' }}>Industry contacts</div>{people.map((p) => { const opensDoor = p.unlocks === 'aaa' && p.industryWeight >= 80;
       return (<PersonRow key={p.id} g={g} p={p} onOpen={() => setOpenId(p.id)}
         sub={`${p.role}${opensDoor && p.relationship >= 60 ? ' · opens A-list ★' : opensDoor ? ' · could open doors' : ''}`} />); })}</>)}
-    {g.stage !== 'career' && <div style={{ fontSize: 11.5, color: theme.muted, textAlign: 'center', padding: '14px 10px', opacity: .8 }}>Industry contacts start once your career begins. Keep school friends close on Spotlight — some of them go far.</div>}
+    {!inCareer(g) && <div style={{ fontSize: 11.5, color: theme.muted, textAlign: 'center', padding: '14px 10px', opacity: .8 }}>Industry contacts start once your career begins. Keep school friends close on Spotlight — some of them go far.</div>}
   </div>);
 }
 const CITIES = ['Amsterdam', 'London', 'Los Angeles', 'New York', 'Paris', 'Berlin', 'Seoul', 'São Paulo'];

@@ -167,6 +167,25 @@ function learnOnSet(s, p) {
   return real;
 }
 
+// ── the two ends of the ten-point scale ───────────────────────────────────────────────
+//
+// Everything that decides a rating is a SUM, and a sum against a hard 0–100 clamp piles up
+// at both ends. Measured over a well-played forty-year career: films opened on 0.9/10 at
+// the bottom, and 9.5% of everything made came out at exactly 10.0/10 at the top — a normal
+// hump in the fifties with a spike stuck on the end of it.
+//
+// Neither number exists. The worst-reviewed pictures ever made sit around 1.5 to 2.5,
+// because the people scoring them are an audience and some of them turned up for the
+// disaster on purpose. And nothing has ever scored ten.
+//
+// So both ends are compressed instead of cut. There is no step anywhere in the curve: the
+// middle of the scale — where every threshold in the game is calibrated — is untouched.
+function bottomOut(r) { return r >= 28 ? r : 15 + (Math.max(0, r) / 28) * 13; }
+// Above 86 the scale gets tight and approaches 98 without arriving. A raw 100 comes out at
+// 91.6, a raw 130 at 95.4. The only thing that reaches higher is a world hit, which sets
+// its own number, because that is what "a world hit" means.
+function topOut(r) { return r <= 86 ? r : 86 + 12 * (1 - Math.exp(-(r - 86) / 22)); }
+
 function wrapProduction(s) {
   const p = s.production;
   const skill = s.dream === 'singer' ? s.singing : s.acting;
@@ -185,9 +204,14 @@ function wrapProduction(s) {
   // No money also means no days and no post, so a broke production is rougher — but the
   // part it gave you was better, and those two roughly cancel. What is left is the swing.
   const material = clamp((p.prestigeScore || 50) + prestigeShift(p));
-  let rating = clamp(floor + craft - roughness(p.stability) - (p.drunkMonths || 0) * 1.6 + material * 0.18
+  // NOT clamped here. Every term above is a sum, and clamping the sum at 100 turned the
+  // top of the scale into a pile: 9.5% of a well-played career's films came out at exactly
+  // 10.0/10, and the distribution had a normal hump in the fifties and then a spike at the
+  // ceiling. No film has ever scored ten. Everything past 86 is compressed instead —
+  // see topOut below — so a great film and a masterpiece stop being the same number.
+  let rating = floor + craft - roughness(p.stability) - (p.drunkMonths || 0) * 1.6 + material * 0.18
     + (s.looks - 40) * 0.08 + genreBonus(s, p.genre) + rint(-16, 12) + volatileSwing(p.stability)
-    + ratingShift(p) + (swingShift(p) ? rint(-swingShift(p), swingShift(p)) : 0));
+    + ratingShift(p) + (swingShift(p) ? rint(-swingShift(p), swingShift(p)) : 0);
   // And then the material has the last word. Nobody has ever acted a bad script into a good
   // film — an actor at 88 who rehearsed every month used to make a Hit 36 times in 60 and
   // the WORST thing they could physically produce was a 7.5, whatever they were handed.
@@ -209,16 +233,11 @@ function wrapProduction(s) {
   // money behind it flop at exactly the same rate — 22.4% against 22.5% — which erased the
   // whole point of the backing you were shown before signing.
   if (chance(Math.max(2, 11 + Math.max(0, 88 - (p.stability ?? 88)) * 0.22 + apartShift(p)))) {
-    rating = clamp(rating - rint(16, 32));
+    rating = rating - rint(16, 32);
     p.fellApart = true;
   }
-  // The bottom of the scale produced numbers that do not exist. A playtest opened a film on
-  // 0.9/10 — and no film has ever scored 0.9. The worst-reviewed pictures ever made sit
-  // around 1.5 to 2.5, because the people scoring them are an audience, not a machine, and
-  // some of them turn up for the disaster on purpose. Compressed rather than clamped, so
-  // there is no step in the curve: 0 becomes 15, 28 stays 28, everything above is untouched.
-  if (rating < 28) rating = 15 + (rating / 28) * 13;
-
+  // Both ends of the scale, compressed rather than cut off, so neither one piles up.
+  rating = clamp(topOut(bottomOut(rating)));
   // A genuine cultural moment should be a career highlight, not a monthly occurrence.
   let worldHit = false;
   if (rating >= 90 && p.tier !== 'supporting') {

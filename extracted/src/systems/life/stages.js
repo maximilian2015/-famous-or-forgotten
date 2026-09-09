@@ -7,6 +7,10 @@ export function stageForAge(ageY, hasApartment) {
   if (!hasApartment) return 'moving_out';
   return 'career';
 }
+// Whether the career half of the game is running. Defined in engine/stage.js — see the
+// note there — and re-exported so anything already importing from this file can reach it.
+export { inCareer } from '../../engine/stage.js';
+
 export function advanceStage(s) {
   const next = stageForAge(s.ageY, s.hasApartment);
   if (next === s.stage) return null;

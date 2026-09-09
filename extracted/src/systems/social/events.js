@@ -1,3 +1,5 @@
+import { inCareer } from '../../engine/stage.js';
+import { setFame } from '../meta/status.js';
 import { uid } from '../../engine/id.js';
 import { rint, chance, pick } from '../../engine/rng.js';
 import { addTimeline } from '../../engine/timeline.js';
@@ -32,7 +34,7 @@ function reachableTiers(s) {
   return EVENT_TIERS.slice(0, Math.min(idx + 2, EVENT_TIERS.length));
 }
 export function maybeGenerateEvent(s) {
-  if (s.stage !== 'career') return;
+  if (!inCareer(s)) return;
   s.events = s.events || [];
   if (s.events.length >= 3) return;
   if (!chance(35)) return;
@@ -116,7 +118,7 @@ export function attendEvent(s, eventId) {
       met.push(`${p.name} — you got their number`);
     }
   }
-  if (t.fameGain) s.fame = clamp((s.fame || 0) + t.fameGain);
+  if (t.fameGain) setFame(s, (s.fame || 0) + t.fameGain);
   s.mental = clamp((s.mental || 50) + rint(1, 4));
   s.lastEvent = `${t.label} at ${ev.venue}, hosted by ${ev.host}. You met ${met.join(' and ')}.`;
   addTimeline(s, `Went to ${t.label.toLowerCase()} at ${ev.venue}.`);

@@ -86,7 +86,9 @@ export const TAKES = {
     id: 'strange', label: 'Do the strange thing',
     blurb: 'The version nobody has the nerve for. It is either the best thing any of you ever make or it is unwatchable.',
     said: 'You talked them into the strange version. Everyone on that set knew it could go either way.',
-    prestige: 9, bump: 1, appeal: 0.85, swing: 15, apart: 11, push: 42,
+    // 15 before the rating scale was compressed above 86. This take exists to be the widest
+    // swing in the game, and compressing the top quietly took a chunk of that away.
+    prestige: 9, bump: 1, appeal: 0.85, swing: 19, apart: 11, push: 42,
   },
 };
 export const TAKE_ORDER = ['straight', 'bigger', 'about', 'strange'];

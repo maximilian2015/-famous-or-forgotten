@@ -7,7 +7,7 @@
 // sells. That single opposition is what makes choosing a project a decision rather than
 // an arithmetic problem.
 import { rint, chance, pick } from '../../engine/rng.js';
-import { setQuote } from '../meta/status.js';
+import { setQuote, setFame } from '../meta/status.js';
 import { addTimeline } from '../../engine/timeline.js';
 
 const clamp = (v, a = 0, b = 100) => Math.max(a, Math.min(b, v));
@@ -43,7 +43,12 @@ export function awardStrength(c) {
   if (rating < FLOOR) return 0;
   // Steep: the difference between 78 and 92 has to be enormous, or every competent film
   // would be in contention and a nomination would mean nothing.
-  const base = Math.pow((rating - FLOOR) / 30, 1.8) * 100;
+  // The divisor is "how far above the floor a perfect film sits", and it has to track the
+  // top of the rating scale. It was 30, which assumed a film could reach 100. Nothing can
+  // any more — the scale is compressed above 86 (see production.js) and the best thing a
+  // career produces now lands around 96 — so 30 quietly took a fifth off the strength of
+  // every contender and a master's lifetime went from about three Askers to 1.1.
+  const base = Math.pow((rating - FLOOR) / 26, 1.8) * 100;
   const genre = ASKER_GENRE[c.genre] ?? 1;
   const scale = ASKER_SCALE[c.scale] ?? 1;
   const prestige = 0.7 + (c.prestigeScore || 50) / 160;
@@ -209,7 +214,7 @@ export function runNominations(s) {
   // A nomination is a title you keep. It moves what you can ask for, immediately.
   setQuote(s, (s.quote || 0) * 1.25 || s.quote);
   s.respect = clamp((s.respect || 0) + 6 * headroom(112, s.respect));
-  s.fame = clamp((s.fame || 0) + 3 * headroom(118, s.fame));
+  setFame(s, (s.fame || 0) + 3 * headroom(118, s.fame));
   const labels = pending.map((p) => CATEGORIES.find((c) => c.id === p.category)?.label || p.category);
   addTimeline(s, `Asker nominations: ${labels.join(', ')} for "${pending[0].title}".`);
   s.bigMoment = {
@@ -248,7 +253,7 @@ export function ceremonyTick(s) {
     const c = [...(s.filmography || []), ...(s.discography || [])].find((x) => x.title === r.title);
     if (c) c.bestPicture = true;
     s.respect = clamp((s.respect || 0) + 6 * headroom(112, s.respect));
-    s.fame = clamp((s.fame || 0) + 4 * headroom(118, s.fame));
+    setFame(s, (s.fame || 0) + 4 * headroom(118, s.fame));
     addTimeline(s, `"${r.title}" won Best Picture. You were in it, and everybody knows.`);
   }
   if (won.length) {
@@ -265,7 +270,7 @@ export function ceremonyTick(s) {
     // box office says. So it lifts you toward the top of Star even from nowhere.
     setQuote(s, (s.quote || 0) * 1.85 || s.quote);
     s.respect = clamp((s.respect || 0) + 15);
-    s.fame = clamp(Math.max((s.fame || 0) + 18, Math.min(70, (s.fame || 0) + 34)));
+    setFame(s, Math.max((s.fame || 0) + 18, Math.min(70, (s.fame || 0) + 34)));
     s.peakFame = Math.max(s.peakFame || 0, s.fame);
     addTimeline(s, `🏆 Won the Asker for ${won.map((r) => CATEGORIES.find((c) => c.id === r.category)?.label).join(' and ')}.`);
   } else if (!picture.length) {

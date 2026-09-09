@@ -71,7 +71,9 @@
       "Bash(sed -i \"s/import { SKINS, SKIN_ORDER } from '.\\\\/ui\\\\/skins.js';/import { THEMES, THEME_ORDER } from '.\\\\/ui\\\\/skins.js';/; s/SKINS\\\\[skinId\\(\\)\\\\]/THEMES[skinId\\(\\)]/g; s/SKIN_ORDER\\\\.map/THEME_ORDER.map/g; s/const sk = SKINS\\\\[id\\\\]/const sk = THEMES[id]/g\" App.jsx)",
       "Bash(grep -n \"was \\\\${an\\(p.job\\)}\" App.jsx)",
       "Bash(\"/c/Program Files/nodejs/node.exe\" test_bonds.mjs)",
-      "Bash(\"/c/Program Files/nodejs/node.exe\" alist_check.mjs)"
+      "Bash(\"/c/Program Files/nodejs/node.exe\" alist_check.mjs)",
+      "Bash(\"/c/Program Files/nodejs/node.exe\" probe_scale.mjs)",
+      "Bash(\"/c/Program Files/nodejs/node.exe\" probe_players.mjs)"
     ],
     "defaultMode": "acceptEdits",
     "additionalDirectories": [

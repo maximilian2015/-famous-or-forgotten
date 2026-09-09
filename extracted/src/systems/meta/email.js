@@ -1,3 +1,4 @@
+import { inCareer } from '../../engine/stage.js';
 import { rint, chance } from '../../engine/rng.js';
 import { addTimeline } from '../../engine/timeline.js';
 const clamp = (v) => Math.max(0, Math.min(100, v));
@@ -45,7 +46,7 @@ const ROOMS = [
 ];
 const pickOne = (list) => list[Math.floor(Math.random() * list.length)];
 export function emailTick(s) {
-  if (!s.alive || s.stage !== 'career') return;
+  if (!s.alive || !inCareer(s)) return;
   const key = (s.year || 0) * 12 + (s.month || 0);
   if (s._emTick === key) return; s._emTick = key;
   const fame = s.fame || 0;

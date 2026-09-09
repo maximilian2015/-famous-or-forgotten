@@ -1,3 +1,4 @@
+import { inCareer } from '../../engine/stage.js';
 import { rint, chance, pick } from '../../engine/rng.js';
 import { addTimeline } from '../../engine/timeline.js';
 import { die } from './mortality.js';
@@ -88,7 +89,7 @@ export function isIll(s) { return !!s.illness; }
 export function illnessBlocks(s) { return !!(s.illness && s.illness.freezes); }
 
 export function healthTick(s) {
-  if (s.stage !== 'career' || !s.alive) return;
+  if (!inCareer(s) || !s.alive) return;
   const h = s.health || 100;
 
   if (s.illness) {

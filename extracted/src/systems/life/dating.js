@@ -1,3 +1,4 @@
+import { setFame } from '../meta/status.js';
 import { uid } from '../../engine/id.js';
 // Somebody was a number that went up when you pressed a button and down when you did not.
 // There was one way to meet them, one way to see them, one question to ask, and no way for
@@ -163,7 +164,7 @@ export function goOnDate(s, key, id) {
 
   // Being photographed together is the whole point of one of these, and it cuts both ways.
   if (key === 'public') {
-    s.fame = clamp((s.fame || 0) + rint(1, 3));
+    setFame(s, (s.fame || 0) + rint(1, 3));
     if (chance(22)) {
       s.scandal = clamp((s.scandal || 0) + rint(3, 9));
       addTimeline(s, `You and ${p.name} are on the front of something neither of you agreed to.`, true);
@@ -244,7 +245,7 @@ export function proposeMarriage(s, style = 'proper', prenup = false) {
     return s;
   }
   s.cash = (s.cash || 0) - cost;
-  s.fame = clamp((s.fame || 0) + w.fame);
+  setFame(s, (s.fame || 0) + w.fame);
   const partner = s.partner;
   applyBond(s, partner, w.bond + (prenup ? -8 : 0));
   (s.family = s.family || []).push({

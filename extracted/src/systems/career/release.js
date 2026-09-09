@@ -8,7 +8,7 @@ import { uid } from '../../engine/id.js';
 // A film can be adored and lose money, or panned and take a billion. They pull your
 // career in different directions, and that is the whole point of having both.
 import { rint } from '../../engine/rng.js';
-import { setQuote } from '../meta/status.js';
+import { setQuote, setFame } from '../meta/status.js';
 import { addTimeline } from '../../engine/timeline.js';
 import { markReleased } from '../../engine/economy.js';
 import { hotGenre } from '../meta/news.js';
@@ -189,7 +189,7 @@ function open(s, rel) {
   // that it exists. The rest of what this film does to your name waits for the run.
   const headroom = (limit, cur) => Math.max(0.16, 1 - (cur || 0) / limit);
   const opening = { tentpole: 3, lead: 2, supporting: 1 }[rel.tier] || 1;
-  s.fame = clamp((s.fame || 0) + opening * headroom(118, s.fame));
+  setFame(s, (s.fame || 0) + opening * headroom(118, s.fame));
   // The finished thing is kept ON the release so runTick can close it out properly.
   credit._rel = { rating: rel.rating, worldHit: rel.worldHit, tier: rel.tier, scale: rel.scale,
     salary: rel.salary, finalGross: rel.finalGross || 0, job: rel.job, film };
@@ -278,7 +278,7 @@ function closeRun(s, credit, r) {
     if (f < 55) return 1 - f / 130;                 // the climb to Star is ordinary work
     return Math.max(0.03, 0.577 * Math.pow(Math.max(0, (104 - f) / 49), 1.9));
   };
-  s.fame = clamp((s.fame || 0) + fame * headroom(s.fame));
+  setFame(s, (s.fame || 0) + fame * headroom(s.fame));
   const respectGain = r.rating >= 85 ? 5 : r.rating >= 70 ? 2 : r.rating < 45 ? -4 : 0;
   const soft = (limit, cur) => Math.max(0.16, 1 - (cur || 0) / limit);
   s.respect = clamp((s.respect || 0) + (respectGain > 0 ? respectGain * soft(112, s.respect) : respectGain));

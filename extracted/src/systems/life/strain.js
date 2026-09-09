@@ -1,3 +1,4 @@
+import { inCareer } from '../../engine/stage.js';
 import { uid } from '../../engine/id.js';
 // Nothing stopped you shooting one film straight into the next for sixty years. Measured
 // over two hundred careers the average actor finished with two hundred and sixteen
@@ -146,7 +147,7 @@ function moodTick(s) {
 }
 
 export function strainTick(s) {
-  if (s.stage !== 'career' && s.stage !== 'moving_out') return s;
+  if (!inCareer(s) && s.stage !== 'moving_out') return s;
   moodTick(s);
   if (s.depression) { depressionTick(s); s.depression.sessionThisMonth = false; }
   s._therapyThisMonth = false;

@@ -1,7 +1,8 @@
+import { inCareer } from '../../engine/stage.js';
 import { uid } from '../../engine/id.js';
 import { rint, chance, pick } from '../../engine/rng.js';
 import { computeAccess } from './access.js';
-import { quoteFor } from '../meta/status.js';
+import { quoteFor, setFame } from '../meta/status.js';
 import { addTimeline } from '../../engine/timeline.js';
 import { earn } from '../../engine/economy.js';
 import { GENRES } from '../meta/news.js';
@@ -74,7 +75,7 @@ export function offersTick(s) {
 }
 export function maybeGenerateOffer(s) {
   const acc = computeAccess(s);
-  if (s.stage !== 'career') return;
+  if (!inCareer(s)) return;
   if ((s.offers || []).length >= 2) return;
   // An agent brings you things. An agent does not bring you a picture every other month
   // for forty-five years — which is what 0.5 did, and it meant the casting board, the
@@ -105,7 +106,7 @@ export function acceptOffer(s, id) {
   const bucket = s.dream === 'singer' ? 'discography' : 'filmography';
   (s[bucket] = s[bucket] || []).unshift(credit);
   earn(s, o.salary, `"${credit.title}" paid`);
-  s.fame = clamp(s.fame + o.fame + (rating >= 85 ? 4 : 0));
+  setFame(s, s.fame + o.fame + (rating >= 85 ? 4 : 0));
   s.confidence = clamp(s.confidence + 2);
   s.offers = (s.offers || []).filter((x) => x.id !== id);
   s.lastEvent = `You took "${credit.title}". It came out ${status.toLowerCase()} — rating ${Math.round(rating)}.`;

@@ -1,3 +1,4 @@
+import { inCareer } from './stage.js';
 import { addTimeline } from './timeline.js';
 // Concrete places to live rather than an abstract "lifestyle" slider — a room and a penthouse
 // are things a player can picture, and the rent IS the lifestyle cost.
@@ -106,7 +107,7 @@ export function applyMonthly(s) {
 // The whole point of the title: stop working and the world forgets you.
 // Nothing here ran before — fame only ever went up, so every life ended a Legend.
 export function relevanceDrift(s) {
-  if (s.stage !== 'career') return;
+  if (!inCareer(s)) return;
   // Shooting counts as working, and a fresh credit buys you a few quiet months.
   if (s.production) { s._idleMonths = 0; } else { s._idleMonths = (s._idleMonths || 0) + 1; }
   // Old news fades whether you like it or not.

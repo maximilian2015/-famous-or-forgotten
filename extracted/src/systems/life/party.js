@@ -1,3 +1,5 @@
+import { inCareer } from '../../engine/stage.js';
+import { setFame } from '../meta/status.js';
 // A place of your own is only worth something if you can fill it with people.
 // Parties are the one thing the home does that you actively choose — and the bigger
 // the night, the more likely somebody calls the police about it.
@@ -55,12 +57,12 @@ export function throwParty(s, key) {
 
   const lines = [];
   // Somebody worth knowing turns up at a big enough night.
-  if (s.stage === 'career' && chance(18 * p.reach)) {
+  if (inCareer(s) && chance(18 * p.reach)) {
     const met = makePerson(s);
     (s.people = s.people || []).push(met);
     lines.push(`${met.name} was there — ${met.role.toLowerCase()}, and they remembered your name.`);
   }
-  if (p.reach >= 2) s.fame = clamp((s.fame || 0) + rint(0, p.reach - 1));
+  if (p.reach >= 2) setFame(s, (s.fame || 0) + rint(0, p.reach - 1));
 
   const risk = partyRisk(s, key);
   if (chance(risk)) {
