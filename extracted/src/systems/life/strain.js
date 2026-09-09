@@ -1,3 +1,4 @@
+import { uid } from '../../engine/id.js';
 // Nothing stopped you shooting one film straight into the next for sixty years. Measured
 // over two hundred careers the average actor finished with two hundred and sixteen
 // credits; a real one manages thirty to sixty. There was no cost to never stopping, so
@@ -114,8 +115,39 @@ export function canWork(s) {
 }
 
 // Runs every month.
+// How far down you are, in words. Mental is read by five different systems — it slows
+// recovery from illness, it adds to the yearly decline, it makes every shoot cost more
+// strain, and below 22 it gets you fired — and the game never once said so. Across a
+// fifty-month playtest it fell from 80 to 10 and not one line of text appeared. A number
+// with five consequences and no voice is a number the player learns to ignore.
+const MOOD_BANDS = [
+  { at: 15, say: 'You are not getting out of bed most days. Everything takes twice as long and people have started to notice.' },
+  { at: 28, say: 'You are running on empty. Work is harder than it should be and you are catching everything going round.' },
+  { at: 42, say: 'You have been flat for a while. Nothing is wrong, exactly. Nothing is right either.' },
+];
+export function moodBand(s) {
+  const m = s.mental || 0;
+  for (const b of MOOD_BANDS) if (m < b.at) return b;
+  return null;
+}
+function moodTick(s) {
+  const band = moodBand(s);
+  const now = band ? band.at : 0;
+  const said = s._moodSaid || 0;
+  // Say it when it gets worse, and once more when it has properly lifted — not every month.
+  if (band && (!said || now < said)) {
+    s._moodSaid = now;
+    addTimeline(s, band.say, true);
+    if (!s.lastEvent) s.lastEvent = band.say;
+  } else if (!band && said) {
+    s._moodSaid = 0;
+    addTimeline(s, 'Your head is above water again.');
+  }
+}
+
 export function strainTick(s) {
   if (s.stage !== 'career' && s.stage !== 'moving_out') return s;
+  moodTick(s);
   if (s.depression) { depressionTick(s); s.depression.sessionThisMonth = false; }
   s._therapyThisMonth = false;
 
@@ -203,7 +235,7 @@ function collapse(s) {
   if (wasShooting) {
     const p = s.production;
     (s.frozen = s.frozen || []).push({
-      id: 'frz' + Date.now() + Math.floor(Math.random() * 1000),
+      id: uid(s, 'frz'),
       title: p.title, role: p.role, type: p.type, genre: p.genre, scale: p.scale, tier: p.tier,
       prestigeScore: p.prestigeScore, monthsLeft: Math.max(1, p.monthsLeft || 1),
       episodes: p.episodes || 0, episodeFee: p.episodeFee || 0, season: p.season || 0, part: p.part || 1,

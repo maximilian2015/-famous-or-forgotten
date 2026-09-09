@@ -17,7 +17,13 @@ export function Phone({ g }) {
   const [openApp, setOpenApp] = useState(null);
   const [ocTab, setOcTab] = useState(null);
   const apps = visibleApps(g);
-  const teenMode = g.stage !== 'career';
+  // "Not in the career stage" is not the same thing as "a teenager". An actor who loses
+  // their flat drops back to `moving_out`, and this called a thirty-one-year-old with a
+  // feature credit a teen: the whole casting board vanished and the app told them real
+  // roles come once they are older. Losing your home should cost you money, mental health
+  // and closeness — all of which it already does — not your career.
+  const started = ((g.filmography || []).length + (g.discography || []).length) > 0;
+  const teenMode = g.stage !== 'career' && !started;
   if (openApp) {
     const app = apps.find((a) => a.id === openApp);
     if (!app) { setOpenApp(null); return null; }

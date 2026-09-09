@@ -1,3 +1,4 @@
+import { uid } from '../../engine/id.js';
 import { rint, chance, pick } from '../../engine/rng.js';
 import { computeAccess } from './access.js';
 import { quoteFor } from '../meta/status.js';
@@ -25,7 +26,7 @@ export function generateOffer(s) {
   const quote = quoteFor(s, medium) || quoteFor(s, 'film_indie');
   const prestige = { tentpole: rint(70, 95), lead: rint(45, 70), supporting: rint(20, 45) }[tier];
   const salary = Math.round(quote * share * (0.85 + Math.random() * 0.45));
-  return { id: 'off' + Date.now() + Math.floor(Math.random() * 1000),
+  return { id: uid(s, 'off'),
     projectTitle: (tier === 'tentpole' ? '⭐ ' : '') + title(s, tier === 'tentpole'),
     role: tier === 'supporting' ? 'Supporting' : 'Lead',
     type: s.dream === 'singer' ? (tier === 'tentpole' ? 'World Tour' : 'Album') : (tier === 'tentpole' ? 'Blockbuster' : 'Feature Film'),
@@ -46,6 +47,30 @@ export function runCampaign(s, id) {
   s.lastEvent = `You greenlit a marketing push for "${o.projectTitle.replace('⭐ ', '')}" — €${cost.toLocaleString()}. Should help if it lands.`;
   addTimeline(s, `Ran a campaign for ${o.projectTitle.replace('⭐ ', '')}.`);
   return s;
+}
+// Every offer has always carried a deadline. Messages printed it ("answer within 3 mo"),
+// the calendar drew an hourglass on the month it ran out — and nothing anywhere ever
+// counted it down. Offers sat on the home screen for forty years. The game was telling the
+// player about a clock that did not exist.
+export function offersTick(s) {
+  if (!(s.offers || []).length) return;
+  const kept = [];
+  for (const o of s.offers) {
+    if (typeof o.deadline !== 'number') { kept.push(o); continue; }
+    o.deadline -= 1;
+    if (o.deadline > 0) { kept.push(o); continue; }
+    const title = String(o.projectTitle || 'it').replace('⭐ ', '');
+    // A part you were offered and never answered goes to somebody else. That is the whole
+    // reason a deadline is on the card.
+    if (o.kind === 'thaw') addTimeline(s, `${title} finally went ahead without you.`, true);
+    else addTimeline(s, `They stopped waiting on ${title} and cast someone else.`, true);
+  }
+  if (kept.length !== s.offers.length && !s.lastEvent) {
+    const gone = s.offers.length - kept.length;
+    s.lastEvent = gone > 1 ? `${gone} offers expired while you thought about them.`
+      : `An offer expired while you thought about it. They cast somebody else.`;
+  }
+  s.offers = kept;
 }
 export function maybeGenerateOffer(s) {
   const acc = computeAccess(s);

@@ -1,3 +1,4 @@
+import { uid } from '../../engine/id.js';
 // Somebody was a number that went up when you pressed a button and down when you did not.
 // There was one way to meet them, one way to see them, one question to ask, and no way for
 // it to ever end except an eight per cent annual coin flip.
@@ -79,7 +80,7 @@ export function prospect(s) {
   const wants = pick(WANT_KEYS);
   const means = rollMeans();
   const w = WANTS[wants];
-  return { id: 'date' + Date.now() + Math.floor(Math.random() * 10000), name, gender, age,
+  return { id: uid(s, 'date'), name, gender, age,
     job: pick(MEANS[means].jobs), charm: rint(30, 85), relationship: 0, dates: 0, means,
     wants, patience: rint(w.patience[0], w.patience[1]), livingTogether: false, married: false };
 }

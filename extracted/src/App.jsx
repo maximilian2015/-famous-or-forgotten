@@ -20,7 +20,11 @@ import { HOUSING, HOUSING_ORDER, monthlyCosts, DIET, GYM_COST, setDiet, toggleGy
 import { GENRES, hotGenre } from './systems/meta/news.js';
 import { genreXP, genreBonus, genreLabel } from './systems/career/genres.js';
 import { Phone } from './phone/Phone.jsx';
-import { theme } from './ui/theme.js';
+import { an } from './engine/text.js';
+import { theme, setSkin, skinId, onSkinChange } from './ui/theme.js';
+import { THEMES, THEME_ORDER } from './ui/skins.js';
+import { FONT, FONT_DISPLAY } from './ui/chrome.js';
+import { play, soundOn, setSound } from './ui/sfx.js';
 import { Button } from './ui/components/Button.jsx';
 import { Card } from './ui/components/Card.jsx';
 import { Stat } from './ui/components/Stat.jsx';
@@ -50,6 +54,10 @@ export default function App() {
   const [showHealth, setShowHealth] = useState(false);
   const [openPerson, setOpenPerson] = useState(null);
   const [showRoom, setShowRoom] = useState(false);
+  // theme is a live object mutated in place, so a skin change has to be turned into a
+  // render by hand — nothing about it lives in game state.
+  const [, bumpSkin] = useState(0);
+  useEffect(() => onSkinChange(() => bumpSkin((n) => n + 1)), []);
   if (!g.created) return <CreatorScreen />;
   if (!g.alive) return <EndOfLifeScreen g={g} />;
   if (g.pendingArc) return <ArcModal g={g} />;
@@ -62,13 +70,14 @@ export default function App() {
   if (showRoom) return <RoomScreen g={g} onBack={() => setShowRoom(false)} />;
   if (confirmEnd) return <EndLifeModal onCancel={() => setConfirmEnd(false)} onConfirm={() => { import('./systems/meta/legacy.js').then(m => { m.enshrine(g); newLife(); setConfirmEnd(false); }); }} />;
   return (
-    <div style={{ maxWidth: 440, margin: '0 auto', minHeight: '100vh', background: theme.bg, color: theme.text, padding: 16, paddingBottom: 90, fontFamily: 'system-ui, -apple-system, sans-serif' }}>
+    <div style={{ maxWidth: 440, margin: '0 auto', minHeight: '100vh', background: 'transparent', color: theme.text, padding: 16, paddingBottom: 90, fontFamily: FONT }}>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 14 }}>
         <div style={{ display: 'flex', alignItems: 'flex-end', gap: 9 }}>
           <HeaderFigures g={g} onOpen={() => setShowRoom(true)} />
           <div>
-            <div style={{ fontSize: 22, fontWeight: 900, lineHeight: 1.1 }}>{g.name}</div>
-            <div style={{ fontSize: 12.5, color: theme.muted, marginTop: 3 }}>{g.ageY} yrs · {MON[g.month]} {g.year}</div>
+            <div style={{ fontFamily: FONT_DISPLAY, fontSize: 25, fontWeight: 700, lineHeight: 1.05, letterSpacing: '-.01em' }}>{g.name}</div>
+            {/* Keyed on the date so a month passing actually moves on screen. */}
+            <div key={`${g.year}-${g.month}`} className="fof-tick" style={{ fontSize: 12.5, color: theme.muted, marginTop: 3 }}>{g.ageY} yrs · {MON[g.month]} {g.year}</div>
             {/* "who is that standing next to me" should never be a question */}
             <div style={{ fontSize: 10, color: theme.accent, marginTop: 2, opacity: .75 }}>
               {companionOf(g) ? `with ${companionOf(g).person.name.split(' ')[0]} · ${companionOf(g).married ? 'married' : 'together'}` : g.city}
@@ -83,6 +92,8 @@ export default function App() {
         </div>
       </div>
 
+      {/* Keyed on the tab so switching one fades and rises instead of snapping. */}
+      <div key={screen} className="fof-in">
       {screen === 'people' ? <PeopleScreen g={g} openId={openPerson} setOpenId={setOpenPerson} /> :
        screen === 'phone' ? (g.stage === 'career' || g.ageY >= 13 ? <Phone g={g} /> : <ChildPhoneLocked />) :
        screen === 'career' ? (g.stage === 'career' ? <CareerScreen g={g} />
@@ -92,14 +103,14 @@ export default function App() {
        screen === 'legacy' ? <LegacyScreen g={g} /> :
        <>
         {(g.ageY || 0) <= 1 && <OriginCard g={g} />}
-        <Card style={{ marginBottom: 14, background: `linear-gradient(135deg, rgba(124,92,255,.18), rgba(158,116,255,.06))` }}>
+        <Card style={{ marginBottom: 14, background: `linear-gradient(150deg, ${theme.accent}20, ${theme.accent}06)`, borderColor: `${theme.accent}30` }}>
           <div style={{ fontSize: 11, fontWeight: 800, letterSpacing: '.1em', textTransform: 'uppercase', color: theme.accent, marginBottom: 6 }}>Right now</div>
           <StageBody g={g} />
         </Card>
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10, marginBottom: 14 }}>
           <Stat label="Cash" value={g.cash} money />
-          <Stat label="Health" value={g.health} sub={g.illness ? `🤒 ${g.illness.name} ›` : 'tap ›'} onClick={() => setShowHealth(true)} />
-          <Stat label="Mental" value={g.mental} />
+          <Stat vital label="Health" value={g.health} sub={g.illness ? `🤒 ${g.illness.name} ›` : 'tap ›'} onClick={() => setShowHealth(true)} />
+          <Stat vital label="Mental" value={g.mental} />
           <Stat label="Fame" value={g.fame} sub={fameSub(g)} />
           <Stat label={g.dream === 'singer' ? 'Singing' : 'Acting'} value={g.dream === 'singer' ? g.singing : g.acting}
             sub={g.stage === 'career' ? 'tap for genres ›' : undefined} onClick={g.stage === 'career' ? () => setShowGenres(true) : undefined} />
@@ -147,7 +158,7 @@ export default function App() {
             Extra work and shifts are in your Phone. Acting lessons are under Career. These are the things you can only do once.
           </div>}
         </div>
-        <Button kind="pri" onClick={() => dispatch(advanceTime)}>{stepIsYear(g) ? '▶ Live one year' : '▶ Live one month'}</Button>
+        <Button kind="pri" sfx={stepIsYear(g) ? 'year' : 'month'} onClick={() => dispatch(advanceTime)}>{stepIsYear(g) ? '▶ Live one year' : '▶ Live one month'}</Button>
         <div style={{ marginTop: 18 }}>
           <div style={{ fontSize: 11, fontWeight: 900, letterSpacing: '.09em', textTransform: 'uppercase', color: theme.muted, marginBottom: 8 }}>Timeline</div>
           {(g.timeline || []).slice(0, 8).map((e, i) => (<div key={i} style={{ fontSize: 12.5, color: e.bad ? theme.bad : theme.text, padding: '6px 0', borderBottom: `1px solid ${theme.line}` }}><span style={{ color: theme.muted, marginRight: 8 }}>{e.when}</span>{e.text}</div>))}
@@ -155,7 +166,9 @@ export default function App() {
         </div>
         <LegacyPanel g={g} />
        </>}
+      </div>
 
+      <SettingsRow />
       <div style={{ marginTop: 14 }}>
         <Button kind="danger" onClick={() => setConfirmEnd(true)}>End this life & start anew</Button>
       </div>
@@ -166,9 +179,49 @@ export default function App() {
 
 const NAV = [ { id: 'life', label: 'Home', icon: '🏠' }, { id: 'career', label: 'Career', icon: '🎬' }, { id: 'people', label: 'People', icon: '❤️' }, { id: 'style', label: 'Style', icon: '🛍️' }, { id: 'legacy', label: 'Legacy', icon: '🏆' }, { id: 'phone', label: 'Phone', icon: '📱' } ];
 function BottomNav({ screen, setScreen, g }) {
-  return (<div style={{ position: 'fixed', bottom: 0, left: 0, right: 0, maxWidth: 440, margin: '0 auto', background: 'rgba(21,15,44,.96)', borderTop: `1px solid ${theme.line}`, display: 'flex', padding: '8px 6px 10px', zIndex: 40 }}>
+  // The bar was painted with a literal rgba(21,15,44) — the old purple, hardcoded — so it
+  // was the one piece of the game a skin could not reach.
+  return (<div style={{ position: 'fixed', bottom: 0, left: 0, right: 0, maxWidth: 440, margin: '0 auto',
+    background: `${theme.bgDeep || theme.bg}f2`, backdropFilter: 'blur(14px)', WebkitBackdropFilter: 'blur(14px)',
+    borderTop: `1px solid ${theme.line}`, boxShadow: '0 -14px 30px -22px #000',
+    display: 'flex', padding: '8px 6px 10px', zIndex: 40 }}>
     {NAV.map((n) => { const active = screen === n.id; const badge = n.id === 'career' && g.stage === 'career' ? (g.offers || []).length : n.id === 'phone' && g.stage === 'career' ? ((g.inbox||[]).filter(m=>!m.read).length) : 0;
-      return (<button key={n.id} onClick={() => setScreen(n.id)} style={{ flex: 1, background: 'none', border: 'none', cursor: 'pointer', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 3, padding: '4px 0', position: 'relative' }}><span style={{ fontSize: 20, filter: active ? 'none' : 'grayscale(.4) opacity(.6)' }}>{n.icon}</span><span style={{ fontSize: 10, fontWeight: active ? 800 : 600, color: active ? theme.accent : theme.muted }}>{n.label}</span>{badge > 0 && <span style={{ position: 'absolute', top: 0, right: '26%', minWidth: 15, height: 15, borderRadius: 8, background: '#ff3b30', color: '#fff', fontSize: 9, fontWeight: 900, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>{badge}</span>}</button>); })}
+      return (<button key={n.id} data-sfx="nav" onClick={() => setScreen(n.id)} style={{ flex: 1, background: 'none', border: 'none', cursor: 'pointer', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 3, padding: '4px 0', position: 'relative' }}>
+        <span style={{ fontSize: 20, filter: active ? 'none' : 'grayscale(.55) opacity(.55)', transition: 'filter .2s' }}>{n.icon}</span>
+        <span style={{ fontSize: 10, fontWeight: active ? 800 : 600, color: active ? theme.accent : theme.muted, transition: 'color .2s' }}>{n.label}</span>
+        {/* The lit tab gets a mark under it, so the bar reads at a glance and not only by colour. */}
+        {active && <span style={{ position: 'absolute', top: 0, width: 22, height: 3, borderRadius: 2, background: theme.accent, boxShadow: `0 0 10px ${theme.accent}` }} />}
+        {badge > 0 && <span style={{ position: 'absolute', top: 0, right: '26%', minWidth: 15, height: 15, borderRadius: 8, background: '#ff3b30', color: '#fff', fontSize: 9, fontWeight: 900, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>{badge}</span>}</button>); })}
+  </div>);
+}
+// The two settings the game has: what it looks like, and whether it makes a sound. Kept
+// out of the save on purpose — both should survive starting a new life.
+function SettingsRow() {
+  const [open, setOpen] = useState(false);
+  const [, bump] = useState(0);
+  const on = soundOn();
+  return (<div style={{ marginTop: 20 }}>
+    <div style={{ display: 'flex', gap: 8 }}>
+      <button onClick={() => setOpen(!open)} style={{ flex: 1, background: 'none', border: `1px solid ${theme.line}`, borderRadius: 11,
+        padding: '9px 12px', color: theme.muted, fontSize: 11.5, fontWeight: 800, letterSpacing: '.06em',
+        textTransform: 'uppercase', cursor: 'pointer', fontFamily: 'inherit' }}>◐ {THEMES[skinId()].name}</button>
+      <button data-sfx="toggle" onClick={() => { setSound(!on); bump((n) => n + 1); }}
+        style={{ width: 52, background: 'none', border: `1px solid ${theme.line}`, borderRadius: 11, padding: '9px 0',
+          color: on ? theme.accent : theme.muted, fontSize: 15, cursor: 'pointer' }}>{on ? '🔊' : '🔇'}</button>
+    </div>
+    {open && (<div className="fof-in" style={{ display: 'grid', gap: 7, marginTop: 8 }}>
+      {THEME_ORDER.map((id) => { const sk = THEMES[id], active = skinId() === id;
+        return (<button key={id} onClick={() => { setSkin(id); setOpen(false); }} style={{ textAlign: 'left', cursor: 'pointer',
+          background: active ? `${sk.accent}22` : sk.panel, border: `1px solid ${active ? sk.accent : sk.accent + '30'}`,
+          borderRadius: 12, padding: '11px 13px', color: sk.text, fontFamily: 'inherit' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 9 }}>
+            <span style={{ width: 15, height: 15, borderRadius: 8, background: sk.accent, flexShrink: 0, boxShadow: `0 0 9px ${sk.accent}` }} />
+            <span style={{ fontSize: 13.5, fontWeight: 800 }}>{sk.name}</span>
+            {active && <span style={{ marginLeft: 'auto', fontSize: 10.5, color: sk.accent, fontWeight: 800 }}>ON</span>}
+          </div>
+          <div style={{ fontSize: 11.5, color: sk.muted, marginTop: 3 }}>{sk.blurb}</div>
+        </button>); })}
+    </div>)}
   </div>);
 }
 function LockedScreen({ label }) { return (<div style={{ fontSize: 13, color: theme.muted, textAlign: 'center', padding: '40px 20px', lineHeight: 1.7 }}>🔒 {label} unlocks once you move out and start your career.<br /><br />Grow up, rent your own place, and this opens up.</div>); }
@@ -185,7 +238,7 @@ function HealthScreen({ g, onBack }) {
   const band = h >= 75 ? ['Strong', theme.good] : h >= 50 ? ['Wearing down', theme.gold] : h >= 25 ? ['Fragile', '#ff9d5a'] : ['Falling apart', theme.bad];
   const btn = (kind, off) => ({ width: '100%', border: 'none', borderRadius: 10, padding: '10px', fontSize: 12.5, fontWeight: 800, cursor: off ? 'default' : 'pointer',
     background: off ? 'rgba(120,110,150,.15)' : kind === 'pri' ? `linear-gradient(135deg,${theme.accent2},${theme.accent})` : 'rgba(158,116,255,.16)', color: off ? '#6b6390' : kind === 'pri' ? '#fff' : '#d9cffa' });
-  return (<div style={{ maxWidth: 440, margin: '0 auto', minHeight: '100vh', background: theme.bg, color: theme.text, padding: 16, fontFamily: 'system-ui, sans-serif' }}>
+  return (<div style={{ maxWidth: 440, margin: '0 auto', minHeight: '100vh', background: 'transparent', color: theme.text, padding: 16, fontFamily: FONT }}>
     <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 14 }}>
       <button onClick={onBack} style={{ background: 'rgba(255,255,255,.1)', border: 'none', color: '#d8cff0', borderRadius: 9, padding: '6px 11px', fontSize: 13, fontWeight: 800, cursor: 'pointer' }}>‹ Back</button>
       <div style={{ fontSize: 16, fontWeight: 900 }}>Your body</div>
@@ -249,7 +302,7 @@ function fameSub(g) {
 // comes only from finished credits and pays back as a rating bonus in that genre.
 function GenreScreen({ g, onBack }) {
   const key = g.dream === 'singer' ? 'Singing' : 'Acting';
-  return (<div style={{ maxWidth: 440, margin: '0 auto', minHeight: '100vh', background: theme.bg, color: theme.text, padding: 16, fontFamily: 'system-ui, sans-serif' }}>
+  return (<div style={{ maxWidth: 440, margin: '0 auto', minHeight: '100vh', background: 'transparent', color: theme.text, padding: 16, fontFamily: FONT }}>
     <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 14 }}>
       <button onClick={onBack} style={{ background: 'rgba(255,255,255,.1)', border: 'none', color: '#d8cff0', borderRadius: 9, padding: '6px 11px', fontSize: 13, fontWeight: 800, cursor: 'pointer' }}>‹ Back</button>
       <div style={{ fontSize: 16, fontWeight: 900 }}>{key} · genres</div>
@@ -382,7 +435,7 @@ function StoryRoom({ g }) {
   const hot = hotGenre(g);
   return (
     <div style={{ position: 'fixed', inset: 0, background: 'rgba(8,5,20,.97)', zIndex: 60, overflowY: 'auto',
-      padding: 16, color: theme.text, fontFamily: 'system-ui, -apple-system, sans-serif' }}>
+      padding: 16, color: theme.text, fontFamily: FONT }}>
       <div style={{ maxWidth: 400, margin: '0 auto' }}>
         <div style={{ fontSize: 11, fontWeight: 900, letterSpacing: '.18em', textTransform: 'uppercase',
           color: theme.accent, marginBottom: 10, textAlign: 'center' }}>First day</div>
@@ -439,7 +492,7 @@ function UltimatumModal({ g }) {
     </button>);
   return (
     <div style={{ position: 'fixed', inset: 0, background: 'rgba(8,5,20,.96)', zIndex: 60, display: 'flex',
-      alignItems: 'center', justifyContent: 'center', padding: 16, color: theme.text, fontFamily: 'system-ui, -apple-system, sans-serif' }}>
+      alignItems: 'center', justifyContent: 'center', padding: 16, color: theme.text, fontFamily: FONT }}>
       <div style={{ maxWidth: 380, width: '100%', background: theme.panel, border: `1px solid ${theme.bad}55`, borderRadius: 20, padding: '22px 20px 18px' }}>
         <div style={{ fontSize: 11, fontWeight: 900, letterSpacing: '.18em', textTransform: 'uppercase', color: theme.bad, marginBottom: 12, textAlign: 'center' }}>
           The light is still on
@@ -469,7 +522,7 @@ function CheckpointModal({ g }) {
   if (!p) return null;
   const wrap = (title, body, inner, foot) => (
     <div style={{ position: 'fixed', inset: 0, background: 'rgba(8,5,20,.96)', zIndex: 60, display: 'flex',
-      alignItems: 'center', justifyContent: 'center', padding: 16, color: theme.text, fontFamily: 'system-ui, -apple-system, sans-serif' }}>
+      alignItems: 'center', justifyContent: 'center', padding: 16, color: theme.text, fontFamily: FONT }}>
       <div style={{ maxWidth: 380, width: '100%', background: theme.panel, border: `1px solid ${theme.bad}55`, borderRadius: 20, padding: '22px 20px 18px' }}>
         <div style={{ fontSize: 11, fontWeight: 900, letterSpacing: '.18em', textTransform: 'uppercase', color: theme.bad, marginBottom: 12, textAlign: 'center' }}>
           Five months later
@@ -674,7 +727,7 @@ function RoomScreen({ g, onBack }) {
   const h = HOUSING[g.housing || 'room'];
   const wall = g.homeless ? '#171232' : g.inheritedHome ? '#2b2450' : ['room', 'studio'].includes(g.housing || 'room') ? '#241d46' : '#2d2657';
   const line = { display: 'flex', justifyContent: 'space-between', fontSize: 12.5, padding: '7px 0', borderBottom: `1px solid ${theme.line}` };
-  return (<div style={{ position: 'fixed', inset: 0, background: theme.bg, zIndex: 40, overflowY: 'auto' }}>
+  return (<div style={{ position: 'fixed', inset: 0, background: `linear-gradient(180deg, ${theme.bg}, ${theme.bgDeep})`, zIndex: 40, overflowY: 'auto' }}>
     <div style={{ maxWidth: 440, margin: '0 auto', padding: 16, paddingBottom: 110 }}>
       <div style={{ fontSize: 11, fontWeight: 900, letterSpacing: '.1em', textTransform: 'uppercase', color: theme.accent, marginBottom: 10 }}>Your room</div>
 
@@ -853,7 +906,7 @@ function LegacyScreen({ g }) {
               <div style={{ fontSize: 11.5, color: theme.muted }}>{p.relation}</div>
             </div>
             <div style={{ fontSize: 11.5, color: theme.muted, marginTop: 3 }}>
-              Died at {p.deathAge ?? p.age}{p.job && p.job !== 'retired' ? ` · was a ${p.job}` : ''} · you were {p.relationship >= 70 ? 'close' : p.relationship >= 40 ? 'in touch' : 'distant'}
+              Died at {p.deathAge ?? p.age}{p.job && p.job !== 'retired' ? ` · was ${an(p.job)}` : ''} · you were {p.relationship >= 70 ? 'close' : p.relationship >= 40 ? 'in touch' : 'distant'}
             </div>
           </Card>))}
     </div>
@@ -861,10 +914,10 @@ function LegacyScreen({ g }) {
 }
 function ArcModal({ g }) {
   const a = g.pendingArc;
-  return (<div style={{ maxWidth: 440, margin: '0 auto', minHeight: '100vh', background: theme.bg, color: theme.text, padding: 16, display: 'flex', flexDirection: 'column', justifyContent: 'center', fontFamily: 'system-ui, sans-serif' }}><div style={{ fontSize: 11, fontWeight: 900, letterSpacing: '.1em', textTransform: 'uppercase', color: theme.accent, marginBottom: 10 }}>{a.speaker}</div><div style={{ fontSize: 15, lineHeight: 1.6, marginBottom: 20 }}>{a.text}</div><div style={{ display: 'grid', gap: 9 }}>{a.choices.map((c, i) => (<button key={i} onClick={() => dispatch(resolveArc, i)} style={{ textAlign: 'left', background: theme.panel, border: `1px solid ${theme.line}`, borderRadius: 12, padding: '13px 15px', cursor: 'pointer', color: theme.text, fontSize: 14, fontWeight: 700 }}>{c.label}</button>))}</div></div>);
+  return (<div style={{ maxWidth: 440, margin: '0 auto', minHeight: '100vh', background: 'transparent', color: theme.text, padding: 16, display: 'flex', flexDirection: 'column', justifyContent: 'center', fontFamily: FONT }}><div style={{ fontSize: 11, fontWeight: 900, letterSpacing: '.1em', textTransform: 'uppercase', color: theme.accent, marginBottom: 10 }}>{a.speaker}</div><div style={{ fontSize: 15, lineHeight: 1.6, marginBottom: 20 }}>{a.text}</div><div style={{ display: 'grid', gap: 9 }}>{a.choices.map((c, i) => (<button key={i} onClick={() => dispatch(resolveArc, i)} style={{ textAlign: 'left', background: theme.panel, border: `1px solid ${theme.line}`, borderRadius: 12, padding: '13px 15px', cursor: 'pointer', color: theme.text, fontSize: 14, fontWeight: 700 }}>{c.label}</button>))}</div></div>);
 }
 function EndLifeModal({ onConfirm, onCancel }) {
-  return (<div style={{ maxWidth: 440, margin: '0 auto', minHeight: '100vh', background: theme.bg, color: theme.text, padding: 16, display: 'flex', flexDirection: 'column', justifyContent: 'center', fontFamily: 'system-ui, sans-serif' }}>
+  return (<div style={{ maxWidth: 440, margin: '0 auto', minHeight: '100vh', background: 'transparent', color: theme.text, padding: 16, display: 'flex', flexDirection: 'column', justifyContent: 'center', fontFamily: FONT }}>
     <div style={{ fontSize: 11, fontWeight: 900, letterSpacing: '.1em', textTransform: 'uppercase', color: theme.accent, marginBottom: 10 }}>Start a new life?</div>
     <div style={{ fontSize: 15, lineHeight: 1.6, marginBottom: 20 }}>Your current life will be enshrined in the Hall of Fame, and a brand new one begins. This can't be undone.</div>
     <div style={{ display: 'grid', gap: 9 }}>
@@ -909,7 +962,7 @@ function PersonSheet({ g, id, onClose }) {
   const { p, rel } = found;
   const list = interactionsFor(g, id);
   const tone = { good: theme.good, love: '#ff8ab5', plain: theme.text, bad: theme.bad };
-  return (<div style={{ position: 'fixed', inset: 0, background: theme.bg, zIndex: 40, overflowY: 'auto' }}>
+  return (<div style={{ position: 'fixed', inset: 0, background: `linear-gradient(180deg, ${theme.bg}, ${theme.bgDeep})`, zIndex: 40, overflowY: 'auto' }}>
     <div style={{ maxWidth: 440, margin: '0 auto', padding: 16, paddingBottom: 110 }}>
       <div style={{ display: 'flex', gap: 12, alignItems: 'center', marginBottom: 4 }}>
         <Avatar look={lookOfPerson(p)} size={78} title={p.name} />
@@ -1012,7 +1065,7 @@ function CreatorScreen() {
   const pill = (on) => ({ border: 'none', borderRadius: 10, padding: '8px 12px', fontSize: 12.5, fontWeight: 800, cursor: 'pointer',
     background: on ? `linear-gradient(135deg,${theme.accent2},${theme.accent})` : 'rgba(158,116,255,.16)', color: on ? '#fff' : '#d9cffa' });
   const stepBtn = { border: 'none', borderRadius: 10, width: 38, height: 34, fontSize: 17, fontWeight: 900, cursor: 'pointer', background: 'rgba(158,116,255,.16)', color: '#d9cffa' };
-  return (<div style={{ maxWidth: 440, margin: '0 auto', minHeight: '100vh', background: theme.bg, color: theme.text, padding: 16, display: 'flex', flexDirection: 'column', justifyContent: 'center', fontFamily: 'system-ui, sans-serif' }}>
+  return (<div style={{ maxWidth: 440, margin: '0 auto', minHeight: '100vh', background: 'transparent', color: theme.text, padding: 16, display: 'flex', flexDirection: 'column', justifyContent: 'center', fontFamily: FONT }}>
     <div style={{ fontSize: 11, fontWeight: 900, letterSpacing: '.14em', textTransform: 'uppercase', color: theme.accent, textAlign: 'center' }}>Famous or Forgotten</div>
     <div style={{ fontSize: 24, fontWeight: 900, textAlign: 'center', margin: '6px 0 4px' }}>A life begins</div>
     <div style={{ fontSize: 12.5, color: theme.muted, textAlign: 'center', marginBottom: 22, lineHeight: 1.5 }}>You start at birth. What you become is up to you.</div>
@@ -1083,7 +1136,7 @@ function EndOfLifeScreen({ g }) {
   const kids = (g.family || []).filter((p) => p.relation === 'Child').length;
   const row = (k, v) => (<div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 12.5, padding: '5px 0', borderBottom: `1px solid ${theme.line}` }}>
     <span style={{ color: theme.muted }}>{k}</span><span style={{ fontWeight: 700 }}>{v}</span></div>);
-  return (<div style={{ maxWidth: 440, margin: '0 auto', minHeight: '100vh', background: theme.bg, color: theme.text, padding: 16, display: 'flex', flexDirection: 'column', justifyContent: 'center', fontFamily: 'system-ui, sans-serif' }}>
+  return (<div style={{ maxWidth: 440, margin: '0 auto', minHeight: '100vh', background: 'transparent', color: theme.text, padding: 16, display: 'flex', flexDirection: 'column', justifyContent: 'center', fontFamily: FONT }}>
     <div style={{ fontSize: 11, fontWeight: 900, letterSpacing: '.14em', textTransform: 'uppercase', color: theme.muted, textAlign: 'center', marginBottom: 10 }}>A life, ended</div>
     <div style={{ fontSize: 26, fontWeight: 900, textAlign: 'center' }}>{g.name}</div>
     <div style={{ fontSize: 13, color: theme.muted, textAlign: 'center', marginTop: 4 }}>
@@ -1592,7 +1645,7 @@ function AaaTracker({ g }) {
 function LegacyPanel({ g }) {
   if (g.stage === 'child' || g.stage === 'teen') return null;
   const L = computeLegacy(g); const hall = getHall();
-  return (<div style={{ marginTop: 18 }}><div style={{ fontSize: 11, fontWeight: 900, letterSpacing: '.09em', textTransform: 'uppercase', color: theme.muted, marginBottom: 8 }}>Legacy</div><Card><div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline' }}><div style={{ fontSize: 15, fontWeight: 900, color: theme.gold }}>{L.tier}</div><div style={{ fontSize: 13, fontWeight: 800, color: theme.muted }}>{L.points} pts</div></div><div style={{ fontSize: 11.5, color: theme.muted, marginTop: 4 }}>Peak fame {Math.round(L.peakFame)} · {L.credits} credits · {L.hits} hit{L.hits !== 1 ? 's' : ''}{L.worldHits > 0 ? ` · 🌍 ${L.worldHits} world hit${L.worldHits !== 1 ? 's' : ''}` : ''}{L.askerWins > 0 ? ` · 🏆 ${L.askerWins} Asker${L.askerWins !== 1 ? 's' : ''}` : L.askerNoms > 0 ? ` · ${L.askerNoms} Asker nom${L.askerNoms !== 1 ? 's' : ''}` : ''}</div></Card>{hall.length > 0 && <div style={{ marginTop: 10 }}><div style={{ fontSize: 10.5, fontWeight: 900, letterSpacing: '.08em', textTransform: 'uppercase', color: theme.muted, marginBottom: 6 }}>Hall of Fame</div>{hall.slice(0, 5).map((h, i) => (<div key={i} style={{ display: 'flex', justifyContent: 'space-between', fontSize: 12, color: theme.muted, padding: '5px 0', borderBottom: `1px solid ${theme.line}` }}><span>{i + 1}. {h.name} · {h.tier}</span><span style={{ color: theme.gold }}>{h.points}</span></div>))}</div>}</div>);
+  return (<div style={{ marginTop: 18 }}><div style={{ fontSize: 11, fontWeight: 900, letterSpacing: '.09em', textTransform: 'uppercase', color: theme.muted, marginBottom: 8 }}>Legacy</div><Card><div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline' }}><div style={{ fontSize: 15, fontWeight: 900, color: theme.gold }}>{L.tier}</div><div style={{ fontSize: 13, fontWeight: 800, color: theme.muted }}>{L.points} pts</div></div><div style={{ fontSize: 11.5, color: theme.muted, marginTop: 4 }}>Peak fame {Math.round(L.peakFame)} · {L.credits} credit{L.credits !== 1 ? 's' : ''} · {L.hits} hit{L.hits !== 1 ? 's' : ''}{L.worldHits > 0 ? ` · 🌍 ${L.worldHits} world hit${L.worldHits !== 1 ? 's' : ''}` : ''}{L.askerWins > 0 ? ` · 🏆 ${L.askerWins} Asker${L.askerWins !== 1 ? 's' : ''}` : L.askerNoms > 0 ? ` · ${L.askerNoms} Asker nom${L.askerNoms !== 1 ? 's' : ''}` : ''}</div></Card>{hall.length > 0 && <div style={{ marginTop: 10 }}><div style={{ fontSize: 10.5, fontWeight: 900, letterSpacing: '.08em', textTransform: 'uppercase', color: theme.muted, marginBottom: 6 }}>Hall of Fame</div>{hall.slice(0, 5).map((h, i) => (<div key={i} style={{ display: 'flex', justifyContent: 'space-between', fontSize: 12, color: theme.muted, padding: '5px 0', borderBottom: `1px solid ${theme.line}` }}><span>{i + 1}. {h.name} · {h.tier}</span><span style={{ color: theme.gold }}>{h.points}</span></div>))}</div>}</div>);
 }
 function StageBody({ g }) {
   if (g.stage === 'child') return <div style={{ fontSize: 14, lineHeight: 1.55 }}>You are a kid living with your parents. School, cartoons, and the first hints of a dream. Live through the years — the real choices come when you grow up.</div>;

@@ -1,3 +1,4 @@
+import { uid } from '../../engine/id.js';
 // Nothing you shoot comes out the day you finish shooting. A film wraps, sits in post
 // for months, and then opens — and THAT is the day you find out what you made.
 //
@@ -112,7 +113,7 @@ export function verdictOf(rel) {
 export function scheduleRelease(s, credit, p) {
   const wait = postProduction(p.scale || 'feature');
   const rel = {
-    id: 'rel' + Date.now() + Math.floor(Math.random() * 1000),
+    id: uid(s, 'rel'),
     title: credit.title, role: credit.role, type: credit.type, genre: credit.genre,
     scale: p.scale || 'feature', tier: p.tier || 'lead', season: p.season || 0,
     episodes: p.episodes || 0, part: p.part || 1, salary: credit.salary,
@@ -231,7 +232,8 @@ export function runTick(s) {
     if (c.weeks < c.weeksTotal) { still.push(id); continue; }
     closeRun(s, c, r);
   }
-  s.running = still;
+  // Never the same run twice, whatever put it in the list.
+  s.running = [...new Set(still)];
   return s;
 }
 
@@ -239,7 +241,14 @@ function closeRun(s, credit, r) {
   credit.running = false;
   delete credit._rel;
   credit.boxOffice = r.finalGross || 0;
-  credit.score = Number((r.rating / 10).toFixed(1));
+  // Belt and braces. `r` comes off the credit and is gone the moment a run closes, so if
+  // anything ever hands the same credit here twice — the id collision that used to be
+  // possible, a hand-edited save, a future bug — the score must still be a number. It was
+  // silently writing NaN, and a NaN score is forever: it fails every comparison, so the
+  // credit is neither a hit nor a flop and no screen can render it.
+  const rating = Number.isFinite(r.rating) ? r.rating : (Number.isFinite(credit.rating) ? credit.rating : 50);
+  credit.score = Number((rating / 10).toFixed(1));
+  r = { ...r, rating };
   const verdict = verdictOf({ scale: r.scale, rating: r.rating, boxOffice: credit.boxOffice });
   credit.verdict = verdict;
   const film = r.film;

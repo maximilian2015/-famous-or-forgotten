@@ -1,3 +1,4 @@
+import { uid } from '../../engine/id.js';
 import { rint, chance, pick } from '../../engine/rng.js';
 import { addTimeline } from '../../engine/timeline.js';
 import { makePerson } from '../life/relationships.js';
@@ -18,7 +19,7 @@ const HOST = ['Vega Pictures', 'Nord Media', 'the Aurora Fund', 'Lyra Studios', 
 
 function makeEvent(s, tier) {
   return {
-    id: 'ev' + Date.now() + Math.floor(Math.random() * 10000),
+    id: uid(s, 'ev'),
     tier: tier.id, venue: pick(VENUE), host: pick(HOST),
     monthsLeft: rint(1, 3), attended: false,
   };

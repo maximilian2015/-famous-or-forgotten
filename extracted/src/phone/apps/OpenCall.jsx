@@ -141,7 +141,10 @@ export function OpenCall({ g, ocTab, setOcTab, teenMode }) {
     <Waiting g={g} />
     {!teenMode && <div style={{ display: 'flex', gap: 6, marginBottom: 6 }}>{shelves.map(([id, label]) => { const n = pool.filter((c) => c.shelf === id).length;
       return (<button key={id} onClick={() => setOcTab(id)} style={{ flex: 1, border: 'none', borderRadius: 10, padding: '8px 4px', fontSize: 12, fontWeight: 800, cursor: 'pointer', background: cur === id ? `linear-gradient(135deg,${theme.accent2},${theme.accent})` : 'rgba(158,116,255,.16)', color: cur === id ? '#fff' : '#d9cffa' }}>{label}{n ? ` ${n}` : ''}</button>); })}</div>}
-    {teenMode && <div style={{ fontSize: 11.5, color: theme.accent, padding: '2px 2px 8px', fontWeight: 700 }}>As a teen you can only take background/extra gigs — real roles come once you're older.</div>}
+    {teenMode && <div style={{ fontSize: 11.5, color: theme.accent, padding: '2px 2px 8px', fontWeight: 700 }}>
+      {g.stage === 'teen' || g.stage === 'child'
+        ? 'As a teen you can only take background and extra gigs — real parts come once you are older.'
+        : 'Background and extras for now. Nobody sends a script to a spare room — get a place of your own and the board opens up.'}</div>}
     <div style={{ fontSize: 11.5, color: theme.muted, padding: '2px 2px 8px' }}>{SHELF_BLURB[cur]}</div>
     {/* You can look at the board. You cannot take anything off it. */}
     {!canWork(g).ok && <div style={{ fontSize: 12, color: theme.bad, background: 'rgba(255,106,138,.10)',

@@ -1,3 +1,4 @@
+import { an } from '../../engine/text.js';
 import { rint, chance, pick } from '../../engine/rng.js';
 import { onCooldown, markUsed } from '../../engine/cooldown.js';
 import { addTimeline } from '../../engine/timeline.js';
@@ -126,7 +127,7 @@ export function familyYear(s) {
     } else {
       if (p.job === 'infant' && p.age >= 5) p.job = 'in school';
       if (p.job === 'in school' && p.age >= 16) p.job = 'student';
-      if (p.job === 'student' && p.age >= 23) { p.job = chance(80) ? pick(JOBS) : 'unemployed'; if (p.job !== 'unemployed') events.push(`${p.name} started working as a ${p.job}.`); }
+      if (p.job === 'student' && p.age >= 23) { p.job = chance(80) ? pick(JOBS) : 'unemployed'; if (p.job !== 'unemployed') events.push(`${p.name} started working as ${an(p.job)}.`); }
       if (!p.retired && p.age >= 23 && p.age < 65 && p.job !== 'in school' && p.job !== 'student') {
         if (p.job !== 'unemployed' && chance(6)) { p.job = 'unemployed'; events.push(`${p.name} lost their job.`); }
         else if (p.job === 'unemployed' && chance(35)) { p.job = pick(JOBS); events.push(`${p.name} found work as ${/^[aeiou]/i.test(p.job) ? 'an' : 'a'} ${p.job}.`); }

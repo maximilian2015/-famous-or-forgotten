@@ -1,3 +1,4 @@
+import { uid } from '../../engine/id.js';
 import { rint, chance, pick } from '../../engine/rng.js';
 import { addTimeline } from '../../engine/timeline.js';
 import { onCooldown, markUsed } from '../../engine/cooldown.js';
@@ -126,8 +127,13 @@ export function boardSize(s) {
   // you were nobody or an A-lister, and six things spread across four shelves reads as
   // "Series 1 · Film 1 · Ads 0 · Gigs 2" — which looks like an empty game rather than a
   // career. Standing buys volume, and then age takes it away again.
+  // Six to twelve was still too thin in the hand: split four ways it reads "Series 1 ·
+  // Film 2 · Ads 2 · Gigs 1", and opening a tab to find a single card does not feel like a
+  // board at all — it feels like the game ran out. A working actor's agent sends over a
+  // stack every week. Eight to eighteen gives every shelf two at the bottom and four or
+  // five at the top, which is what a stack looks like.
   const standing = Math.min(1, reach(s) / 78);
-  const base = 6 + Math.round(standing * 6);            // 6 at nobody, 12 at the top
+  const base = 8 + Math.round(standing * 10);           // 8 at nobody, 18 at the top
   // It turns for women first, which is the ugly part of this business and worth saying
   // rather than smoothing away.
   const peakEnd = 42 - (s.gender === 'female' ? 5 : 0);
@@ -207,7 +213,7 @@ export function refreshCastingPool(s, force) {
     const title = titleFor(taken);
     taken.add(title);
     s.castingPool.push({
-      id: 'cast' + Date.now() + Math.floor(Math.random() * 10000), title: title, type, role, shelf, scale, medium,
+      id: uid(s, 'cast'), title: title, type, role, shelf, scale, medium,
       share: share || 1,   // negotiation needs it to know the top of YOUR band for this part
       stability, feeFactor: fee,   // negotiation argues inside the band this job actually pays in
       months, episodes, perEpisode, episodeFee: perEpisode ? rate : 0,
@@ -279,7 +285,7 @@ function answerSubmission(s, sub) {
   // does not — which is the other half of the job nobody tells you about.
   const sc = scaleOf(c);
   (s.offers = s.offers || []).push({
-    id: 'off' + Date.now() + Math.floor(Math.random() * 1000),
+    id: uid(s, 'off'),
     projectTitle: c.title, role: c.role, type: c.type, genre: c.genre,
     salary: c.salary, months: c.months, tier: sc.tier, scale: c.scale,
     episodes: c.episodes, episodeFee: c.episodeFee, season: c.perEpisode ? 1 : 0,
@@ -320,12 +326,20 @@ export function auditionFor(s, id, quality = 50) {
   if ((c.months || 1) >= 2) {
     const wait = rint(1, 3);
     (s.submissions = s.submissions || []).push({
-      id: 'sub' + Date.now() + Math.floor(Math.random() * 1000),
+      id: uid(s, 'sub'),
       casting: { ...c }, title: c.title, role: c.role, odds,
       quality, due: (s.year || 0) * 12 + (s.month || 0) + wait, wait,
     });
     s.castingPool = (s.castingPool || []).filter((x) => x.id !== id);
-    s.lastEvent = `${quality >= 80 ? 'The room went quiet — you nailed it. ' : ''}You read for "${c.title}". `
+    // How the read actually went. Without this the minigame was invisible: you could blow
+    // it on the first beat and the game would tell you, word for word, exactly what it told
+    // somebody who had just been brilliant.
+    const room = quality >= 90 ? 'The room went quiet. That was the best you have ever been. '
+      : quality >= 70 ? 'It went well — you felt them lean in. '
+      : quality >= 45 ? 'A solid read. Nothing to be ashamed of. '
+      : quality > 0 ? 'You got through it. It was not your best work. '
+      : 'It fell apart early and you both knew it. ';
+    s.lastEvent = `${room}You read for "${c.title}". `
       + `They said they would be in touch. About ${wait} month${wait === 1 ? '' : 's'}.`;
     addTimeline(s, `Read for ${c.title}.`);
     return s;

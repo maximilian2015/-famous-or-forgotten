@@ -1,6 +1,6 @@
 import { advanceStage } from '../systems/life/stages.js';
 import { applyMonthly, applyYearly, relevanceDrift, homeEnergy } from './economy.js';
-import { maybeGenerateOffer } from '../systems/career/offers.js';
+import { maybeGenerateOffer, offersTick } from '../systems/career/offers.js';
 import { emailTick } from '../systems/meta/email.js';
 import { maybeStartArc } from '../systems/life/arcs.js';
 import { maybeYouthEvent } from '../systems/life/youth.js';
@@ -71,6 +71,7 @@ export function advanceMonth(state) {
   ceremonyTick(s);   // and the Askers land a couple of months after the nominations
   eventsTick(s);
   maybeGenerateEvent(s);
+  offersTick(s);      // and a part you never answered goes to somebody else
   maybeGenerateOffer(s);
   emailTick(s);
   maybeStartArc(s);

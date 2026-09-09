@@ -88,7 +88,17 @@ export function resolveArc(s, i) {
   let out = c, head = '';
   if (c.check) { const odds = 30 + (s[c.check.stat] || 0) * 0.6; const ok = chance(odds); out = ok ? c.good : c.bad; head = ok ? '✅ ' : '❌ '; }
   const fx = out.fx || {};
-  Object.keys(fx).forEach((k) => { if (k === 'cash') s.cash = (s.cash || 0) + fx[k]; else s[k] = clamp((s[k] || 0) + fx[k]); });
+  Object.keys(fx).forEach((k) => {
+    if (k === 'cash') { s.cash = (s.cash || 0) + fx[k]; return; }
+    let d = fx[k];
+    // These numbers were written on the assumption of a name that has something to lose. At
+    // the bottom of a career they are ruinous: the burnout arc costs 3 fame, and a whole
+    // feature film — shot, released, reviewed — is worth about 2. A playtest finished four
+    // years and one film in at fame 0, exactly where it started, because one arc took more
+    // than the film gave. Nobody can be made less famous than unknown.
+    if ((k === 'fame' || k === 'respect') && d < 0) d = Math.max(d, -Math.max(1, (s[k] || 0) * 0.22));
+    s[k] = clamp((s[k] || 0) + d);
+  });
   if (out.set || c.set) { const setter = out.set || c.set; Object.keys(setter).forEach((k) => { s[k] = setter[k]; }); }
   // Effects that land on the shoot itself rather than on you.
   const prod = out.prod || c.prod;

@@ -1,3 +1,4 @@
+import { an } from '../../engine/text.js';
 import { rint, chance, pick } from '../../engine/rng.js';
 import { onCooldown, markUsed } from '../../engine/cooldown.js';
 import { addTimeline } from '../../engine/timeline.js';
@@ -46,8 +47,8 @@ export function spotlightYear(s) {
         f.industryWeight = f.futureWeight;
         if (f.closeness >= 50) {
           (s.people = s.people || []).push({ id: 'p' + f.id, name: f.name, role: f.future, industryWeight: f.futureWeight, relationship: Math.round(f.closeness), unlocks: /Director|Producer|Actor/.test(f.future) ? 'aaa' : 'castingBoost', fromSchool: true });
-          addTimeline(s, `${f.name} from school made it — they're a ${f.future} now, and you two stayed close. That connection could matter.`);
-          s.lastEvent = `${f.name}, who you knew from school, is now a ${f.future}. Staying in touch paid off.`;
+          addTimeline(s, `${f.name} from school made it — they're ${an(f.future)} now, and you two stayed close. That connection could matter.`);
+          s.lastEvent = `${f.name}, who you knew from school, is now ${an(f.future)}. Staying in touch paid off.`;
         }
       }
     }

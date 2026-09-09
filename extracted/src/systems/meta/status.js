@@ -1,3 +1,4 @@
+import { an } from '../../engine/text.js';
 import { HOUSING, HOUSING_ORDER } from '../../engine/economy.js';
 export const FAME_TIERS = [
   { id: 'unknown', label: 'Unknown', min: 0, housingMax: 'studio' },
@@ -93,6 +94,6 @@ export function setHousing(s, key) {
   if ((s.cash || 0) < deposit) { s.lastEvent = `Moving in needs €${deposit.toLocaleString()} up front. You don't have it.`; return s; }
   s.cash -= deposit;
   s.housing = key;
-  s.lastEvent = `You moved into a ${h.label.toLowerCase()} — €${h.cost.toLocaleString()}/month, €${deposit.toLocaleString()} deposit.`;
+  s.lastEvent = `You moved into ${an(h.label.toLowerCase())} — €${h.cost.toLocaleString()}/month, €${deposit.toLocaleString()} deposit.`;
   return s;
 }

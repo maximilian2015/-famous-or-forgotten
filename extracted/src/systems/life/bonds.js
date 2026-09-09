@@ -49,16 +49,25 @@ export function applyBond(s, p, raw) {
   return p.relationship - before;
 }
 
+// Where silence alone can take someone, and no further. Blood does not go to zero because
+// you were busy: a mother you have not rung in a year is disappointed, not a stranger, and
+// a playtest that simply lived twenty-four years without opening the People tab ended with
+// mother, father and sister all reading "Cold · 0" — which says you did something to them.
+// You did not. Going BELOW these takes an actual argument.
+const FLOOR = { parent: 25, child: 30, sibling: 15, spouse: 20, grandparent: 15, partner: 10, ex: 0, contact: 0 };
+
 function fadeOne(s, p, rel, now) {
   if (p.lastSeen === undefined) { p.lastSeen = now; return null; }
   const missed = now - p.lastSeen;
   if (missed < 2) return null;                       // one quiet month is nothing
   const cur = p.relationship || 0;
   if (cur <= 0) return null;                          // it cannot fade below indifference on its own
+  const floor = FLOOR[rel] ?? 0;
+  if (cur <= floor) return null;
   const rate = FADE[rel] ?? 1;
   const drift = Math.max(1, Math.round((0.5 + cur / 45) * rate));
   const before = cur;
-  p.relationship = clampRel(cur - drift);
+  p.relationship = Math.max(floor, clampRel(cur - drift));
   // The moment someone stops being close is worth telling the player about.
   if (before >= 55 && p.relationship < 55) return `${p.name} feels further away than they used to.`;
   if (before >= 25 && p.relationship < 25) return `You and ${p.name} have not really spoken in a long time.`;

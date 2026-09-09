@@ -1,3 +1,4 @@
+import { uid } from '../../engine/id.js';
 // Not every project that starts gets made. Financing walks, a studio changes its mind,
 // a producer turns out not to have the money he said he had. The player has to be able
 // to SEE that before signing, and be paid for taking it on.
@@ -132,7 +133,7 @@ const DEAD_REASONS = [
 export function freezeProject(s, p) {
   const why = FROZEN_REASONS[rint(0, FROZEN_REASONS.length - 1)];
   const frozen = {
-    id: 'frz' + Date.now() + Math.floor(Math.random() * 1000),
+    id: uid(s, 'frz'),
     title: p.title, role: p.role, type: p.type, genre: p.genre, scale: p.scale, tier: p.tier,
     genrePrestige: p.prestigeScore, prestigeScore: p.prestigeScore,
     monthsLeft: Math.max(1, p.monthsLeft || 1), episodes: p.episodes || 0, episodeFee: p.episodeFee || 0,
@@ -215,7 +216,7 @@ export function frozenTick(s) {
       const waited = now - (f.since ?? now);
       const years = Math.round(waited / 12);
       (s.offers = s.offers || []).push({
-        id: 'thaw' + Date.now() + Math.floor(Math.random() * 1000),
+        id: uid(s, 'thaw'),
         kind: 'thaw', projectTitle: f.title, role: f.role, type: f.type, genre: f.genre,
         scale: f.scale, tier: f.tier, prestigeScore: f.prestigeScore,
         salary: f.owed, months: f.monthsLeft, episodes: f.episodes, episodeFee: f.episodeFee,

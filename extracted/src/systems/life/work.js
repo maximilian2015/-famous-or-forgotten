@@ -1,3 +1,4 @@
+import { an } from '../../engine/text.js';
 import { rint, chance, pick } from '../../engine/rng.js';
 import { addTimeline } from '../../engine/timeline.js';
 import { earn } from '../../engine/economy.js';
@@ -24,7 +25,7 @@ export function takeJob(s, id) {
   if (s.job) { s.lastEvent = `You'd have to quit ${s.job.employer} first.`; return s; }
   if ((s.ageY || 0) < j.minAge) { s.lastEvent = `You need to be ${j.minAge} for that.`; return s; }
   s.job = { ...j, months: 0, pay: j.pay };
-  s.lastEvent = `You start at ${j.employer} as a ${j.title.toLowerCase()} — €${j.pay.toLocaleString()}/month. It'll take ${j.slots === 1 ? 'a chunk' : 'most'} of your time.`;
+  s.lastEvent = `You start at ${j.employer} as ${an(j.title.toLowerCase())} — €${j.pay.toLocaleString()}/month. It'll take ${j.slots === 1 ? 'a chunk' : 'most'} of your time.`;
   addTimeline(s, `Took a job at ${j.employer}: ${j.title}.`);
   return s;
 }

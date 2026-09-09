@@ -1,3 +1,4 @@
+import { uid } from '../../engine/id.js';
 // A career is not a list of unrelated jobs. The show that ran six years and the
 // franchise you could not get out of are the things a life is remembered for.
 //
@@ -221,7 +222,7 @@ export function maybeContinue(s, credit, p) {
     const episodes = Math.max(4, Math.round((p.episodes || 8) * (0.9 + Math.random() * 0.3)));
     addTimeline(s, `"${root}" was renewed for season ${nextSeason}.`);
     return {
-      id: 'ren' + Date.now() + Math.floor(Math.random() * 1000),
+      id: uid(s, 'ren'),
       // A show that got renewed is a show that works. The money is not the question here.
       kind: 'renewal', seriesTitle: root, season: nextSeason, scale: p.scale,
       stability: Math.max(82, p.stability || 82),
@@ -254,7 +255,7 @@ export function maybeContinue(s, credit, p) {
   (s.laterOffers = s.laterOffers || []).push({
     due: (s.year || 0) * 12 + (s.month || 0) + gap,
     offer: {
-    id: 'seq' + Date.now() + Math.floor(Math.random() * 1000),
+    id: uid(s, 'seq'),
     kind: 'sequel', part: nextPart, optioned: p.optioned, optionParts: p.optionParts, scale: p.scale,
     stability: Math.max(85, p.stability || 85),   // nobody defunds a sequel to something that made money
     projectTitle: sequelTitle(p.title, nextPart), role: p.role, type: p.type, genre: p.genre,

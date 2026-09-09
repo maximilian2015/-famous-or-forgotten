@@ -7,10 +7,15 @@ import { addGenreXP, genreBonus } from './genres.js';
 import { scheduleRelease } from './release.js';
 import { rollStability, productionTrouble, volatileSwing, roughness } from './stability.js';
 import { makePremise, prestigeShift, ratingShift, swingShift, apartShift, appealShift } from './story.js';
+import { skillCap } from './actions.js';
 const clamp = (v) => Math.max(0, Math.min(100, v));
+// A shoot opens on 20 and 20 used to be labelled "Disaster", so the very first thing the
+// game said about every film you ever made was that it was already a catastrophe — on day
+// one, before a frame was shot. Twenty is not a disaster, it is a set where nobody has
+// found it yet. Neutral in the rating maths is 40, and the labels now say so.
 const TIERS = [
-  { min: 0, label: 'Disaster' }, { min: 25, label: 'Rocky' }, { min: 50, label: 'Solid' },
-  { min: 70, label: 'Great' }, { min: 88, label: 'Legendary' },
+  { min: 0, label: 'Falling apart' }, { min: 14, label: 'Finding it' }, { min: 34, label: 'Coming together' },
+  { min: 55, label: 'Solid' }, { min: 72, label: 'Great' }, { min: 88, label: 'Legendary' },
 ];
 export function meterTier(meter) {
   let cur = TIERS[0];
@@ -138,6 +143,30 @@ export function productionTick(s) {
   }
   wrapProduction(s);
 }
+// Nobody in this game got better at their job by doing their job. Acting rose from paid
+// classes, one school play and two youth events — and from nothing else, ever. Measured
+// across 120 careers that shot a median of 85 films: every one of them finished as good as
+// they were at twenty, which is why the median film scored 2.5/10.
+//
+// So a shoot teaches you something. Steeply diminishing — you learn an enormous amount on
+// your third film and almost nothing on your fortieth — and still bounded by skillCap, so
+// working a lot cannot substitute for the training and the hits it asks for.
+function learnOnSet(s, p) {
+  const key = s.dream === 'singer' ? 'singing' : 'acting';
+  const now = s[key] || 0;
+  const cap = skillCap(s);
+  if (now >= cap) return 0;
+  const room = 1 - now / 104;                        // 0.83 at twenty, 0.14 at ninety
+  const months = Math.min(2, 0.5 + (p.monthsTotal || p.months || 4) / 7);
+  const shoot = 0.55 + (p.meter || 20) / 130;        // a set that worked teaches more
+  const lead = p.tier === 'supporting' ? 0.6 : 1;    // you learn most carrying it
+  const gain = Math.max(0, room * 2.6 * months * shoot * lead);
+  const next = Math.min(cap, now + gain);
+  const real = next - now;
+  s[key] = next;
+  return real;
+}
+
 function wrapProduction(s) {
   const p = s.production;
   const skill = s.dream === 'singer' ? s.singing : s.acting;
@@ -183,6 +212,13 @@ function wrapProduction(s) {
     rating = clamp(rating - rint(16, 32));
     p.fellApart = true;
   }
+  // The bottom of the scale produced numbers that do not exist. A playtest opened a film on
+  // 0.9/10 — and no film has ever scored 0.9. The worst-reviewed pictures ever made sit
+  // around 1.5 to 2.5, because the people scoring them are an audience, not a machine, and
+  // some of them turn up for the disaster on purpose. Compressed rather than clamped, so
+  // there is no step in the curve: 0 becomes 15, 28 stays 28, everything above is untouched.
+  if (rating < 28) rating = 15 + (rating / 28) * 13;
+
   // A genuine cultural moment should be a career highlight, not a monthly occurrence.
   let worldHit = false;
   if (rating >= 90 && p.tier !== 'supporting') {
@@ -212,7 +248,14 @@ function wrapProduction(s) {
   if (lead.bond >= 70) { s.respect = clamp((s.respect || 0) + 3); verdictNote = ` ${lead.name} tells anyone who'll listen how good you were.`; }
   else if (lead.bond <= 25) { s.respect = clamp((s.respect || 0) - 3); verdictNote = ` ${lead.name} has quietly started telling a different story about you.`; }
   if (worldHit) s.worldHits = (s.worldHits || 0) + 1;
-  s.lastEvent = `"${credit.title}" is in the can. Now you wait for it to open.${verdictNote}`;
+  // What the months on set left in you. Computed AFTER the rating, so this shoot is judged
+  // on the actor you were when you walked on — not the one you walked off as.
+  const learnt = learnOnSet(s, p);
+  const craftNote = learnt >= 0.8
+    ? ` You are better than you were when you started it.`
+    : learnt >= 0.25 ? ` A few things clicked that never had before.` : '';
+  if (learnt >= 0.8) addTimeline(s, `Months on ${credit.title} taught you something. ${s.dream === 'singer' ? 'Singing' : 'Acting'} is up.`);
+  s.lastEvent = `"${credit.title}" is in the can. Now you wait for it to open.${verdictNote}${craftNote}`;
   // Whether it carries on is decided on the numbers, so that question waits for the
   // premiere too — release.js asks it once the thing has actually been seen.
   s.production = null;

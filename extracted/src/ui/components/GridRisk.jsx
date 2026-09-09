@@ -1,5 +1,6 @@
 import { useRef, useState } from 'react';
 import { theme } from '../theme.js';
+import { play } from '../sfx.js';
 
 // Press-your-luck grid, minesweeper-flavoured. Reveal tiles one at a time: each clean one
 // gets you further, but some hide trouble. Bank what you've got, or push for more.
@@ -19,15 +20,27 @@ export function GridRisk({ cols = 4, rows = 3, bad = 4, labelSafe = '✓', label
 
   function reveal(i) {
     if (doneRef.current || revealed.includes(i)) return;
+    // The FIRST tile is always clean. Four bad tiles in twelve meant a third of auditions
+    // ended on the opening click, before the player had made a single decision — that is
+    // not press-your-luck, it is a coin flip that punishes you for pressing the only
+    // button on the screen. Minesweeper has always moved the mine off the first click for
+    // exactly this reason.
+    if (revealed.length === 0 && badSet.current.has(i)) {
+      const free = [];
+      for (let k = 0; k < total; k++) if (k !== i && !badSet.current.has(k)) free.push(k);
+      if (free.length) { badSet.current.delete(i); badSet.current.add(free[Math.floor(Math.random() * free.length)]); }
+    }
     if (badSet.current.has(i)) {
       doneRef.current = true;
       setBusted(i);
+      play('denied');
       setTimeout(() => onResult(0), 700);
       return;
     }
     const next = [...revealed, i];
     setRevealed(next);
-    if (next.length >= safeTotal) { doneRef.current = true; setTimeout(() => onResult(100), 500); }
+    play('tap');
+    if (next.length >= safeTotal) { doneRef.current = true; play('good'); setTimeout(() => onResult(100), 500); }
   }
   function bank() {
     if (doneRef.current || revealed.length === 0) return;
@@ -49,7 +62,8 @@ export function GridRisk({ cols = 4, rows = 3, bad = 4, labelSafe = '✓', label
       })}
     </div>
     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 8 }}>
-      <div style={{ fontSize: 11.5, color: theme.muted }}>Progress <span style={{ color: theme.gold, fontWeight: 800 }}>{quality}%</span></div>
+      <div style={{ fontSize: 11.5, color: theme.muted }}>Progress <span style={{ color: theme.gold, fontWeight: 800 }}>{quality}%</span>
+        <span style={{ marginLeft: 8, opacity: .8 }}>· {badSet.current.size} of {total} go wrong</span></div>
       <button onClick={bank} disabled={doneRef.current || revealed.length === 0}
         style={{ border: 'none', borderRadius: 10, padding: '8px 14px', fontSize: 12, fontWeight: 800,
           cursor: doneRef.current || revealed.length === 0 ? 'default' : 'pointer',

@@ -1,3 +1,4 @@
+import { uid } from '../../engine/id.js';
 import { rint, chance, pick } from '../../engine/rng.js';
 import { addTimeline } from '../../engine/timeline.js';
 const clamp = (v) => Math.max(0, Math.min(100, v));
@@ -15,7 +16,7 @@ const ROLES = [
 ];
 export function makePerson(s, forceRole) {
   const spec = forceRole ? ROLES.find((r) => r.role === forceRole) : pick(ROLES);
-  return { id: 'p' + Date.now() + Math.floor(Math.random() * 1000), name: `${pick(FIRST)} ${pick(LAST)}`,
+  return { id: uid(s, 'p'), name: `${pick(FIRST)} ${pick(LAST)}`,
     role: spec.role, industryWeight: rint(spec.weight[0], spec.weight[1]), relationship: rint(20, 40), unlocks: spec.unlocks, met: `${s.year}` };
 }
 export function meetPerson(s) {
