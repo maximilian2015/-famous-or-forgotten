@@ -12,6 +12,7 @@ import { askFamilyForMoney } from './family.js';
 import { proposeMarriage, tryForBaby } from './dating.js';
 import { bondGain } from './relationships.js';
 import { applyBond } from './bonds.js';
+import { canSupport, support, canBack, backChild, supportCost, backingCost } from './money.js';
 
 const clamp = (v) => Math.max(0, Math.min(100, v));
 const first = (p) => String(p.name || '').split(' ')[0];
@@ -75,10 +76,23 @@ export const INTERACTIONS = [
       return `${first(p)} told you what they would have done. (${key} +, +${g})`;
     } },
 
+  // A €220 present from somebody with nine million in the bank is not a present, it is an
+  // insult with a ribbon on. What you spend scales with what you have — and so does what it
+  // moves, up to a point, because past that point it stops being about the money.
   { id: 'gift', group: 'friendly', label: 'Buy them something', blurb: 'Money into goodwill, honestly',
-    cost: ({ kind }) => (kind === 'contact' ? 600 : kind === 'family' ? 220 : 350),
+    cost: ({ s, kind }) => {
+      const base = kind === 'contact' ? 600 : kind === 'family' ? 220 : 350;
+      return Math.max(base, Math.round(Math.min(120000, (s.cash || 0) * 0.004)));
+    },
     when: () => true,
-    run: ({ s, p, cost }) => { s.cash -= cost; const g = move(s, p,rint(8, 15)); return `You bought ${first(p)} something they did not expect. €${cost.toLocaleString()}. (+${g})`; } },
+    run: ({ s, p, cost }) => {
+      s.cash -= cost;
+      // Generosity is worth something and it is not worth everything: the extra a fortune
+      // buys you tops out fast, and applyBond's resistance takes most of the rest.
+      const lavish = Math.min(6, Math.round(Math.log10(Math.max(1, cost / 300)) * 4));
+      const g = move(s, p, rint(8, 15) + lavish);
+      return `You bought ${first(p)} something they did not expect. €${cost.toLocaleString()}. (+${g})`;
+    } },
 
   { id: 'evening', group: 'friendly', label: 'Spend the evening together', blurb: 'A whole evening, and it shows', ap: 1,
     when: ({ p }) => (p.relationship || 0) >= 20,
@@ -129,6 +143,23 @@ export const INTERACTIONS = [
     run: ({ s }) => { tryForBaby(s); return s.lastEvent; } },
 
   // ── practical ───────────────────────────────────────────────────────────────
+  // The two things real money can do for the people you came from. Both are one-off, both
+  // are scaled to what you have, and neither of them is a substitute for turning up — see
+  // systems/life/money.js.
+  { id: 'setup', group: 'practical', label: 'Set them up for life', blurb: 'They never have to worry about it again',
+    applies: ({ kind, rel }) => kind === 'family' && ['parent', 'sibling', 'child'].includes(rel),
+    cost: ({ s }) => supportCost(s),
+    when: ({ s, p }) => canSupport(s, p).ok || !!p.supported,
+    lockedWhy: ({ s, p }) => (p.supported ? `${first(p)} is already set up.` : canSupport(s, p).why),
+    run: ({ s, p }) => { support(s, p.id); return s.lastEvent; } },
+
+  { id: 'teach', group: 'practical', label: 'Pay for them to be taught properly', blurb: 'Coaching, the right school, the right rooms',
+    applies: ({ rel }) => rel === 'child',
+    cost: ({ s }) => backingCost(s),
+    when: ({ s, p }) => canBack(s, p).ok,
+    lockedWhy: ({ s, p }) => canBack(s, p).why,
+    run: ({ s, p }) => { backChild(s, p.id); return s.lastEvent; } },
+
   { id: 'money', group: 'practical', label: 'Ask for money', blurb: 'They will remember that you asked', ap: 1,
     applies: ({ rel }) => rel === 'parent', when: ({ s }) => s.stage !== 'child',
     lockedWhy: ({ s }) => (s.stage === 'child' ? 'You are too young to be asking for cash.' : ''),

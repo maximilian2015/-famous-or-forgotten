@@ -1,3 +1,4 @@
+import { estateValue } from '../life/money.js';
 // Ads and voice sessions are not a legacy. They paid for a room; they do not go on the
 // stone. Kept in step with the Other work split in the filmography.
 const MINOR_TYPES = /^(Brand Campaign|Commercial|Jingle|Brand Song|TV Extra|Voice Session|Open Mic|Festival Slot|Session Work|Music Video)$/;
@@ -48,7 +49,10 @@ export function heirOpts(s, childId) {
   const kid = heirsOf(s).find((k) => k.id === childId);
   if (!kid) return null;
   const L = computeLegacy(s);
-  const estate = Math.max(0, Math.round((s.cash || 0) / Math.max(1, heirsOf(s).length)));
+  // A house and the things in it are most of what anybody actually leaves. See
+  // systems/life/money.js — before this, an heir inherited the bank balance and nothing else.
+  const worth = (s.cash || 0) + estateValue(s);
+  const estate = Math.max(0, Math.round(worth / Math.max(1, heirsOf(s).length)));
   const close = kid.relationship || 0;
   return {
     name: kid.name, gender: kid.gender === 'm' ? 'male' : 'female',

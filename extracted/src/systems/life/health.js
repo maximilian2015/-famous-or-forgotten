@@ -3,6 +3,7 @@ import { rint, chance, pick } from '../../engine/rng.js';
 import { addTimeline } from '../../engine/timeline.js';
 import { die } from './mortality.js';
 import { homeIllness } from '../../engine/economy.js';
+import { staffIllness } from './money.js';
 const clamp = (v) => Math.max(0, Math.min(100, v));
 
 // Health is immunity. A body at 60 catches things constantly; a body at 15 is defenceless.
@@ -60,6 +61,7 @@ export function infectionOdds(s) {
   if ((s.ageY || 0) >= 55) odds += 5;
   if ((s.ageY || 0) >= 70) odds += 8;
   odds += homeIllness(s);   // thin walls and damp are a reason to be ill
+  odds += staffIllness(s);  // and somebody cooking properly for you is a reason not to be
   // A hard ceiling, so no combination of bad luck turns into a month-after-month certainty.
   return Math.max(0, Math.min(48, odds));
 }

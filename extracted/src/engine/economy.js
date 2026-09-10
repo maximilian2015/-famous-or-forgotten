@@ -69,10 +69,18 @@ export function toggleGym(s) {
 export function monthlyCosts(s) {
   // Rent is the housing tier — no separate abstract "lifestyle" charge on top of it.
   // A house you inherited is yours: the bills stop, which is the whole point of it.
-  const rent = s.hasApartment && !s.inheritedHome ? (HOUSING[s.housing || 'room']?.cost || 0) : 0;
+  // You do not pay rent on a house you own. See systems/life/money.js.
+  const owned = s.owns && s.owns === (s.housing || 'room');
+  const rent = s.hasApartment && !s.inheritedHome && !owned ? (HOUSING[s.housing || 'room']?.cost || 0) : 0;
   const food = s.hasApartment ? (DIET[s.diet || 'cook']?.cost || 0) : 0;
   const gym = s.hasApartment && s.gym ? GYM_COST : 0;
-  const team = (s.retainers ? Object.values(s.retainers).filter(Boolean).length : 0) * 1500;
+  // The entourage and what it costs to keep the things. STAFF and THINGS live in
+  // systems/life/money.js; the numbers are mirrored here rather than imported.
+  const staffCost = { assistant: 12000, household: 18000, publicist: 40000, security: 75000 };
+  const upkeepCost = { car: 2200, boat: 14000, jet: 60000 };
+  let team = 0;
+  for (const k of Object.keys(staffCost)) if (s.staff && s.staff[k]) team += staffCost[k];
+  for (const k of Object.keys(upkeepCost)) if (s.things && s.things[k]) team += upkeepCost[k];
   const insurance = s.hasApartment ? (INSURANCE_PREMIUM[s.insurance || 'none'] || 0) : 0;
   return { rent, food, gym, insurance, team, total: rent + food + gym + insurance + team };
 }
@@ -111,7 +119,8 @@ export function relevanceDrift(s) {
   // Shooting counts as working, and a fresh credit buys you a few quiet months.
   if (s.production) { s._idleMonths = 0; } else { s._idleMonths = (s._idleMonths || 0) + 1; }
   // Old news fades whether you like it or not.
-  if ((s.scandal || 0) > 0) s.scandal = Math.max(0, s.scandal - 0.4);
+  // A publicist is the difference between a bad week and a bad year.
+  if ((s.scandal || 0) > 0) s.scandal = Math.max(0, s.scandal - 0.4 * (s.staff && s.staff.publicist ? 2.4 : 1));
   if ((s._idleMonths || 0) < 4) return;
   // Purely proportional: nobody forgets a person they were never aware of. The flat
   // 0.35 that used to be here made the bottom of the ladder unclimbable — a supporting

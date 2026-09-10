@@ -28,6 +28,7 @@ import { agingTick, mortalityCheck } from '../systems/life/mortality.js';
 import { healthTick } from '../systems/life/health.js';
 import { pruneCooldowns } from './cooldown.js';
 import { workTick, jobSlots } from '../systems/life/work.js';
+import { moneyTick, staffEnergy } from '../systems/life/money.js';
 
 export function stepIsYear(state) { return state.stage === 'child' || state.stage === 'teen'; }
 export function advanceTime(state) { return stepIsYear(state) ? advanceYear(state) : advanceMonth(state); }
@@ -79,11 +80,12 @@ export function advanceMonth(state) {
   maybeStartArc(s);
   iconTick(s);        // and the last rung says why it is out of reach
   quoteTick(s);       // and what you ask for comes back down when nobody is paying it
+  moneyTick(s);       // and the entourage gets paid, or it goes
   s.peakFame = Math.max(s.peakFame || 0, s.fame || 0);
   advanceStage(s);
   pruneCooldowns(s);
   // What the illness is actually taking: Energy out of your month.
-  s.apMaxEff = Math.max(1, (s.apMax || 3) + homeEnergy(s) - jobSlots(s) - slotsLost(s));
+  s.apMaxEff = Math.max(1, (s.apMax || 3) + homeEnergy(s) + staffEnergy(s) - jobSlots(s) - slotsLost(s));
   s.ap = s.apMaxEff;
   return s;
 }
