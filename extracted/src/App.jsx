@@ -20,7 +20,7 @@ import { HOUSING, HOUSING_ORDER, monthlyCosts, DIET, GYM_COST, setDiet, toggleGy
 import { GENRES, hotGenre } from './systems/meta/news.js';
 import { genreXP, genreBonus, genreLabel } from './systems/career/genres.js';
 import { Phone } from './phone/Phone.jsx';
-import { an } from './engine/text.js';
+import { an, count } from './engine/text.js';
 import { inCareer } from './engine/stage.js';
 import { theme, setSkin, skinId, onSkinChange } from './ui/theme.js';
 import { THEMES, THEME_ORDER } from './ui/skins.js';
@@ -86,9 +86,14 @@ export default function App() {
           </div>
         </div>
         <div style={{ textAlign: 'right' }}>
-          <div style={{ fontSize: 11, fontWeight: 800, letterSpacing: '.08em', textTransform: 'uppercase', color: theme.accent }}>{STAGE_LABEL[g.stage]}</div>
+          {/* "Building a career" for a forty-seven-year-old A-lister was the header telling
+              the player they had not got anywhere. Once the career is running, this line is
+              who you ARE — and it changes, which is the whole point of the ladder. */}
+          <div style={{ fontSize: 11, fontWeight: 800, letterSpacing: '.08em', textTransform: 'uppercase', color: theme.accent }}>
+            {inCareer(g) ? fameTier(g.fame).label : STAGE_LABEL[g.stage]}</div>
           <div style={{ fontSize: 12, color: g.homeless ? theme.bad : theme.muted }}>
-            {g.homeless ? 'On the street' : g.livingWith === 'parents' ? 'Living with parents' : g.inheritedHome ? 'The family house' : 'Own apartment'}
+            {/* It said "Own apartment" to somebody living in a canal house. */}
+            {g.homeless ? 'On the street' : g.livingWith === 'parents' ? 'Living with parents' : g.inheritedHome ? 'The family house' : (HOUSING[g.housing || 'room'] || {}).label || 'Own apartment'}
           </div>
         </div>
       </div>
@@ -373,7 +378,7 @@ function DepressionCard({ g }) {
         {went ? 'You went this month' : poor ? 'An hour costs €260' : 'A session · €260 · 1 energy'}
       </button>
       <button onClick={() => dispatch(enterRehab)} disabled={!canRehab} style={{ ...softBtn(!canRehab), background: canRehab ? 'rgba(255,106,138,.18)' : 'rgba(120,110,150,.15)', color: canRehab ? theme.bad : '#6b6390' }}>
-        {canRehab ? `${rehabMonths(g)} months in a clinic · €${rehabCost(g).toLocaleString()}` : `A clinic costs €${rehabCost(g).toLocaleString()}`}
+        {canRehab ? `${count(rehabMonths(g), 'month')} in a clinic · €${rehabCost(g).toLocaleString()}` : `A clinic costs €${rehabCost(g).toLocaleString()}`}
       </button>
       <DrinkButton g={g} />
     </div>);
@@ -510,7 +515,7 @@ function UltimatumModal({ g }) {
         <div style={{ fontSize: 17, fontWeight: 900, marginBottom: 8 }}>{p.title}</div>
         <div style={{ fontSize: 12.5, color: theme.muted, lineHeight: 1.6 }}>{p.body}</div>
         {opt(canPay ? `Go with them · €${cost.toLocaleString()}` : `You cannot cover the clinic · €${cost.toLocaleString()}`,
-          canPay ? `${months} months, starting tonight.${shooting ? ` "${g.production.title}" carries on without you.` : ''}`
+          canPay ? `${count(months, 'month')}, starting tonight.${shooting ? ` "${g.production.title}" carries on without you.` : ''}`
             : 'They looked it up too. Neither of you can find the money.',
           () => dispatch(takeTheUltimatum), !canPay)}
         {opt('Promise them you will stop',
@@ -1276,7 +1281,7 @@ function CreditRow({ group }) {
   const starCol = group.worldHit ? theme.gold : r >= 85 ? theme.good : r >= 60 ? theme.gold : theme.muted;
   // IMDb writes "34 episodes" under a series and nothing under a film.
   const runs = group.series
-    ? `${group.episodes || group.seasons} ${group.episodes ? 'episodes' : 'seasons'}${group.seasons > 1 ? ` · ${group.seasons} seasons` : ''}`
+    ? `${group.episodes || group.seasons} ${group.episodes ? 'episodes' : 'seasons'}${group.seasons > 1 ? ` · ${count(group.seasons, 'season')}` : ''}`
     : null;
   return (<div style={{ display: 'flex', gap: 11, padding: '11px 10px', borderRadius: 12, marginBottom: 6,
     // A hit should be visible from across the page, not spelled out in small print.
@@ -1368,7 +1373,7 @@ function CreditsList({ g, credits, label }) {
             <div style={{ flex: 1, minWidth: 0 }}>
               <div style={{ fontSize: 14, fontWeight: 800 }}>{r.title}</div>
               <div style={{ fontSize: 11.5, color: theme.accent, margin: '4px 0 3px' }}>
-                Opens in {left <= 1 ? 'weeks' : `${left} months`}
+                Opens in {left <= 1 ? 'weeks' : `${count(left, 'month')}`}
               </div>
               <div style={{ fontSize: 11.5, color: theme.muted }}>{r.role}{r.genre ? ` · ${r.genre}` : ''}</div>
             </div>
@@ -1677,5 +1682,41 @@ function StageBody({ g }) {
         ? `Take any job in your Phone — a room is €${HOUSING.room.cost} a month and nothing else is going to pay for it.`
         : `Get a job in your Phone first — rent is €${HOUSING.room.cost} every month, and nothing else is paying it.`}
     </div>}<Button kind="pri" onClick={() => dispatch(rentApartment)}>Move into a rented room · €{HOUSING.room.cost}/mo</Button></div>;
-  return <div style={{ fontSize: 14, lineHeight: 1.55 }}>You have your own place and your own path. Chase auditions and offers through your Phone, build your craft, and make a name. Your story is yours to write.</div>;
+  return <div style={{ fontSize: 14, lineHeight: 1.55 }}>{careerNow(g)}</div>;
+}
+
+// "Right now" is the biggest card on the main screen and it said the same thirty words for
+// fifty years. A forty-seven-year-old A-lister with four films and fourteen million euros
+// was being told to chase auditions through their Phone and make a name. The most
+// prominent thing in the game has to know who it is talking to.
+//
+// Ordered by what is most pressingly true, not by what is nicest to say.
+function careerNow(g) {
+  const p = g.production;
+  if (p) {
+    const left = Math.max(0, p.monthsLeft || 0);
+    return `You are on ${p.title}. ${left <= 1 ? 'Last month of the shoot.' : `${count(left, 'month')} of shooting left.`} `
+      + `Rehearse when you have the energy — the set is where the film is decided.`;
+  }
+  const post = (g.releases || [])[0];
+  if (post) {
+    const wait = Math.max(0, post.due - ((g.year || 0) * 12 + (g.month || 0)));
+    return `"${post.title}" is in post. It opens in about ${count(wait, 'month')}, and until it does nobody knows what you made.`;
+  }
+  const waiting = (g.submissions || []).length;
+  if (waiting) return `You have read for ${count(waiting, 'part')} and heard nothing back yet. That is the job. Keep the board moving while you wait.`;
+  if ((g.offers || []).length) return `There is work on the table waiting for an answer. Take one, or pass and hold out for something better — but the offer will not sit there forever.`;
+
+  const tier = fameTier(g.fame).id;
+  const old = (g.ageY || 0) >= 58;
+  if (tier === 'icon') return old
+    ? `They write about your career in the past tense now, and they write about it a lot. Anything you do next is an event.`
+    : `Your name opens anything. The only question left is what you want it opening.`;
+  if (tier === 'alist') return `You are the reason people buy the ticket. The parts come to you now — the hard part is picking the right one.`;
+  if (tier === 'star') return old
+    ? `People know exactly who you are, and the offers have started arriving for who you were. Pick carefully.`
+    : `Your name is on the poster. Keep choosing well and the top of this is genuinely in reach.`;
+  if (tier === 'known') return `People half-recognise you in the street and cannot place where from. One film they remember would change that.`;
+  if (tier === 'rising') return `Something is starting. Keep reading for everything, and take the training seriously — craft is what turns a face into a career.`;
+  return `You have your own place and your own path. Chase auditions through your Phone, build your craft, and make a name. Nobody is coming to find you.`;
 }

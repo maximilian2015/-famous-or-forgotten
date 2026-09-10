@@ -1,3 +1,4 @@
+import { count } from '../../engine/text.js';
 // A child was a line that aged one number a year. This gives them a life: a childhood that
 // notices where you were, a school report, a decision at eighteen, and — if they want it and
 // you left them the name — a career of their own that you get to watch from the good seats
@@ -134,7 +135,7 @@ export function adoptionTick(s) {
   s.lastEvent = `${kid.name.split(' ')[0]} is ${age}, and as of this morning ${kid.gender === 'm' ? 'he' : 'she'} lives with you.`;
   addTimeline(s, `Adopted ${kid.name}, age ${age}.`);
   s.bigMoment = { id: 'adopted', kind: 'good', title: kid.name.split(' ')[0],
-    body: `${kid.name.split(' ')[0]} is ${age} years old and has a whole life you were not there for. `
+    body: `${kid.name.split(' ')[0]} is ${count(age, 'year')} old and has a whole life you were not there for. `
       + 'They are polite with you, in the way children are polite with adults they are not sure about yet. '
       + 'That is the part you get to change.' };
   return s;

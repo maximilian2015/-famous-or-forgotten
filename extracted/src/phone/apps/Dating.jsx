@@ -1,3 +1,4 @@
+import { count } from '../../engine/text.js';
 import { useEffect, useState } from 'react';
 import { theme } from '../../ui/theme.js';
 import { dispatch } from '../../state/store.js';
@@ -139,7 +140,7 @@ export function Dating({ g }) {
               : `There was no paperwork. ${spouse.name.split(' ')[0]} leaves with half of everything — €${take.toLocaleString()}.`}
           </div>
           {kids.length > 0 && <div style={{ fontSize: 11.5, color: theme.bad, lineHeight: 1.5 }}>
-            {kids.length === 1 ? 'Your child' : `Your ${kids.length} children`} will most likely live with them. You will see them when the schedule allows.
+            {kids.length === 1 ? 'Your child' : `Your ${count(kids.length, 'child', 'children')}`} will most likely live with them. You will see them when the schedule allows.
           </div>}
         </div>
         <button onClick={() => { dispatch(divorce, false); setEnding(false); }} style={btn(false, 'bad')}>File</button>

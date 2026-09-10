@@ -21,7 +21,12 @@ export function Spotlight({ g }) {
         + Find people from school
       </button>
       {usedFind && <div style={{ fontSize: 11, color: theme.muted, textAlign: 'center', marginBottom: 12 }}>You've reached out to someone new this month.</div>}
-      {!feed.length && <div style={{ fontSize: 12.5, color: theme.muted, textAlign: 'center', padding: 20 }}>No one in your feed yet. Find classmates to connect.</div>}
+      {/* The school-friends app is empty forever for anybody who did not use it as a teen,
+          and it was still telling a fifty-year-old to go and find classmates. */}
+      {!feed.length && <div style={{ fontSize: 12.5, color: theme.muted, textAlign: 'center', padding: 20, lineHeight: 1.6 }}>
+        {(g.ageY || 0) >= 40
+          ? 'Nobody from school is on here any more. That window closes, and yours has.'
+          : 'No one in your feed yet. Find classmates to connect.'}</div>}
       {feed.map((p) => (
         <div key={p.id} style={{ background: theme.panel, borderRadius: 12, padding: '10px 12px', marginBottom: 8 }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline' }}>

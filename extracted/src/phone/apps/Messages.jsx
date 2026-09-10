@@ -8,7 +8,12 @@ export function Messages({ g }) {
   const trend = hotGenre(g);
   return (<div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
     {!agent && <div style={{ background: theme.panel2, borderRadius: 14, padding: 12 }}><div style={{ fontSize: 11, fontWeight: 900, color: theme.accent, textTransform: 'uppercase', marginBottom: 4 }}>OpenCall · System</div><div style={{ fontSize: 13, lineHeight: 1.5 }}>No agent yet. Offers this good come through people. Until then, work the open castings.</div></div>}
-    {!offers.length && <div style={{ fontSize: 12.5, color: theme.muted, textAlign: 'center', padding: 24, lineHeight: 1.6 }}>No new offers.<br />Build credits and buzz — people write to stars they can sell.</div>}
+    {/* This told an A-lister with four films to build credits and buzz. An empty inbox
+        means something different depending on who is looking at it. */}
+    {!offers.length && <div style={{ fontSize: 12.5, color: theme.muted, textAlign: 'center', padding: 24, lineHeight: 1.6 }}>
+      {(g.fame || 0) >= 75 ? <>Nothing new today.<br />At your level they wait until they have something worth your name on.</>
+        : (g.fame || 0) >= 40 ? <>No new offers.<br />Keep something coming out — an empty year is what makes the phone go quiet.</>
+        : <>No new offers.<br />Build credits and buzz — people write to stars they can sell.</>}</div>}
     {offers.map((o) => { const tc = o.prestigeScore >= 70 ? ['A-list', theme.good] : o.prestigeScore >= 45 ? ['Solid', theme.accent] : ['Small', theme.muted];
       const big = o.tier !== 'supporting'; const onTrend = o.genre === trend; const cost = campaignCost(o);
       return (<div key={o.id} style={{ background: theme.panel2, border: `1px solid ${theme.line}`, borderRadius: 14, padding: 12 }}>

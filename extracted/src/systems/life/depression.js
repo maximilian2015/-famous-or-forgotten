@@ -1,3 +1,4 @@
+import { count } from '../../engine/text.js';
 // The fourth collapse does not end when a counter does. It takes months of your life a
 // month at a time — literally, in the currency the game is actually made of, which is
 // what you can do with the days you have.
@@ -53,7 +54,7 @@ export function medsNote(s) {
   const m = s.depression.medMonths || 0;
   if (m === 0) return 'Nothing has been started yet.';
   if (m < 2) return 'You started them this month. They take weeks to do anything.';
-  return `On them ${m} months.`;
+  return `On them ${count(m, 'month')}.`;
 }
 
 // ── what the five months are judged on ────────────────────────────────────────
@@ -319,12 +320,12 @@ export function enterRehab(s) {
   const walked = breakContract(s);
   const both = drinkLevel(s) > 0 && ((s.scarred || 0) > 0 || !!s.depression);
   s.rehab = { left: months, months, since: (s.year || 0) * 12 + (s.month || 0), both, walked };
-  addTimeline(s, `Checked into a clinic for ${months} months. €${cost.toLocaleString()}, and nobody is going to hear from you.`, true);
+  addTimeline(s, `Checked into a clinic for ${count(months, 'month')}. €${cost.toLocaleString()}, and nobody is going to hear from you.`, true);
   s.lastEvent = walked
-    ? `You checked in, and "${walked.title}" carried on without you. ${months} months.`
+    ? `You checked in, and "${walked.title}" carried on without you. ${count(months, 'month')}.`
     : both
-    ? `You checked in. ${months} months — there are two things to undo, and they will not do one without the other.`
-    : `You checked in. ${months} months of your life and €${cost.toLocaleString()}.`;
+    ? `You checked in. ${count(months, 'month')} — there are two things to undo, and they will not do one without the other.`
+    : `You checked in. ${count(months, 'month')} of your life and €${cost.toLocaleString()}.`;
   return s;
 }
 // Saying yes to the person in the kitchen is one action, not two — the answer and the car
@@ -346,14 +347,14 @@ export function rehabTick(s) {
     s.scarred = 0;
     s.depression = null;
     s.drink = null;
-    addTimeline(s, `${months} months in that place, and you have your Energy back.`);
+    addTimeline(s, `${count(months, 'month')} in that place, and you have your Energy back.`);
     s.lastEvent = 'You came out with your Energy back. It cost the time and everything you had put aside.';
-    s.bigMoment = { id: 'rehab', kind: 'good', title: `${months} months later`, months,
+    s.bigMoment = { id: 'rehab', kind: 'good', title: `${count(months, 'month')} later`, months,
       body: both
-        ? `${months} months, no cameras, nobody watching, and two things to put down rather than one. You have your `
+        ? `${count(months, 'month')}, no cameras, nobody watching, and two things to put down rather than one. You have your `
           + 'Energy back and your craft is where you left it — several years lower than it was. The next thing you do '
           + 'will be written about as a comeback, which is a generous word for it.'
-        : `${months} months, no cameras, nobody watching. You have back the Energy it took, and you know exactly `
+        : `${count(months, 'month')}, no cameras, nobody watching. You have back the Energy it took, and you know exactly `
           + 'what they cost — which is the part you will remember next time somebody offers you four films in a row.' };
   }
   return s;

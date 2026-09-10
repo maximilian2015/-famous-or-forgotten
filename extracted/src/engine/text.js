@@ -17,3 +17,10 @@ export function article(word) {
 // "a accountant" → "an accountant". Use anywhere an article is glued to a word that comes
 // out of a table.
 export function an(word) { return `${article(word)} ${word}`; }
+
+// "1 months", "1 children", "1 years". The game writes a lot of sentences out of numbers
+// that can legitimately be one, and every one of them said the plural.
+export function count(n, word, many) {
+  const v = Math.round(Number(n) || 0);
+  return `${v} ${v === 1 ? word : (many || word + 's')}`;
+}

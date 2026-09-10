@@ -106,7 +106,9 @@ export function beginLife(s) {
   const married = YEARS[Math.min(YEARS.length - 1, Math.max(0, rint(0, Math.max(1, mum.age - 24))))];
   const parentsLine = dad
     ? `You were born to ${mum.name} and ${dad.name}` + (setup === 'married'
-        ? `, married ${married} years by the time you arrived.`
+        // `married` is a WORD out of the YEARS table — "four", "eleven" — not a number, so
+        // it must not go through count(), which reads it as NaN and says "married 0 years".
+        ? `, married ${married} year${married === 'one' ? '' : 's'} by the time you arrived.`
         : `, who never married but never left each other either.`)
     : `You were born to ${mum.name}, who raised you on her own from the first day.`;
   lines.push(parentsLine);

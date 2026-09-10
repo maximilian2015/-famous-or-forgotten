@@ -1,3 +1,4 @@
+import { count } from '../../engine/text.js';
 import { uid } from '../../engine/id.js';
 import { rint, chance, pick } from '../../engine/rng.js';
 import { addTimeline } from '../../engine/timeline.js';
@@ -314,7 +315,7 @@ function answerSubmission(s, sub) {
   s.lastEvent = `You got "${c.title}". They want you.`;
   addTimeline(s, `Booked ${c.title}.`);
   s.bigMoment = { id: 'booked', kind: 'good', title: 'You got it',
-    body: `"${c.title}" is yours. ${c.role}${c.months ? `, ${c.months} months of shooting` : ''}. `
+    body: `"${c.title}" is yours. ${c.role}${c.months ? `, ${count(c.months, 'month')} of shooting` : ''}. `
       + 'Somebody in an office made a list and your name was at the top of it, and you will never find out why.' };
   return s;
 }

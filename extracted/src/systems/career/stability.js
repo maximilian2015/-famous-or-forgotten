@@ -1,3 +1,4 @@
+import { count } from '../../engine/text.js';
 import { uid } from '../../engine/id.js';
 // Not every project that starts gets made. Financing walks, a studio changes its mind,
 // a producer turns out not to have the money he said he had. The player has to be able
@@ -229,7 +230,7 @@ export function frozenTick(s) {
           : `The money came back. They want to finish it — €${f.owed.toLocaleString()} for the ${f.monthsLeft} month${f.monthsLeft === 1 ? '' : 's'} still owed.`,
       });
       s.lastEvent = `"${f.title}" is alive again. Somebody found the money.`;
-      addTimeline(s, `"${f.title}" came out of freeze after ${waited} months.`);
+      addTimeline(s, `"${f.title}" came out of freeze after ${count(waited, 'month')}.`);
       continue;                                              // it leaves the freezer either way
     }
     if (chance(deathOdds(f, now))) {
@@ -244,7 +245,7 @@ export function frozenTick(s) {
         addTimeline(s, `"${f.title}" was recast. They held it open ${Math.round(waited / 12)} year${waited >= 24 ? 's' : ''} and you never went back for it.`, true);
         s.lastEvent = `They recast "${f.title}". It waited as long as anyone was going to wait.`;
       } else {
-        addTimeline(s, `"${f.title}" was formally abandoned. It had been frozen ${waited} months.`, true);
+        addTimeline(s, `"${f.title}" was formally abandoned. It had been frozen ${count(waited, 'month')}.`, true);
         s.lastEvent = `"${f.title}" will never be finished. They have written it off.`;
       }
       continue;

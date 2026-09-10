@@ -18,7 +18,7 @@ import { laterOffersTick } from '../systems/career/franchise.js';
 import { submissionsTick, refreshCastingPool } from '../systems/career/castings.js';
 import { runNominations, ceremonyTick } from '../systems/career/awards.js';
 import { agingNote } from '../systems/career/age.js';
-import { iconTick } from '../systems/meta/status.js';
+import { iconTick, quoteTick } from '../systems/meta/status.js';
 import { strainTick } from '../systems/life/strain.js';
 import { slotsLost, rehabTick, inRehab } from '../systems/life/depression.js';
 import { drinkTick } from '../systems/life/drink.js';
@@ -78,6 +78,7 @@ export function advanceMonth(state) {
   emailTick(s);
   maybeStartArc(s);
   iconTick(s);        // and the last rung says why it is out of reach
+  quoteTick(s);       // and what you ask for comes back down when nobody is paying it
   s.peakFame = Math.max(s.peakFame || 0, s.fame || 0);
   advanceStage(s);
   pruneCooldowns(s);

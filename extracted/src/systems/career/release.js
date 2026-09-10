@@ -1,3 +1,4 @@
+import { count } from '../../engine/text.js';
 import { uid } from '../../engine/id.js';
 // Nothing you shoot comes out the day you finish shooting. A film wraps, sits in post
 // for months, and then opens — and THAT is the day you find out what you made.
@@ -133,7 +134,7 @@ export function scheduleRelease(s, credit, p) {
     },
   };
   (s.releases = s.releases || []).push(rel);
-  addTimeline(s, `"${rel.title}" wrapped. It opens in about ${wait} months.`);
+  addTimeline(s, `"${rel.title}" wrapped. It opens in about ${count(wait, 'month')}.`);
   return rel;
 }
 

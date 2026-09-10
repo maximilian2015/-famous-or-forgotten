@@ -1,3 +1,4 @@
+import { count } from '../../engine/text.js';
 // The other way out, and the reason the good one has to be worth taking.
 //
 // A depression takes two of your three Energy every month. You can have them back
@@ -176,11 +177,11 @@ export function drinkTick(s) {
       if (d.level <= 0) {
         const years = Math.round((d.dryMonths || 0) / 12);
         s.drink = null;
-        addTimeline(s, `${d.dryMonths} months dry, without a clinic and without anybody making you.`);
+        addTimeline(s, `${count(d.dryMonths, 'month')} dry, without a clinic and without anybody making you.`);
         s.lastEvent = 'You did it the long way, on your own, and it took years.';
         s.bigMoment = { id: 'dryalone', kind: 'good', title: 'You did it on your own',
-          body: `${d.dryMonths} months. No clinic, no announcement, nobody driving you anywhere — just every `
-            + `single month for ${years > 1 ? `${years} years` : 'a year'} deciding it again. Your craft is where `
+          body: `${count(d.dryMonths, 'month')}. No clinic, no announcement, nobody driving you anywhere — just every `
+            + `single month for ${years > 1 ? `${count(years, 'year')}` : 'a year'} deciding it again. Your craft is where `
             + 'you left it, which is a long way down from where it was, and none of that is coming back by itself. '
             + 'But it is not going any further down either.' };
         return s;

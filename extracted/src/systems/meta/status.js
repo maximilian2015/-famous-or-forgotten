@@ -84,6 +84,29 @@ export function setQuote(s, value) {
   return s.quote;
 }
 
+// And it comes back down. Every single write to the quote was a Math.max or a multiplier —
+// it could only ever rise. So an actor who was an Icon at forty and is a Known Face at
+// sixty still asked for ninety million a picture, forever, and negotiate.js uses that
+// number as the FLOOR of what they will accept. A wide audit caught the state directly:
+// quote €92.8m against a ceiling of €8m.
+//
+// It falls slowly, because an agent does not re-price a client overnight and neither does
+// the industry. Four per cent a month closes a doubling in about eighteen months, which is
+// roughly how long it takes for people to stop returning the calls.
+export function quoteTick(s) {
+  const cap = quoteCeiling(s);
+  if (!(s.quote > cap)) { s._quoteSaid = false; return; }
+  // Eight per cent of the GAP, not of the number — so it takes about the same three years
+  // to come down whether you slipped one tier or four. A flat percentage meant an icon who
+  // fell all the way to Known Face was still quoting eight figures a decade later.
+  const wasDouble = s.quote > cap * 1.9;
+  s.quote = Math.max(cap, Math.round(cap + (s.quote - cap) * 0.92));
+  if (wasDouble && s.quote <= cap * 1.9 && !s._quoteSaid) {
+    s._quoteSaid = true;
+    addTimeline(s, 'Your agent quietly stopped quoting the old number. Nobody was paying it.', true);
+  }
+}
+
 // ── the last step ─────────────────────────────────────────────────────────────────────
 //
 // Fame was bought with volume and nothing else. Measured over twenty-five careers played

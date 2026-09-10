@@ -75,7 +75,9 @@
       "Bash(\"/c/Program Files/nodejs/node.exe\" probe_scale.mjs)",
       "Bash(\"/c/Program Files/nodejs/node.exe\" probe_players.mjs)",
       "Bash(\"/c/Program Files/nodejs/node.exe\" probe_players2.mjs)",
-      "Bash(\"/c/Program Files/nodejs/node.exe\" probe_players3.mjs)"
+      "Bash(\"/c/Program Files/nodejs/node.exe\" probe_players3.mjs)",
+      "Bash(\"/c/Program Files/nodejs/node.exe\" audit_wide.mjs)",
+      "Bash(sed -i \"s/housing: 'room', cash: 12000, alive: true, ap: 3, apMax: 3, apMaxEff: 3 }\\);/housing: 'room', cash: 12000, alive: true, ap: 3, apMax: 3, apMaxEff: 3, livingWith: 'own_place' }\\);/\" audit_wide.mjs)"
     ],
     "defaultMode": "acceptEdits",
     "additionalDirectories": [
