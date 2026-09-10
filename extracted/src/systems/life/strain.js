@@ -135,6 +135,9 @@ function moodTick(s) {
   const band = moodBand(s);
   const now = band ? band.at : 0;
   const said = s._moodSaid || 0;
+  // How many months in a row. The fourth month at the bottom is a different thing from the
+  // first one, and the player could not see the difference.
+  s._lowMonths = band ? (s._lowMonths || 0) + 1 : 0;
   // Say it when it gets worse, and once more when it has properly lifted — not every month.
   if (band && (!said || now < said)) {
     s._moodSaid = now;

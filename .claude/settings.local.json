@@ -79,7 +79,9 @@
       "Bash(\"/c/Program Files/nodejs/node.exe\" audit_wide.mjs)",
       "Bash(sed -i \"s/housing: 'room', cash: 12000, alive: true, ap: 3, apMax: 3, apMaxEff: 3 }\\);/housing: 'room', cash: 12000, alive: true, ap: 3, apMax: 3, apMaxEff: 3, livingWith: 'own_place' }\\);/\" audit_wide.mjs)",
       "Bash(awk 'NR>=855 && NR<=960' App.jsx)",
-      "Bash(\"/c/Program Files/nodejs/node.exe\" test_money.mjs)"
+      "Bash(\"/c/Program Files/nodejs/node.exe\" test_money.mjs)",
+      "Bash(\"/c/Program Files/nodejs/node.exe\" test_mood.mjs)",
+      "Bash(sed -i \"s|import { jobSlots } from './work.js';|import { jobSlots } from './work.js';\\\\nimport { monthlyStrain, strainBand } from './strain.js';|\" systems/life/mood.js)"
     ],
     "defaultMode": "acceptEdits",
     "additionalDirectories": [
