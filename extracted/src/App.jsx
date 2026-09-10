@@ -11,7 +11,7 @@ import { skillCap } from './systems/career/actions.js';
 import { seeDoctor, treatmentCost, pushThrough, PILLS, usePills, infectionOdds } from './systems/life/health.js';
 import { resolveArc } from './systems/life/arcs.js';
 import { computeLegacy, getHall, heirsOf, heirOpts, enshrine } from './systems/meta/legacy.js';
-import { fameTier, setHousing, FAME_TIERS, fameCeiling, ladderBlurb, TIER_OPENS, alistKey, iconKey, scandalReport } from './systems/meta/status.js';
+import { fameTier, setHousing, FAME_TIERS, fameCeiling, ladderBlurb, TIER_OPENS, alistKey, iconKey, scandalReport, respectReport, RESPECT_MOVES } from './systems/meta/status.js';
 import { rehearse, riskyTake, bondWithCrew, meterTier } from './systems/career/production.js';
 import { TimingBar } from './ui/components/TimingBar.jsx';
 import { GridRisk } from './ui/components/GridRisk.jsx';
@@ -59,6 +59,7 @@ export default function App() {
   const [showHealth, setShowHealth] = useState(false);
   const [showMental, setShowMental] = useState(false);
   const [showFame, setShowFame] = useState(false);
+  const [showRespect, setShowRespect] = useState(false);
   const [openPerson, setOpenPerson] = useState(null);
   const [showRoom, setShowRoom] = useState(false);
   // theme is a live object mutated in place, so a skin change has to be turned into a
@@ -72,6 +73,7 @@ export default function App() {
   if (showHealth) return <HealthScreen g={g} onBack={() => setShowHealth(false)} />;
   if (showMental) return <MentalScreen g={g} onBack={() => setShowMental(false)} />;
   if (showFame) return <FameScreen g={g} onBack={() => setShowFame(false)} />;
+  if (showRespect) return <RespectScreen g={g} onBack={() => setShowRespect(false)} />;
   if (g.bigMoment) return <BigMoment moment={g.bigMoment} look={lookOf(g)} onClose={() => dispatch(clearBigMoment)} />;
   if (g.depression?.pending) return <CheckpointModal g={g} />;
   if (g.drink?.pending) return <UltimatumModal g={g} />;
@@ -130,7 +132,7 @@ export default function App() {
             sub={inCareer(g) ? 'tap for genres ›' : undefined} onClick={inCareer(g) ? () => setShowGenres(true) : undefined} />
           <Stat label="Charisma" value={g.charisma} />
           <Stat label="Looks" value={g.looks} />
-          <Stat label="Respect" value={g.respect} />
+          <Stat label="Respect" value={g.respect} sub="tap ›" onClick={() => setShowRespect(true)} />
         </div>
         {g.lastEvent && <Card style={{ marginBottom: 14, borderColor: 'rgba(255,209,102,.35)' }}><div style={{ fontSize: 13.5, lineHeight: 1.5, whiteSpace: 'pre-line' }}>{g.lastEvent}</div></Card>}
         {g.illness && (<Card style={{ marginBottom: 14, borderColor: 'rgba(255,90,122,.5)' }}>
@@ -249,6 +251,99 @@ function ChildPhoneLocked() { return (<div style={{ fontSize: 13, color: theme.m
 // nothing about the shape of the climb — and the two doors above Star are not a number of
 // points away at all, so counting down to them was a lie. Every line under a rung is a real
 // gate somewhere in the game; see TIER_OPENS in systems/meta/status.js.
+// Respect is moved by twelve things and read by six, and tapping it did nothing. The one
+// worth knowing is that it is the biggest single term in whether a director shoots your
+// version of the film — fame gets you into the room, standing is what makes them listen.
+function Move({ m, col }) {
+  return (<div style={{ display: 'flex', gap: 10, padding: '8px 0', borderBottom: `1px solid ${theme.line}` }}>
+    <span style={{ color: col, fontWeight: 900, fontSize: 13, width: 30, flexShrink: 0, textAlign: 'right', fontVariantNumeric: 'tabular-nums' }}>{m.by}</span>
+    <span style={{ fontSize: 12.2, lineHeight: 1.45 }}>{m.what}<span style={{ color: theme.muted }}> — {m.note}</span></span>
+  </div>);
+}
+function RespectScreen({ g, onBack }) {
+  const r = Math.round(g.respect || 0);
+  const band = r >= 75 ? ['They name you as a reason to see it', '#4fc07f']
+    : r >= 55 ? ['Taken seriously', theme.accent]
+    : r >= 30 ? ['Known to be reliable', theme.gold]
+    : r >= 12 ? ['Nobody has an opinion yet', theme.muted]
+    : ['A name people are careful about', '#ff5a72'];
+  const lines = respectReport(g);
+  const wins = ((g.awards && g.awards.wins) || []).length;
+  const noms = ((g.awards && g.awards.nominations) || []).length;
+  // Who could actually open a door for you. computeAccess wants weight 80 and closeness 60.
+  const industry = [...(g.people || [])]
+    .filter((p) => (p.industryWeight || 0) > 0)
+    .sort((a, b) => (b.industryWeight || 0) - (a.industryWeight || 0))
+    .slice(0, 5);
+  const best = [...(g.filmography || []), ...(g.discography || [])]
+    .filter((c) => !c.minor && c.score != null)
+    .sort((a, b) => (b.rating || 0) - (a.rating || 0))[0];
+  return (<div style={{ maxWidth: 440, margin: '0 auto', minHeight: '100vh', background: 'transparent', color: theme.text, padding: 16, paddingBottom: 40, fontFamily: FONT }}>
+    <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 14 }}>
+      <button onClick={onBack} data-sfx="back" style={{ background: 'rgba(255,255,255,.1)', border: 'none', color: theme.text, borderRadius: 9, padding: '6px 11px', fontSize: 13, fontWeight: 800, cursor: 'pointer', fontFamily: 'inherit' }}>‹ Back</button>
+      <div style={{ fontSize: 16, fontWeight: 900 }}>How the business sees you</div>
+    </div>
+
+    <Card style={{ marginBottom: 14 }}>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', gap: 8 }}>
+        <div style={{ fontFamily: FONT_DISPLAY, fontSize: 30, fontWeight: 700 }}>{r}</div>
+        <div style={{ fontSize: 12.5, fontWeight: 800, color: band[1], textAlign: 'right' }}>{band[0]}</div>
+      </div>
+      <div style={{ height: 9, background: 'rgba(255,255,255,.08)', borderRadius: 5, margin: '9px 0 8px', overflow: 'hidden' }}>
+        <div style={{ width: r + '%', height: '100%', background: `linear-gradient(90deg, ${band[1]}aa, ${band[1]})`, borderRadius: 5, transition: 'width .5s' }} />
+      </div>
+      <div style={{ fontSize: 12, color: theme.muted, lineHeight: 1.55 }}>
+        Fame is how many people know the name. This is what the people who hire you think of it,
+        and the two move for completely different reasons.
+      </div>
+      {(wins > 0 || noms > 0) && <div style={{ fontSize: 12, color: theme.gold, marginTop: 7, fontWeight: 700 }}>
+        {wins > 0 ? `🏆 ${count(wins, 'Asker')}` : ''}{wins > 0 && noms > 0 ? ' · ' : ''}{noms > 0 ? `${count(noms, 'nomination')}` : ''}
+        {' — worth '}{wins * 22 + Math.min(18, noms * 5)}{' on top of your fame in every casting office.'}
+      </div>}
+      {best && <div style={{ fontSize: 12, color: theme.muted, marginTop: 6 }}>
+        Your best is <b style={{ color: theme.text }}>{best.title}</b> at {best.score}/10. That is the one people mean.
+      </div>}
+    </Card>
+
+    <div style={{ fontSize: 11, fontWeight: 900, letterSpacing: '.09em', textTransform: 'uppercase', color: theme.muted, marginBottom: 4 }}>What it is worth</div>
+    <Card style={{ marginBottom: 14, padding: '4px 14px' }}>
+      {lines.map((l) => (
+        <div key={l.id} style={{ padding: '9px 0', borderBottom: `1px solid ${theme.line}` }}>
+          <div style={{ fontSize: 12.5, fontWeight: 800 }}>{l.label}</div>
+          <div style={{ fontSize: 11.5, color: theme.muted, lineHeight: 1.5, marginTop: 2 }}>{l.why}</div>
+        </div>))}
+    </Card>
+
+    <div style={{ fontSize: 11, fontWeight: 900, letterSpacing: '.09em', textTransform: 'uppercase', color: theme.muted, marginBottom: 8 }}>People who could open a door</div>
+    {industry.length ? (<div style={{ display: 'grid', gap: 7, marginBottom: 14 }}>
+      {industry.map((p) => { const opens = (p.industryWeight || 0) >= 80 && (p.relationship || 0) >= 60;
+        return (<div key={p.id} style={{ background: theme.panel, border: `1px solid ${opens ? 'rgba(79,192,127,.35)' : theme.line}`, borderRadius: 12, padding: '10px 12px' }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', gap: 8 }}>
+            <div style={{ fontSize: 13.5, fontWeight: 800 }}>{p.name}</div>
+            <div style={{ fontSize: 11, fontWeight: 800, color: opens ? '#7fd6a2' : theme.muted, flexShrink: 0 }}>
+              {opens ? '★ opens doors' : `weight ${Math.round(p.industryWeight || 0)}`}
+            </div>
+          </div>
+          <div style={{ fontSize: 11.5, color: theme.muted, marginTop: 2 }}>
+            {p.role} · {relBand(p.relationship).label}
+            {!opens && (p.industryWeight || 0) >= 80 ? ' — powerful enough, not close enough' : ''}
+          </div>
+        </div>); })}
+    </div>) : <div style={{ fontSize: 12, color: theme.muted, textAlign: 'center', padding: '8px 10px 16px', lineHeight: 1.6 }}>
+      Nobody in the business is in your phone yet. They come from parties and events, under Career.
+    </div>}
+
+    <div style={{ fontSize: 11, fontWeight: 900, letterSpacing: '.09em', textTransform: 'uppercase', color: theme.muted, marginBottom: 8 }}>What moves it</div>
+    <div style={{ display: 'grid', gap: 8 }}>
+      <Card style={{ padding: '4px 14px' }}>{RESPECT_MOVES.up.map((m, i) => <Move key={i} m={m} col="#4fc07f" />)}</Card>
+      <Card style={{ padding: '4px 14px' }}>{RESPECT_MOVES.down.map((m, i) => <Move key={i} m={m} col="#ff5a72" />)}</Card>
+    </div>
+    <div style={{ fontSize: 11.5, color: theme.muted, textAlign: 'center', padding: '16px 10px', lineHeight: 1.6 }}>
+      None of this can be bought. It is the only number in the game that money does not touch.
+    </div>
+  </div>);
+}
+
 function FameScreen({ g, onBack }) {
   const f = Math.round(g.fame || 0);
   const tier = fameTier(g.fame);
@@ -282,17 +377,28 @@ function FameScreen({ g, onBack }) {
     </Card>
 
     <div style={{ fontSize: 11, fontWeight: 900, letterSpacing: '.09em', textTransform: 'uppercase', color: theme.muted, marginBottom: 8 }}>The whole climb</div>
+    {/* A tube running down the side of the climb, one segment per rung, each filling
+        from the bottom as you move through that band. Segments rather than one continuous
+        bar because the cards are different heights — a single fill would put the marks in
+        the wrong places, and a picture that does not line up with its own numbers is worse
+        than no picture. */}
     <div style={{ display: 'grid', gap: 8, marginBottom: 16 }}>
-      {[...FAME_TIERS].reverse().map((t) => {
+      {[...FAME_TIERS].reverse().map((t, ri, arr) => {
         const here = t.id === tier.id;
         const done = f >= t.min;
+        // How far through THIS band you are. The band runs from this rung to the next one up.
+        const above = arr[ri - 1];
+        const top = above ? above.min : 100;
+        const fill = f >= top ? 100 : f <= t.min ? 0 : ((f - t.min) / Math.max(1, top - t.min)) * 100;
         // The gate that stands in front of this rung, if it has one.
         const gate = t.id === 'alist' ? { open: !!aKey, need: 'A hit you carried, or a nomination',
             got: aKey === 'led' ? 'You carried one, and it was good.' : 'The season put your name on the list.' }
           : t.id === 'icon' ? { open: !!iKey, need: 'A world hit, or an Asker',
             got: iKey === 'hit' ? 'The whole world saw one of yours.' : 'They read your name out.' }
           : null;
-        return (<div key={t.id} style={{
+        return (<div key={t.id} style={{ display: 'flex', gap: 10, alignItems: 'stretch' }}>
+          <Tube fill={fill} lit={done} here={here} first={ri === 0} last={ri === arr.length - 1} />
+          <div style={{ flex: 1,
           background: here ? `${theme.accent}1e` : theme.panel,
           border: `1px solid ${here ? theme.accent : done ? theme.line : 'rgba(255,255,255,.05)'}`,
           borderRadius: 12, padding: '11px 13px', opacity: done || here ? 1 : .62 }}>
@@ -315,6 +421,7 @@ function FameScreen({ g, onBack }) {
               <div key={i} style={{ fontSize: 11.5, color: theme.muted, lineHeight: 1.5, display: 'flex', gap: 6 }}>
                 <span style={{ opacity: .5 }}>·</span><span>{line}</span>
               </div>))}
+          </div>
           </div>
         </div>);
       })}
@@ -348,6 +455,39 @@ function FameScreen({ g, onBack }) {
       The nights that raise your name are invitations in your Phone and events under Career.
       A publicist, under Style, makes bad press die nearly three times faster.
     </div>
+  </div>);
+}
+
+
+// One segment of the climb, drawn as a glass tube with a level in it. Fills from the bottom,
+// because that is the direction you are going.
+// One segment of the climb, drawn as a glass tube with a level in it. Fills from the
+// bottom, because that is the direction you are going. Segments rather than one long bar:
+// the cards are different heights, so a single fill would put the marks in the wrong
+// places, and a picture that does not line up with its own numbers is worse than none.
+function Tube({ fill, lit, here, first, last }) {
+  return (<div style={{ width: 16, flexShrink: 0, position: 'relative', display: 'flex', flexDirection: 'column' }}>
+    <div style={{ position: 'absolute', inset: 0,
+      background: 'rgba(255,255,255,.05)',
+      border: '1px solid rgba(255,255,255,.07)',
+      borderTopLeftRadius: first ? 9 : 0, borderTopRightRadius: first ? 9 : 0,
+      borderBottomLeftRadius: last ? 9 : 0, borderBottomRightRadius: last ? 9 : 0,
+      overflow: 'hidden' }}>
+      <div style={{ position: 'absolute', left: 0, right: 0, bottom: 0, height: fill + '%',
+        background: `linear-gradient(180deg, ${theme.accent}, ${theme.accent2 || theme.accent})`,
+        boxShadow: fill > 0 ? `0 0 12px -2px ${theme.accent}` : 'none',
+        transition: 'height .6s cubic-bezier(.2,.8,.3,1)' }} />
+      {/* the glass: a highlight down one side */}
+      <div style={{ position: 'absolute', left: 2, top: 0, bottom: 0, width: 3, borderRadius: 3,
+        background: 'linear-gradient(180deg, rgba(255,255,255,.16), rgba(255,255,255,.02))' }} />
+    </div>
+    {/* the mark at the rung itself, at the bottom of its own segment */}
+    <div style={{ position: 'absolute', bottom: -5, left: '50%', transform: 'translateX(-50%)',
+      width: here ? 14 : 10, height: here ? 14 : 10, borderRadius: 9,
+      background: lit ? theme.accent : theme.panel2,
+      border: `2px solid ${lit ? theme.accent : 'rgba(255,255,255,.14)'}`,
+      boxShadow: here ? `0 0 12px ${theme.accent}` : 'none',
+      zIndex: 2, transition: 'all .3s' }} />
   </div>);
 }
 

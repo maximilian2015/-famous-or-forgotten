@@ -240,6 +240,51 @@ export function scandalReport(s) {
   return out;
 }
 
+// What standing is worth, in the six places that read it. Respect is moved by twelve
+// different things and read by six, and the player was shown a bare number with no tap and
+// no explanation anywhere in the game.
+//
+// The one worth knowing is the first: respect is the BIGGEST single term in whether a
+// director shoots your version of the film rather than the one on the page. Fame gets you
+// in the room; standing is what makes them listen once you are in it.
+export function respectReport(s) {
+  const r = s.respect || 0;
+  const out = [];
+  // systems/career/story.js pushOdds — standing = respect * 0.46 + fame * 0.34
+  out.push({ id: 'room', label: 'Whether the director listens',
+    why: `Worth ${Math.round(r * 0.46)} points on the odds of shooting your version — more than your fame is (${Math.round((s.fame || 0) * 0.34)}). This is the biggest thing respect does.` });
+  // systems/career/negotiate.js
+  const neg = Math.round((r - 40) * 0.12 * 10) / 10;
+  out.push({ id: 'money', label: 'At the table',
+    why: neg >= 0 ? `They are ${neg} points likelier to meet your number.` : `They are ${Math.abs(neg)} points harder to move. Below forty, standing costs you money.` });
+  // systems/career/access.js
+  out.push({ id: 'elite', label: 'The room above the room',
+    why: r >= 60 ? 'Sixty is its own way in, whatever your fame says.' : `At 60 it becomes a way into the elite on its own — ${Math.ceil(60 - r)} to go.` });
+  // systems/life/children.js adoptionOdds
+  if (r > 60) out.push({ id: 'adopt', label: 'An adoption board', why: 'Eight points in your favour. They read the good pieces too.' });
+  // systems/meta/legacy.js
+  out.push({ id: 'legacy', label: 'What is written afterwards', why: `${Math.round(r * 1.5)} points on the stone.` });
+  return out;
+}
+
+// Where standing comes from and where it goes. Not a log — the game keeps no history of
+// this — but the real list of what moves it, so a player can aim.
+export const RESPECT_MOVES = {
+  up: [
+    { by: '+5', what: 'A film that reviews well', note: 'at 85 and over. +2 from 70.' },
+    { by: '+6', what: 'Being nominated', note: 'and +6 again if you win it.' },
+    { by: '+15', what: 'Winning an Asker', note: 'on top of the nomination.' },
+    { by: '+3', what: 'The director on your last shoot', note: 'if they liked you enough to say so out loud.' },
+    { by: '+1', what: 'Arguing for a better version and winning', note: 'every time you talk them round.' },
+    { by: '+1', what: 'A conservatory intensive', note: 'the kind of place casting directors have heard of.' },
+  ],
+  down: [
+    { by: '−4', what: 'A film that is genuinely bad', note: 'under 45.' },
+    { by: '−3', what: 'The director on your last shoot', note: 'if they have started telling a different story about you.' },
+    { by: '−9', what: 'Walking off a shoot', note: '−7 on a series. This is the expensive one.' },
+    { by: '−5', what: 'Refusing to finish something', note: 'they held your part open for years.' },
+  ],
+};
 // The only place fame is allowed to go up. It was written in fifteen files and clamped in
 // none, which is exactly how the quote ran to ten billion before setQuote existed.
 export function setFame(s, value) {
