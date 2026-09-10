@@ -81,7 +81,8 @@
       "Bash(awk 'NR>=855 && NR<=960' App.jsx)",
       "Bash(\"/c/Program Files/nodejs/node.exe\" test_money.mjs)",
       "Bash(\"/c/Program Files/nodejs/node.exe\" test_mood.mjs)",
-      "Bash(sed -i \"s|import { jobSlots } from './work.js';|import { jobSlots } from './work.js';\\\\nimport { monthlyStrain, strainBand } from './strain.js';|\" systems/life/mood.js)"
+      "Bash(sed -i \"s|import { jobSlots } from './work.js';|import { jobSlots } from './work.js';\\\\nimport { monthlyStrain, strainBand } from './strain.js';|\" systems/life/mood.js)",
+      "Bash(\"/c/Program Files/nodejs/node.exe\" test_ladder.mjs)"
     ],
     "defaultMode": "acceptEdits",
     "additionalDirectories": [

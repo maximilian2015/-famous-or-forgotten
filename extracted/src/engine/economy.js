@@ -121,6 +121,7 @@ export function relevanceDrift(s) {
   // Old news fades whether you like it or not.
   // A publicist is the difference between a bad week and a bad year.
   if ((s.scandal || 0) > 0) s.scandal = Math.max(0, s.scandal - 0.4 * (s.staff && s.staff.publicist ? 2.4 : 1));
+  if ((s.media || 0) > 0) s.media = Math.max(0, s.media - 0.8);
   if ((s._idleMonths || 0) < 4) return;
   // Purely proportional: nobody forgets a person they were never aware of. The flat
   // 0.35 that used to be here made the bottom of the ladder unclimbable — a supporting
@@ -129,13 +130,19 @@ export function relevanceDrift(s) {
   // ten credits, fame 0.
   const height = (s.fame || 0) / 55;             // the higher you are, the further there is to fall
   const noise = (s.scandal || 0) / 45;            // bad press speeds the slide
+  // Press attention slows it. `media` was written in three places — the talk show, the
+  // carpet, answering a piece in the trades — and READ in none, so every one of those
+  // choices raised a number that did nothing whatsoever. This is the job it should
+  // always have had: being talked about is what stops you being forgotten. It fades on
+  // its own below, or a single good night would keep you relevant for a decade.
+  const talked = Math.min(0.55, (s.media || 0) / 130);
   // A film sitting in post is still something the trades write about. A blockbuster can
   // take a year to open, and you should not be forgotten for having shot one.
   const shielded = (s.releases || []).length > 0 ? 0.45 : 1;
   // Once you have been an Icon the world does not un-know you. The one ceiling that
   // turns into a floor.
   const floor = (s.peakFame || 0) >= 90 ? 75 : 0;
-  s.fame = Math.max(floor, Math.min(100, s.fame - (height + noise) * shielded));
+  s.fame = Math.max(floor, Math.min(100, s.fame - (height + noise) * shielded * (1 - talked)));
   if ((s._idleMonths === 13 || s._idleMonths === 25) && (s.fame || 0) > 5) {
     addTimeline(s, s._idleMonths > 20
       ? 'Two years without work. People talk about you in the past tense now.'

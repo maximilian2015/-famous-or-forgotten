@@ -16,6 +16,44 @@ export function fameTier(fame) {
   return cur;
 }
 
+// What each rung actually opens. Every line here is a real gate somewhere else in the
+// game — the minFame column in the casting pools, the housing ceiling above, the tiers in
+// generateOffer, computeAccess. Kept by hand rather than derived, because deriving it
+// would mean status.js importing castings.js, which imports status.js. If a gate moves in
+// systems/career/castings.js, it has to move here too.
+export const TIER_OPENS = {
+  unknown: [
+    'Extras, student films and commercials',
+    'Indie supporting parts',
+    'A room, or a studio flat if you can pay for it',
+  ],
+  rising: [
+    'Carrying an indie film',
+    'Somebody will cook and train for you',
+  ],
+  known: [
+    'Series regular on a network drama',
+    'Carrying a feature film',
+    'A talk show sofa, and a magazine cover at 40',
+    'An agent starts bringing you things at 40 — and they are Lead parts now',
+    'A two-bed flat, and a personal assistant',
+  ],
+  star: [
+    'Season lead on a prestige series',
+    'Presenting at an awards show',
+    'A canal house — an extra Energy every month',
+  ],
+  alist: [
+    'Studio blockbusters, once the tentpoles are open to you',
+    'The face of a fashion house',
+    'A penthouse, and a driver',
+  ],
+  icon: [
+    'The top of every fee band in the business',
+    'Once you have been here, the world does not un-know you: your name never falls below 75 again',
+  ],
+};
+
 // One multiplier could not do this job. A rising star is worth €25,000 an episode on a
 // network drama and €500,000 for a studio picture — those are different ratios, because
 // the rate depends on the MEDIUM as much as on the name. Daytime soap and prestige
@@ -174,6 +212,32 @@ export function ladderBlurb(s) {
   if (c === ALIST_WALL) return 'A-list needs a hit you carried, or a nomination';
   if (c === ICON_WALL) return 'Icon needs a world hit or an Asker — not more work';
   return null;
+}
+
+// What a bad name is costing you, right now, in the six places that actually read it. Same
+// rule as the Mental panel: every number below is computed from the code that runs it, not
+// from a plausible story. Scandal moved sixteen things and the player could not see it at
+// all — there is no tile for it on the main screen.
+export function scandalReport(s) {
+  const sc = s.scandal || 0;
+  const out = [];
+  if (sc <= 0) return out;
+  // systems/career/castings.js castingChance
+  out.push({ id: 'casting', label: 'In the room', why: `Every audition is ${Math.round(sc * 0.3)} points harder.` });
+  // systems/career/offers.js maybeGenerateOffer
+  const agent = Math.round((1 - Math.max(0.25, 1 - sc / 90)) * 100);
+  if (agent > 0) out.push({ id: 'agent', label: 'What your agent brings', why: `${agent}% fewer calls. People are nervous about the name.` });
+  // systems/career/negotiate.js
+  if (sc > 25) out.push({ id: 'money', label: 'At the table', why: 'They hold ten points firmer on the money.' });
+  // engine/economy.js relevanceDrift
+  out.push({ id: 'drift', label: 'Being forgotten', why: `Bad press speeds the slide by ${(sc / 45).toFixed(2)} a month.` });
+  // systems/life/children.js
+  if (sc > 40) out.push({ id: 'adopt', label: 'An adoption board', why: 'They read the same papers as everyone else.' });
+  const relief = (s.staff && s.staff.publicist) ? 2.4 : 1;
+  out.push({ id: 'fade', label: 'How fast it goes', why: relief > 1
+    ? `${(0.4 * relief).toFixed(1)} a month — your publicist is earning it.`
+    : '0.4 a month on its own. A publicist makes that nearly three times faster.' });
+  return out;
 }
 
 // The only place fame is allowed to go up. It was written in fifteen files and clamped in

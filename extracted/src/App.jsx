@@ -11,7 +11,7 @@ import { skillCap } from './systems/career/actions.js';
 import { seeDoctor, treatmentCost, pushThrough, PILLS, usePills, infectionOdds } from './systems/life/health.js';
 import { resolveArc } from './systems/life/arcs.js';
 import { computeLegacy, getHall, heirsOf, heirOpts, enshrine } from './systems/meta/legacy.js';
-import { fameTier, setHousing, FAME_TIERS, fameCeiling, ladderBlurb } from './systems/meta/status.js';
+import { fameTier, setHousing, FAME_TIERS, fameCeiling, ladderBlurb, TIER_OPENS, alistKey, iconKey, scandalReport } from './systems/meta/status.js';
 import { rehearse, riskyTake, bondWithCrew, meterTier } from './systems/career/production.js';
 import { TimingBar } from './ui/components/TimingBar.jsx';
 import { GridRisk } from './ui/components/GridRisk.jsx';
@@ -58,6 +58,7 @@ export default function App() {
   const [showGenres, setShowGenres] = useState(false);
   const [showHealth, setShowHealth] = useState(false);
   const [showMental, setShowMental] = useState(false);
+  const [showFame, setShowFame] = useState(false);
   const [openPerson, setOpenPerson] = useState(null);
   const [showRoom, setShowRoom] = useState(false);
   // theme is a live object mutated in place, so a skin change has to be turned into a
@@ -70,6 +71,7 @@ export default function App() {
   if (showGenres) return <GenreScreen g={g} onBack={() => setShowGenres(false)} />;
   if (showHealth) return <HealthScreen g={g} onBack={() => setShowHealth(false)} />;
   if (showMental) return <MentalScreen g={g} onBack={() => setShowMental(false)} />;
+  if (showFame) return <FameScreen g={g} onBack={() => setShowFame(false)} />;
   if (g.bigMoment) return <BigMoment moment={g.bigMoment} look={lookOf(g)} onClose={() => dispatch(clearBigMoment)} />;
   if (g.depression?.pending) return <CheckpointModal g={g} />;
   if (g.drink?.pending) return <UltimatumModal g={g} />;
@@ -123,7 +125,7 @@ export default function App() {
           <Stat label="Cash" value={g.cash} money />
           <Stat vital label="Health" value={g.health} sub={g.illness ? `🤒 ${g.illness.name} ›` : 'tap ›'} onClick={() => setShowHealth(true)} />
           <Stat vital label="Mental" value={g.mental} sub="tap ›" onClick={() => setShowMental(true)} />
-          <Stat label="Fame" value={g.fame} sub={fameSub(g)} />
+          <Stat label="Fame" value={g.fame} sub={fameSub(g)} onClick={() => setShowFame(true)} />
           <Stat label={g.dream === 'singer' ? 'Singing' : 'Acting'} value={g.dream === 'singer' ? g.singing : g.acting}
             sub={inCareer(g) ? 'tap for genres ›' : undefined} onClick={inCareer(g) ? () => setShowGenres(true) : undefined} />
           <Stat label="Charisma" value={g.charisma} />
@@ -243,6 +245,122 @@ function ChildPhoneLocked() { return (<div style={{ fontSize: 13, color: theme.m
 // Tapping Mental used to do nothing at all, while five systems read the number behind it.
 // This screen answers the only two questions worth answering: why is it that, and what can
 // I do about it this month. The arithmetic is the real arithmetic — see systems/life/mood.js.
+// The whole ladder, laid out, because "15 to Rising Star" told you the next rung and
+// nothing about the shape of the climb — and the two doors above Star are not a number of
+// points away at all, so counting down to them was a lie. Every line under a rung is a real
+// gate somewhere in the game; see TIER_OPENS in systems/meta/status.js.
+function FameScreen({ g, onBack }) {
+  const f = Math.round(g.fame || 0);
+  const tier = fameTier(g.fame);
+  const ceil = fameCeiling(g);
+  const aKey = alistKey(g), iKey = iconKey(g);
+  const sc = Math.round(g.scandal || 0);
+  const scLines = scandalReport(g);
+  const media = Math.round(g.media || 0);
+  const idle = g._idleMonths || 0;
+  return (<div style={{ maxWidth: 440, margin: '0 auto', minHeight: '100vh', background: 'transparent', color: theme.text, padding: 16, paddingBottom: 40, fontFamily: FONT }}>
+    <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 14 }}>
+      <button onClick={onBack} data-sfx="back" style={{ background: 'rgba(255,255,255,.1)', border: 'none', color: theme.text, borderRadius: 9, padding: '6px 11px', fontSize: 13, fontWeight: 800, cursor: 'pointer', fontFamily: 'inherit' }}>‹ Back</button>
+      <div style={{ fontSize: 16, fontWeight: 900 }}>Your name</div>
+    </div>
+
+    <Card style={{ marginBottom: 14 }}>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline' }}>
+        <div style={{ fontFamily: FONT_DISPLAY, fontSize: 30, fontWeight: 700 }}>{f}</div>
+        <div style={{ fontSize: 12.5, fontWeight: 800, color: theme.accent }}>{tier.label}</div>
+      </div>
+      <div style={{ height: 9, background: 'rgba(255,255,255,.08)', borderRadius: 5, margin: '9px 0 8px', overflow: 'hidden', position: 'relative' }}>
+        <div style={{ width: f + '%', height: '100%', background: `linear-gradient(90deg, ${theme.accent}aa, ${theme.accent})`, borderRadius: 5, transition: 'width .5s' }} />
+        {/* Where the wall is, if there is one above you. */}
+        {ceil < 100 && <div style={{ position: 'absolute', left: ceil + '%', top: -2, width: 2, height: 13, background: '#ff5a72' }} />}
+      </div>
+      <div style={{ fontSize: 12, color: theme.muted, lineHeight: 1.55 }}>
+        {idle >= 4
+          ? `Nothing of yours has come out in ${count(idle, 'month')}. You are being forgotten at about ${((f / 55 + (g.scandal || 0) / 45) * (1 - Math.min(0.55, media / 130))).toFixed(2)} a month.`
+          : 'Working keeps you where you are. It is the quiet years that take it back.'}
+      </div>
+    </Card>
+
+    <div style={{ fontSize: 11, fontWeight: 900, letterSpacing: '.09em', textTransform: 'uppercase', color: theme.muted, marginBottom: 8 }}>The whole climb</div>
+    <div style={{ display: 'grid', gap: 8, marginBottom: 16 }}>
+      {[...FAME_TIERS].reverse().map((t) => {
+        const here = t.id === tier.id;
+        const done = f >= t.min;
+        // The gate that stands in front of this rung, if it has one.
+        const gate = t.id === 'alist' ? { open: !!aKey, need: 'A hit you carried, or a nomination',
+            got: aKey === 'led' ? 'You carried one, and it was good.' : 'The season put your name on the list.' }
+          : t.id === 'icon' ? { open: !!iKey, need: 'A world hit, or an Asker',
+            got: iKey === 'hit' ? 'The whole world saw one of yours.' : 'They read your name out.' }
+          : null;
+        return (<div key={t.id} style={{
+          background: here ? `${theme.accent}1e` : theme.panel,
+          border: `1px solid ${here ? theme.accent : done ? theme.line : 'rgba(255,255,255,.05)'}`,
+          borderRadius: 12, padding: '11px 13px', opacity: done || here ? 1 : .62 }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', gap: 8 }}>
+            <div style={{ fontSize: 14, fontWeight: 800, color: here ? theme.accent : theme.text }}>
+              {done && !here ? '✓ ' : ''}{t.label}{here ? ' · you are here' : ''}
+            </div>
+            <div style={{ fontSize: 11.5, fontWeight: 800, color: theme.muted, flexShrink: 0 }}>
+              {done ? t.min : `${Math.ceil(t.min - f)} to go`}
+            </div>
+          </div>
+          {gate && (<div style={{ fontSize: 11.5, marginTop: 6, padding: '6px 9px', borderRadius: 8,
+            background: gate.open ? 'rgba(79,192,127,.12)' : 'rgba(255,90,114,.1)',
+            border: `1px solid ${gate.open ? 'rgba(79,192,127,.3)' : 'rgba(255,90,114,.25)'}`,
+            color: gate.open ? '#7fd6a2' : '#ff8d9e', fontWeight: 700 }}>
+            {gate.open ? `✓ ${gate.got}` : `🔒 ${gate.need} — points alone will not get you in`}
+          </div>)}
+          <div style={{ marginTop: 6 }}>
+            {(TIER_OPENS[t.id] || []).map((line, i) => (
+              <div key={i} style={{ fontSize: 11.5, color: theme.muted, lineHeight: 1.5, display: 'flex', gap: 6 }}>
+                <span style={{ opacity: .5 }}>·</span><span>{line}</span>
+              </div>))}
+          </div>
+        </div>);
+      })}
+    </div>
+
+    <div style={{ fontSize: 11, fontWeight: 900, letterSpacing: '.09em', textTransform: 'uppercase', color: theme.muted, marginBottom: 8 }}>The press</div>
+    <Card style={{ marginBottom: 10 }}>
+      <div style={{ display: 'flex', gap: 10 }}>
+        <Meter label="Scandal" value={sc} col={sc >= 45 ? '#ff5a72' : sc >= 20 ? '#f0b429' : theme.muted} />
+        <Meter label="Being talked about" value={media} col={media >= 30 ? '#4fc07f' : theme.muted} />
+      </div>
+      <div style={{ fontSize: 11.5, color: theme.muted, lineHeight: 1.55, marginTop: 9 }}>
+        {media > 0
+          ? `Attention is slowing how fast you are forgotten, by ${Math.round(Math.min(0.55, media / 130) * 100)}%. It fades on its own — the only thing that tops it up is turning up where the cameras are.`
+          : 'Nobody is writing about you. Attention is the only thing that slows being forgotten, and it comes from the nights out, the sofa and the carpet.'}
+      </div>
+    </Card>
+    {scLines.length > 0
+      ? <Card style={{ marginBottom: 14, padding: '4px 14px', borderColor: sc >= 45 ? '#ff5a7244' : theme.line }}>
+          {scLines.map((l) => (
+            <div key={l.id} style={{ padding: '8px 0', borderBottom: `1px solid ${theme.line}` }}>
+              <div style={{ fontSize: 12.5, fontWeight: 800 }}>{l.label}</div>
+              <div style={{ fontSize: 11.5, color: theme.muted, lineHeight: 1.5, marginTop: 2 }}>{l.why}</div>
+            </div>))}
+        </Card>
+      : <div style={{ fontSize: 11.5, color: theme.muted, textAlign: 'center', padding: '4px 10px 14px', lineHeight: 1.6 }}>
+          Nothing is being said about you that you would mind. That is worth more than it looks.
+        </div>}
+
+    <div style={{ fontSize: 11.5, color: theme.muted, textAlign: 'center', padding: '6px 10px', lineHeight: 1.6 }}>
+      The nights that raise your name are invitations in your Phone and events under Career.
+      A publicist, under Style, makes bad press die nearly three times faster.
+    </div>
+  </div>);
+}
+
+function Meter({ label, value, col }) {
+  return (<div style={{ flex: 1 }}>
+    <div style={{ fontSize: 10.5, fontWeight: 800, letterSpacing: '.07em', textTransform: 'uppercase', color: theme.muted }}>{label}</div>
+    <div style={{ fontFamily: FONT_DISPLAY, fontSize: 20, fontWeight: 700, color: col }}>{value}</div>
+    <div style={{ height: 5, background: 'rgba(255,255,255,.07)', borderRadius: 3, marginTop: 4, overflow: 'hidden' }}>
+      <div style={{ width: Math.max(0, Math.min(100, value)) + '%', height: '100%', background: col, borderRadius: 3 }} />
+    </div>
+  </div>);
+}
+
 function MentalScreen({ g, onBack }) {
   const m = Math.round(g.mental || 0);
   const rep = mentalReport(g);
