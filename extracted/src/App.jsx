@@ -11,7 +11,7 @@ import { skillCap } from './systems/career/actions.js';
 import { seeDoctor, treatmentCost, pushThrough, PILLS, usePills, infectionOdds } from './systems/life/health.js';
 import { resolveArc } from './systems/life/arcs.js';
 import { computeLegacy, getHall, heirsOf, heirOpts, enshrine } from './systems/meta/legacy.js';
-import { fameTier, setHousing, FAME_TIERS, ICON_WALL, iconBlurb, iconKey } from './systems/meta/status.js';
+import { fameTier, setHousing, FAME_TIERS, fameCeiling, ladderBlurb } from './systems/meta/status.js';
 import { rehearse, riskyTake, bondWithCrew, meterTier } from './systems/career/production.js';
 import { TimingBar } from './ui/components/TimingBar.jsx';
 import { GridRisk } from './ui/components/GridRisk.jsx';
@@ -300,7 +300,12 @@ function fameSub(g) {
   // The last rung is not a number of points away, so it must not be described as one. Once
   // you are up against the wall the tile says what the wall is instead of counting down to
   // something that counting cannot reach.
-  if (next && next.id === 'icon' && (g.fame || 0) >= ICON_WALL - 4 && iconBlurb(g)) return iconBlurb(g);
+  // Within sight of a door, say what the door needs instead of counting down to something
+  // counting cannot reach.
+  // Only once the wall that is actually holding you is in sight — five points out. Before
+  // that the ordinary countdown is the more useful thing to read.
+  const ceiling = fameCeiling(g);
+  if (ceiling < 100 && (g.fame || 0) >= ceiling - 5) { const say = ladderBlurb(g); if (say) return say; }
   return next ? `${t.label} · ${Math.max(1, Math.ceil(next.min - (g.fame || 0)))} to ${next.label}` : t.label;
 }
 // Acting isn't one number — it's the lanes you've actually worked in. Genre experience

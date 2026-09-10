@@ -98,18 +98,59 @@ export function setQuote(s, value) {
 // This is a GATE, not a curve: no threshold anywhere downstream moves, because the shape
 // of the climb below it is untouched. And it only limits fame going UP — losing it is
 // never blocked, or an icon who stopped working could never fade.
+// TWO doors, not one, because the bottom half of the ladder and the top half are different
+// things. Getting known is ordinary work and must stay ordinary — anybody who turns up for
+// twenty years becomes a face people recognise, and making that hard would be a lie. But
+// above Star it stops being about how much you did and starts being about what you did.
+//
+//   Unknown → Star   0–74   work. No door.
+//   A-lister         75+    you carried something people loved, or the season noticed you.
+//   Icon             90+    the whole world saw one, or they read your name out.
+//
+// Before this, all three players in the measurement reached A-list: the one who prepared
+// every audition at 45, and the one who just pressed the button and averaged 3.2/10 at 39.
+// Six years apart, for two completely different careers.
+export const ALIST_WALL = 74;
 export const ICON_WALL = 89;
+
+// A supporting part in a wonderful film does not make you A-list. Carrying one does.
+//
+// The test has to be the ROLE, not the tier. `tier` is a money band — an Indie Film Lead is
+// tier 'supporting' because that is what indies pay — and carrying a brilliant indie is one
+// of the most real ways anybody has ever broken through. Using the tier would have shut
+// exactly that door.
+export function carried(c) {
+  if (!c || c.minor) return false;
+  if (c.tier === 'tentpole' || c.tier === 'lead') return true;
+  return /lead|headliner|matriarch|regular/i.test(c.role || '');
+}
+export function alistKey(s) {
+  const shelf = [...(s.filmography || []), ...(s.discography || [])];
+  if (shelf.some((c) => carried(c) && (c.rating || 0) >= 85)) return 'led';
+  if (((s.awards && s.awards.nominations) || []).length > 0) return 'nominated';
+  return null;
+}
 export function iconKey(s) {
   if ((s.worldHits || 0) > 0) return 'hit';
   if (((s.awards && s.awards.wins) || []).length > 0) return 'asker';
   return null;
 }
-export function fameCeiling(s) { return iconKey(s) ? 100 : ICON_WALL; }
+export function fameCeiling(s) {
+  if (iconKey(s)) return 100;
+  if (alistKey(s)) return ICON_WALL;
+  return ALIST_WALL;
+}
 // What is still in the way, in one line, for the Fame tile. A wall the player cannot see
 // is not a design, it is a bug they will report.
-export function iconBlurb(s) {
-  if (iconKey(s)) return null;
-  return 'Icon needs a world hit or an Asker — not more work';
+//
+// Keyed on the ceiling that is actually holding them, not on the first unmet door: an actor
+// at 72 who has just carried a hit is nowhere near the Icon wall, and telling them about it
+// is noise seventeen points early.
+export function ladderBlurb(s) {
+  const c = fameCeiling(s);
+  if (c === ALIST_WALL) return 'A-list needs a hit you carried, or a nomination';
+  if (c === ICON_WALL) return 'Icon needs a world hit or an Asker — not more work';
+  return null;
 }
 
 // The only place fame is allowed to go up. It was written in fifteen files and clamped in
@@ -126,8 +167,28 @@ export function setFame(s, value) {
 // and they will be right to.
 export function iconTick(s) {
   if (!inCareer(s)) return;
+  const fame = s.fame || 0;
+
+  // ── the A-list door ──
+  const aKey = alistKey(s);
+  if (!aKey && fame >= ALIST_WALL - 0.5 && !s._alistWallSaid) {
+    s._alistWallSaid = true;
+    addTimeline(s, 'People know your face and nobody can name the film. You have never carried '
+      + 'anything anyone loved, and until you do, this is as far as a working actor gets.');
+    if (!s.lastEvent) s.lastEvent = 'You are working constantly and going nowhere. What is missing is one good film with your name above the title.';
+  }
+  if (aKey && !s._alistDoorSaid) {
+    s._alistDoorSaid = true;
+    if (s._alistWallSaid) {
+      addTimeline(s, aKey === 'led'
+        ? 'You carried one and it was good. That is the film people will name when they introduce you now.'
+        : 'The season put your name on the list. Everything above you just moved within reach.');
+    }
+  }
+
+  // ── the Icon door ──
   const key = iconKey(s);
-  if (!key && (s.fame || 0) >= ICON_WALL - 0.5 && !s._iconWallSaid) {
+  if (!key && fame >= ICON_WALL - 0.5 && !s._iconWallSaid) {
     s._iconWallSaid = true;
     addTimeline(s, 'You are as known as work alone can make you. The last step is not another credit — '
       + 'it is one enormous picture or a statuette, and neither of those can be scheduled.');

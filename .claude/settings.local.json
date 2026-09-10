@@ -73,7 +73,9 @@
       "Bash(\"/c/Program Files/nodejs/node.exe\" test_bonds.mjs)",
       "Bash(\"/c/Program Files/nodejs/node.exe\" alist_check.mjs)",
       "Bash(\"/c/Program Files/nodejs/node.exe\" probe_scale.mjs)",
-      "Bash(\"/c/Program Files/nodejs/node.exe\" probe_players.mjs)"
+      "Bash(\"/c/Program Files/nodejs/node.exe\" probe_players.mjs)",
+      "Bash(\"/c/Program Files/nodejs/node.exe\" probe_players2.mjs)",
+      "Bash(\"/c/Program Files/nodejs/node.exe\" probe_players3.mjs)"
     ],
     "defaultMode": "acceptEdits",
     "additionalDirectories": [
