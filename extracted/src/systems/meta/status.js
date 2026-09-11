@@ -267,6 +267,46 @@ export function respectReport(s) {
   return out;
 }
 
+// Standing has rungs too, and they are not invented: three of the four are real thresholds
+// somewhere else in the game, and the fourth says so.
+//   30 — the brand-deal arc opens (systems/life/arcs.js sellOut)
+//   40 — the break-even at the table (systems/career/negotiate.js: (respect − 40) × 0.12)
+//   60 — its own way into the elite, and an adoption board counts it (access.js, children.js)
+export const RESPECT_TIERS = [
+  { id: 'unproven', label: 'Unproven', min: 0 },
+  { id: 'reliable', label: 'Reliable', min: 30 },
+  { id: 'serious', label: 'Taken seriously', min: 40 },
+  { id: 'name', label: 'A name in the room', min: 60 },
+  { id: 'spoken', label: 'Spoken of', min: 80 },
+];
+export function respectTier(r) {
+  let cur = RESPECT_TIERS[0];
+  for (const t of RESPECT_TIERS) if ((r || 0) >= t.min) cur = t;
+  return cur;
+}
+export const RESPECT_OPENS = {
+  unproven: [
+    'Nobody has formed an opinion. That is not the same as a good one',
+    'At the table you are nearly five points harder to move than somebody at forty',
+  ],
+  reliable: [
+    'Brands start putting your name on a list',
+    'Directors take the meeting',
+  ],
+  serious: [
+    'The break-even at the table — every point above forty makes them likelier to meet your number',
+    'Your standing starts to weigh more than your fame in whether they shoot your version',
+  ],
+  name: [
+    'Sixty is its own way into the elite, whatever your fame says',
+    'An adoption board counts it in your favour',
+  ],
+  spoken: [
+    'No gate here — this is simply what a long run of good work looks like',
+    'At eighty, standing alone is worth 37 points on whether the director listens to you',
+  ],
+};
+
 // Where standing comes from and where it goes. Not a log — the game keeps no history of
 // this — but the real list of what moves it, so a player can aim.
 export const RESPECT_MOVES = {

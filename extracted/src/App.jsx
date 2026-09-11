@@ -11,7 +11,7 @@ import { skillCap } from './systems/career/actions.js';
 import { seeDoctor, treatmentCost, pushThrough, PILLS, usePills, infectionOdds } from './systems/life/health.js';
 import { resolveArc } from './systems/life/arcs.js';
 import { computeLegacy, getHall, heirsOf, heirOpts, enshrine } from './systems/meta/legacy.js';
-import { fameTier, setHousing, FAME_TIERS, fameCeiling, ladderBlurb, TIER_OPENS, alistKey, iconKey, scandalReport, respectReport, RESPECT_MOVES } from './systems/meta/status.js';
+import { fameTier, setHousing, FAME_TIERS, fameCeiling, ladderBlurb, TIER_OPENS, alistKey, iconKey, scandalReport, respectReport, RESPECT_MOVES, RESPECT_TIERS, RESPECT_OPENS, respectTier } from './systems/meta/status.js';
 import { rehearse, riskyTake, bondWithCrew, meterTier } from './systems/career/production.js';
 import { TimingBar } from './ui/components/TimingBar.jsx';
 import { GridRisk } from './ui/components/GridRisk.jsx';
@@ -262,11 +262,8 @@ function Move({ m, col }) {
 }
 function RespectScreen({ g, onBack }) {
   const r = Math.round(g.respect || 0);
-  const band = r >= 75 ? ['They name you as a reason to see it', '#4fc07f']
-    : r >= 55 ? ['Taken seriously', theme.accent]
-    : r >= 30 ? ['Known to be reliable', theme.gold]
-    : r >= 12 ? ['Nobody has an opinion yet', theme.muted]
-    : ['A name people are careful about', '#ff5a72'];
+  const rt = respectTier(r);
+  const band = [rt.label, r >= 60 ? '#4fc07f' : r >= 40 ? theme.accent : r >= 30 ? theme.gold : r >= 12 ? theme.muted : '#ff5a72'];
   const lines = respectReport(g);
   const wins = ((g.awards && g.awards.wins) || []).length;
   const noms = ((g.awards && g.awards.nominations) || []).length;
@@ -305,6 +302,8 @@ function RespectScreen({ g, onBack }) {
       </div>}
     </Card>
 
+    <div style={{ fontSize: 11, fontWeight: 900, letterSpacing: '.09em', textTransform: 'uppercase', color: theme.muted, marginBottom: 8 }}>The whole climb</div>
+    <Ladder tiers={RESPECT_TIERS} opens={RESPECT_OPENS} value={g.respect} />
     <div style={{ fontSize: 11, fontWeight: 900, letterSpacing: '.09em', textTransform: 'uppercase', color: theme.muted, marginBottom: 4 }}>What it is worth</div>
     <Card style={{ marginBottom: 14, padding: '4px 14px' }}>
       {lines.map((l) => (
@@ -377,56 +376,12 @@ function FameScreen({ g, onBack }) {
     </Card>
 
     <div style={{ fontSize: 11, fontWeight: 900, letterSpacing: '.09em', textTransform: 'uppercase', color: theme.muted, marginBottom: 8 }}>The whole climb</div>
-    {/* A tube running down the side of the climb, one segment per rung, each filling
-        from the bottom as you move through that band. Segments rather than one continuous
-        bar because the cards are different heights — a single fill would put the marks in
-        the wrong places, and a picture that does not line up with its own numbers is worse
-        than no picture. */}
-    <div style={{ display: 'grid', gap: 8, marginBottom: 16 }}>
-      {[...FAME_TIERS].reverse().map((t, ri, arr) => {
-        const here = t.id === tier.id;
-        const done = f >= t.min;
-        // How far through THIS band you are. The band runs from this rung to the next one up.
-        const above = arr[ri - 1];
-        const top = above ? above.min : 100;
-        const fill = f >= top ? 100 : f <= t.min ? 0 : ((f - t.min) / Math.max(1, top - t.min)) * 100;
-        // The gate that stands in front of this rung, if it has one.
-        const gate = t.id === 'alist' ? { open: !!aKey, need: 'A hit you carried, or a nomination',
-            got: aKey === 'led' ? 'You carried one, and it was good.' : 'The season put your name on the list.' }
-          : t.id === 'icon' ? { open: !!iKey, need: 'A world hit, or an Asker',
-            got: iKey === 'hit' ? 'The whole world saw one of yours.' : 'They read your name out.' }
-          : null;
-        return (<div key={t.id} style={{ display: 'flex', gap: 10, alignItems: 'stretch' }}>
-          <Tube fill={fill} lit={done} here={here} first={ri === 0} last={ri === arr.length - 1} />
-          <div style={{ flex: 1,
-          background: here ? `${theme.accent}1e` : theme.panel,
-          border: `1px solid ${here ? theme.accent : done ? theme.line : 'rgba(255,255,255,.05)'}`,
-          borderRadius: 12, padding: '11px 13px', opacity: done || here ? 1 : .62 }}>
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', gap: 8 }}>
-            <div style={{ fontSize: 14, fontWeight: 800, color: here ? theme.accent : theme.text }}>
-              {done && !here ? '✓ ' : ''}{t.label}{here ? ' · you are here' : ''}
-            </div>
-            <div style={{ fontSize: 11.5, fontWeight: 800, color: theme.muted, flexShrink: 0 }}>
-              {done ? t.min : `${Math.ceil(t.min - f)} to go`}
-            </div>
-          </div>
-          {gate && (<div style={{ fontSize: 11.5, marginTop: 6, padding: '6px 9px', borderRadius: 8,
-            background: gate.open ? 'rgba(79,192,127,.12)' : 'rgba(255,90,114,.1)',
-            border: `1px solid ${gate.open ? 'rgba(79,192,127,.3)' : 'rgba(255,90,114,.25)'}`,
-            color: gate.open ? '#7fd6a2' : '#ff8d9e', fontWeight: 700 }}>
-            {gate.open ? `✓ ${gate.got}` : `🔒 ${gate.need} — points alone will not get you in`}
-          </div>)}
-          <div style={{ marginTop: 6 }}>
-            {(TIER_OPENS[t.id] || []).map((line, i) => (
-              <div key={i} style={{ fontSize: 11.5, color: theme.muted, lineHeight: 1.5, display: 'flex', gap: 6 }}>
-                <span style={{ opacity: .5 }}>·</span><span>{line}</span>
-              </div>))}
-          </div>
-          </div>
-        </div>);
-      })}
-    </div>
-
+    <Ladder tiers={FAME_TIERS} opens={TIER_OPENS} value={g.fame}
+      gateFor={(t) => t.id === 'alist' ? { open: !!aKey, need: 'A hit you carried, or a nomination',
+          got: aKey === 'led' ? 'You carried one, and it was good.' : 'The season put your name on the list.' }
+        : t.id === 'icon' ? { open: !!iKey, need: 'A world hit, or an Asker',
+          got: iKey === 'hit' ? 'The whole world saw one of yours.' : 'They read your name out.' }
+        : null} />
     <div style={{ fontSize: 11, fontWeight: 900, letterSpacing: '.09em', textTransform: 'uppercase', color: theme.muted, marginBottom: 8 }}>The press</div>
     <Card style={{ marginBottom: 10 }}>
       <div style={{ display: 'flex', gap: 10 }}>
@@ -458,6 +413,57 @@ function FameScreen({ g, onBack }) {
   </div>);
 }
 
+
+// The climb, drawn once. Fame and standing are the same shape — rungs, a tube filling from
+// the bottom, and what each one opens — so they are the same component rather than two that
+// look alike until somebody edits one of them.
+//
+// `gateFor` is optional: fame has two doors that points alone will not open, standing has
+// none, and a ladder with no gates simply does not draw any.
+function Ladder({ tiers, opens, value, gateFor }) {
+  const v = Math.round(value || 0);
+  let cur = tiers[0];
+  for (const t of tiers) if (v >= t.min) cur = t;
+  return (<div style={{ display: 'grid', gap: 8, marginBottom: 16 }}>
+    {[...tiers].reverse().map((t, ri, arr) => {
+      const here = t.id === cur.id;
+      const done = v >= t.min;
+      // How far through THIS band you are — the band runs from this rung to the next one up.
+      const above = arr[ri - 1];
+      const top = above ? above.min : 100;
+      const fill = v >= top ? 100 : v <= t.min ? 0 : ((v - t.min) / Math.max(1, top - t.min)) * 100;
+      const gate = gateFor ? gateFor(t) : null;
+      return (<div key={t.id} style={{ display: 'flex', gap: 10, alignItems: 'stretch' }}>
+        <Tube fill={fill} lit={done} here={here} first={ri === 0} last={ri === arr.length - 1} />
+        <div style={{ flex: 1,
+          background: here ? `${theme.accent}1e` : theme.panel,
+          border: `1px solid ${here ? theme.accent : done ? theme.line : 'rgba(255,255,255,.05)'}`,
+          borderRadius: 12, padding: '11px 13px', opacity: done || here ? 1 : .62 }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', gap: 8 }}>
+            <div style={{ fontSize: 14, fontWeight: 800, color: here ? theme.accent : theme.text }}>
+              {done && !here ? '✓ ' : ''}{t.label}{here ? ' · you are here' : ''}
+            </div>
+            <div style={{ fontSize: 11.5, fontWeight: 800, color: theme.muted, flexShrink: 0 }}>
+              {done ? t.min : `${Math.ceil(t.min - v)} to go`}
+            </div>
+          </div>
+          {gate && (<div style={{ fontSize: 11.5, marginTop: 6, padding: '6px 9px', borderRadius: 8,
+            background: gate.open ? 'rgba(79,192,127,.12)' : 'rgba(255,90,114,.1)',
+            border: `1px solid ${gate.open ? 'rgba(79,192,127,.3)' : 'rgba(255,90,114,.25)'}`,
+            color: gate.open ? '#7fd6a2' : '#ff8d9e', fontWeight: 700 }}>
+            {gate.open ? `✓ ${gate.got}` : `🔒 ${gate.need} — points alone will not get you in`}
+          </div>)}
+          <div style={{ marginTop: 6 }}>
+            {(opens[t.id] || []).map((line, i) => (
+              <div key={i} style={{ fontSize: 11.5, color: theme.muted, lineHeight: 1.5, display: 'flex', gap: 6 }}>
+                <span style={{ opacity: .5 }}>·</span><span>{line}</span>
+              </div>))}
+          </div>
+        </div>
+      </div>);
+    })}
+  </div>);
+}
 
 // One segment of the climb, drawn as a glass tube with a level in it. Fills from the bottom,
 // because that is the direction you are going.
