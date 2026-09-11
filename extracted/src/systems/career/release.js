@@ -279,6 +279,20 @@ function closeRun(s, credit, r) {
     if (f < 55) return 1 - f / 130;                 // the climb to Star is ordinary work
     return Math.max(0.03, 0.577 * Math.pow(Math.max(0, (104 - f) / 49), 1.9));
   };
+  // A comeback is a story, and the trades love a story. `credit.comeback` was a label on the
+  // filmography and nothing else — a fallen name that landed something good got exactly what
+  // anybody else got for it. Now the first good thing after the fall is worth far more than
+  // the film: the press writes it up, and being written about is what pulls you back. Once,
+  // and only from Forgotten — the second comeback is just a career.
+  const wasForgotten = (s.peakFame || 0) >= 35 && ((s.fame || 0) - fame * headroom(s.fame)) < 15;
+  if (wasForgotten && r.rating >= 70 && !s._cameBack) {
+    s._cameBack = true;
+    fame += 9;
+    s.media = Math.min(100, (s.media || 0) + 28);
+    setRespect(s, (s.respect || 0) + 4);
+    addTimeline(s, `The trades are calling ${credit.title} a comeback. Every piece uses the word, and every piece uses your name.`);
+    s.lastEvent = `"${credit.title}" is being written about as a comeback. It is a generous word for it, and it is doing more for you than the film is.`;
+  }
   setFame(s, (s.fame || 0) + fame * headroom(s.fame));
   // A bad film costs standing in proportion to what was expected of you. At forty it is
   // news and it costs the full four; at nothing it costs almost nothing, because nobody

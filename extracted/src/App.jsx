@@ -11,7 +11,7 @@ import { skillCap } from './systems/career/actions.js';
 import { seeDoctor, treatmentCost, pushThrough, PILLS, usePills, infectionOdds } from './systems/life/health.js';
 import { resolveArc } from './systems/life/arcs.js';
 import { computeLegacy, getHall, heirsOf, heirOpts, enshrine } from './systems/meta/legacy.js';
-import { fameTier, setHousing, FAME_TIERS, fameCeiling, ladderBlurb, TIER_OPENS, alistKey, iconKey, scandalReport, respectReport, RESPECT_MOVES, RESPECT_TIERS, RESPECT_OPENS, respectTier } from './systems/meta/status.js';
+import { fameTier, setHousing, FAME_TIERS, fameCeiling, ladderBlurb, TIER_OPENS, alistKey, iconKey, scandalReport, respectReport, RESPECT_MOVES, RESPECT_TIERS, RESPECT_OPENS, respectTier, FORGOTTEN, FORGOTTEN_OPENS, isForgotten, forgottenDepth } from './systems/meta/status.js';
 import { rehearse, riskyTake, bondWithCrew, meterTier } from './systems/career/production.js';
 import { TimingBar } from './ui/components/TimingBar.jsx';
 import { GridRisk } from './ui/components/GridRisk.jsx';
@@ -100,7 +100,7 @@ export default function App() {
               the player they had not got anywhere. Once the career is running, this line is
               who you ARE — and it changes, which is the whole point of the ladder. */}
           <div style={{ fontSize: 11, fontWeight: 800, letterSpacing: '.08em', textTransform: 'uppercase', color: theme.accent }}>
-            {inCareer(g) ? fameTier(g.fame).label : STAGE_LABEL[g.stage]}</div>
+            {inCareer(g) ? (isForgotten(g) ? 'Forgotten' : fameTier(g.fame).label) : STAGE_LABEL[g.stage]}</div>
           <div style={{ fontSize: 12, color: g.homeless ? theme.bad : theme.muted }}>
             {/* It said "Own apartment" to somebody living in a canal house. */}
             {g.homeless ? 'On the street' : g.livingWith === 'parents' ? 'Living with parents' : g.inheritedHome ? 'The family house' : (HOUSING[g.housing || 'room'] || {}).label || 'Own apartment'}
@@ -361,7 +361,7 @@ function FameScreen({ g, onBack }) {
     <Card style={{ marginBottom: 14 }}>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline' }}>
         <div style={{ fontFamily: FONT_DISPLAY, fontSize: 30, fontWeight: 700 }}>{f}</div>
-        <div style={{ fontSize: 12.5, fontWeight: 800, color: theme.accent }}>{tier.label}</div>
+        <div style={{ fontSize: 12.5, fontWeight: 800, color: isForgotten(g) ? '#ff8d9e' : theme.accent }}>{isForgotten(g) ? 'Forgotten' : tier.label}</div>
       </div>
       <div style={{ height: 9, background: 'rgba(255,255,255,.08)', borderRadius: 5, margin: '9px 0 8px', overflow: 'hidden', position: 'relative' }}>
         <div style={{ width: f + '%', height: '100%', background: `linear-gradient(90deg, ${theme.accent}aa, ${theme.accent})`, borderRadius: 5, transition: 'width .5s' }} />
@@ -376,7 +376,8 @@ function FameScreen({ g, onBack }) {
     </Card>
 
     <div style={{ fontSize: 11, fontWeight: 900, letterSpacing: '.09em', textTransform: 'uppercase', color: theme.muted, marginBottom: 8 }}>The whole climb</div>
-    <Ladder tiers={FAME_TIERS} opens={TIER_OPENS} value={g.fame}
+    <Ladder tiers={[FORGOTTEN, ...FAME_TIERS]} opens={{ ...TIER_OPENS, forgotten: FORGOTTEN_OPENS }} value={g.fame}
+      sunkAt={isForgotten(g) ? { id: 'forgotten', fill: forgottenDepth(g) } : null}
       gateFor={(t) => t.id === 'alist' ? { open: !!aKey, need: 'A hit you carried, or a nomination',
           got: aKey === 'led' ? 'You carried one, and it was good.' : 'The season put your name on the list.' }
         : t.id === 'icon' ? { open: !!iKey, need: 'A world hit, or an Asker',
@@ -420,10 +421,14 @@ function FameScreen({ g, onBack }) {
 //
 // `gateFor` is optional: fame has two doors that points alone will not open, standing has
 // none, and a ladder with no gates simply does not draw any.
-function Ladder({ tiers, opens, value, gateFor }) {
+// `sunkAt` is for a rung you do not reach by the number at all — you are pushed into it from
+// above. Forgotten is the one: fame never goes below zero, but a name that fell is sitting
+// under Unknown, and the ladder has to show that. { id, fill } — which rung, and how deep.
+function Ladder({ tiers, opens, value, gateFor, sunkAt }) {
   const v = Math.round(value || 0);
   let cur = tiers[0];
   for (const t of tiers) if (v >= t.min) cur = t;
+  if (sunkAt) cur = tiers.find((t) => t.id === sunkAt.id) || cur;
   return (<div style={{ display: 'grid', gap: 8, marginBottom: 16 }}>
     {[...tiers].reverse().map((t, ri, arr) => {
       const here = t.id === cur.id;
@@ -433,8 +438,10 @@ function Ladder({ tiers, opens, value, gateFor }) {
       // tube fills from the top, in red, by how far down you have gone — and it never gets a
       // tick, because being above it is not an achievement, it is the default.
       const sunk = t.min < 0;
-      const done = !sunk && v >= t.min;
-      const fill = sunk
+      // Pushed into a rung from above: nothing above it is an achievement any more.
+      const done = !sunk && !sunkAt && v >= t.min;
+      const fill = sunkAt && sunkAt.id === t.id ? sunkAt.fill * 100
+        : sunk
         ? (v >= top ? 0 : v <= t.min ? 100 : ((top - v) / Math.max(1, top - t.min)) * 100)
         : (v >= top ? 100 : v <= t.min ? 0 : ((v - t.min) / Math.max(1, top - t.min)) * 100);
       const gate = gateFor ? gateFor(t) : null;
@@ -449,7 +456,7 @@ function Ladder({ tiers, opens, value, gateFor }) {
               {done && !here ? '✓ ' : ''}{t.label}{here ? ' · you are here' : ''}
             </div>
             <div style={{ fontSize: 11.5, fontWeight: 800, color: theme.muted, flexShrink: 0 }}>
-              {sunk ? (v < top ? `below ${top}` : `from ${top - 1} down`) : done ? t.min : `${Math.ceil(t.min - v)} to go`}
+              {t.note ? t.note : sunk ? (v < top ? `below ${top}` : `from ${top - 1} down`) : (done || v >= t.min) ? t.min : `${Math.ceil(t.min - v)} to go`}
             </div>
           </div>
           {gate && (<div style={{ fontSize: 11.5, marginTop: 6, padding: '6px 9px', borderRadius: 8,
@@ -683,6 +690,8 @@ function HealthScreen({ g, onBack }) {
 }
 // Fame reads as a ladder: who you are now, and how far to the next rung.
 function fameSub(g) {
+  // The other half of the title, on the tile that is named after it.
+  if (isForgotten(g)) { const was = fameTier(g.peakFame); return `Forgotten · you were ${/^[AI]/.test(was.label) ? 'an' : 'a'} ${was.label}`; }
   const t = fameTier(g.fame);
   const next = FAME_TIERS[FAME_TIERS.indexOf(t) + 1];
   // The last rung is not a number of points away, so it must not be described as one. Once

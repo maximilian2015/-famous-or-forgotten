@@ -7,7 +7,7 @@ import { earn, markReleased } from '../../engine/economy.js';
 import { GENRES } from '../meta/news.js';
 import { addGenreXP, genreBonus } from './genres.js';
 import { startProduction } from './production.js';
-import { quoteFor, episodeRate, setFame } from '../meta/status.js';
+import { quoteFor, episodeRate, setFame, isForgotten } from '../meta/status.js';
 import { rollStability, feeFactor, riskPrestige } from './stability.js';
 import { askerStanding } from './awards.js';
 import { ageFit, seenForIt } from './age.js';
@@ -134,7 +134,11 @@ export function boardSize(s) {
   // stack every week. Eight to eighteen gives every shelf two at the bottom and four or
   // five at the top, which is what a stack looks like.
   const standing = Math.min(1, reach(s) / 78);
-  const base = 8 + Math.round(standing * 10);           // 8 at nobody, 18 at the top
+  let base = 8 + Math.round(standing * 10);             // 8 at nobody, 18 at the top
+  // Nobody sends a script to the answer to a trivia question. A name that fell is sent LESS
+  // than a newcomer, because a newcomer is a blank page and a has-been is a story everyone
+  // already knows the ending of. See isForgotten in systems/meta/status.js.
+  if (isForgotten(s)) base = 5;
   // It turns for women first, which is the ugly part of this business and worth saying
   // rather than smoothing away.
   const peakEnd = 42 - (s.gender === 'female' ? 5 : 0);

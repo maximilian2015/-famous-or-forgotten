@@ -82,6 +82,7 @@ export function rehearse(s) {
   s.ap = (s.ap || 0) - 1;
   const gain = rint(4, 9);
   p.meter = clamp(p.meter + gain);
+  p._workedMonth = (s.year || 0) * 12 + (s.month || 0);
   s.lastEvent = `Solid rehearsal. Shoot quality +${gain}.`;
   return s;
 }
@@ -89,6 +90,7 @@ export function riskyTake(s, quality = 0) {
   const p = s.production; if (!p) return s;
   if ((s.ap || 0) <= 0) { s.lastEvent = 'No energy left this period. Live a bit first.'; return s; }
   s.ap = (s.ap || 0) - 1;
+  p._workedMonth = (s.year || 0) * 12 + (s.month || 0);
   if (quality >= 80) {
     const gain = rint(16, 22);
     p.meter = clamp(p.meter + gain);
@@ -110,6 +112,7 @@ export function bondWithCrew(s, crewId) {
   const c = (p.crew || []).find((x) => x.id === crewId); if (!c) return s;
   if ((s.ap || 0) <= 0) { s.lastEvent = 'No energy left this period. Live a bit first.'; return s; }
   s.ap = (s.ap || 0) - 1;
+  p._workedMonth = (s.year || 0) * 12 + (s.month || 0);
   const gain = rint(6, 14);
   c.bond = clamp(c.bond + gain);
   s.mental = clamp((s.mental || 50) + 1);
@@ -128,6 +131,37 @@ export function productionTick(s) {
   // A month you drank your way through is a month you were not really there for, and the
   // footage knows — but the counting happens in drinkTick, which runs first and is the last
   // place the flag is still true. See systems/life/drink.js.
+  // Turning up not knowing the pages. Maxi: standing should fall for arriving unprepared —
+  // and there was no mechanism for it, because the director's opinion only ever moved on
+  // events. A month on set where you did not rehearse, run a take or spend an evening with
+  // the crew is a month the director watched you wing it. It cools them, and a cold
+  // director is what costs you standing at wrap — the mechanism was already there, it was
+  // just never fed. Said out loud the first time.
+  // The tick closes the month that just happened, and advanceMonth has already moved the
+  // calendar on by the time it runs — so the month to check is the one BEFORE the stamp.
+  // Checking the stamp itself cooled the director on everybody, including the actor who
+  // rehearsed every single month; the probe caught it at 45 → 29.
+  const stamp = (s.year || 0) * 12 + (s.month || 0);
+  const lead = (p.crew || [])[0];
+  // And only if it SHOWS. A director does not care how you got there if the takes are
+  // good — unpreparedness is something they see in the work, not in your diary. Below 55
+  // the set is not going well and they start to wonder why; above it, nobody is asking.
+  if (lead && p._workedMonth !== stamp - 1 && (p.months - p.monthsLeft) >= 1 && (p.meter || 0) < 55) {
+    p._winged = (p._winged || 0) + 1;
+    // A pattern, not a bad week. The first month everybody gets; the second they notice; from
+    // the third it is who you are on this set. A flat penalty from month one put an
+    // A-lister who rehearsed every OTHER month at −8 standing by sixty, which is nonsense.
+    const cool = p._winged === 1 ? 0 : p._winged === 2 ? rint(3, 5) : rint(5, 8);
+    lead.bond = clamp(lead.bond - cool);
+    if (p._winged === 2) addTimeline(s, `${lead.name} has noticed you turn up not knowing the pages.`, true);
+  }
+  // And a month you drank your way through, the whole set noticed. drunkMonths was counted
+  // and hit the rating, silently — the director never reacted and nobody said anything.
+  if (lead && p.drunkMonths && p._drunkSeen !== p.drunkMonths) {
+    p._drunkSeen = p.drunkMonths;
+    lead.bond = clamp(lead.bond - rint(6, 10));
+    if (p.drunkMonths === 1) addTimeline(s, `Forty people waited two hours for you this month. ${lead.name} did not say anything, which was worse.`, true);
+  }
   p.monthsLeft -= 1;
   // You are paid while you work. A fourteen-month blockbuster that only paid on wrap
   // would starve you out of your flat long before the premiere.

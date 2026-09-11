@@ -1,4 +1,5 @@
 import { inCareer } from '../../engine/stage.js';
+import { level as drinkLevel } from './drink.js';
 import { setFame } from '../meta/status.js';
 // A place of your own is only worth something if you can fill it with people.
 // Parties are the one thing the home does that you actively choose — and the bigger
@@ -64,6 +65,26 @@ export function throwParty(s, key) {
   }
   if (p.reach >= 2) setFame(s, (s.fame || 0) + rint(0, p.reach - 1));
 
+  // The morning after, on set. Maxi asked how "turned up drunk" should work, and this is
+  // it: a party the night before a call is a call you are late for, and the whole crew
+  // stands there while you find your light. Parties did not know shoots existed. The
+  // costarWrecked arc has always described exactly this happening to somebody ELSE.
+  if (s.production && (s.production.crew || [])[0]) {
+    const pr = s.production, lead = pr.crew[0];
+    const wrecked = drinkLevel(s) >= 45 || p.reach >= 3;
+    const meterHit = wrecked ? rint(7, 12) : rint(3, 6);
+    pr.meter = clamp(pr.meter - meterHit);
+    lead.bond = clamp(lead.bond - (wrecked ? rint(10, 16) : rint(4, 8)));
+    pr._workedMonth = null;   // whatever you did on set this month, this is what they remember
+    lines.push(wrecked
+      ? `You made the call sheet at eleven, two hours late, sunglasses on indoors. Forty people were standing around. ${lead.name} said nothing. Shoot quality −${meterHit}.`
+      : `The call was at six. You were there, and you were not all there. Shoot quality −${meterHit}.`);
+    if (wrecked && chance(28)) {
+      s.scandal = clamp((s.scandal || 0) + rint(4, 9));
+      lines.push('Somebody on the crew told somebody. "Wrecked on set" is in the trades by Thursday.');
+      addTimeline(s, `Turned up wrecked on ${pr.title}. It made the trades.`, true);
+    } else addTimeline(s, `A party during ${pr.title}. The next morning showed.`, true);
+  }
   const risk = partyRisk(s, key);
   if (chance(risk)) {
     const fine = Math.round(p.cost * (0.6 + Math.random()));

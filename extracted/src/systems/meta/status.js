@@ -16,6 +16,28 @@ export function fameTier(fame) {
   return cur;
 }
 
+// The other half of the title. Fame cannot go below zero — you cannot be less known than
+// not known — but a name that WAS known and is not any more is not the same thing as a
+// newcomer, and the game was showing them the same rung: a fallen star at 10 read
+// "Unknown · 5 to Rising Star" exactly like somebody who had never done anything.
+//
+// Forgotten is a state, entered by falling: you were at least a Known Face once and you
+// are under fifteen now. It sits below Unknown on the ladder, the tube fills downward by
+// how far you fell, and it does two real things — see castings.js boardSize and
+// release.js closeRun.
+export const FORGOTTEN = { id: 'forgotten', label: 'Forgotten', min: -1, note: 'the other half of the title' };
+export function isForgotten(s) { return (s.peakFame || 0) >= 35 && (s.fame || 0) < 15; }
+// How far down, as a fraction of the height you had. An Icon at 8 is more forgotten than
+// a Known Face at 8, and it should look it.
+export function forgottenDepth(s) {
+  if (!isForgotten(s)) return 0;
+  return Math.min(1, Math.max(0, ((s.peakFame || 0) - (s.fame || 0)) / Math.max(1, s.peakFame || 1)));
+}
+export const FORGOTTEN_OPENS = [
+  'Nobody sends a script to the answer to a trivia question — the board is thinner than a newcomer’s',
+  'But a comeback is a story, and the trades love a story: the first thing you land that reviews well is worth far more than it would be to anyone else',
+];
+
 // What each rung actually opens. Every line here is a real gate somewhere else in the
 // game — the minFame column in the casting pools, the housing ceiling above, the tiers in
 // generateOffer, computeAccess. Kept by hand rather than derived, because deriving it
