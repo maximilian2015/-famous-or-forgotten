@@ -120,7 +120,7 @@ export function scheduleRelease(s, credit, p) {
     episodes: p.episodes || 0, part: p.part || 1, salary: credit.salary,
     rating: credit.rating, status: credit.status, worldHit: credit.status === 'World Hit',
     // Carried for the Asker season: whether it was pushed, and how good the material was.
-    campaign: !!p.campaign, prestigeScore: p.prestigeScore,
+    campaign: !!p.campaign, prestigeScore: p.prestigeScore, director: credit.director || null,
     // What the version you shot does to the box office, and the line it was pitched on.
     appealMod: appealShift(p), premise: p.premise || credit.premise || null, take: credit.take || null,
     due: (s.year || 0) * 12 + (s.month || 0) + wait, wait,
@@ -174,7 +174,7 @@ function open(s, rel) {
     running: true, weeks: 0, weeksTotal: RUN_WEEKS[rel.scale] || 8,
     boxOffice: 0, viewers: rel.viewers || 0, verdict: 'in cinemas', score: null,
     // Carried for the Asker season: what kind of thing it was, and whether it was pushed.
-    scale: rel.scale, tier: rel.tier, prestigeScore: rel.prestigeScore,
+    scale: rel.scale, tier: rel.tier, prestigeScore: rel.prestigeScore, director: rel.director || null,
     premise: rel.premise || null, take: rel.take || null,
     campaignShare: rel.campaign ? 0.65 : 0,
   };

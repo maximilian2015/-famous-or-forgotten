@@ -1,6 +1,7 @@
 import { inCareer } from '../../engine/stage.js';
 import { rint, chance } from '../../engine/rng.js';
 import { addTimeline } from '../../engine/timeline.js';
+import { HOUSING } from '../../engine/economy.js';
 const clamp = (v) => Math.max(0, Math.min(100, v));
 export function emUnread(s) { return (s.inbox || []).filter((m) => !m.read).length; }
 function has(s, tag) { return (s.inbox || []).some((m) => m.tag === tag); }
@@ -50,7 +51,20 @@ export function emailTick(s) {
   const key = (s.year || 0) * 12 + (s.month || 0);
   if (s._emTick === key) return; s._emTick = key;
   const fame = s.fame || 0;
-  if (((s.month || 0) % 3) === 0) { const rent = s.rent || 800; push(s, { from: 'Landlord', subj: 'Rent due', tag: 'rent', kind: 'bill', body: `Your rent of €${rent.toLocaleString()} is due. Late payment risks your lease.`, cta: [{ label: `Pay €${rent.toLocaleString()}`, pay: -rent, reply: 'Paid. The roof stays another quarter.' }, { label: 'Skip it', fx: { mental: -3, scandal: 1 }, reply: 'A notice goes under the door.' }] }); }
+  // Rent is taken automatically every month by engine/economy.js applyMonthly. This letter
+  // used to arrive every quarter regardless, quoting €800 off a field that does not exist
+  // (`s.rent`), with a Pay button that took the money a SECOND time — Maxi paid it after
+  // moving to a €2,900 flat and it still said €800. A landlord writes when a payment
+  // bounced, and only then. If you own the place, there is no landlord.
+  if ((s.rentMissed || 0) > 0 && s.hasApartment && !s.inheritedHome && !(s.owns && s.owns === s.housing) && !has(s, 'rent')) {
+    const rent = (HOUSING[s.housing || 'room'] || HOUSING.room).cost;
+    push(s, { from: 'Landlord', subj: 'Payment failed', tag: 'rent', kind: 'bill',
+      body: `This month's €${rent.toLocaleString()} did not go through. ${s.rentMissed >= 2 ? 'This is the second notice. The locks change next month.' : 'One more and the lease is at risk.'}`,
+      cta: [{ label: `Settle €${rent.toLocaleString()}`, pay: -rent, clear: 'rent', reply: 'Settled. The letters stop.' },
+            { label: 'Ignore it', fx: { mental: -3 }, reply: 'A notice goes under the door.' }] });
+  }
+  // And the moment it is settled the letter is gone — not sitting there for a decade.
+  if (!(s.rentMissed > 0)) s.inbox = (s.inbox || []).filter((m) => m.tag !== 'rent');
   if (fame >= 40 && fame < 75 && offer(s, 'show', 0, 45)) { const sh = pickOne(SHOWS); push(s, { from: sh[0], subj: "We'd love to have you on", tag: 'show', kind: 'invite', body: sh[1], cta: [{ label: 'Go on the show', check: { stat: 'charisma', diff: 48 }, good: { fx: { fame: 3, media: 5, mental: 1 }, reply: 'You kill it. "So likeable" trends with your name.' }, bad: { fx: { scandal: 3, media: 2, mental: -3 }, reply: 'You freeze. The awkward clip loops.' } }, { label: 'Politely decline', fx: {}, reply: 'Safe, forgettable, no clip.' }] }); }
   if (fame >= 55 && offer(s, 'event', 0, 40)) { const cp = pickOne(CARPETS); push(s, { from: cp[0], subj: 'Red carpet invitation', tag: 'event', kind: 'invite', body: cp[1], cta: [{ label: 'Walk the carpet', check: { stat: 'looks', diff: 46 }, good: { fx: { fame: 2, media: 4, respect: 1 }, reply: 'Best dressed. Your look leads the galleries.' }, bad: { fx: { media: 2, scandal: 2 }, reply: '"Worst dressed" lists are also lists.' } }, { label: 'Send regrets', fx: { mental: 1 }, reply: 'The night happens without you.' }] }); }
   if (fame >= 75 && offer(s, 'vip', 0, 34)) { const rm = pickOne(ROOMS); push(s, { from: rm[0], subj: "You're on the list", tag: 'vip', kind: 'invite', body: rm[1], cta: [{ label: 'Go — work the room', check: { stat: 'charisma', diff: 52 }, good: { fx: { fame: 2, respect: 4, media: 2 }, reply: "You leave with a director's promise." }, bad: { fx: { scandal: 4, mental: -3 }, reply: 'You say the wrong thing to the wrong legend.' } }, { label: 'Too risky — skip', fx: {}, reply: 'That room does not send twice.' }] }); }
@@ -61,6 +75,7 @@ export function emailAct(s, id, i) {
   let out = c, head = '';
   if (c.check) { const odds = 30 + (s[c.check.stat] || 0) * 0.5; const ok = chance(odds); out = ok ? (c.good || {}) : (c.bad || {}); head = ok ? '✅ ' : '❌ '; }
   if (typeof out.pay === 'number' || typeof c.pay === 'number') s.cash = (s.cash || 0) + (out.pay || c.pay || 0);
+  if (c.clear === 'rent') s.rentMissed = 0;
   const fx = out.fx || {};
   ['fame','media','mental','scandal','respect','looks'].forEach((k) => { if (typeof fx[k] === 'number') s[k] = clamp((s[k] || 0) + fx[k]); });
   s.lastEvent = `✉️ ${m.subj}\n\n${head}${out.reply || c.reply || c.label}`;

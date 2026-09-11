@@ -10,6 +10,7 @@ import { AAA } from './apps/AAA.jsx';
 import { Spotlight } from './apps/Spotlight.jsx';
 import { ArcadeGame } from './apps/ArcadeGame.jsx';
 import { Work } from './apps/Work.jsx';
+import { Guide } from './apps/Guide.jsx';
 import { Shopping } from './apps/Shopping.jsx';
 import { Dating } from './apps/Dating.jsx';
 const MON = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
@@ -52,6 +53,7 @@ export function Phone({ g }) {
         {openApp === 'messenger' && <Messages g={g} />}
         {openApp === 'opencall' && <OpenCall g={g} ocTab={ocTab} setOcTab={setOcTab} teenMode={teenMode} />}
         {openApp === 'news' && <News g={g} />}
+        {openApp === 'guide' && <Guide g={g} />}
         {openApp === 'email' && <Email g={g} />}
         {openApp === 'aaa' && <AAA g={g} />}
         {openApp === 'spotlight' && <Spotlight g={g} />}

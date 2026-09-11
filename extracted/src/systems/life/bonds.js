@@ -54,7 +54,7 @@ export function applyBond(s, p, raw) {
 // a playtest that simply lived twenty-four years without opening the People tab ended with
 // mother, father and sister all reading "Cold · 0" — which says you did something to them.
 // You did not. Going BELOW these takes an actual argument.
-const FLOOR = { parent: 25, child: 30, sibling: 15, spouse: 20, grandparent: 15, partner: 10, ex: 0, contact: 0 };
+const FLOOR = { parent: 25, child: 30, sibling: 15, spouse: 20, grandparent: 15, partner: 10, ex: 0, contact: -10 };
 
 function fadeOne(s, p, rel, now) {
   if (p.lastSeen === undefined) { p.lastSeen = now; return null; }
@@ -91,11 +91,15 @@ export function bondsTick(s) {
   const kept = [];
   for (const p of (s.people || [])) {
     const note = fadeOne(s, p, 'contact', now); if (note) notes.push(note);
-    // Nobody in this business keeps a name they have no reason to keep.
-    if ((p.relationship || 0) <= 0 && (now - (p.lastSeen ?? now)) >= 10) {
+    // They used to be DELETED at this point, which is why the People screen was always
+    // nearly empty: every contact you did not ring monthly was gone within a year. A phone
+    // keeps the number. The person goes cold — that is the state, said once — and warming
+    // them back up is your problem. Cutting somebody off on purpose is still an interaction.
+    if ((p.relationship || 0) <= 0 && (now - (p.lastSeen ?? now)) >= 10 && !p.cold) {
+      p.cold = true;
       addTimeline(s, `${p.name} stopped returning your calls.`, true);
-      continue;
     }
+    if (p.cold && (p.relationship || 0) > 10) p.cold = false;
     kept.push(p);
   }
   s.people = kept;

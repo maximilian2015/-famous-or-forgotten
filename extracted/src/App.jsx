@@ -29,6 +29,7 @@ import { play, soundOn, setSound } from './ui/sfx.js';
 import { Button } from './ui/components/Button.jsx';
 import { Card } from './ui/components/Card.jsx';
 import { Stat } from './ui/components/Stat.jsx';
+import { Poster } from './ui/components/Poster.jsx';
 import { Avatar, Garment } from './ui/components/Avatar.jsx';
 import { PARTIES, PARTY_ORDER, partyRisk, canThrowParty, throwParty } from './systems/life/party.js';
 import { lookOf, lookOfPerson, companionOf, HAIRSTYLES, HAIR_ORDER, hairChoices, HAIR_COLORS, EYES, EYE_COLOURS, LIPS, OUTFITS, OUTFIT_ORDER, SKINS, buyHair, setHairColour, wearOutfit, ownsOutfit, DRESS_UP_AGE } from './systems/life/appearance.js';
@@ -455,11 +456,17 @@ function FameScreen({ g, onBack }) {
 // above. Forgotten is the one: fame never goes below zero, but a name that fell is sitting
 // under Unknown, and the ladder has to show that. { id, fill } — which rung, and how deep.
 function Ladder({ tiers, opens, value, gateFor, sunkAt }) {
+  // The bullet points under every rung took the whole screen — Maxi: "they take a lot of
+  // space, put them in a guide". They are in the Guide app now; here they are one tap away.
+  const [showOpens, setShowOpens] = useState(false);
   const v = Math.round(value || 0);
   let cur = tiers[0];
   for (const t of tiers) if (v >= t.min) cur = t;
   if (sunkAt) cur = tiers.find((t) => t.id === sunkAt.id) || cur;
-  return (<div style={{ display: 'grid', gap: 8, marginBottom: 16 }}>
+  return (<div style={{ marginBottom: 16 }}>
+    <button onClick={() => setShowOpens(!showOpens)} data-sfx="toggle" style={{ background: 'none', border: 'none', color: theme.accent, fontSize: 11.5, fontWeight: 800, cursor: 'pointer', padding: '0 0 8px', fontFamily: 'inherit' }}>
+      {showOpens ? '▾ Hide what each rung opens' : '▸ Show what each rung opens · full rules in Phone › Guide'}</button>
+    <div style={{ display: 'grid', gap: 8 }}>
     {[...tiers].reverse().map((t, ri, arr) => {
       const here = t.id === cur.id;
       const above = arr[ri - 1];
@@ -480,7 +487,7 @@ function Ladder({ tiers, opens, value, gateFor, sunkAt }) {
         <div style={{ flex: 1,
           background: here ? (sunk ? 'rgba(255,90,114,.12)' : `${theme.accent}1e`) : theme.panel,
           border: `1px solid ${here ? (sunk ? '#ff5a72' : theme.accent) : done ? theme.line : 'rgba(255,255,255,.05)'}`,
-          borderRadius: 12, padding: '11px 13px', opacity: done || here ? 1 : .62 }}>
+          borderRadius: 12, padding: showOpens ? '11px 13px' : '9px 13px', opacity: done || here ? 1 : .62 }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', gap: 8 }}>
             <div style={{ fontSize: 14, fontWeight: 800, color: here ? (sunk ? '#ff8d9e' : theme.accent) : theme.text }}>
               {done && !here ? '✓ ' : ''}{t.label}{here ? ' · you are here' : ''}
@@ -495,15 +502,16 @@ function Ladder({ tiers, opens, value, gateFor, sunkAt }) {
             color: gate.open ? '#7fd6a2' : '#ff8d9e', fontWeight: 700 }}>
             {gate.open ? `✓ ${gate.got}` : `🔒 ${gate.need} — points alone will not get you in`}
           </div>)}
-          <div style={{ marginTop: 6 }}>
+          {showOpens && <div style={{ marginTop: 6 }}>
             {(opens[t.id] || []).map((line, i) => (
               <div key={i} style={{ fontSize: 11.5, color: theme.muted, lineHeight: 1.5, display: 'flex', gap: 6 }}>
                 <span style={{ opacity: .5 }}>·</span><span>{line}</span>
               </div>))}
-          </div>
+          </div>}
         </div>
       </div>);
     })}
+    </div>
   </div>);
 }
 
@@ -1063,7 +1071,7 @@ function LifeCard({ g }) {
     {g.hasApartment && row('Balance', `${net >= 0 ? '+' : ''}€${net.toLocaleString()}`, net >= 0 ? theme.good : theme.bad)}
   </Card>);
 }
-const CAREER_TABS = [['calendar', 'Calendar'], ['training', 'Training'], ['credits', 'Credits'], ['events', 'Events']];
+const CAREER_TABS = [['calendar', 'Calendar'], ['training', 'Training'], ['credits', 'Filmography'], ['events', 'Events']];
 function CareerScreen({ g, teenOnly }) {
   const [tab, setTab] = useState(teenOnly ? 'training' : 'calendar');
   const credits = [...(g.filmography || []), ...(g.discography || [])];
@@ -1290,19 +1298,13 @@ function StyleScreen({ g }) {
           background: tab === id ? `linear-gradient(165deg, ${theme.accent}, ${theme.accent2})` : theme.panel,
           color: tab === id ? (theme.warm ? '#1a1206' : '#fff') : theme.muted }}>{label}</button>))}
     </div>
-    {/* What the life costs to run, before anything else on the screen. */}
-    <Card style={{ marginBottom: 14, background: `linear-gradient(150deg, ${theme.accent}18, ${theme.accent}05)`, borderColor: `${theme.accent}30` }}>
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline' }}>
-        <div>
-          <div style={{ fontSize: 11, fontWeight: 800, letterSpacing: '.1em', textTransform: 'uppercase', color: theme.accent }}>Your status</div>
-          <div style={{ fontFamily: FONT_DISPLAY, fontSize: 21, fontWeight: 700, marginTop: 2 }}>{tier.label}</div>
-        </div>
-        <div style={{ textAlign: 'right' }}>
-          <div style={{ fontSize: 10.5, fontWeight: 800, letterSpacing: '.08em', textTransform: 'uppercase', color: theme.muted }}>Keeping it all</div>
-          <div style={{ fontSize: 15, fontWeight: 900, color: bill ? theme.gold : theme.muted }}>{bill ? money(bill) + '/mo' : '—'}</div>
-        </div>
-      </div>
-    </Card>
+    {/* The header already says what you are, so this card no longer repeats it — Maxi: "the
+        status a second time, it is not needed". What is left is the one number that is not
+        anywhere else: what it costs to keep all of this running every month. */}
+    {bill > 0 && <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', padding: '0 4px 12px' }}>
+      <div style={{ fontSize: 11, fontWeight: 800, letterSpacing: '.08em', textTransform: 'uppercase', color: theme.muted }}>Keeping all this running</div>
+      <div style={{ fontSize: 15, fontWeight: 900, color: theme.gold }}>{money(bill)}/mo</div>
+    </div>}
     {tab === 'home' && <HomeTab g={g} tier={tier} />}
     {tab === 'staff' && <StaffTab g={g} />}
     {tab === 'things' && <ThingsTab g={g} />}
@@ -1746,14 +1748,24 @@ function Heirs({ g }) {
   </div>);
 }
 // Reads like a real filmography page: poster, title, star rating out of 10, role, year.
-const POSTER_TINTS = [['#7c5cff', '#3a2a7a'], ['#c2410c', '#5a2410'], ['#0f766e', '#0a3f3a'], ['#a21caf', '#4a0f52'], ['#b45309', '#4a2506'], ['#1d4ed8', '#122a5e']];
-function Poster({ title, type }) {
-  let h = 0; for (let i = 0; i < title.length; i++) h = (h * 31 + title.charCodeAt(i)) >>> 0;
-  const [a, b] = POSTER_TINTS[h % POSTER_TINTS.length];
-  const initials = title.split(' ').filter(Boolean).slice(0, 2).map((w) => w[0].toUpperCase()).join('');
-  return (<div style={{ width: 42, height: 60, flex: 'none', borderRadius: 5, background: `linear-gradient(160deg, ${a}, ${b})`, display: 'flex', alignItems: 'center', justifyContent: 'center', border: '1px solid rgba(255,255,255,.12)' }}>
-    <span style={{ fontSize: 15, fontWeight: 900, color: 'rgba(255,255,255,.85)', letterSpacing: '.02em' }}>{initials}</span>
-  </div>);
+// What a real listing prints under the title, derived the way a listing would: a runtime
+// from the size of the thing, and a certificate from the genre. Decoration, and it is what
+// makes a row read as a film rather than a database record.
+function runtimeOf(c) {
+  let h = 0; for (let i = 0; i < String(c.title).length; i++) h = (h * 31 + c.title.charCodeAt(i)) >>> 0;
+  const jitter = h % 16;
+  if (c.season || c.episodes) return `${42 + (h % 4) * 6}m`;
+  const mins = { small: 64, indie: 92, feature: 106, blockbuster: 136 }[c.scale] || 100;
+  const m = mins + jitter;
+  return `${Math.floor(m / 60)}h ${String(m % 60).padStart(2, '0')}m`;
+}
+function certOf(c) {
+  const tv = !!(c.season || c.episodes);
+  const g = c.genre || '';
+  if (g === 'Horror') return tv ? 'TV-MA' : '18';
+  if (g === 'Crime' || g === 'Thriller') return tv ? 'TV-14' : '15';
+  if (g === 'Comedy' || g === 'Musical') return tv ? 'TV-PG' : 'PG';
+  return tv ? 'TV-14' : '12A';
 }
 // Grouped the way IMDb does it, which is not the same rule for everything:
 // a series is ONE entry with its year range and total episodes, while films — sequels
@@ -1805,59 +1817,51 @@ export function money(n) {
 function CreditRow({ group }) {
   const c = group.best;
   const r = c.rating || 0;
-  const stars = (r / 10).toFixed(1);
+  const stars = (r / 10).toFixed(1).replace('.', ',');
   const hit = r >= 85 || group.worldHit;
   const starCol = group.worldHit ? theme.gold : r >= 85 ? theme.good : r >= 60 ? theme.gold : theme.muted;
-  // IMDb writes "34 episodes" under a series and nothing under a film.
-  const runs = group.series
-    ? `${group.episodes || group.seasons} ${group.episodes ? 'episodes' : 'seasons'}${group.seasons > 1 ? ` · ${count(group.seasons, 'season')}` : ''}`
-    : null;
-  return (<div style={{ display: 'flex', gap: 11, padding: '11px 10px', borderRadius: 12, marginBottom: 6,
-    // A hit should be visible from across the page, not spelled out in small print.
+  const tv = !!(c.season || group.series);
+  const kind = tv ? 'TV Series' : c.type || 'Feature Film';
+  const years = group.from === group.to ? String(group.to) : `${group.from}–${group.to}`;
+  const eps = tv ? (group.episodes || c.episodes || 0) : 0;
+  return (<div style={{ display: 'flex', gap: 12, padding: '11px 10px', borderRadius: 12, marginBottom: 6,
     background: group.worldHit ? 'linear-gradient(100deg, rgba(255,209,102,.16), rgba(255,209,102,.04))'
       : hit ? 'rgba(95,206,138,.09)' : 'transparent',
     border: `1px solid ${group.worldHit ? 'rgba(255,209,102,.45)' : hit ? 'rgba(95,206,138,.28)' : theme.line}` }}>
-    <Poster title={group.root} type={c.type} />
+    <Poster title={group.root} type={c.type} genre={c.genre} director={c.director} tall size={56} />
     <div style={{ flex: 1, minWidth: 0 }}>
-      <div style={{ display: 'flex', justifyContent: 'space-between', gap: 8 }}>
-        <div style={{ fontSize: 14, fontWeight: 800, lineHeight: 1.25 }}>{group.root}</div>
-        <div style={{ fontSize: 12, color: theme.muted, flex: 'none', fontVariantNumeric: 'tabular-nums' }}>
-          {group.from === group.to ? group.to : `${group.from}–${group.to}`}
-        </div>
+      <div style={{ fontSize: 15, fontWeight: 800, lineHeight: 1.2 }}>{group.root}</div>
+      {/* line two: what it is, when, and which season — the way a listing says it */}
+      <div style={{ fontSize: 12, color: theme.muted, marginTop: 3 }}>
+        {kind} ({years}){tv && group.seasons ? ` · ${group.seasons > 1 ? count(group.seasons, 'season') : 'Season 1'}` : ''}{c.part > 1 ? ` · Part ${c.part}` : ''}
       </div>
-      <div style={{ display: 'flex', alignItems: 'center', gap: 7, margin: '4px 0 3px', flexWrap: 'wrap' }}>
-        {/* A film in cinemas has no score yet. Nobody has decided, including the reviews —
-            that lands when the run ends. See systems/career/release.js. */}
+      {/* line three: the score and the small print */}
+      <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginTop: 4, flexWrap: 'wrap', fontSize: 12 }}>
         {c.running
-          ? <span style={{ fontSize: 11, fontWeight: 900, letterSpacing: '.06em', textTransform: 'uppercase', color: theme.gold }}>
-              ★ — · week {c.weeks || 0} of {c.weeksTotal}
-            </span>
-          : <span style={{ fontSize: 12.5, fontWeight: 800, color: starCol }}>★ {stars}</span>}
-        <span style={{ fontSize: 11.5, color: theme.muted }}>{c.type}</span>
-        {runs && <span style={{ fontSize: 10, fontWeight: 900, letterSpacing: '.06em', textTransform: 'uppercase',
-          color: theme.accent, background: 'rgba(158,116,255,.16)', padding: '2px 7px', borderRadius: 20 }}>{runs}</span>}
-        {group.worldHit ? <span style={{ fontSize: 10, fontWeight: 900, color: theme.gold }}>🌍 WORLD HIT</span>
-          : r >= 85 ? <span style={{ fontSize: 10, fontWeight: 900, letterSpacing: '.06em', color: theme.good }}>HIT</span> : null}
-        {/* The one mark that never comes off a credit. */}
-        {group.askers > 0 && <span style={{ fontSize: 10, fontWeight: 900, letterSpacing: '.06em', color: theme.gold }}>
-          🏆 ASKER{group.askers > 1 ? ` ×${group.askers}` : ''}</span>}
-        {c.comeback > 0 && <span style={{ fontSize: 10, fontWeight: 900, letterSpacing: '.06em', color: theme.accent }}>
-          {/* "12 YEARS AWAY" read like something still to come. It is the gap this one
-              closed, and that is what it should say. */}
-          ↩ COMEBACK · AFTER {c.comeback} YEARS</span>}
+          ? <span style={{ fontSize: 10.5, fontWeight: 900, letterSpacing: '.06em', textTransform: 'uppercase', color: theme.gold }}>
+              In cinemas · week {c.weeks || 0} of {c.weeksTotal}</span>
+          : <span style={{ fontWeight: 900, color: starCol }}>★ {stars}</span>}
+        <span style={{ color: theme.muted }}>{group.to}</span>
+        {eps > 0 && <span style={{ color: theme.muted }}>{eps}eps</span>}
+        <span style={{ color: theme.muted, fontSize: 10.5, border: '1px solid rgba(255,255,255,.18)', borderRadius: 3, padding: '0 4px', lineHeight: '15px' }}>{certOf(c)}</span>
+        <span style={{ color: theme.muted }}>{runtimeOf(c)}</span>
       </div>
-      <div style={{ fontSize: 11.5, color: theme.muted }}>
-        {c.role}{c.genre ? ` · ${c.genre}` : ''}{group.earned > 0 ? ` · €${group.earned.toLocaleString()}` : ''}
+      {/* line four: who directed it, and the part */}
+      <div style={{ fontSize: 12, color: theme.muted, marginTop: 4 }}>
+        {c.director ? <span style={{ color: theme.text, opacity: .85 }}>{c.director}</span> : null}
+        {c.director ? ' · ' : ''}{c.role}
       </div>
-      {/* What it made is a separate fact from what it scored, and the industry reads it first. */}
-      {(group.boxOffice > 0 || group.viewers > 0) && (
-        <div style={{ fontSize: 11, marginTop: 3, display: 'flex', gap: 7, alignItems: 'center', flexWrap: 'wrap' }}>
-          <span style={{ color: theme.text, fontWeight: 700 }}>
-            {group.boxOffice > 0 ? `${money(group.boxOffice)} box office` : `${group.viewers}m watched`}
-          </span>
-          {c.verdict && <span style={{ fontSize: 9.5, fontWeight: 900, letterSpacing: '.07em', textTransform: 'uppercase',
-            color: c.running ? theme.gold : VERDICT_COL[c.verdict] || theme.muted }}>
-            {c.running ? 'still running' : c.verdict}</span>}
+      {/* the marks that never come off, and what it made */}
+      {(group.worldHit || r >= 85 || group.askers > 0 || c.comeback > 0 || group.boxOffice > 0 || group.viewers > 0) && (
+        <div style={{ fontSize: 10.5, marginTop: 5, display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
+          {group.worldHit ? <span style={{ fontWeight: 900, color: theme.gold }}>🌍 WORLD HIT</span>
+            : r >= 85 ? <span style={{ fontWeight: 900, letterSpacing: '.06em', color: theme.good }}>HIT</span> : null}
+          {group.askers > 0 && <span style={{ fontWeight: 900, letterSpacing: '.06em', color: theme.gold }}>🏆 ASKER{group.askers > 1 ? ` ×${group.askers}` : ''}</span>}
+          {c.comeback > 0 && <span style={{ fontWeight: 900, letterSpacing: '.06em', color: theme.accent }}>↩ COMEBACK · AFTER {c.comeback} YEARS</span>}
+          {(group.boxOffice > 0 || group.viewers > 0) && <span style={{ color: theme.text, fontWeight: 700 }}>
+            {group.boxOffice > 0 ? `${money(group.boxOffice)} box office` : `${group.viewers}m watched`}</span>}
+          {c.verdict && !c.running && <span style={{ fontWeight: 900, letterSpacing: '.07em', textTransform: 'uppercase', fontSize: 9.5,
+            color: VERDICT_COL[c.verdict] || theme.muted }}>{c.verdict}</span>}
         </div>
       )}
     </div>
@@ -1879,7 +1883,7 @@ function CreditsList({ g, credits, label }) {
     {p && (<div style={{ marginBottom: 16 }}>
       <div style={{ fontSize: 11, fontWeight: 900, letterSpacing: '.09em', textTransform: 'uppercase', color: theme.gold, marginBottom: 8 }}>In production · 1</div>
       <div style={{ display: 'flex', gap: 11, padding: '10px 2px', borderBottom: `1px solid ${theme.line}`, opacity: .85 }}>
-        <Poster title={p.title} type={p.type} />
+        <Poster title={p.title} type={p.type} genre={p.genre} director={(p.crew || [])[0] && p.crew[0].name} />
         <div style={{ flex: 1, minWidth: 0 }}>
           <div style={{ fontSize: 14, fontWeight: 800 }}>{p.title}</div>
           <div style={{ fontSize: 11.5, color: theme.gold, margin: '4px 0 3px' }}>Shooting · {p.monthsLeft} mo left</div>
@@ -1898,7 +1902,7 @@ function CreditsList({ g, credits, label }) {
         {queue.map((r) => {
           const left = Math.max(0, r.due - now);
           return (<div key={r.id} style={{ display: 'flex', gap: 11, padding: '10px 2px', borderBottom: `1px solid ${theme.line}`, opacity: .85 }}>
-            <Poster title={r.title} type={r.type} />
+            <Poster title={r.title} type={r.type} genre={r.genre} director={r.director} />
             <div style={{ flex: 1, minWidth: 0 }}>
               <div style={{ fontSize: 14, fontWeight: 800 }}>{r.title}</div>
               <div style={{ fontSize: 11.5, color: theme.accent, margin: '4px 0 3px' }}>
@@ -1920,7 +1924,7 @@ function CreditsList({ g, credits, label }) {
         {g.frozen.map((f) => {
           const waited = Math.max(0, now - (f.since || now));
           return (<div key={f.id} style={{ display: 'flex', gap: 11, padding: '10px 2px', borderBottom: `1px solid ${theme.line}`, opacity: .8 }}>
-            <Poster title={f.title} type={f.type} />
+            <Poster title={f.title} type={f.type} genre={f.genre} />
             <div style={{ flex: 1, minWidth: 0 }}>
               <div style={{ fontSize: 14, fontWeight: 800 }}>{f.title}</div>
               <div style={{ fontSize: 11.5, color: theme.bad, margin: '4px 0 3px' }}>
@@ -1946,9 +1950,12 @@ function CreditsList({ g, credits, label }) {
       const hits = real.filter((c) => (c.rating || 0) >= 85).length;
       const world = real.filter((c) => c.status === 'World Hit').length;
       return (<>
+        {/* The header a real listing has: how many, of what, sorted how. Maxi's screenshot
+            read "13 Film/TV, 0 Commercial Credits · Sorted by Most Recent". */}
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', marginBottom: 8 }}>
-          <div style={{ fontSize: 11, fontWeight: 900, letterSpacing: '.09em', textTransform: 'uppercase', color: theme.muted }}>
-            {label}{real.length ? ` · ${real.length}` : ''}
+          <div>
+            <div style={{ fontSize: 13.5, fontWeight: 800 }}>{real.length} Film/TV, {credits.length - real.length} Commercial Credit{credits.length - real.length === 1 ? '' : 's'}</div>
+            <div style={{ fontSize: 11, color: theme.muted, marginTop: 2 }}>Sorted by most recent</div>
           </div>
           {hits > 0 && <div style={{ fontSize: 10.5, fontWeight: 800 }}>
             <span style={{ color: theme.good }}>{hits} hit{hits === 1 ? '' : 's'}</span>

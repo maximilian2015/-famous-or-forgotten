@@ -13,6 +13,8 @@ export const PHONE_APPS = [
   { id: 'aaa', name: 'AAA', icon: 'AAA', bg: 'linear-gradient(135deg,#2c2c34,#17171c)', accent: '#ffd166', wash: '#1c1a14', badge: () => 0, teen: false, lock: (s) => !((s.filmography || []).length + (s.discography || []).length) },
   { id: 'work', name: 'Work', icon: '💼', bg: 'linear-gradient(135deg,#4a90ff,#2a5fb0)', accent: '#57b8ff', wash: '#0d1f36', badge: () => 0, teen: true },
   { id: 'shopping', name: 'Shop', icon: '🛒', bg: 'linear-gradient(135deg,#ff9f43,#d9761f)', accent: '#ffab55', wash: '#2c1a09', badge: () => 0, teen: true },
+  // The bible. Every rule the game runs on, looked up rather than remembered.
+  { id: 'guide', name: 'Guide', icon: '📖', bg: 'linear-gradient(135deg,#8a7a5a,#5a4a30)', accent: '#d8c49a', wash: '#1e1a12', badge: () => 0, teen: true },
   { id: 'dating', name: 'Dating', icon: '💘', bg: 'linear-gradient(135deg,#ff6b9d,#c23566)', accent: '#ff86b0', wash: '#2e1020', badge: (s) => (s.datingPool || []).length, teen: false },
 ];
 export function appById(id) { return PHONE_APPS.find((a) => a.id === id) || null; }

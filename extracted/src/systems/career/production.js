@@ -283,7 +283,10 @@ function wrapProduction(s) {
   if (worldHit) rating = Math.max(rating, 96);
   const status = worldHit ? 'World Hit' : rating >= 85 ? 'Hit' : rating >= 70 ? 'Well-received' : rating >= 50 ? 'Released' : 'Flop';
   const credit = { title: p.title, role: p.role, type: p.type, genre: p.genre, salary: p.salary, rating, status, year: s.year,
-    season: p.season || 0, part: p.part > 1 ? p.part : 0, episodes: p.episodes || 0 };
+    season: p.season || 0, part: p.part > 1 ? p.part : 0, episodes: p.episodes || 0,
+    // Who directed it, and how long it ran. The crew is thrown away at wrap, and the
+    // filmography had no director on it — every real one lists them under the title.
+    director: ((p.crew || [])[0] || {}).name || null, months: p.months || 0 };
   // The credit does NOT land here. It goes into post and opens months from now —
   // fame, box office and the score all arrive on premiere night, not on the last
   // day of shooting. See systems/career/release.js.
