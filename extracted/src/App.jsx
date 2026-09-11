@@ -148,7 +148,11 @@ export default function App() {
             <div style={{ fontSize: 11.5, color: theme.muted }}>{meterTier(g.production.meter).label}</div>
           </div>
           <div style={{ fontSize: 14, fontWeight: 800, marginTop: 3 }}>{g.production.title} · {g.production.monthsLeft} mo left</div>
-          <div style={{ fontSize: 11, color: theme.muted, marginTop: 4 }}>Manage it from the Career tab.</div>
+          {/* The card used to say "Manage it from the Career tab" and nothing else, so a player
+              who pressed Live one month from here skipped the month's rehearsal without
+              ever knowing there was one to skip — and the director's opinion, the thing
+              that actually cools, was not shown anywhere at all. Both are here now. */}
+          <OnSetNow g={g} />
         </Card>)}
         {inCareer(g) && (g.offers || []).length > 0 && (<div style={{ marginBottom: 14 }}><div style={{ fontSize: 11, fontWeight: 900, letterSpacing: '.09em', textTransform: 'uppercase', color: theme.muted, marginBottom: 8 }}>Offers</div>{g.offers.map((o) => (<Card key={o.id} style={{ marginBottom: 8 }}><div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline' }}><div style={{ fontSize: 14, fontWeight: 800 }}>{o.projectTitle}</div><div style={{ fontSize: 13, fontWeight: 900, color: theme.gold }}>€{o.salary.toLocaleString()}</div></div><div style={{ fontSize: 11.5, color: theme.muted, margin: '3px 0 4px' }}>{o.role} · {o.type} · {o.months} mo · prestige {o.prestigeScore}</div>
           {/* An offer can collapse mid-shoot exactly like a casting, so it has to say how
@@ -210,6 +214,32 @@ function BottomNav({ screen, setScreen, g }) {
         {badge > 0 && <span style={{ position: 'absolute', top: 0, right: '26%', minWidth: 15, height: 15, borderRadius: 8, background: '#ff3b30', color: '#fff', fontSize: 9, fontWeight: 900, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>{badge}</span>}</button>); })}
   </div>);
 }
+// What this month on set needs from you, and how the director feels about you — on the
+// home screen, where the month actually gets lived.
+function OnSetNow({ g }) {
+  const p = g.production;
+  const lead = (p.crew || [])[0];
+  const stamp = (g.year || 0) * 12 + (g.month || 0);
+  const worked = p._workedMonth === stamp;
+  const noEnergy = (g.ap || 0) <= 0;
+  const b = lead ? lead.bond : 50;
+  const mood = b >= 70 ? ['warm to you', '#4fc07f'] : b >= 45 ? ['fine with you', theme.muted] : b >= 26 ? ['cooling on you', '#f0b429'] : ['done with you', '#ff5a72'];
+  return (<div style={{ marginTop: 8 }}>
+    {lead && <div style={{ fontSize: 11.5, color: theme.muted, marginBottom: 8 }}>
+      {lead.name}, directing, is <b style={{ color: mood[1] }}>{mood[0]}</b>.
+      {b < 45 && ' A cold director is what costs you standing at wrap.'}
+    </div>}
+    <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+      <Button kind={worked ? 'default' : 'pri'} sfx="slate" disabled={noEnergy || worked} onClick={() => dispatch(rehearse)} style={{ flex: 1 }}>
+        {worked ? '✓ Rehearsed this month' : noEnergy ? 'Rehearse · no energy left' : 'Rehearse · 1 energy'}</Button>
+    </div>
+    {!worked && !noEnergy && <div style={{ fontSize: 11, color: theme.gold, marginTop: 6, lineHeight: 1.45 }}>
+      Live the month without this and you turned up not knowing the pages. Once is nothing. A pattern, the director notices.
+    </div>}
+    <div style={{ fontSize: 11, color: theme.muted, marginTop: 6 }}>Takes, the crew and the rest of the set are under Career.</div>
+  </div>);
+}
+
 // The two settings the game has: what it looks like, and whether it makes a sound. Kept
 // out of the save on purpose — both should survive starting a new life.
 function SettingsRow() {

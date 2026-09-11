@@ -281,15 +281,21 @@ function closeRun(s, credit, r) {
   };
   // A comeback is a story, and the trades love a story. `credit.comeback` was a label on the
   // filmography and nothing else — a fallen name that landed something good got exactly what
-  // anybody else got for it. Now the first good thing after the fall is worth far more than
-  // the film: the press writes it up, and being written about is what pulls you back. Once,
-  // and only from Forgotten — the second comeback is just a career.
-  const wasForgotten = (s.peakFame || 0) >= 35 && ((s.fame || 0) - fame * headroom(s.fame)) < 15;
+  // anybody else got for it, and crawled back up through Rising Star at fifty like a
+  // twenty-two-year-old. That is not how a comeback works. A comeback is a JUMP: one good
+  // film and you are back in the conversation — not at the top, but straight to Known Face,
+  // the middle of the ladder, where people can name a film of yours again.
+  //
+  // Maxi asked which rung you come back to, and this is the answer: never Unknown, never
+  // Rising Star. Known Face, if the film was good. Mediocre work after a fall does not get
+  // the word, and you climb through Rising Star like anyone else, with a thinner board.
+  // Once, and only from Forgotten — the second comeback is just a career.
+  const wasForgotten = (s.peakFame || 0) >= 35 && (s.fame || 0) < 15;
   if (wasForgotten && r.rating >= 70 && !s._cameBack) {
     s._cameBack = true;
-    fame += 9;
     s.media = Math.min(100, (s.media || 0) + 28);
     setRespect(s, (s.respect || 0) + 4);
+    setFame(s, Math.max(s.fame || 0, 35));   // straight to Known Face; the film's own fame lands on top below
     addTimeline(s, `The trades are calling ${credit.title} a comeback. Every piece uses the word, and every piece uses your name.`);
     s.lastEvent = `"${credit.title}" is being written about as a comeback. It is a generous word for it, and it is doing more for you than the film is.`;
   }

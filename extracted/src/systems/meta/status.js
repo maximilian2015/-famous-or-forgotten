@@ -35,7 +35,8 @@ export function forgottenDepth(s) {
 }
 export const FORGOTTEN_OPENS = [
   'Nobody sends a script to the answer to a trivia question — the board is thinner than a newcomer’s',
-  'But a comeback is a story, and the trades love a story: the first thing you land that reviews well is worth far more than it would be to anyone else',
+  'But a comeback is a story, and the trades love a story: land one film that reviews well and you are straight back at Known Face — not Unknown, not Rising Star',
+  'Mediocre work after a fall does not get the word. You climb through Rising Star like anyone else, with fewer scripts',
 ];
 
 // What each rung actually opens. Every line here is a real gate somewhere else in the
