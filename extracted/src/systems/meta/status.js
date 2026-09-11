@@ -251,8 +251,11 @@ export function respectReport(s) {
   const r = s.respect || 0;
   const out = [];
   // systems/career/story.js pushOdds — standing = respect * 0.46 + fame * 0.34
+  const inRoom = Math.round(r * 0.46), fameRoom = Math.round((s.fame || 0) * 0.34);
   out.push({ id: 'room', label: 'Whether the director listens',
-    why: `Worth ${Math.round(r * 0.46)} points on the odds of shooting your version — more than your fame is (${Math.round((s.fame || 0) * 0.34)}). This is the biggest thing respect does.` });
+    why: r < 0
+      ? `Taking ${Math.abs(inRoom)} points OFF the odds of shooting your version. Your name is an argument against you in that room, before you have said anything.`
+      : `Worth ${inRoom} points on the odds of shooting your version${inRoom > fameRoom ? ` — more than your fame is (${fameRoom})` : ` — your fame is worth ${fameRoom}`}. This is the biggest thing respect does.` });
   // systems/career/negotiate.js
   const neg = Math.round((r - 40) * 0.12 * 10) / 10;
   out.push({ id: 'money', label: 'At the table',
@@ -267,12 +270,29 @@ export function respectReport(s) {
   return out;
 }
 
-// Standing has rungs too, and they are not invented: three of the four are real thresholds
-// somewhere else in the game, and the fourth says so.
+// Standing goes BELOW zero, the way closeness does — because a blank name and a bad one
+// are not the same thing, and the game was showing them as the same number. Somebody who
+// walked off three shoots and made three bad films sat at exactly the 0 a newcomer starts
+// on. Every write clamped it there, while origin.js was already handing an heir −40 at
+// birth: the intent was there, the floor was not.
+//
+// −40 is the floor. Below that there is nobody left to have an opinion.
+export const RESPECT_FLOOR = -40;
+export function setRespect(s, value) {
+  s.respect = Math.max(RESPECT_FLOOR, Math.min(100, value || 0));
+  return s.respect;
+}
+
+// Standing has rungs too, and they are not invented: three of the four above zero are real
+// thresholds somewhere else in the game, and the one at the top says it is not.
 //   30 — the brand-deal arc opens (systems/life/arcs.js sellOut)
 //   40 — the break-even at the table (systems/career/negotiate.js: (respect − 40) × 0.12)
 //   60 — its own way into the elite, and an adoption board counts it (access.js, children.js)
+// The two below zero are where the number itself starts working against you: at the table,
+// in the room, and in what a director says to the next one.
 export const RESPECT_TIERS = [
+  { id: 'avoided', label: 'Avoided', min: -40 },
+  { id: 'careful', label: 'A name people check', min: -15 },
   { id: 'unproven', label: 'Unproven', min: 0 },
   { id: 'reliable', label: 'Reliable', min: 30 },
   { id: 'serious', label: 'Taken seriously', min: 40 },
@@ -285,6 +305,15 @@ export function respectTier(r) {
   return cur;
 }
 export const RESPECT_OPENS = {
+  avoided: [
+    'Crews ask not to be put on your call sheet',
+    'At the table you are nearly ten points harder to move than somebody at forty',
+    'Your standing is actively COSTING you the argument for your version of the film',
+  ],
+  careful: [
+    'A name people look up before they say yes',
+    'The last director you worked with is the reason',
+  ],
   unproven: [
     'Nobody has formed an opinion. That is not the same as a good one',
     'At the table you are nearly five points harder to move than somebody at forty',

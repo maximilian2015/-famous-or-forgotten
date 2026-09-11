@@ -1,3 +1,4 @@
+import { setRespect } from '../meta/status.js';
 // What money is FOR.
 //
 // Measured across forty lives: the median actor holds €152k in their twenties, €26m in
@@ -164,7 +165,7 @@ export function buyThing(s, id) {
   s.cash -= t.price;
   (s.things = s.things || {})[id] = { paid: t.price, since: (s.year || 0) };
   if (t.looks) s.looks = clamp((s.looks || 0) + t.looks);
-  if (t.respect) s.respect = clamp((s.respect || 0) + t.respect);
+  if (t.respect) setRespect(s, (s.respect || 0) + t.respect);
   s.lastEvent = `${t.label}. ${money(t.price)}.`;
   addTimeline(s, `Bought ${t.label.toLowerCase()} — ${money(t.price)}.`);
   return s;
@@ -184,7 +185,7 @@ export function sellThing(s, id) {
   s.cash = (s.cash || 0) + back;
   delete s.things[id];
   if (t.looks) s.looks = clamp((s.looks || 0) - t.looks);
-  if (t.respect) s.respect = clamp((s.respect || 0) - t.respect);
+  if (t.respect) setRespect(s, (s.respect || 0) - t.respect);
   const lost = t.price - back;
   s.lastEvent = back >= t.price
     ? `You sold ${t.label.toLowerCase()} for ${money(back)} — ${money(back - t.price)} more than you paid.`

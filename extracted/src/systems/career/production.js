@@ -1,5 +1,5 @@
 import { rint, chance, pick } from '../../engine/rng.js';
-import { setQuote } from "../meta/status.js";
+import { setQuote, setRespect } from '../meta/status.js';
 import { addTimeline } from '../../engine/timeline.js';
 import { earn } from '../../engine/economy.js';
 import { hotGenre } from '../meta/news.js';
@@ -264,8 +264,8 @@ function wrapProduction(s) {
   // What the crew says about you travels immediately — long before anyone sees the film.
   const lead = p.crew[0];
   let verdictNote = '';
-  if (lead.bond >= 70) { s.respect = clamp((s.respect || 0) + 3); verdictNote = ` ${lead.name} tells anyone who'll listen how good you were.`; }
-  else if (lead.bond <= 25) { s.respect = clamp((s.respect || 0) - 3); verdictNote = ` ${lead.name} has quietly started telling a different story about you.`; }
+  if (lead.bond >= 70) { setRespect(s, (s.respect || 0) + 3); verdictNote = ` ${lead.name} tells anyone who'll listen how good you were.`; }
+  else if (lead.bond <= 25) { setRespect(s, (s.respect || 0) - 3); verdictNote = ` ${lead.name} has quietly started telling a different story about you.`; }
   if (worldHit) s.worldHits = (s.worldHits || 0) + 1;
   // What the months on set left in you. Computed AFTER the rating, so this shoot is judged
   // on the actor you were when you walked on — not the one you walked off as.

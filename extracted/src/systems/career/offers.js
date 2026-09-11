@@ -2,7 +2,7 @@ import { inCareer } from '../../engine/stage.js';
 import { uid } from '../../engine/id.js';
 import { rint, chance, pick } from '../../engine/rng.js';
 import { computeAccess } from './access.js';
-import { quoteFor, setFame } from '../meta/status.js';
+import { quoteFor, setFame, setRespect } from '../meta/status.js';
 import { addTimeline } from '../../engine/timeline.js';
 import { earn } from '../../engine/economy.js';
 import { GENRES } from '../meta/news.js';
@@ -121,7 +121,7 @@ export function declineOffer(s, id) {
   // Turning down an ordinary offer is your business. Turning down the one they finally
   // found the money to finish, after holding your part open for years, is not.
   if (o.kind === 'thaw') {
-    s.respect = clamp((s.respect || 0) - 5);
+    setRespect(s, (s.respect || 0) - 5);
     s.lastEvent = `You said no to finishing "${title}". They waited a long time for that answer.`;
     addTimeline(s, `Refused to go back and finish ${title}. People noticed.`, true);
     return s;

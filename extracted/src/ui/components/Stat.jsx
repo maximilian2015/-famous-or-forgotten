@@ -7,7 +7,10 @@ export function Stat({ label, value, max = 100, money, sub, onClick, vital }) {
   // fell to 10 across a playtest and nothing on this screen ever changed colour.
   // Only Health and Mental warn, though: Fame and Respect start at zero for everybody, and
   // a red bar there is not an alarm, it is a lie about how you are doing.
-  const low = vital && pct < 22, mid = vital && pct < 45;
+  // A number below zero is its own kind of alarm, whatever the stat: standing can sink
+  // there now, and a red minus on the tile is the first the player should hear of it.
+  const neg = !money && (value || 0) < 0;
+  const low = (vital && pct < 22) || neg, mid = vital && pct < 45;
   // A vital bar is a READING, not decoration, so it uses a fixed green-amber-red ramp that
   // does not move with the skin. On Bombshell the accent is itself red (#e35d6a) and the
   // alarm colour is red (#ff7d7d) — so Health 95 and Mental 12 came out the same colour and

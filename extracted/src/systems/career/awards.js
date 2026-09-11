@@ -7,7 +7,7 @@
 // sells. That single opposition is what makes choosing a project a decision rather than
 // an arithmetic problem.
 import { rint, chance, pick } from '../../engine/rng.js';
-import { setQuote, setFame } from '../meta/status.js';
+import { setQuote, setFame, setRespect } from '../meta/status.js';
 import { addTimeline } from '../../engine/timeline.js';
 
 const clamp = (v, a = 0, b = 100) => Math.max(a, Math.min(b, v));
@@ -213,7 +213,7 @@ export function runNominations(s) {
   s.awards.nominations = (s.awards.nominations || []).concat(pending.map((p) => ({ title: p.title, category: p.category, year })));
   // A nomination is a title you keep. It moves what you can ask for, immediately.
   setQuote(s, (s.quote || 0) * 1.25 || s.quote);
-  s.respect = clamp((s.respect || 0) + 6 * headroom(112, s.respect));
+  setRespect(s, (s.respect || 0) + 6 * headroom(112, s.respect));
   setFame(s, (s.fame || 0) + 3 * headroom(118, s.fame));
   const labels = pending.map((p) => CATEGORIES.find((c) => c.id === p.category)?.label || p.category);
   addTimeline(s, `Asker nominations: ${labels.join(', ')} for "${pending[0].title}".`);
@@ -252,7 +252,7 @@ export function ceremonyTick(s) {
   for (const r of picture) {
     const c = [...(s.filmography || []), ...(s.discography || [])].find((x) => x.title === r.title);
     if (c) c.bestPicture = true;
-    s.respect = clamp((s.respect || 0) + 6 * headroom(112, s.respect));
+    setRespect(s, (s.respect || 0) + 6 * headroom(112, s.respect));
     setFame(s, (s.fame || 0) + 4 * headroom(118, s.fame));
     addTimeline(s, `"${r.title}" won Best Picture. You were in it, and everybody knows.`);
   }
@@ -269,7 +269,7 @@ export function ceremonyTick(s) {
     // wrong: winning one moves you into the room where the A-list is, whatever your
     // box office says. So it lifts you toward the top of Star even from nowhere.
     setQuote(s, (s.quote || 0) * 1.85 || s.quote);
-    s.respect = clamp((s.respect || 0) + 15);
+    setRespect(s, (s.respect || 0) + 15);
     setFame(s, Math.max((s.fame || 0) + 18, Math.min(70, (s.fame || 0) + 34)));
     s.peakFame = Math.max(s.peakFame || 0, s.fame);
     addTimeline(s, `🏆 Won the Asker for ${won.map((r) => CATEGORIES.find((c) => c.id === r.category)?.label).join(' and ')}.`);

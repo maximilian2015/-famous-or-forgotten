@@ -1,3 +1,4 @@
+import { setRespect } from '../meta/status.js';
 import { count } from '../../engine/text.js';
 // The other way out, and the reason the good one has to be worth taking.
 //
@@ -155,7 +156,7 @@ export function drinkTick(s) {
     s.health = clamp((s.health || 0) - (d.level >= DEPENDENT_AT ? 0.8 : 0.3) * b.bite);
     // And past the point where everyone can see it, it is a depressant and nothing else.
     if (d.level >= 78) s.mental = clamp((s.mental || 0) - 2.5);
-    if (d.level >= DEPENDENT_AT) s.respect = clamp((s.respect || 0) - 0.35 * b.seen);
+    if (d.level >= DEPENDENT_AT) setRespect(s, (s.respect || 0) - 0.35 * b.seen);
     if (d.level >= 78 && chance(6 * b.seen)) {
       s.scandal = clamp((s.scandal || 0) + rint(6, 14));
       addTimeline(s, 'Somebody filmed you outside a restaurant and it is everywhere by lunchtime.', true);

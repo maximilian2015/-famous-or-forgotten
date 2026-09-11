@@ -1,3 +1,4 @@
+import { setRespect } from '../meta/status.js';
 // What the film is actually ABOUT, and the argument you have about it on day one.
 //
 // Until now a shoot was a slider: rehearse enough months and the meter went up. That is not
@@ -166,7 +167,7 @@ export function pushTake(s, takeId) {
   if (chance(odds)) {
     p.take = takeId; p.takeWon = true;
     if (take.aim) p.genre = take.aim;
-    s.respect = clamp((s.respect || 0) + 1);
+    setRespect(s, (s.respect || 0) + 1);
     if (director) director.bond = clamp((director.bond || 40) + rint(2, 6));
     s.lastEvent = take.said;
     return s;

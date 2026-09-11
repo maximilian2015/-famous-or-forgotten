@@ -9,7 +9,7 @@ import { uid } from '../../engine/id.js';
 // A film can be adored and lose money, or panned and take a billion. They pull your
 // career in different directions, and that is the whole point of having both.
 import { rint } from '../../engine/rng.js';
-import { setQuote, setFame } from '../meta/status.js';
+import { setQuote, setFame, setRespect } from '../meta/status.js';
 import { addTimeline } from '../../engine/timeline.js';
 import { markReleased } from '../../engine/economy.js';
 import { hotGenre } from '../meta/news.js';
@@ -280,9 +280,20 @@ function closeRun(s, credit, r) {
     return Math.max(0.03, 0.577 * Math.pow(Math.max(0, (104 - f) / 49), 1.9));
   };
   setFame(s, (s.fame || 0) + fame * headroom(s.fame));
-  const respectGain = r.rating >= 85 ? 5 : r.rating >= 70 ? 2 : r.rating < 45 ? -4 : 0;
+  // A bad film costs standing in proportion to what was expected of you. At forty it is
+  // news and it costs the full four; at nothing it costs almost nothing, because nobody
+  // expected anything. This mattered the moment standing could go below zero: a flat −4
+  // meant the first twenty films of ANY career — which are bad, because craft starts at
+  // eighteen — dug a hole it took a perfect player twenty-one years to climb out of.
+  // Bad work alone bottoms out around −5. Below that is behaviour: walking off, refusing,
+  // the director's word about you. Being bad at it and being trouble are different things
+  // and the ladder says so — "a name people check" is a cold set or two, "avoided" is a
+  // pattern of walking off. A perfect player was still hovering at −2 for nine years on
+  // the first version of this, because the first fifteen films are bad whatever you do.
+  const expected = (s.respect || 0) <= -5 ? 0 : Math.min(1, Math.max(0.1, ((s.respect || 0) + 5) / 45));
+  const respectGain = r.rating >= 85 ? 5 : r.rating >= 70 ? 2 : r.rating < 45 ? -4 * expected : 0;
   const soft = (limit, cur) => Math.max(0.16, 1 - (cur || 0) / limit);
-  s.respect = clamp((s.respect || 0) + (respectGain > 0 ? respectGain * soft(112, s.respect) : respectGain));
+  setRespect(s, (s.respect || 0) + (respectGain > 0 ? respectGain * soft(112, s.respect) : respectGain));
   if (film && verdict === 'smash') setQuote(s, Math.max(s.quote || 0, (r.salary || 0) * 1.6));
 
   // The gross means nothing on its own — "a billion" is only a triumph next to what it cost.

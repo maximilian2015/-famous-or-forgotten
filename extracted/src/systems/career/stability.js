@@ -1,3 +1,4 @@
+import { setRespect } from '../meta/status.js';
 import { count } from '../../engine/text.js';
 import { uid } from '../../engine/id.js';
 // Not every project that starts gets made. Financing walks, a studio changes its mind,
@@ -236,17 +237,23 @@ export function frozenTick(s) {
     if (chance(deathOdds(f, now))) {
       const waited = now - (f.since ?? now);
       const ranOut = waited > (f.patience ?? 30);
-      // A film that dies with your name on it costs you something. It costs more when it
-      // was you who walked off it, and more again when they held it open and you never
-      // came back for it.
-      const cost = (f.byYou ? 6 : 3) + (ranOut ? 3 : 0);
-      s.respect = clamp((s.respect || 0) - cost);
-      if (ranOut) {
+      // A film that dies with your name on it costs you something — IF it was you who walked
+      // off it. When the money fell through, that is the financier's failure, not yours, and
+      // it used to charge you anyway: −3 for the death and −6 with the line "they held it
+      // open and you never went back", when a way back is only ever offered a few per cent
+      // of months and usually never. Measured on a perfect player: dozens of these across a
+      // career, and the single biggest reason standing sat below zero for a decade.
+      const cost = f.byYou ? 6 + (ranOut ? 3 : 0) : 0;
+      if (cost) setRespect(s, (s.respect || 0) - cost);
+      if (f.byYou && ranOut) {
         addTimeline(s, `"${f.title}" was recast. They held it open ${Math.round(waited / 12)} year${waited >= 24 ? 's' : ''} and you never went back for it.`, true);
         s.lastEvent = `They recast "${f.title}". It waited as long as anyone was going to wait.`;
-      } else {
-        addTimeline(s, `"${f.title}" was formally abandoned. It had been frozen ${count(waited, 'month')}.`, true);
+      } else if (f.byYou) {
+        addTimeline(s, `"${f.title}" was formally abandoned. It stopped because of you, and it never started again.`, true);
         s.lastEvent = `"${f.title}" will never be finished. They have written it off.`;
+      } else {
+        addTimeline(s, `"${f.title}" was written off. The money never came back — ${count(waited, 'month')} in the freezer, and nobody blames you for it.`);
+        s.lastEvent = `"${f.title}" is dead. It was never your money.`;
       }
       continue;
     }

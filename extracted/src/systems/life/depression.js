@@ -1,3 +1,4 @@
+import { setRespect } from '../meta/status.js';
 import { count } from '../../engine/text.js';
 // The fourth collapse does not end when a counter does. It takes months of your life a
 // month at a time — literally, in the currency the game is actually made of, which is
@@ -301,7 +302,7 @@ export function breakContract(s) {
   const owed = Math.max(0, (p.salary || 0) - (p.paid || 0));
   const series = (p.episodes || 0) > 0;
   s.production = null;
-  s.respect = clamp((s.respect || 0) - (series ? 7 : 9));
+  setRespect(s, (s.respect || 0) - (series ? 7 : 9));
   addTimeline(s, series
     ? `Walked off "${p.title}" mid-season. They wrote the character out in two episodes.`
     : `Walked off "${p.title}". They recast within the week and you never saw the rest of the money.`, true);

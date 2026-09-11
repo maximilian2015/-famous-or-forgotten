@@ -427,24 +427,29 @@ function Ladder({ tiers, opens, value, gateFor }) {
   return (<div style={{ display: 'grid', gap: 8, marginBottom: 16 }}>
     {[...tiers].reverse().map((t, ri, arr) => {
       const here = t.id === cur.id;
-      const done = v >= t.min;
-      // How far through THIS band you are — the band runs from this rung to the next one up.
       const above = arr[ri - 1];
       const top = above ? above.min : 100;
-      const fill = v >= top ? 100 : v <= t.min ? 0 : ((v - t.min) / Math.max(1, top - t.min)) * 100;
+      // A rung below zero is not something you climb, it is something you sink into. Its
+      // tube fills from the top, in red, by how far down you have gone — and it never gets a
+      // tick, because being above it is not an achievement, it is the default.
+      const sunk = t.min < 0;
+      const done = !sunk && v >= t.min;
+      const fill = sunk
+        ? (v >= top ? 0 : v <= t.min ? 100 : ((top - v) / Math.max(1, top - t.min)) * 100)
+        : (v >= top ? 100 : v <= t.min ? 0 : ((v - t.min) / Math.max(1, top - t.min)) * 100);
       const gate = gateFor ? gateFor(t) : null;
       return (<div key={t.id} style={{ display: 'flex', gap: 10, alignItems: 'stretch' }}>
-        <Tube fill={fill} lit={done} here={here} first={ri === 0} last={ri === arr.length - 1} />
+        <Tube fill={fill} lit={done || (sunk && fill > 0)} here={here} sink={sunk} first={ri === 0} last={ri === arr.length - 1} />
         <div style={{ flex: 1,
-          background: here ? `${theme.accent}1e` : theme.panel,
-          border: `1px solid ${here ? theme.accent : done ? theme.line : 'rgba(255,255,255,.05)'}`,
+          background: here ? (sunk ? 'rgba(255,90,114,.12)' : `${theme.accent}1e`) : theme.panel,
+          border: `1px solid ${here ? (sunk ? '#ff5a72' : theme.accent) : done ? theme.line : 'rgba(255,255,255,.05)'}`,
           borderRadius: 12, padding: '11px 13px', opacity: done || here ? 1 : .62 }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', gap: 8 }}>
-            <div style={{ fontSize: 14, fontWeight: 800, color: here ? theme.accent : theme.text }}>
+            <div style={{ fontSize: 14, fontWeight: 800, color: here ? (sunk ? '#ff8d9e' : theme.accent) : theme.text }}>
               {done && !here ? '✓ ' : ''}{t.label}{here ? ' · you are here' : ''}
             </div>
             <div style={{ fontSize: 11.5, fontWeight: 800, color: theme.muted, flexShrink: 0 }}>
-              {done ? t.min : `${Math.ceil(t.min - v)} to go`}
+              {sunk ? (v < top ? `below ${top}` : `from ${top - 1} down`) : done ? t.min : `${Math.ceil(t.min - v)} to go`}
             </div>
           </div>
           {gate && (<div style={{ fontSize: 11.5, marginTop: 6, padding: '6px 9px', borderRadius: 8,
@@ -471,7 +476,11 @@ function Ladder({ tiers, opens, value, gateFor }) {
 // bottom, because that is the direction you are going. Segments rather than one long bar:
 // the cards are different heights, so a single fill would put the marks in the wrong
 // places, and a picture that does not line up with its own numbers is worse than none.
-function Tube({ fill, lit, here, first, last }) {
+function Tube({ fill, lit, here, sink, first, last }) {
+  // Below zero the level comes DOWN from the top in red. Above it, up from the bottom in
+  // the accent. Same glass, opposite direction — which is exactly the point.
+  const col = sink ? '#ff5a72' : theme.accent;
+  const col2 = sink ? '#b03246' : (theme.accent2 || theme.accent);
   return (<div style={{ width: 16, flexShrink: 0, position: 'relative', display: 'flex', flexDirection: 'column' }}>
     <div style={{ position: 'absolute', inset: 0,
       background: 'rgba(255,255,255,.05)',
@@ -479,9 +488,9 @@ function Tube({ fill, lit, here, first, last }) {
       borderTopLeftRadius: first ? 9 : 0, borderTopRightRadius: first ? 9 : 0,
       borderBottomLeftRadius: last ? 9 : 0, borderBottomRightRadius: last ? 9 : 0,
       overflow: 'hidden' }}>
-      <div style={{ position: 'absolute', left: 0, right: 0, bottom: 0, height: fill + '%',
-        background: `linear-gradient(180deg, ${theme.accent}, ${theme.accent2 || theme.accent})`,
-        boxShadow: fill > 0 ? `0 0 12px -2px ${theme.accent}` : 'none',
+      <div style={{ position: 'absolute', left: 0, right: 0, [sink ? 'top' : 'bottom']: 0, height: fill + '%',
+        background: sink ? 'linear-gradient(180deg, ' + col2 + ', ' + col + ')' : 'linear-gradient(180deg, ' + col + ', ' + col2 + ')',
+        boxShadow: fill > 0 ? '0 0 12px -2px ' + col : 'none',
         transition: 'height .6s cubic-bezier(.2,.8,.3,1)' }} />
       {/* the glass: a highlight down one side */}
       <div style={{ position: 'absolute', left: 2, top: 0, bottom: 0, width: 3, borderRadius: 3,
@@ -490,9 +499,9 @@ function Tube({ fill, lit, here, first, last }) {
     {/* the mark at the rung itself, at the bottom of its own segment */}
     <div style={{ position: 'absolute', bottom: -5, left: '50%', transform: 'translateX(-50%)',
       width: here ? 14 : 10, height: here ? 14 : 10, borderRadius: 9,
-      background: lit ? theme.accent : theme.panel2,
-      border: `2px solid ${lit ? theme.accent : 'rgba(255,255,255,.14)'}`,
-      boxShadow: here ? `0 0 12px ${theme.accent}` : 'none',
+      background: lit ? col : theme.panel2,
+      border: '2px solid ' + (lit ? col : 'rgba(255,255,255,.14)'),
+      boxShadow: here ? '0 0 12px ' + col : 'none',
       zIndex: 2, transition: 'all .3s' }} />
   </div>);
 }

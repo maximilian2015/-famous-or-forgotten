@@ -1,3 +1,4 @@
+import { setRespect } from '../meta/status.js';
 import { rint } from '../../engine/rng.js';
 import { addTimeline } from '../../engine/timeline.js';
 import { skillCap } from './actions.js';
@@ -32,7 +33,7 @@ export function train(s, id) {
   gain = Math.max(1, Math.min(gain, cap - skill));
   s[key] = clamp(skill + gain);
   if (sc.mental) s.mental = clamp((s.mental || 50) + sc.mental);
-  if (sc.respect) s.respect = clamp((s.respect || 0) + sc.respect);
+  if (sc.respect) setRespect(s, (s.respect || 0) + sc.respect);
   const hitCap = s[key] >= cap;
   s.lastEvent = `${sc.label}${sc.cost ? ` — €${sc.cost.toLocaleString()}` : ''}. ${key === 'singing' ? 'Singing' : 'Acting'} +${gain}${hitCap ? " — and that's your ceiling until you work more" : ''}.`;
   if (sc.cost >= 4000) addTimeline(s, `Studied at a conservatory intensive. ${key === 'singing' ? 'Singing' : 'Acting'} +${gain}.`);
