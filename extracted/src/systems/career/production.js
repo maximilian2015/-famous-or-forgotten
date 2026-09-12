@@ -8,6 +8,7 @@ import { scheduleRelease } from './release.js';
 import { rollStability, productionTrouble, volatileSwing, roughness } from './stability.js';
 import { makePremise, prestigeShift, ratingShift, swingShift, apartShift, appealShift } from './story.js';
 import { skillCap } from './actions.js';
+import { coldStart } from '../meta/standing.js';
 const clamp = (v) => Math.max(0, Math.min(100, v));
 // A shoot opens on 20 and 20 used to be labelled "Disaster", so the very first thing the
 // game said about every film you ever made was that it was already a catastrophe — on day
@@ -26,13 +27,18 @@ const CREW_ROLES = { actor: ['Director', 'Co-star', 'Camera Operator'], singer: 
 const TRAITS = ['diva', 'perfectionist', 'chill', 'difficult'];
 const FIRST = ['Jonas', 'Mira', 'Theo', 'Nadia', 'Rin', 'Col', 'Ivy', 'Beau', 'Sasha', 'Omar'];
 const LAST = ['Vane', 'Croft', 'Reyes', 'Marsh', 'Onyx', 'Blythe', 'Cole', 'Ferro'];
-function makeCrew(dream) {
+// A crew has heard about you before you arrive. Below zero, they start colder — the
+// Avoided rung promised "crews ask not to be put on your call sheet" and nothing did it.
+function makeCrew(s) {
+  const dream = s.dream, cold = coldStart(s);
+  // bond0 is where they started, so the verdict at wrap can ask whether you made it worse.
   const used = new Set();
-  return CREW_ROLES[dream === 'singer' ? 'singer' : 'actor'].map((role) => {
+  return CREW_ROLES[dream === 'singer' ? 'singer' : 'actor'].map((role) => makeOne(role)).map((c) => ({ ...c, bond0: c.bond }));
+  function makeOne(role) {
     let name; do { name = `${pick(FIRST)} ${pick(LAST)}`; } while (used.has(name));
     used.add(name);
-    return { id: 'crew' + Math.random().toString(36).slice(2, 8), name, role, trait: pick(TRAITS), bond: rint(30, 55) };
-  });
+    return { id: 'crew' + Math.random().toString(36).slice(2, 8), name, role, trait: pick(TRAITS), bond: rint(30, 55) - cold };
+  }
 }
 export function startProduction(s, offer) {
   s.production = {
@@ -56,7 +62,7 @@ export function startProduction(s, offer) {
     // How solid the money is. Decides whether this shoot ever reaches its last day, and
     // how wildly the finished thing can turn out. See systems/career/stability.js.
     stability: offer.stability ?? rollStability(offer.scale || 'feature'),
-    crew: makeCrew(s.dream), meter: 20,
+    crew: makeCrew(s), meter: 20,
     // What it is about, and which version of it you end up shooting. See story.js — the
     // argument happens on day one and the room decides whether you are listened to.
     premise: makePremise(), take: null, takeWon: false,
@@ -321,7 +327,12 @@ function wrapProduction(s) {
   const spoke = lead.bond >= 70 || ((p.meter || 0) >= 85 && lead.bond >= 40);
   const room = Math.max(0.16, 1 - (s.respect || 0) / 112);
   if (spoke) { setRespect(s, (s.respect || 0) + 3 * room); verdictNote = ` ${lead.name} tells anyone who'll listen how good you were.`; }
-  else if (lead.bond <= 25) { setRespect(s, (s.respect || 0) - 3); verdictNote = ` ${lead.name} has quietly started telling a different story about you.`; }
+  // A cold verdict needs you to have made it worse. A crew that arrived having heard about
+  // you and left thinking the same has nothing new to tell anyone — without this, one bad
+  // set below zero became forty years at the floor: measured, the ordinary player went
+  // from lowest −14 to lowest −40 the moment crews started cold, because a cold start
+  // alone was enough to trip the verdict on every film.
+  else if (lead.bond <= 25 && lead.bond < (lead.bond0 ?? 100)) { setRespect(s, (s.respect || 0) - 3); verdictNote = ` ${lead.name} has quietly started telling a different story about you.`; }
   if (worldHit) s.worldHits = (s.worldHits || 0) + 1;
   // What the months on set left in you. Computed AFTER the rating, so this shoot is judged
   // on the actor you were when you walked on — not the one you walked off as.

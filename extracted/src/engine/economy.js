@@ -123,7 +123,7 @@ export function relevanceDrift(s) {
   // A publicist is the difference between a bad week and a bad year.
   // A scandal sticks to the face — famous and unrespected — for longer than to anyone else.
   // The press has decided you are a story. See systems/meta/standing.js.
-  const sticky = comboOf(s) === 'face' ? 0.6 : 1;
+  const sticky = comboOf(s) === 'face' || comboOf(s) === 'liability' ? 0.6 : 1;
   if ((s.scandal || 0) > 0) s.scandal = Math.max(0, s.scandal - 0.4 * (s.staff && s.staff.publicist ? 2.4 : 1) * sticky);
   if ((s.media || 0) > 0) s.media = Math.max(0, s.media - 0.8);
   if ((s._idleMonths || 0) < 4) return;

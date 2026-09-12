@@ -97,21 +97,27 @@ function Move({ m, col }) {
 // The two ladders read together. Each rung is a real archetype and each does something
 // somewhere else in the game; the thresholds are the ones in engine/combo.js.
 const COMBO_WHEN = {
-  face: 'Fame 55+ and standing under 30',
-  craft: 'Standing 40+ and fame under 35',
-  star: 'Fame 55+, standing 30 to 59',
   real: 'Fame 55+ and standing 60+',
-  tale: 'Forgotten, with standing below zero',
-  beginning: 'Everything else',
+  star: 'Fame 55+, standing 30 to 59',
+  face: 'Fame 55+ and standing under 30',
+  liability: 'Fame 55+ and Avoided (standing below −15)',
+  craft: 'Standing 40+ and fame under 35',
+  working: 'Fame 35 to 54 and standing 30+',
+  beginning: 'Nothing above applies yet',
+  difficult: 'Avoided (standing below −15), fame under 55',
+  asked: 'Forgotten, with standing 40+',
+  faded: 'Forgotten, standing −15 to 39',
+  tale: 'Forgotten and Avoided',
 };
+const COMBO_ORDER = ['real', 'star', 'face', 'liability', 'craft', 'working', 'beginning', 'difficult', 'asked', 'faded', 'tale'];
 function ComboGuide({ g }) {
   const here = comboOf(g);
   return (<div>
     <H>When the two ladders disagree</H>
-    <P>Fame is how many people know the name; standing is what the people who hire you think of it. The interesting careers are the ones where those two disagree — and the game treats each combination differently. Whichever one you are in is shown on the home screen.</P>
-    {['real', 'star', 'craft', 'face', 'tale', 'beginning'].map((id) => {
+    <P>Fame is how many people know the name; standing is what the people who hire you think of it. The interesting careers are the ones where those two disagree — and the game treats each combination differently. Eleven of them, five bad. Whichever one you are in is shown on the home screen.</P>
+    {COMBO_ORDER.map((id) => {
       const c = COMBOS[id];
-      return <Rung key={id} label={c.label} min={COMBO_WHEN[id]} lines={[c.line, ...c.fx]} here={here === id} sunk={id === 'face' || id === 'tale'} />;
+      return <Rung key={id} label={c.label} min={COMBO_WHEN[id]} lines={[c.line, ...c.fx]} here={here === id} sunk={c.tone === 'bad'} />;
     })}
   </div>);
 }

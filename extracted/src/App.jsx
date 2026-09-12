@@ -247,7 +247,7 @@ function OnSetNow({ g }) {
 
 function ComboStrip({ g }) {
   const id = comboOf(g), c = COMBOS[id];
-  const col = id === 'face' || id === 'tale' ? '#ff8d9e' : id === 'craft' ? '#7fd6a2' : id === 'real' ? theme.gold : theme.accent;
+  const col = c.tone === 'bad' ? '#ff8d9e' : c.tone === 'good' ? theme.gold : theme.accent;
   return (<div style={{ display: 'flex', gap: 9, alignItems: 'flex-start', padding: '9px 12px', marginBottom: 12, borderRadius: 12,
     background: col + '12', border: '1px solid ' + col + '33' }}>
     <span style={{ color: col, fontWeight: 900, fontSize: 13, flexShrink: 0 }}>◆</span>
@@ -260,7 +260,7 @@ function ComboStrip({ g }) {
 // The full card, for the two ladder screens: what the combination is and what it does.
 function ComboCard({ g }) {
   const id = comboOf(g), c = COMBOS[id];
-  const col = id === 'face' || id === 'tale' ? '#ff8d9e' : id === 'craft' ? '#7fd6a2' : id === 'real' ? theme.gold : theme.accent;
+  const col = c.tone === 'bad' ? '#ff8d9e' : c.tone === 'good' ? theme.gold : theme.accent;
   return (<Card style={{ marginBottom: 14, borderColor: col + '44' }}>
     <div style={{ fontSize: 11, fontWeight: 900, letterSpacing: '.08em', textTransform: 'uppercase', color: col, marginBottom: 4 }}>Fame × Respect · {c.label}</div>
     <div style={{ fontSize: 12.5, color: theme.muted, lineHeight: 1.55 }}>{c.long}</div>

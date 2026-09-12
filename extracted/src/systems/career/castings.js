@@ -8,7 +8,7 @@ import { GENRES } from '../meta/news.js';
 import { addGenreXP, genreBonus } from './genres.js';
 import { startProduction } from './production.js';
 import { quoteFor, episodeRate, setFame, isForgotten } from '../meta/status.js';
-import { reachFromStanding, prestigeShut } from '../meta/standing.js';
+import { reachFromStanding, prestigeShut, insuranceShut, roomHasHeard, boardThinned } from '../meta/standing.js';
 import { rollStability, feeFactor, riskPrestige } from './stability.js';
 import { askerStanding } from './awards.js';
 import { ageFit, seenForIt } from './age.js';
@@ -141,7 +141,8 @@ export function boardSize(s) {
   // Nobody sends a script to the answer to a trivia question. A name that fell is sent LESS
   // than a newcomer, because a newcomer is a blank page and a has-been is a story everyone
   // already knows the ending of. See isForgotten in systems/meta/status.js.
-  if (isForgotten(s)) base = 5;
+  // Unless the business is still asking about you — see standing.js.
+  if (isForgotten(s) && boardThinned(s)) base = 5;
   // It turns for women first, which is the ugly part of this business and worth saying
   // rather than smoothing away.
   const peakEnd = 42 - (s.gender === 'female' ? 5 : 0);
@@ -205,6 +206,8 @@ export function refreshCastingPool(s, force) {
     // And nobody good wants a name they do not respect on their prestige series. The face —
     // famous, unrespected — does not see that shelf at all. See systems/meta/standing.js.
     if ((scale === 'prestige' || /^Prestige/.test(type)) && prestigeShut(s)) continue;
+    // And nobody will insure the liability on a studio picture, whatever the audience says.
+    if ((scale === 'feature' || scale === 'blockbuster') && insuranceShut(s)) continue;
     // What YOU are worth in this medium. Zero means they would not have you at any
     // price yet — the listing simply does not appear.
     const quoted = Math.round(quoteFor(s, medium) * (share || 1));
@@ -243,7 +246,8 @@ export function castingChance(s, c) {
   const fit = c ? ageFit(s, c.role) : 1;
   // And you are not yourself in a room when you are carrying this.
   const raw = base * (0.35 + 0.65 * fit) * insurability(s) * (depressed(s) ? 0.62 : 1);
-  return Math.round(raw * reachFactor(s, c));
+  // Below zero, the room has heard about you before you read. See standing.js.
+  return Math.round(raw * reachFactor(s, c) * roomHasHeard(s));
 }
 // How far above you the part is.
 //

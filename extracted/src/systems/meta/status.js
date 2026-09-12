@@ -329,7 +329,9 @@ export function respectTier(r) {
 }
 export const RESPECT_OPENS = {
   avoided: [
-    'Crews ask not to be put on your call sheet',
+    'Crews start twelve points colder — they have heard about you before you arrive',
+    'The room has heard too: every audition is 15% harder',
+    'A star down here is the liability: no studio or prestige work, and the agent stops calling',
     'At the table you are nearly ten points harder to move than somebody at forty',
     'Your standing is actively COSTING you the argument for your version of the film',
   ],
