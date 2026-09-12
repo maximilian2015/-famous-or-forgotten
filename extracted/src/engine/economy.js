@@ -1,4 +1,5 @@
 import { inCareer } from './stage.js';
+import { comboOf } from './combo.js';
 import { addTimeline } from './timeline.js';
 // Concrete places to live rather than an abstract "lifestyle" slider — a room and a penthouse
 // are things a player can picture, and the rent IS the lifestyle cost.
@@ -120,7 +121,10 @@ export function relevanceDrift(s) {
   if (s.production) { s._idleMonths = 0; } else { s._idleMonths = (s._idleMonths || 0) + 1; }
   // Old news fades whether you like it or not.
   // A publicist is the difference between a bad week and a bad year.
-  if ((s.scandal || 0) > 0) s.scandal = Math.max(0, s.scandal - 0.4 * (s.staff && s.staff.publicist ? 2.4 : 1));
+  // A scandal sticks to the face — famous and unrespected — for longer than to anyone else.
+  // The press has decided you are a story. See systems/meta/standing.js.
+  const sticky = comboOf(s) === 'face' ? 0.6 : 1;
+  if ((s.scandal || 0) > 0) s.scandal = Math.max(0, s.scandal - 0.4 * (s.staff && s.staff.publicist ? 2.4 : 1) * sticky);
   if ((s.media || 0) > 0) s.media = Math.max(0, s.media - 0.8);
   if ((s._idleMonths || 0) < 4) return;
   // Purely proportional: nobody forgets a person they were never aware of. The flat
@@ -142,7 +146,9 @@ export function relevanceDrift(s) {
   // Once you have been an Icon the world does not un-know you. The one ceiling that
   // turns into a floor.
   const floor = (s.peakFame || 0) >= 90 ? 75 : 0;
-  s.fame = Math.max(floor, Math.min(100, s.fame - (height + noise) * shielded * (1 - talked)));
+  // And the real thing — known AND trusted — is forgotten slower, because people keep asking.
+  const asked = comboOf(s) === 'real' ? 0.8 : 1;
+  s.fame = Math.max(floor, Math.min(100, s.fame - (height + noise) * shielded * (1 - talked) * asked));
   if ((s._idleMonths === 13 || s._idleMonths === 25) && (s.fame || 0) > 5) {
     addTimeline(s, s._idleMonths > 20
       ? 'Two years without work. People talk about you in the past tense now.'

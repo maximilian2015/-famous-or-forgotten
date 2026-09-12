@@ -22,6 +22,7 @@ import { genreXP, genreBonus, genreLabel } from './systems/career/genres.js';
 import { Phone } from './phone/Phone.jsx';
 import { an, count } from './engine/text.js';
 import { inCareer } from './engine/stage.js';
+import { combo, comboOf, COMBOS } from './systems/meta/standing.js';
 import { theme, setSkin, skinId, onSkinChange } from './ui/theme.js';
 import { THEMES, THEME_ORDER } from './ui/skins.js';
 import { FONT, FONT_DISPLAY } from './ui/chrome.js';
@@ -109,6 +110,9 @@ export default function App() {
         </div>
       </div>
 
+      {/* Fame × Respect, in one line. The two ladders finally saying something together — the
+          face, the actor's actor, the real thing. See systems/meta/standing.js. */}
+      {inCareer(g) && comboOf(g) !== 'beginning' && screen === 'life' && <ComboStrip g={g} />}
       {/* Keyed on the tab so switching one fades and rises instead of snapping. */}
       <div key={screen} className="fof-in">
       {screen === 'people' ? <PeopleScreen g={g} openId={openPerson} setOpenId={setOpenPerson} /> :
@@ -241,6 +245,31 @@ function OnSetNow({ g }) {
   </div>);
 }
 
+function ComboStrip({ g }) {
+  const id = comboOf(g), c = COMBOS[id];
+  const col = id === 'face' || id === 'tale' ? '#ff8d9e' : id === 'craft' ? '#7fd6a2' : id === 'real' ? theme.gold : theme.accent;
+  return (<div style={{ display: 'flex', gap: 9, alignItems: 'flex-start', padding: '9px 12px', marginBottom: 12, borderRadius: 12,
+    background: col + '12', border: '1px solid ' + col + '33' }}>
+    <span style={{ color: col, fontWeight: 900, fontSize: 13, flexShrink: 0 }}>◆</span>
+    <div>
+      <div style={{ fontSize: 12.5, fontWeight: 800, color: col }}>{c.label}</div>
+      <div style={{ fontSize: 11.5, color: theme.muted, lineHeight: 1.5, marginTop: 1 }}>{c.line}</div>
+    </div>
+  </div>);
+}
+// The full card, for the two ladder screens: what the combination is and what it does.
+function ComboCard({ g }) {
+  const id = comboOf(g), c = COMBOS[id];
+  const col = id === 'face' || id === 'tale' ? '#ff8d9e' : id === 'craft' ? '#7fd6a2' : id === 'real' ? theme.gold : theme.accent;
+  return (<Card style={{ marginBottom: 14, borderColor: col + '44' }}>
+    <div style={{ fontSize: 11, fontWeight: 900, letterSpacing: '.08em', textTransform: 'uppercase', color: col, marginBottom: 4 }}>Fame × Respect · {c.label}</div>
+    <div style={{ fontSize: 12.5, color: theme.muted, lineHeight: 1.55 }}>{c.long}</div>
+    {c.fx.length > 0 && <div style={{ marginTop: 8 }}>
+      {c.fx.map((l, i) => <div key={i} style={{ fontSize: 11.5, color: theme.text, lineHeight: 1.5, display: 'flex', gap: 6, opacity: .9 }}><span style={{ color: col }}>·</span><span>{l}</span></div>)}
+    </div>}
+  </Card>);
+}
+
 // The two settings the game has: what it looks like, and whether it makes a sound. Kept
 // out of the save on purpose — both should survive starting a new life.
 function SettingsRow() {
@@ -333,6 +362,7 @@ function RespectScreen({ g, onBack }) {
       </div>}
     </Card>
 
+    <ComboCard g={g} />
     <div style={{ fontSize: 11, fontWeight: 900, letterSpacing: '.09em', textTransform: 'uppercase', color: theme.muted, marginBottom: 8 }}>The whole climb</div>
     <Ladder tiers={RESPECT_TIERS} opens={RESPECT_OPENS} value={g.respect} />
     <div style={{ fontSize: 11, fontWeight: 900, letterSpacing: '.09em', textTransform: 'uppercase', color: theme.muted, marginBottom: 4 }}>What it is worth</div>
@@ -406,6 +436,7 @@ function FameScreen({ g, onBack }) {
       </div>
     </Card>
 
+    <ComboCard g={g} />
     <div style={{ fontSize: 11, fontWeight: 900, letterSpacing: '.09em', textTransform: 'uppercase', color: theme.muted, marginBottom: 8 }}>The whole climb</div>
     <Ladder tiers={[FORGOTTEN, ...FAME_TIERS]} opens={{ ...TIER_OPENS, forgotten: FORGOTTEN_OPENS }} value={g.fame}
       sunkAt={isForgotten(g) ? { id: 'forgotten', fill: forgottenDepth(g) } : null}

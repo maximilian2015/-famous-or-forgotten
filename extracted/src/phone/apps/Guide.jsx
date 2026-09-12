@@ -6,6 +6,7 @@ import { FAME_TIERS, TIER_OPENS, FORGOTTEN, FORGOTTEN_OPENS, RESPECT_TIERS, RESP
 import { STAFF, STAFF_ORDER, THINGS, THING_ORDER, HOME_PRICE } from '../../systems/life/money.js';
 import { TAKES } from '../../systems/career/story.js';
 import { HOUSING } from '../../engine/economy.js';
+import { COMBOS, comboOf } from '../../systems/meta/standing.js';
 
 // The bible. Every rule the game runs on, in one place, off the screens where it was
 // taking up room. Maxi: "the explanations are everywhere and they take a lot of space —
@@ -16,7 +17,7 @@ import { HOUSING } from '../../engine/economy.js';
 // Nothing here is invented copy. Every number is read from the table that runs it.
 
 const SECTIONS = [
-  ['fame', 'Fame', '★'], ['respect', 'Respect', '◆'], ['doors', 'The two doors', '🚪'],
+  ['fame', 'Fame', '★'], ['respect', 'Respect', '◆'], ['combo', 'Fame × Respect', '✕'], ['doors', 'The two doors', '🚪'],
   ['set', 'On set', '🎬'], ['money', 'Money', '€'], ['press', 'The press', '🗞'],
 ];
 
@@ -37,6 +38,7 @@ export function Guide({ g }) {
     </div>
     {sec === 'fame' && <FameGuide g={g} />}
     {sec === 'respect' && <RespectGuide g={g} />}
+    {sec === 'combo' && <ComboGuide g={g} />}
     {sec === 'doors' && <DoorsGuide />}
     {sec === 'set' && <SetGuide />}
     {sec === 'money' && <MoneyGuide />}
@@ -92,6 +94,28 @@ function Move({ m, col }) {
   </div>);
 }
 
+// The two ladders read together. Each rung is a real archetype and each does something
+// somewhere else in the game; the thresholds are the ones in engine/combo.js.
+const COMBO_WHEN = {
+  face: 'Fame 55+ and standing under 30',
+  craft: 'Standing 40+ and fame under 35',
+  star: 'Fame 55+, standing 30 to 59',
+  real: 'Fame 55+ and standing 60+',
+  tale: 'Forgotten, with standing below zero',
+  beginning: 'Everything else',
+};
+function ComboGuide({ g }) {
+  const here = comboOf(g);
+  return (<div>
+    <H>When the two ladders disagree</H>
+    <P>Fame is how many people know the name; standing is what the people who hire you think of it. The interesting careers are the ones where those two disagree — and the game treats each combination differently. Whichever one you are in is shown on the home screen.</P>
+    {['real', 'star', 'craft', 'face', 'tale', 'beginning'].map((id) => {
+      const c = COMBOS[id];
+      return <Rung key={id} label={c.label} min={COMBO_WHEN[id]} lines={[c.line, ...c.fx]} here={here === id} sunk={id === 'face' || id === 'tale'} />;
+    })}
+  </div>);
+}
+
 function DoorsGuide() {
   return (<div>
     <H>The two doors</H>
@@ -114,7 +138,7 @@ function SetGuide() {
     {Object.values(TAKES).map((t) => <Rung key={t.id} label={t.label} min={t.push ? `${t.push} to push` : 'no argument'} lines={[t.blurb]} />)}
     <H>Every month after</H>
     <P>Rehearse, run a take, or spend an evening with the crew — each is one Energy and each counts as turning up prepared. A month you do none of them, the director notices, if the set is not going well: nothing the first time, then it cools them. A month you drink through, the whole set notices. A party during a shoot is a call you are late for.</P>
-    <P>At wrap, a director who warmed to you tells people — +3 standing. One who went cold tells a different story — −3. The film is judged on the actor you were when you walked on; what the months taught you lands after.</P>
+    <P>A set that is going well warms the director a little every month you turn up for it; a set that is going very well warms them faster. At wrap, a director who warmed to you tells people — +3 standing — and so does one who was never your friend but watched you carry a set to 85. One who went cold tells a different story — −3. The film is judged on the actor you were when you walked on; what the months taught you lands after.</P>
   </div>);
 }
 

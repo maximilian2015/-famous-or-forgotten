@@ -155,6 +155,17 @@ export function productionTick(s) {
     lead.bond = clamp(lead.bond - cool);
     if (p._winged === 2) addTimeline(s, `${lead.name} has noticed you turn up not knowing the pages.`, true);
   }
+  // And the reverse, which was missing. The director's opinion only ever moved DOWN on its
+  // own — up took an evening with them, one energy at a time — so a player who rehearsed
+  // every month of forty years wrapped seventy films and never once heard a good word:
+  // measured, the +3 at wrap fired zero times across fifteen perfect careers, and standing
+  // sat at 4 after twenty years of doing everything right. They see the work. A month you
+  // turned up for on a set that is going well warms them, and a set that is going very
+  // well warms them faster.
+  // The line is the same 55 the cooling reads: below it they wonder, above it they notice.
+  if (lead && p._workedMonth === stamp - 1 && (p.meter || 0) >= 55) {
+    lead.bond = clamp(lead.bond + ((p.meter || 0) >= 80 ? rint(3, 5) : rint(2, 3)));
+  }
   // And a month you drank your way through, the whole set noticed. drunkMonths was counted
   // and hit the rating, silently — the director never reacted and nobody said anything.
   if (lead && p.drunkMonths && p._drunkSeen !== p.drunkMonths) {
@@ -301,7 +312,15 @@ function wrapProduction(s) {
   // What the crew says about you travels immediately — long before anyone sees the film.
   const lead = p.crew[0];
   let verdictNote = '';
-  if (lead.bond >= 70) { setRespect(s, (s.respect || 0) + 3); verdictNote = ` ${lead.name} tells anyone who'll listen how good you were.`; }
+  // A director who liked you says so. So does one who was never your friend but watched you
+  // carry a set that went that well — the work is what they talk about afterwards. This is
+  // the one source of standing that answers preparation directly, so it is the one that has
+  // to be reachable: on a shoot of three months or more, an actor who turns up every month
+  // gets the set there; on a two-month short, nobody earns a director's loyalty. Slower
+  // at the top, like every other way up — the tenth good word is worth less than the first.
+  const spoke = lead.bond >= 70 || ((p.meter || 0) >= 85 && lead.bond >= 40);
+  const room = Math.max(0.16, 1 - (s.respect || 0) / 112);
+  if (spoke) { setRespect(s, (s.respect || 0) + 3 * room); verdictNote = ` ${lead.name} tells anyone who'll listen how good you were.`; }
   else if (lead.bond <= 25) { setRespect(s, (s.respect || 0) - 3); verdictNote = ` ${lead.name} has quietly started telling a different story about you.`; }
   if (worldHit) s.worldHits = (s.worldHits || 0) + 1;
   // What the months on set left in you. Computed AFTER the rating, so this shoot is judged

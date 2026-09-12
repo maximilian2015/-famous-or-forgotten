@@ -15,6 +15,7 @@ import { markReleased } from '../../engine/economy.js';
 import { hotGenre } from '../meta/news.js';
 import { maybeContinue } from './franchise.js';
 import { appealShift } from './story.js';
+import { comebackFloor } from '../meta/standing.js';
 
 const clamp = (v, a = 0, b = 100) => Math.max(a, Math.min(b, v));
 
@@ -121,6 +122,8 @@ export function scheduleRelease(s, credit, p) {
     rating: credit.rating, status: credit.status, worldHit: credit.status === 'World Hit',
     // Carried for the Asker season: whether it was pushed, and how good the material was.
     campaign: !!p.campaign, prestigeScore: p.prestigeScore, director: credit.director || null,
+    // And how the set went, because the business judges the performance, not only the film.
+    meter: p.meter || 0,
     // What the version you shot does to the box office, and the line it was pitched on.
     appealMod: appealShift(p), premise: p.premise || credit.premise || null, take: credit.take || null,
     due: (s.year || 0) * 12 + (s.month || 0) + wait, wait,
@@ -291,7 +294,7 @@ function closeRun(s, credit, r) {
   // the word, and you climb through Rising Star like anyone else, with a thinner board.
   // Once, and only from Forgotten — the second comeback is just a career.
   const wasForgotten = (s.peakFame || 0) >= 35 && (s.fame || 0) < 15;
-  if (wasForgotten && r.rating >= 70 && !s._cameBack) {
+  if (wasForgotten && r.rating >= comebackFloor(s) && !s._cameBack) {
     s._cameBack = true;
     s.media = Math.min(100, (s.media || 0) + 28);
     setRespect(s, (s.respect || 0) + 4);
@@ -311,7 +314,18 @@ function closeRun(s, credit, r) {
   // pattern of walking off. A perfect player was still hovering at −2 for nine years on
   // the first version of this, because the first fifteen films are bad whatever you do.
   const expected = (s.respect || 0) <= -5 ? 0 : Math.min(1, Math.max(0.1, ((s.respect || 0) + 5) / 45));
-  const respectGain = r.rating >= 85 ? 5 : r.rating >= 70 ? 2 : r.rating < 45 ? -4 * expected : 0;
+  let respectGain = r.rating >= 85 ? 5 : r.rating >= 70 ? 2 : r.rating < 45 ? -4 * expected : 0;
+  // The business judges the performance, not only the film — and it can tell them apart.
+  // Measured: an actor at a hundred, rehearsing every month, still put a quarter of their
+  // small films under 45 and half of the rest in the fifties, because a short with no
+  // money is a short with no money. Every one of those cost standing or earned none, so
+  // the one career that should build standing before fame — good, and selective — could
+  // not. A set you carried (meter 85+) changes the reading: a bad film is the film's
+  // fault, and a middling one still gets your name mentioned. The word for it is the
+  // oldest one in the reviews: "the only good thing in it".
+  const carried = (r.meter || 0) >= 85;
+  if (carried && r.rating < 45) respectGain = 0;
+  else if (carried && r.rating >= 45 && r.rating < 70) respectGain = 1;
   const soft = (limit, cur) => Math.max(0.16, 1 - (cur || 0) / limit);
   setRespect(s, (s.respect || 0) + (respectGain > 0 ? respectGain * soft(112, s.respect) : respectGain));
   if (film && verdict === 'smash') setQuote(s, Math.max(s.quote || 0, (r.salary || 0) * 1.6));
@@ -325,7 +339,9 @@ function closeRun(s, credit, r) {
   const score = credit.score.toFixed(1);
   const line = r.worldHit
     ? `🌍 "${credit.title}" is a phenomenon. ${score}/10 · ${money}.`
-    : `"${credit.title}" finished its run. ${score}/10 · ${money} · ${verdict}.`;
+    : `"${credit.title}" finished its run. ${score}/10 · ${money} · ${verdict}.`
+      + (carried && r.rating < 45 ? ' The reviews agree on one thing: you were the only good thing in it.'
+        : carried && r.rating < 70 ? ' The film is nothing much. Your performance is what the reviews are about.' : '');
   s.lastEvent = line;
   addTimeline(s, line, r.rating < 50 || verdict === 'bomb');
 

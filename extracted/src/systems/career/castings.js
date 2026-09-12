@@ -8,6 +8,7 @@ import { GENRES } from '../meta/news.js';
 import { addGenreXP, genreBonus } from './genres.js';
 import { startProduction } from './production.js';
 import { quoteFor, episodeRate, setFame, isForgotten } from '../meta/status.js';
+import { reachFromStanding, prestigeShut } from '../meta/standing.js';
 import { rollStability, feeFactor, riskPrestige } from './stability.js';
 import { askerStanding } from './awards.js';
 import { ageFit, seenForIt } from './age.js';
@@ -16,7 +17,9 @@ import { canWork, insurability, depressed } from '../life/strain.js';
 // and it is the one route into work above your level that does not run through
 // blockbusters. An actor with a statuette and forty fame gets read for parts that used
 // to want seventy.
-export function reach(s) { return (s.fame || 0) + askerStanding(s); }
+// And standing, once it is high enough to be talked about: a respected nobody is sent parts
+// their fame does not justify. See systems/meta/standing.js — the actor's actor.
+export function reach(s) { return (s.fame || 0) + askerStanding(s) + reachFromStanding(s); }
 const clamp = (v) => Math.max(0, Math.min(100, v));
 // Two things the old table got wrong, both of them real-world facts:
 //   · television is paid PER EPISODE, film is paid for the picture. They are not the
@@ -199,6 +202,9 @@ export function refreshCastingPool(s, force) {
     // Above the ceiling this kind of work simply stops being sent to you. Nobody offers an
     // A-lister a background call.
     if (maxFame != null && reach(s) > maxFame) continue;
+    // And nobody good wants a name they do not respect on their prestige series. The face —
+    // famous, unrespected — does not see that shelf at all. See systems/meta/standing.js.
+    if ((scale === 'prestige' || /^Prestige/.test(type)) && prestigeShut(s)) continue;
     // What YOU are worth in this medium. Zero means they would not have you at any
     // price yet — the listing simply does not appear.
     const quoted = Math.round(quoteFor(s, medium) * (share || 1));
