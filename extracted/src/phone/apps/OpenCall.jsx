@@ -9,6 +9,7 @@ import { negotiationFor, haggleOdds, applyHaggle } from '../../systems/career/ne
 import { stabilityBand, riskCostFor, volatility } from '../../systems/career/stability.js';
 import { ageFit } from '../../systems/career/age.js';
 import { canWork } from '../../systems/life/strain.js';
+import { hotGenre } from '../../systems/meta/news.js';
 
 // Only appears once you are somebody. Below Star you are told the number.
 function Haggle({ g, c }) {
@@ -57,7 +58,7 @@ function Backing({ g, c }) {
   const under = Math.round((1 - (c.feeFactor || 1)) * 100);
   const swing = volatility(c.stability);
   const col = BAND_COL[band.id] || theme.muted;
-  return (<div style={{ marginTop: 7, border: `1px solid ${col}33`, borderRadius: 10, padding: '7px 9px', background: 'rgba(255,255,255,.025)' }}>
+  return (<div style={{ marginTop: 2, border: `1px solid ${col}33`, borderRadius: 10, padding: '7px 9px', background: 'rgba(255,255,255,.025)' }}>
     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', gap: 8 }}>
       <span style={{ fontSize: 10, fontWeight: 900, letterSpacing: '.1em', textTransform: 'uppercase', color: col }}>
         {band.label}
@@ -97,6 +98,8 @@ function Waiting({ g }) {
 export function OpenCall({ g, ocTab, setOcTab, teenMode }) {
   const [audition, setAudition] = useState(null);
   const [result, setResult] = useState(null);
+  const [openId, setOpenId] = useState(null);
+  const trend = hotGenre(g);
   useEffect(() => {
     if (!g.castingPool || !g.castingPool.length) dispatch((s) => { refreshCastingPool(s); return s; });
   }, [g.castingPool]);
@@ -152,71 +155,78 @@ export function OpenCall({ g, ocTab, setOcTab, teenMode }) {
       {canWork(g).why}
     </div>}
     {!list.length && <div style={{ fontSize: 12.5, color: theme.muted, textAlign: 'center', padding: 22 }}>Nothing on this shelf right now.</div>}
+    {/* A board, not a wall. Every listing used to arrive fully open — backing, negotiation,
+        the sides, the read, eight lines apiece, five apiece per shelf — and Maxi called it
+        what it was. Now a row is a row: what it is, what it pays, how long, your odds.
+        Tap one and it opens, and only one is open at a time. */}
     {list.map((c) => { const locked = reach(g) < (c.minFame || 0); const ch = castingChance(g, c); const chipCol = ch >= 70 ? theme.good : ch >= 45 ? theme.accent : theme.gold;
-      // An Asker counts toward the gate, and the player should be told that is why.
       const byAsker = locked === false && (g.fame || 0) < (c.minFame || 0);
-      return (<div key={c.id} style={{ background: theme.panel, border: `1px solid ${theme.line}`, borderRadius: 12, padding: '10px 12px', marginBottom: 8 }}>
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline' }}>
-          <div style={{ fontSize: 13.5, fontWeight: 800 }}>{c.title}</div>
-          <div style={{ textAlign: 'right' }}>
-            {/* Television is quoted per episode, film for the picture. Same as real life. */}
-            <div style={{ fontSize: 13, fontWeight: 900, color: theme.gold }}>
-              €{(c.perEpisode ? c.episodeFee : c.salary).toLocaleString()}
-              <span style={{ fontSize: 10, fontWeight: 700, color: theme.muted }}>{c.perEpisode ? '/ep' : ''}</span>
-            </div>
-            <div style={{ fontSize: 10, color: theme.muted, fontWeight: 700 }}>
-              {c.perEpisode ? `€${c.salary.toLocaleString()} for ${c.episodes} eps` : 'for the picture'}
+      const isOpen = openId === c.id;
+      const band = c.stability != null && (c.months || 1) >= 2 ? stabilityBand(c.stability) : null;
+      const bandCol = band ? (BAND_COL[band.id] || theme.muted) : null;
+      const onTrend = c.genre === trend;
+      const f = ageFit(g, c.role);
+      const lateShelf = /Character lead|matriarch|Elder|Grandparent/.test(c.role);
+      return (<div key={c.id} style={{ background: theme.panel, border: `1px solid ${isOpen ? theme.accent + '66' : theme.line}`, borderRadius: 12, marginBottom: 7, overflow: 'hidden' }}>
+        <button onClick={() => setOpenId(isOpen ? null : c.id)} style={{ width: '100%', textAlign: 'left', background: 'transparent', border: 'none', padding: '9px 12px', cursor: 'pointer', color: theme.text }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', gap: 8 }}>
+            <div style={{ fontSize: 13.5, fontWeight: 800, minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{c.title}</div>
+            <div style={{ fontSize: 12.5, fontWeight: 900, color: theme.gold, whiteSpace: 'nowrap' }}>
+              €{(c.perEpisode ? c.episodeFee : c.salary).toLocaleString()}<span style={{ fontSize: 10, fontWeight: 700, color: theme.muted }}>{c.perEpisode ? '/ep' : ''}</span>
             </div>
           </div>
-        </div>
-        <div style={{ fontSize: 11.5, color: theme.muted, marginTop: 3 }}>{c.role} · {c.type}</div>
-        {/* Why the odds on this one are worse than on the one below it. */}
-        {(() => { const f = ageFit(g, c.role);
-          if (f >= 0.98) return null;
-          const lateShelf = /Character lead|matriarch|Elder|Grandparent/.test(c.role);
-          return (<div style={{ fontSize: 10.5, color: f < 0.6 ? theme.bad : theme.gold, marginTop: 3, lineHeight: 1.4 }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 8, marginTop: 4 }}>
+            <div style={{ fontSize: 11, color: theme.muted, minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+              {c.role} · {c.type} · <span style={{ color: onTrend ? theme.good : theme.muted }}>{c.genre}{onTrend ? ' ↑' : ''}</span> · {c.months > 1 ? `${c.months} mo` : 'one day'}
+              {band && <span style={{ color: bandCol }}> · {band.label.toLowerCase()}</span>}
+            </div>
+            <span style={{ fontSize: 10.5, fontWeight: 800, padding: '2px 8px', borderRadius: 20, background: 'rgba(158,116,255,.18)', color: locked ? theme.muted : chipCol, whiteSpace: 'nowrap' }}>
+              {locked ? `fame ${c.minFame}` : `${ch}%`}{byAsker ? ' 🏆' : ''}
+            </span>
+          </div>
+        </button>
+        {isOpen && <div style={{ padding: '0 12px 11px' }}>
+          {c.perEpisode && <div style={{ fontSize: 10.5, color: theme.muted, marginBottom: 6 }}>€{c.salary.toLocaleString()} for {c.episodes} episodes</div>}
+          {f < 0.98 && <div style={{ fontSize: 10.5, color: f < 0.6 ? theme.bad : theme.gold, marginBottom: 6, lineHeight: 1.4 }}>
             {lateShelf ? 'Written for someone who has lived a bit. That is you now.'
               : f < 0.6 ? 'They are picturing someone younger. You would be a stretch.'
               : 'You are at the top end of what they had in mind.'}
-          </div>); })()}
-        {/* How long this eats of your life, before you say yes to it. */}
-        <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginTop: 7 }}>
-          <div style={{ display: 'flex', gap: 2, flex: 1 }}>
-            {Array.from({ length: 14 }).map((_, i) => (<span key={i} style={{ flex: 1, height: 5, borderRadius: 1,
-              background: i < (c.months || 1) ? (c.months >= 8 ? theme.gold : theme.accent) : 'rgba(255,255,255,.09)' }} />))}
-          </div>
-          <span style={{ fontSize: 10.5, fontWeight: 800, color: c.months >= 8 ? theme.gold : theme.muted, whiteSpace: 'nowrap' }}>
-            {c.months > 1 ? `${c.months} mo shoot` : 'one day'}
-          </span>
-        </div>
-        <span style={{ display: 'inline-block', fontSize: 10.5, fontWeight: 800, padding: '3px 8px', borderRadius: 20, background: 'rgba(158,116,255,.18)', color: chipCol, marginTop: 7 }}>{locked ? `Needs fame ${c.minFame}` : ch + '% shot'}</span>
-        {byAsker && <span style={{ display: 'inline-block', fontSize: 10, fontWeight: 800, padding: '3px 8px', borderRadius: 20, background: 'rgba(255,209,102,.16)', color: theme.gold, marginTop: 7, marginLeft: 6 }}>🏆 they read you on the Asker</span>}
-        <Backing g={g} c={c} />
-        {!locked && <Haggle g={g} c={c} />}
-        {/* Signed off means the room is closed, not that you play the read and lose it after. */}
-        {/* The months before you walk in are yours to spend. See systems/career/castings.js. */}
-        {!locked && (() => {
-          const step = nextPrep(c); const bonus = prepBonus(c);
-          const cost = step ? Math.round(step.cost * (1 + Math.min(2, (g.fame || 0) / 60))) : 0;
-          const dead = !step || (g.ap || 0) <= 0 || cost > (g.cash || 0);
-          return (<div style={{ marginTop: 7 }}>
-            {bonus > 0 && <div style={{ fontSize: 10.5, fontWeight: 800, color: theme.good, marginBottom: 5 }}>
-              Prepared · +{bonus} to your chances
-            </div>}
-            {step && <button onClick={() => dispatch(prepareFor, c.id)} disabled={dead}
-              style={{ width: '100%', border: `1px solid ${dead ? 'transparent' : theme.line}`, borderRadius: 10, padding: '8px',
-                fontSize: 12, fontWeight: 800, cursor: dead ? 'default' : 'pointer',
-                background: dead ? 'rgba(120,110,150,.12)' : 'rgba(158,116,255,.14)', color: dead ? '#6b6390' : '#d9cffa' }}>
-              {step.label}{cost ? ` · €${cost.toLocaleString()}` : ' · free'} · 1 energy
-            </button>}
-          </div>); })()}
-        {!locked && (() => { const off = !canWork(g).ok; const dead = off || (g.ap||0)<=0;
-          const waits = (c.months || 1) >= 2;
-          return (<div style={{ marginTop: 8 }}><button onClick={() => openAudition(c)} disabled={dead} style={{ width: '100%', border: 'none', borderRadius: 10, padding: '9px', fontSize: 12.5, fontWeight: 800, cursor: dead?'default':'pointer', background: dead?'rgba(120,110,150,.15)':`linear-gradient(135deg,${theme.accent2},${theme.accent})`, color: dead?'#6b6390':'#fff' }}>{off ? 'Signed off' : 'Audition'}</button>
-            {waits && !dead && <div style={{ fontSize: 10.5, color: theme.muted, textAlign: 'center', marginTop: 5 }}>
-              They answer in one to three months.
-            </div>}
-          </div>); })()}
+          </div>}
+          {byAsker && <div style={{ fontSize: 10.5, fontWeight: 800, color: theme.gold, marginBottom: 6 }}>🏆 They read you on the Asker — your fame alone would not get you in.</div>}
+          {locked && <div style={{ fontSize: 10.5, color: theme.muted, marginBottom: 6, lineHeight: 1.45 }}>Needs fame {c.minFame}. Nobody sends these sides to a name they have not heard.</div>}
+          {/* How long this eats of your life, before you say yes to it. */}
+          {(c.months || 1) > 1 && <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 6 }}>
+            <div style={{ display: 'flex', gap: 2, flex: 1 }}>
+              {Array.from({ length: 14 }).map((_, i) => (<span key={i} style={{ flex: 1, height: 5, borderRadius: 1,
+                background: i < (c.months || 1) ? (c.months >= 8 ? theme.gold : theme.accent) : 'rgba(255,255,255,.09)' }} />))}
+            </div>
+            <span style={{ fontSize: 10.5, fontWeight: 800, color: c.months >= 8 ? theme.gold : theme.muted, whiteSpace: 'nowrap' }}>{c.months} months of your life</span>
+          </div>}
+          <Backing g={g} c={c} />
+          {!locked && <Haggle g={g} c={c} />}
+          {/* The months before you walk in are yours to spend. See systems/career/castings.js. */}
+          {!locked && (() => {
+            const step = nextPrep(c); const bonus = prepBonus(c);
+            const cost = step ? Math.round(step.cost * (1 + Math.min(2, (g.fame || 0) / 60))) : 0;
+            const dead = !step || (g.ap || 0) <= 0 || cost > (g.cash || 0);
+            const off = !canWork(g).ok; const deadRead = off || (g.ap || 0) <= 0;
+            const waits = (c.months || 1) >= 2;
+            return (<div style={{ marginTop: 8 }}>
+              {bonus > 0 && <div style={{ fontSize: 10.5, fontWeight: 800, color: theme.good, marginBottom: 5 }}>Prepared · +{bonus} to your chances</div>}
+              <div style={{ display: 'flex', gap: 7 }}>
+                {step && <button onClick={() => dispatch(prepareFor, c.id)} disabled={dead}
+                  style={{ flex: 1, border: `1px solid ${dead ? 'transparent' : theme.line}`, borderRadius: 10, padding: '9px 6px', fontSize: 11.5, fontWeight: 800, cursor: dead ? 'default' : 'pointer',
+                    background: dead ? 'rgba(120,110,150,.12)' : 'rgba(158,116,255,.14)', color: dead ? '#6b6390' : '#d9cffa' }}>
+                  {step.label}{cost ? ` · €${cost.toLocaleString()}` : ''} · 1 ⚡
+                </button>}
+                <button onClick={() => openAudition(c)} disabled={deadRead} style={{ flex: 1, border: 'none', borderRadius: 10, padding: '9px 6px', fontSize: 12.5, fontWeight: 800, cursor: deadRead ? 'default' : 'pointer', background: deadRead ? 'rgba(120,110,150,.15)' : `linear-gradient(135deg,${theme.accent2},${theme.accent})`, color: deadRead ? '#6b6390' : '#fff' }}>
+                  {off ? 'Signed off' : 'Audition · 1 ⚡'}
+                </button>
+              </div>
+              {waits && !deadRead && <div style={{ fontSize: 10.5, color: theme.muted, textAlign: 'center', marginTop: 5 }}>They answer in one to three months.</div>}
+            </div>);
+          })()}
+        </div>}
       </div>); })}
     <div style={{ marginTop: 4 }}><button onClick={() => dispatch(rerollBoard)} disabled={!canReroll(g)} style={{ width: '100%', border: 'none', borderRadius: 10, padding: '9px', fontSize: 12.5, fontWeight: 800, cursor: canReroll(g) ? 'pointer' : 'default', background: canReroll(g) ? 'rgba(158,116,255,.16)' : 'rgba(120,110,150,.15)', color: canReroll(g) ? '#d9cffa' : '#6b6390' }}>{canReroll(g) ? 'Go through the listings again' : 'You have seen everything going this month'}</button></div>
   </div>);

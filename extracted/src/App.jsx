@@ -1599,6 +1599,9 @@ function PeopleScreen({ g, openId, setOpenId }) {
   const family = (g.family || []).filter((p) => p.alive);
   const deceased = (g.family || []).filter((p) => !p.alive);
   const people = g.people || [];
+  const [showDrifted, setShowDrifted] = useState(false);
+  const warm = people.filter((p) => !p.cold).sort((a, b) => (b.relationship || 0) - (a.relationship || 0));
+  const drifted = people.filter((p) => p.cold);
   if (openId) return <PersonSheet g={g} id={openId} onClose={() => setOpenId(null)} />;
   return (<div>
     {g.partner && (<><div style={{ fontSize: 11, fontWeight: 900, letterSpacing: '.09em', textTransform: 'uppercase', color: theme.muted, marginBottom: 8 }}>Partner</div>
@@ -1606,9 +1609,17 @@ function PeopleScreen({ g, openId, setOpenId }) {
     <div style={{ fontSize: 11, fontWeight: 900, letterSpacing: '.09em', textTransform: 'uppercase', color: theme.muted, margin: '14px 0 8px' }}>Family</div>
     {family.map((p) => (<PersonRow key={p.id} g={g} p={p} sub={`${p.relation}, ${p.age}`} onOpen={() => setOpenId(p.id)} />))}
     {deceased.length > 0 && <div style={{ fontSize: 11, color: theme.muted, marginTop: 4, marginBottom: 10, opacity: .7 }}>In memory: {deceased.map((p) => `${p.name} (${p.relation})`).join(', ')}</div>}
-    {people.length > 0 && (<><div style={{ fontSize: 11, fontWeight: 900, letterSpacing: '.09em', textTransform: 'uppercase', color: theme.muted, margin: '14px 0 8px' }}>Industry contacts</div>{people.map((p) => { const opensDoor = p.unlocks === 'aaa' && p.industryWeight >= 80;
+    {/* Closest first, and the ones who drifted folded away at the bottom rather than mixed in —
+        a phone with forty names in it is only usable if the ones that matter are on top. */}
+    {warm.length > 0 && (<><div style={{ fontSize: 11, fontWeight: 900, letterSpacing: '.09em', textTransform: 'uppercase', color: theme.muted, margin: '14px 0 8px' }}>Industry contacts · {warm.length}</div>{warm.map((p) => { const opensDoor = p.unlocks === 'aaa' && p.industryWeight >= 80;
       return (<PersonRow key={p.id} g={g} p={p} onOpen={() => setOpenId(p.id)}
-        sub={`${p.role}${opensDoor && p.relationship >= 60 ? ' · opens A-list ★' : opensDoor ? ' · could open doors' : ''}`} />); })}</>)}
+        sub={`${p.role}${p.fromSet ? ` · from ${p.fromSet}` : ''}${opensDoor && p.relationship >= 60 ? ' · opens A-list ★' : opensDoor ? ' · could open doors' : ''}`} />); })}</>)}
+    {drifted.length > 0 && (<div style={{ marginTop: 10 }}>
+      <button onClick={() => setShowDrifted(!showDrifted)} style={{ background: 'none', border: 'none', color: theme.muted, fontSize: 11, fontWeight: 900, letterSpacing: '.09em', textTransform: 'uppercase', cursor: 'pointer', padding: '4px 0' }}>
+        {showDrifted ? '▾' : '▸'} Drifted away · {drifted.length}
+      </button>
+      {showDrifted && drifted.map((p) => <PersonRow key={p.id} g={g} p={p} onOpen={() => setOpenId(p.id)} sub={`${p.role} · you stopped calling`} />)}
+    </div>)}
     {!inCareer(g) && <div style={{ fontSize: 11.5, color: theme.muted, textAlign: 'center', padding: '14px 10px', opacity: .8 }}>Industry contacts start once your career begins. Keep school friends close on Spotlight — some of them go far.</div>}
   </div>);
 }

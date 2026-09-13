@@ -1,4 +1,5 @@
 import { rint, chance, pick } from '../../engine/rng.js';
+import { uid } from '../../engine/id.js';
 import { setQuote, setRespect } from '../meta/status.js';
 import { addTimeline } from '../../engine/timeline.js';
 import { paid } from './agent.js';
@@ -33,12 +34,43 @@ function makeCrew(s) {
   const dream = s.dream, cold = coldStart(s);
   // bond0 is where they started, so the verdict at wrap can ask whether you made it worse.
   const used = new Set();
-  return CREW_ROLES[dream === 'singer' ? 'singer' : 'actor'].map((role) => makeOne(role)).map((c) => ({ ...c, bond0: c.bond }));
+  const crew = CREW_ROLES[dream === 'singer' ? 'singer' : 'actor'].map((role) => makeOne(role));
+  // A director you already know. Maxi: "people vanish" — a director you spent six months
+  // with was gone at wrap, and the next shoot was three strangers again. Now a director in
+  // your phone comes back to direct you, one shoot in three, and starts where you left
+  // them: a warm one warm, a cold one cold. The business is small; that is the point of it.
+  const known = (s.people || []).filter((p) => /Director|Producer/.test(p.role || '') && !p.cold && (p.relationship || 0) > 15 && p.fromSet);
+  if (known.length && chance(33)) {
+    const k = pick(known);
+    crew[0] = { ...crew[0], name: k.name, bond: Math.max(10, Math.min(90, k.relationship || 40)), knownId: k.id };
+  }
+  return crew.map((c) => ({ ...c, bond0: c.bond }));
   function makeOne(role) {
     let name; do { name = `${pick(FIRST)} ${pick(LAST)}`; } while (used.has(name));
     used.add(name);
     return { id: 'crew' + Math.random().toString(36).slice(2, 8), name, role, trait: pick(TRAITS), bond: rint(30, 55) - cold };
   }
+}
+// The people you spent the shoot with do not vanish at wrap. A director or a co-star who
+// warmed to you is in your phone now — a contact like any other, who fades if you never
+// ring, and who can come back to direct you. Their weight is the size of the picture.
+const DIRECTOR_WEIGHT = { oneoff: [45, 60], small: [50, 65], episode: [55, 70], indie: [60, 76], recurring: [62, 78], feature: [74, 88], prestige: [80, 92], blockbuster: [85, 96] };
+function keepTheCrew(s, p) {
+  const kept = [];
+  for (const c of (p.crew || []).slice(0, 2)) {
+    const isDirector = c.role === 'Director' || c.role === 'Producer';
+    const existing = c.knownId ? (s.people || []).find((x) => x.id === c.knownId) : (s.people || []).find((x) => x.name === c.name);
+    // Somebody you already knew: the shoot IS the relationship now, warmer or colder.
+    if (existing) { existing.relationship = c.bond; existing.lastSeen = (s.year || 0) * 12 + (s.month || 0); if (c.bond > 10) existing.cold = false; continue; }
+    if ((c.bond || 0) < 60) continue;
+    const span = DIRECTOR_WEIGHT[p.scale] || [55, 70];
+    (s.people = s.people || []).push({ id: uid(s, 'p'), name: c.name,
+      role: isDirector ? (s.dream === 'singer' ? 'Music Producer' : 'Film Director') : (s.dream === 'singer' ? 'Fellow Musician' : 'Fellow Actor'),
+      industryWeight: isDirector ? rint(span[0], span[1]) : rint(Math.max(15, Math.round((s.fame || 0) * 0.5)), Math.min(90, Math.round((s.fame || 0) * 0.5) + 30)),
+      relationship: c.bond, unlocks: isDirector ? 'aaa' : null, met: `${s.year}`, fromSet: p.title, lastSeen: (s.year || 0) * 12 + (s.month || 0) });
+    kept.push(`${c.name} (${isDirector ? 'director' : 'co-star'})`);
+  }
+  if (kept.length) addTimeline(s, `${kept.join(' and ')} ${kept.length > 1 ? 'are' : 'is'} in your phone now. That is what a good set leaves you.`);
 }
 export function startProduction(s, offer) {
   s.production = {
@@ -92,7 +124,8 @@ export function startProduction(s, offer) {
     addTimeline(s, `Everybody on ${s.production.title} knows how you got the part. ${lead.name} has not said anything, which is how you know. The trades have said plenty.`, true);
   }
   s.strain = Math.min(100, (s.strain || 0) + 6 + ((s.strain || 0) > 48 ? 9 : 0));
-  s.lastEvent = `Cameras roll on "${s.production.title}". First day on set.`;
+  const dir = s.production.crew[0];
+  s.lastEvent = dir.knownId ? `Cameras roll on "${s.production.title}". ${dir.name} is directing — you two have done this before.` : `Cameras roll on "${s.production.title}". First day on set.`;
   addTimeline(s, `Production began: ${s.production.title}.`);
   return s;
 }
@@ -349,6 +382,7 @@ function wrapProduction(s) {
   // alone was enough to trip the verdict on every film.
   else if (lead.bond <= 25 && lead.bond < (lead.bond0 ?? 100)) { setRespect(s, (s.respect || 0) - 3); verdictNote = ` ${lead.name} has quietly started telling a different story about you.`; }
   if (worldHit) s.worldHits = (s.worldHits || 0) + 1;
+  keepTheCrew(s, p);
   // What the months on set left in you. Computed AFTER the rating, so this shoot is judged
   // on the actor you were when you walked on — not the one you walked off as.
   const learnt = learnOnSet(s, p);
