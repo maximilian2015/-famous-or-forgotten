@@ -13,6 +13,7 @@ import { resolveArc } from './systems/life/arcs.js';
 import { computeLegacy, getHall, heirsOf, heirOpts, enshrine } from './systems/meta/legacy.js';
 import { fameTier, setHousing, FAME_TIERS, fameCeiling, ladderBlurb, TIER_OPENS, alistKey, iconKey, scandalReport, respectReport, RESPECT_MOVES, RESPECT_TIERS, RESPECT_OPENS, respectTier, FORGOTTEN, FORGOTTEN_OPENS, isForgotten, forgottenDepth } from './systems/meta/status.js';
 import { rehearse, riskyTake, bondWithCrew, meterTier } from './systems/career/production.js';
+import { agentCut } from './systems/career/agent.js';
 import { TimingBar } from './ui/components/TimingBar.jsx';
 import { GridRisk } from './ui/components/GridRisk.jsx';
 import { tierById, isInvited, attendEvent, askForInvite, sneakIntoEvent, inviteHelpers, helperOdds, hasAsked } from './systems/social/events.js';
@@ -1080,7 +1081,10 @@ function CheckpointModal({ g }) {
 }
 function LifeCard({ g }) {
   const c = monthlyCosts(g);
-  const income = (g.job ? g.job.pay : 0);
+  // A month's income is the wage AND the shoot you are on. The balance used to show −€1,170
+  // to somebody being paid €2,000 a month by a picture. Net of the agent's cut, as paid.
+  const shootPay = g.production ? Math.round(((g.production.salary || 0) / Math.max(1, g.production.months || 1)) * (1 - agentCut(g))) : 0;
+  const income = (g.job ? g.job.pay : 0) + shootPay;
   const net = income - c.total;
   const row = (k, v, tint) => (<div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 12.5, padding: '5px 0', borderBottom: `1px solid ${theme.line}` }}>
     <span style={{ color: theme.muted }}>{k}</span><span style={{ fontWeight: 700, color: tint || theme.text }}>{v}</span></div>);
@@ -1100,7 +1104,7 @@ function LifeCard({ g }) {
     {depressed(g) && row('Carrying', `${monthsIn(g)} month${monthsIn(g) === 1 ? '' : 's'} of it`, theme.bad)}
     {!depressed(g) && (g.scarred || 0) > 0 && row('It kept', `${g.scarred} hour${g.scarred === 1 ? '' : 's'} a month`, theme.bad)}
     {g.hasApartment && row('Out each month', `€${c.total.toLocaleString()}`, theme.bad)}
-    {g.job && row('In each month', `€${income.toLocaleString()}`, theme.good)}
+    {income > 0 && row('In each month', `€${income.toLocaleString()}${shootPay ? ' · incl. the shoot' : ''}`, theme.good)}
     {g.hasApartment && row('Balance', `${net >= 0 ? '+' : ''}€${net.toLocaleString()}`, net >= 0 ? theme.good : theme.bad)}
   </Card>);
 }
@@ -1136,6 +1140,9 @@ function PartySection({ g }) {
     <Button kind="pri" onClick={() => setOpen(true)}>Have people over ›</Button>
   </Card>);
   return (<div style={{ display: 'grid', gap: 8 }}>
+    {g.production && <div style={{ fontSize: 11.5, color: theme.bad, background: 'rgba(255,106,138,.10)', border: '1px solid rgba(255,106,138,.35)', borderRadius: 10, padding: '8px 11px', marginBottom: 10, lineHeight: 1.5 }}>
+      You are shooting {g.production.title}. A party tonight is a call you are late for tomorrow — the set loses a few points and {g.production.crew[0].name} notices. More if you drink.
+    </div>}
     {PARTY_ORDER.map((key) => { const p = PARTIES[key]; const risk = partyRisk(g, key);
       const broke = (g.cash || 0) < p.cost; const noEnergy = (g.ap || 0) <= 0;
       return (<Card key={key}>

@@ -97,6 +97,10 @@ export function attendEvent(s, eventId) {
   if (!isInvited(s, ev) && !ev.invited) { s.lastEvent = "You're not on the list for that one."; return s; }
   const stamp = (s.year || 0) * 12 + (s.month || 0);
   if (s._wentOut === stamp) { s.lastEvent = "You've already been out this month. Two nights in a row is how people start talking."; return s; }
+  // The button in EventsScreen was greyed out at zero energy; the rule underneath never
+  // checked. A night out is an evening, and an evening is one energy.
+  if ((s.ap || 0) <= 0) { s.lastEvent = 'No energy left this period. Live a bit first.'; return s; }
+  s.ap -= 1;
   s._wentOut = stamp;
   const t = tierById(ev.tier);
   ev.attended = true;

@@ -1,6 +1,8 @@
 import { inCareer } from '../../engine/stage.js';
 import { rint, chance, pick } from '../../engine/rng.js';
 import { addTimeline } from '../../engine/timeline.js';
+import { setFame, setRespect } from '../meta/status.js';
+import { takeJob, JOBS } from './work.js';
 const clamp = (v) => Math.max(0, Math.min(100, v));
 export const ARCS = [
   { id: 'firstCredit', once: true, when: (s) => (s.filmography || []).length + (s.discography || []).length === 1 && s.fame < 20,
@@ -10,7 +12,7 @@ export const ARCS = [
         { label: "Quietly terrified it's the only one", fx: { mental: -4, confidence: -2 }, reply: "One credit. What if it’s the last? The fear is its own kind of fuel." } ] }) },
   { id: 'brokeMonth', when: (s) => inCareer(s) && (s.cash || 0) < 0 && (s.fame || 0) < 30,
     build: () => ({ speaker: 'Rock bottom', text: `Your account is empty and rent is coming. A friend offers you a stable, boring job with a real salary. Take it and the dream gets quieter. Refuse and you keep gambling on yourself.`,
-      choices: [ { label: 'Take the day job (safe)', fx: { cash: 4000, mental: 4, discipline: 2, fame: -1 }, reply: "Steady money, steady life. The dream doesn't die — it just waits in the evenings." },
+      choices: [ { label: 'Take the day job (safe)', act: 'job', fx: { mental: 4, discipline: 2, fame: -1 }, reply: "Steady money, steady life — a shop floor, a wage on the first of the month. The dream doesn't die; it waits in the evenings. Quit it under Phone → Work when you can." },
         { label: 'Refuse — all in on the dream', fx: { mental: -3, confidence: 4 }, reply: "You say no. Terrifying. But you didn't come this far to fold now." } ] }) },
   { id: 'firstScandal', once: true, when: (s) => (s.fame || 0) >= 40 && (s.scandal || 0) < 15,
     build: () => ({ speaker: 'Your publicist', text: `A photo is circulating — nothing career-ending, but embarrassing, and it's spreading. The press wants a comment. Your publicist needs a decision in the next hour.`,
@@ -28,7 +30,7 @@ export const ARCS = [
         { label: 'Thank them but trust your gut', fx: { confidence: 5, mental: -1 }, reply: "You nod politely and do it your way. Maybe that's brave. Maybe that's a mistake." } ] }; } },
   { id: 'burnout', when: (s) => inCareer(s) && (s.mental || 0) < 25,
     build: () => ({ speaker: 'Your body, finally', text: `You can't sleep. You dread the work you used to love. Everything is heavy. This is burnout, and it won't fix itself. Something has to give.`,
-      choices: [ { label: 'Step back and actually rest', fx: { mental: 20, health: 10, fame: -3 }, reply: 'You cancel everything and disappear for a while. The industry moves on without you — and you come back whole.' },
+      choices: [ { label: 'Step back and actually rest', act: 'rest', fx: { mental: 20, health: 10, fame: -3 }, reply: 'You cancel everything and disappear for two months. Whatever you were shooting waits. The industry moves on a little without you — and you come back whole.' },
         { label: 'Push through, ignore it', fx: { mental: -6, health: -8 }, reply: "You keep going. The work suffers, and so do you. This road ends badly if you don't turn off it." },
         { label: 'Get real help', fx: { mental: 15, cash: -3000 }, reply: "You find a professional. It costs money and pride. It's the best decision you've made in months." } ] }) },
   // ─── On set. scope:'production' — repeat across shoots, once per shoot. ───
@@ -98,9 +100,28 @@ export function resolveArc(s, i) {
     // years and one film in at fame 0, exactly where it started, because one arc took more
     // than the film gave. Nobody can be made less famous than unknown.
     if ((k === 'fame' || k === 'respect') && d < 0) d = Math.max(d, -Math.max(1, (s[k] || 0) * 0.22));
+    // Fame and standing have single write points. The 0..100 clamp here put a name at −20
+    // standing back on 0 for helping a director (+2) — a story choice was the one thing in
+    // the game that could not stay below zero. Found by ChatGPT's review.
+    if (k === 'fame') { setFame(s, (s.fame || 0) + d); return; }
+    if (k === 'respect') { setRespect(s, (s.respect || 0) + d); return; }
     s[k] = clamp((s[k] || 0) + d);
   });
   if (out.set || c.set) { const setter = out.set || c.set; Object.keys(setter).forEach((k) => { s[k] = setter[k]; }); }
+  // A choice that says it does something does it. "Take the day job" used to hand over
+  // €4,000 and no job; "step back and rest" used to change three numbers while the shoot
+  // carried on underneath. Now the job is a job (work.js) and the rest is time off: signed
+  // off for two months, the shoot on hold, the strain let out.
+  const act = out.act || c.act;
+  if (act === 'job' && !s.job) {
+    const j = JOBS.find((x) => x.id === 'retail' && (s.ageY || 0) >= x.minAge) || JOBS[0];
+    takeJob(s, j.id);
+  }
+  if (act === 'rest') {
+    s.burnout = { left: 2, since: (s.year || 0) * 12 + (s.month || 0), rest: true };
+    s.strain = clamp((s.strain || 0) - 20);
+    if (s.production) addTimeline(s, `${s.production.title} is on hold while you get yourself back. Two months.`, true);
+  }
   // Effects that land on the shoot itself rather than on you.
   const prod = out.prod || c.prod;
   if (prod && s.production) {

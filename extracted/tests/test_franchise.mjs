@@ -129,7 +129,7 @@ ok('and says so', /signed for this one/.test(forced.note), forced.note);
 const live = st({ fame: 50 });
 startProduction(live, { id: 'x', projectTitle: 'Late River', role: 'Recurring', type: 'Soap Opera', genre: 'Drama',
   salary: 60000, months: 2, episodes: 30, episodeFee: 2000, season: 1, prestigeScore: 45, tier: 'lead', scale: 'recurring' });
-live.production.meter = 95; live.acting = 95;
+live.production.meter = 95; live.acting = 95; live.production.stability = 100;   // pinned: a random collapse here was the one-in-twenty TypeError
 productionTick(live); productionTick(live);
 ok('the shoot wrapped into post', live.production === null && live.releases.length === 1 && live.filmography.length === 0);
 ok('the release remembers its season', live.releases[0].season === 1, JSON.stringify(live.releases[0]));

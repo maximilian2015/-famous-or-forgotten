@@ -52,7 +52,8 @@ export function throwParty(s, key) {
 
   // Everyone who turned up gets a little closer — the whole point of having a place.
   const guests = [...(s.people || []), ...(s.family || []).filter((x) => x.alive && x.relation !== 'Mother' && x.relation !== 'Father')];
-  const warmed = guests.slice(0, p.reach * 2);
+  // The closest ones, not whoever happens to be first in the array.
+  const warmed = guests.slice().sort((a, b) => (b.relationship || 0) - (a.relationship || 0)).slice(0, p.reach * 2);
   for (const guest of warmed) applyBond(s, guest, rint(3, 7));
   if (s.partner) applyBond(s, s.partner, rint(2, 6));
 
