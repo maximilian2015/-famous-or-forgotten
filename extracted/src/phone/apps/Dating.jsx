@@ -54,6 +54,15 @@ function Evenings({ g, person, tag }) {
   </div>);
 }
 
+// The next thing the number unlocks, so an evening reads as progress toward something.
+function nextLine(p) {
+  const r = p.relationship || 0;
+  if (p.marriedOn) return '';
+  if (!p.livingTogether && r < MOVE_IN_WITH_AT && ['money', 'serious'].includes(p.means)) return `move in with them at ${MOVE_IN_WITH_AT}`;
+  if (!p.livingTogether && r < MOVE_IN_AT) return `move in together at ${MOVE_IN_AT}`;
+  if (r < PROPOSE_AT) return `propose at ${PROPOSE_AT}`;
+  return 'nothing left to unlock — only to keep';
+}
 function Who({ p, sub }) {
   const b = relBand(p.relationship || 0);
   const w = wantsOf(p);
@@ -68,6 +77,17 @@ function Who({ p, sub }) {
       </div>
     </div>
     <div style={{ fontSize: 11.5, color: theme.muted, marginTop: 2 }}>{sub}</div>
+    {/* Where you are with them, as a number and a bar — and the next line it crosses. The
+        band label alone hid the number, and a number that moves is the whole feedback. */}
+    {!stranger && <div style={{ margin: '6px 0 2px' }}>
+      <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 10.5, color: theme.muted, marginBottom: 3 }}>
+        <span>Closeness {Math.round(p.relationship || 0)}</span>
+        <span>{nextLine(p)}</span>
+      </div>
+      <div style={{ height: 6, background: 'rgba(255,255,255,.08)', borderRadius: 3 }}>
+        <div style={{ width: Math.max(0, Math.min(100, p.relationship || 0)) + '%', height: '100%', borderRadius: 3, background: b.tone === 'bad' ? theme.bad : b.tone === 'good' ? theme.good : theme.accent, transition: 'width .5s' }} />
+      </div>
+    </div>}
     <div style={{ fontSize: 11.5, color: theme.gold, marginTop: 4, fontWeight: 700 }}>{meansOf(p).label}{connected(p) ? ' · in the business' : ''}</div>
     {connected(p) && <div style={{ fontSize: 11.5, color: theme.muted, marginTop: 2, lineHeight: 1.45 }}>Knows everyone. Close enough to them, and doors open that fame alone does not — and everybody on the other side of them knows why.</div>}
     <div style={{ fontSize: 11.5, color: theme.accent, marginTop: 6, fontWeight: 700 }}>{w.label}</div>

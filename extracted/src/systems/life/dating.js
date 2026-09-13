@@ -15,7 +15,7 @@ import { rint, chance, pick } from '../../engine/rng.js';
 import { onCooldown, markUsed } from '../../engine/cooldown.js';
 import { addTimeline } from '../../engine/timeline.js';
 import { canRaiseChild, HOUSING, hostOf } from '../../engine/economy.js';
-import { applyBond, clampRel } from './bonds.js';
+import { applyBond, clampRel, relBand } from './bonds.js';
 import { level as drinkLevel, dependent } from './drink.js';
 
 const clamp = (v) => Math.max(0, Math.min(100, v));
@@ -103,6 +103,13 @@ export function refreshDatingPool(s, force) {
 }
 export function wantsOf(p) { return WANTS[p && p.wants] || WANTS.quiet; }
 
+const SCENES = {
+  home: ['You burn the rice and nobody minds.', 'A film neither of you finishes.', 'They fall asleep on you at eleven. You do not move.', 'You talk until two about nothing, which is the point.'],
+  dinner: ['A table at the back. They order for you and get it right.', 'You laugh loudly enough that the next table looks. Good.', 'The bill comes and nobody reaches for it for a second too long.', 'They tell you a story about their mother. You will remember it.'],
+  public: ['Forty photographs. In one of them you are actually looking at each other.', 'Somebody asks who they are. They handle it better than you do.', 'A photographer says their name first. They pretend not to notice.', 'You are seen. That was the point, and it worked.'],
+  away: ['A week with no signal, which turns out to be a week.', 'You come back the colour of somebody else.', 'On the third day you stop checking a phone that does not work.', 'Somebody else’s life for a week, and you would take it.'],
+};
+
 // ── the evenings ──────────────────────────────────────────────────────────────
 // Four of them, and which one lands depends entirely on who you are with. Booking the same
 // expensive weekend every month is not a strategy — it is how you find out they wanted to
@@ -165,7 +172,10 @@ export function goOnDate(s, key, id) {
     p.dates = (p.dates || 0) + 1;
   }
 
+  const before = relBand(p.relationship || 0);
   const moved = applyBond(s, p, Math.max(1, dateValue(s, p, key)));
+  const after = relBand(p.relationship || 0);
+  if (s.partner) p.lastEvening = (s.year || 0) * 12 + (s.month || 0);   // the anniversary asks
   s.mental = clamp((s.mental || 50) + rint(2, 5));
   const w = wantsOf(p);
   const note = w.hates.includes(key) ? ` ${p.name.split(' ')[0]} smiled through it. They did not want to be there.`
@@ -187,7 +197,11 @@ export function goOnDate(s, key, id) {
     addTimeline(s, `Started seeing ${p.name}.`);
     return s;
   }
-  s.lastEvent = `${d.label} with ${p.name.split(' ')[0]}. Closeness +${moved}.${note}`
+  // What the evening was like, not only what it moved. And when it crossed a line — In
+  // touch to Close — say so, because that is the thing you would actually remember.
+  const scene = pick(SCENES[key] || SCENES.dinner);
+  const crossed = after.id !== before.id ? ` ${before.label} → ${after.label}.` : '';
+  s.lastEvent = `${d.label} with ${p.name.split(' ')[0]}. ${scene}${note}${crossed} Closeness +${moved} (${p.relationship}).`
     + (paying ? '' : ` ${p.name.split(' ')[0]} would not hear of you paying.`);
   return s;
 }
@@ -251,6 +265,17 @@ export function unhost(s, why) {
   addTimeline(s, `Two van loads back the other way. ${why} The rent is yours again.`, true);
 }
 export function hostName(s) { const h = hostOf(s); return h ? h.name.split(' ')[0] : null; }
+
+// ── the anniversary ───────────────────────────────────────────────────────────
+// A date on the calendar, and the one thing about a relationship the calendar can hold you
+// to. Twelve months from the first "properly", and every twelve after. The month it lands
+// in is marked; an evening — any evening — in that month is remembering it. Resolved by
+// sms.js at the start of the next month, because that is who tells you.
+export function anniversaryMonth(s, abs) {
+  const p = s.partner; if (!p || !p.since) return false;
+  return abs > p.since && (abs - p.since) % 12 === 0;
+}
+export function anniversaryYears(s, abs) { const p = s.partner; return p && p.since ? Math.round((abs - p.since) / 12) : 0; }
 
 // ── the wedding ───────────────────────────────────────────────────────────────
 export const WEDDINGS = {

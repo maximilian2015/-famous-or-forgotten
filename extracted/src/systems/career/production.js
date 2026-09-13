@@ -83,7 +83,13 @@ export function startProduction(s, offer) {
     const lead = s.production.crew[0];
     lead.bond = clamp(lead.bond - 10); lead.bond0 = lead.bond;
     s.production.viaPartner = offer.viaPartner;
-    addTimeline(s, `Everybody on ${s.production.title} knows how you got the part. ${lead.name} has not said anything, which is how you know.`, true);
+    // Maxi: "and if you got into A-list pictures through a lover, your reputation can be bad."
+    // The business has a word for it, and the trades have a column. Five points now; the
+    // film decides the rest — see release.js closeRun.
+    setRespect(s, (s.respect || 0) - 5);
+    s.scandal = clamp((s.scandal || 0) + 4);
+    s.media = clamp((s.media || 0) + 6);
+    addTimeline(s, `Everybody on ${s.production.title} knows how you got the part. ${lead.name} has not said anything, which is how you know. The trades have said plenty.`, true);
   }
   s.strain = Math.min(100, (s.strain || 0) + 6 + ((s.strain || 0) > 48 ? 9 : 0));
   s.lastEvent = `Cameras roll on "${s.production.title}". First day on set.`;

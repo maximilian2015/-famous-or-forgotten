@@ -22,7 +22,8 @@ import { genreXP, genreBonus, genreLabel } from './systems/career/genres.js';
 import { Phone } from './phone/Phone.jsx';
 import { an, count } from './engine/text.js';
 import { inCareer } from './engine/stage.js';
-import { hostName } from './systems/life/dating.js';
+import { hostName, anniversaryMonth, anniversaryYears } from './systems/life/dating.js';
+import { onCooldown } from './engine/cooldown.js';
 import { combo, comboOf, COMBOS } from './systems/meta/standing.js';
 import { theme, setSkin, skinId, onSkinChange } from './ui/theme.js';
 import { THEMES, THEME_ORDER } from './ui/skins.js';
@@ -2056,7 +2057,12 @@ function Diary({ g }) {
     const invites = i === 0 ? (g.inbox || []).filter((m) => m.kind === 'invite') : [];
     // And the answer to a read you did comes back on a month you can see coming.
     const hearing = (g.submissions || []).filter((x) => x.due === abs);
-    cells.push({ i, yr, mo, shooting, parties, deadlines, premieres, inPost, off, invites, hearing });
+    // The other person in your life is on here too: the anniversary, the evening you had
+    // this month, and a text of theirs you have not answered. Maxi: "dates on the calendar."
+    const anniv = g.partner && anniversaryMonth(g, abs) ? anniversaryYears(g, abs) : 0;
+    const evening = i === 0 && g.partner && onCooldown(g, 'partner');
+    const asked = i === 0 && (g.sms || []).some((m) => m.tag === 'over' || m.tag === 'anniv');
+    cells.push({ i, yr, mo, shooting, parties, deadlines, premieres, inPost, off, invites, hearing, anniv, evening, asked });
   }
   return (<div style={{ marginBottom: 16 }}>
     <div style={{ fontSize: 11, fontWeight: 900, letterSpacing: '.09em', textTransform: 'uppercase', color: theme.muted, marginBottom: 8 }}>The year ahead</div>
@@ -2074,12 +2080,18 @@ function Diary({ g }) {
           {c.deadlines > 0 && <span title="offer expires" style={{ fontSize: 11 }}>⏳</span>}
           {c.invites.length > 0 && <span title="an invitation waiting in your inbox" style={{ fontSize: 11 }}>✉️</span>}
           {c.hearing.length > 0 && <span title="you hear back about a part" style={{ fontSize: 11 }}>📞</span>}
+          {c.anniv > 0 && <span title="anniversary" style={{ fontSize: 11 }}>💍</span>}
+          {c.evening && <span title="an evening together this month" style={{ fontSize: 11 }}>💞</span>}
+          {c.asked && !c.evening && <span title="they texted — it is in Messages" style={{ fontSize: 11 }}>💬</span>}
         </div>
         {c.invites.length > 0 && <div style={{ fontSize: 8.5, fontWeight: 800, color: theme.accent, marginTop: 2, lineHeight: 1.2 }}>
           {c.invites[0].subj}
         </div>}
         {c.hearing.length > 0 && <div style={{ fontSize: 8.5, fontWeight: 800, color: theme.accent, marginTop: 2, lineHeight: 1.2 }}>
           {c.hearing[0].title} — they answer
+        </div>}
+        {c.anniv > 0 && <div style={{ fontSize: 8.5, fontWeight: 800, color: '#ff8d9e', marginTop: 2, lineHeight: 1.2 }}>
+          {c.anniv} {c.anniv === 1 ? 'year' : 'years'} with {g.partner.name.split(' ')[0]}{c.i === 0 ? ' — do something' : ''}
         </div>}
         {/* A premiere was named and a shoot was not, so eight months of the year said
             nothing but "🎬". What you are actually on is the thing you want to read. */}
@@ -2092,7 +2104,7 @@ function Diary({ g }) {
       </div>))}
     </div>
     <div style={{ display: 'flex', gap: 10, justifyContent: 'center', fontSize: 10.5, color: theme.muted, flexWrap: 'wrap' }}>
-      <span>🎬 shooting</span><span>🍿 premiere</span><span>✉️ invitation</span><span>📞 they answer</span><span>🎉 party ends</span><span>⏳ offer expires</span>{g.burnout && <span style={{ color: theme.bad }}>🚫 signed off</span>}
+      <span>🎬 shooting</span><span>🍿 premiere</span><span>✉️ invitation</span><span>📞 they answer</span><span>💍 anniversary</span><span>💞 evening</span><span>🎉 party ends</span><span>⏳ offer expires</span>{g.burnout && <span style={{ color: theme.bad }}>🚫 signed off</span>}
     </div>
   </div>);
 }

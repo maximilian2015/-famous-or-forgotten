@@ -13,7 +13,7 @@ import { rint, chance, pick } from '../../engine/rng.js';
 import { addTimeline } from '../../engine/timeline.js';
 import { applyBond } from '../life/bonds.js';
 import { findPerson } from '../life/interactions.js';
-import { canMoveInWithThem, moveInWithThem, connected } from '../life/dating.js';
+import { canMoveInWithThem, moveInWithThem, connected, anniversaryMonth, anniversaryYears } from '../life/dating.js';
 import { roomOffer } from '../career/offers.js';
 import { HOUSING } from '../../engine/economy.js';
 
@@ -76,6 +76,8 @@ const GIFT = ['Left something in your account. {n}. Don’t.', 'Sent you {n}. Bu
 const RENT = ['I paid the landlord. We are not discussing it.', 'The rent is done. Don’t make a thing of it.', 'Sorted the flat. Come over instead of worrying.'];
 const MOVE_IN = ['Move in with me. I have the room, and you have a landlord.', 'Come and live here. It is stupid that you do not.', 'There is a whole floor nobody uses. Bring your things.'];
 const ROOM = ['Dinner Thursday. Someone will be there who is casting.', 'Come to the thing on Friday. Bring the face. There is a part going.', 'A producer I know is casting something big and I mentioned you. Dinner, Saturday. Do not be late.'];
+const ANNIV_YES = ['Last night. Thank you. {n} years.', '{n} years and you remembered. I was not sure you would.', 'That was a good night. Same time next year.'];
+const ANNIV_NO = ['It was {n} years last month. I did not say anything. I am saying it now.', 'You forgot. {n} years. I am not angry, which is worse.', 'Did you know what last month was? Do not answer that.'];
 const WHILE = ['It has been a while.', 'Not heard from you in ages. Everything alright?', 'Guess we are the kind of people who drift. Or I could just ask: coffee?'];
 
 export function smsTick(s) {
@@ -156,6 +158,17 @@ export function smsTick(s) {
     const t = s.partner && (s.partner.relationship || 0) >= 40 ? { p: s.partner, rel: 'partner' } : pick(who);
     push(s, { from: t.p.name, pid: t.p.id, tag: 'wrap', text: pick(WRAP), replies: [{ label: 'Yes', ap: 1, rel: 4, mental: 3, reply: 'The first night in months that ends when it ends.' }, { label: 'Too tired', rel: -1, mental: 1, reply: 'You sleep for eleven hours instead. Also fine.' }] });
     coolDown(s, 'wrap', 2);
+  }
+  // 10. Last month was the anniversary. Either you remembered, or you did not.
+  if (s.partner && anniversaryMonth(s, now - 1) && !pending(s, 'anniv')) {
+    const yrs = anniversaryYears(s, now - 1);
+    const remembered = s.partner.lastEvening === now - 1;
+    if (remembered) { applyBond(s, s.partner, 6); s.mental = clamp((s.mental || 50) + 2); }
+    else applyBond(s, s.partner, -9);
+    push(s, { from: s.partner.name, pid: s.partner.id, tag: 'anniv',
+      text: remembered ? pick(ANNIV_YES).replace('{n}', String(yrs)) : pick(ANNIV_NO).replace('{n}', String(yrs)),
+      replies: remembered ? [{ label: 'Reply', rel: 2, reply: `${first(s.partner)} sends the photograph from that night.` }]
+        : [{ label: 'Make it up to them', ap: 1, rel: 7, mental: 1, reply: 'You cancel a thing and turn up with the right flowers for once. It helps. It does not fix it.' }, { label: 'Say sorry', rel: 1, reply: `${first(s.partner)}: "Ok." You have seen that one before.` }] });
   }
   // ── somebody with money ──────────────────────────────────────────────────────
   const rich = s.partner && ['money', 'serious'].includes(s.partner.means) ? s.partner : null;

@@ -123,7 +123,7 @@ export function scheduleRelease(s, credit, p) {
     // Carried for the Asker season: whether it was pushed, and how good the material was.
     campaign: !!p.campaign, prestigeScore: p.prestigeScore, director: credit.director || null,
     // And how the set went, because the business judges the performance, not only the film.
-    meter: p.meter || 0,
+    meter: p.meter || 0, viaPartner: p.viaPartner || null,
     // What the version you shot does to the box office, and the line it was pitched on.
     appealMod: appealShift(p), premise: p.premise || credit.premise || null, take: credit.take || null,
     due: (s.year || 0) * 12 + (s.month || 0) + wait, wait,
@@ -325,6 +325,12 @@ function closeRun(s, credit, r) {
   // fault, and a middling one still gets your name mentioned. The word for it is the
   // oldest one in the reviews: "the only good thing in it".
   const carried = (r.meter || 0) >= 85;
+  // A part you got through somebody's dinner table is judged twice. Good, and you made it
+  // not matter — the five points come back with interest. Bad, and they said so at the time.
+  let nepo = 0;
+  if (r.viaPartner) nepo = r.rating >= 75 ? 6 : r.rating < 55 ? -5 : 0;
+  if (nepo) addTimeline(s, nepo > 0 ? `"${credit.title}" is good enough that nobody mentions ${r.viaPartner.split(' ')[0]} any more.` : `"${credit.title}" is what everybody said it would be, and they are saying it again.`, nepo < 0);
+  respectGain += nepo;
   if (carried && r.rating < 45) respectGain = 0;
   else if (carried && r.rating >= 45 && r.rating < 70) respectGain = 1;
   const soft = (limit, cur) => Math.max(0.16, 1 - (cur || 0) / limit);
