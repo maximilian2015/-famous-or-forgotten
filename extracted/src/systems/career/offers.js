@@ -120,6 +120,13 @@ export function declineOffer(s, id) {
   const title = o.projectTitle.replace('⭐ ', '');
   // Turning down an ordinary offer is your business. Turning down the one they finally
   // found the money to finish, after holding your part open for years, is not.
+  // And walking out of an option you signed is walking out of a contract.
+  if (o.kind === 'sequel' && o.optioned && (o.part || 2) <= (o.optionParts || 3)) {
+    setRespect(s, (s.respect || 0) - 6);
+    s.lastEvent = `You passed on "${title}". You signed an option for it years ago, and the studio's lawyers have read it more recently than you have.`;
+    addTimeline(s, `Walked out of the option on ${title}. The business remembers a contract.`, true);
+    return s;
+  }
   if (o.kind === 'thaw') {
     setRespect(s, (s.respect || 0) - 5);
     s.lastEvent = `You said no to finishing "${title}". They waited a long time for that answer.`;

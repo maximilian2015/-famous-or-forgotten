@@ -210,7 +210,7 @@ function BottomNav({ screen, setScreen, g }) {
     background: `${theme.bgDeep || theme.bg}f2`, backdropFilter: 'blur(14px)', WebkitBackdropFilter: 'blur(14px)',
     borderTop: `1px solid ${theme.line}`, boxShadow: '0 -14px 30px -22px #000',
     display: 'flex', padding: '8px 6px 10px', zIndex: 40 }}>
-    {NAV.map((n) => { const active = screen === n.id; const badge = n.id === 'career' && inCareer(g) ? (g.offers || []).length : n.id === 'phone' && inCareer(g) ? ((g.inbox||[]).filter(m=>!m.read).length) : 0;
+    {NAV.map((n) => { const active = screen === n.id; const badge = n.id === 'career' && inCareer(g) ? (g.offers || []).length : n.id === 'phone' && inCareer(g) ? ((g.inbox||[]).filter(m=>!m.read).length + (g.sms||[]).filter(m=>!m.read).length) : 0;
       return (<button key={n.id} data-sfx="nav" onClick={() => setScreen(n.id)} style={{ flex: 1, background: 'none', border: 'none', cursor: 'pointer', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 3, padding: '4px 0', position: 'relative' }}>
         <span style={{ fontSize: 20, filter: active ? 'none' : 'grayscale(.55) opacity(.55)', transition: 'filter .2s' }}>{n.icon}</span>
         <span style={{ fontSize: 10, fontWeight: active ? 800 : 600, color: active ? theme.accent : theme.muted, transition: 'color .2s' }}>{n.label}</span>

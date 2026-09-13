@@ -4,6 +4,7 @@ import { applyMonthly, applyYearly, relevanceDrift, homeEnergy } from './economy
 import { maybeGenerateOffer, offersTick } from '../systems/career/offers.js';
 import { emailTick } from '../systems/meta/email.js';
 import { agentTick } from '../systems/career/agent.js';
+import { smsTick } from '../systems/social/sms.js';
 import { standingTick } from '../systems/meta/standing.js';
 import { maybeStartArc } from '../systems/life/arcs.js';
 import { maybeYouthEvent } from '../systems/life/youth.js';
@@ -81,6 +82,7 @@ export function advanceMonth(state) {
   agentTick(s);      // the agent leaves the liability, or moves you up a desk
   standingTick(s);   // and the trades find a word for what you are now
   emailTick(s);
+  smsTick(s);        // and the people in your life text about what just happened
   maybeStartArc(s);
   iconTick(s);        // and the last rung says why it is out of reach
   quoteTick(s);       // and what you ask for comes back down when nobody is paying it

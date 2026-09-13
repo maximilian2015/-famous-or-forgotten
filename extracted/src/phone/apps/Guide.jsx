@@ -18,7 +18,7 @@ import { COMBOS, comboOf } from '../../systems/meta/standing.js';
 
 const SECTIONS = [
   ['fame', 'Fame', '★'], ['respect', 'Respect', '◆'], ['combo', 'Fame × Respect', '✕'], ['doors', 'The two doors', '🚪'],
-  ['set', 'On set', '🎬'], ['money', 'Money', '€'], ['press', 'The press', '🗞'],
+  ['set', 'On set', '🎬'], ['money', 'Money', '€'], ['press', 'The press', '🗞'], ['phone', 'The phone', '📱'],
 ];
 
 const money = (n) => (n >= 1e6 ? '€' + (n / 1e6).toFixed(n >= 1e7 ? 0 : 1) + 'm' : '€' + Math.round(n / 1000) + 'k');
@@ -43,6 +43,7 @@ export function Guide({ g }) {
     {sec === 'set' && <SetGuide />}
     {sec === 'money' && <MoneyGuide />}
     {sec === 'press' && <PressGuide />}
+    {sec === 'phone' && <PhoneGuide />}
   </div>);
 }
 
@@ -157,6 +158,20 @@ function MoneyGuide() {
     {STAFF_ORDER.map((id) => <Rung key={id} label={STAFF[id].label} min={`${money(STAFF[id].cost)}/mo`} lines={[STAFF[id].perk, `From fame ${STAFF[id].minFame}`]} />)}
     <H>Things</H>
     {THING_ORDER.map((id) => <Rung key={id} label={THINGS[id].label} min={money(THINGS[id].price)} lines={[THINGS[id].blurb, THINGS[id].perk || `Resells at about ${Math.round(THINGS[id].resale * 100)}% — ${id === 'art' ? 'and gains value every year' : 'and less every year'}`]} />)}
+  </div>);
+}
+
+function PhoneGuide() {
+  return (<div>
+    <H>Email</H>
+    <P>Nothing in the inbox is decoration. Bills arrive when a payment bounced. Invitations — the sofa, the carpet, the room — arrive when you are known enough, and go quiet for a while once answered. An agent writes when you are worth a desk. Fan mail helps a little; the other kind, after a flop, does not. And some of it is simply not real: nothing the studio sends you asks for your card.</P>
+    <Rung label="The option" min="while shooting a studio picture" lines={[
+      'Business affairs asks for an option on two more at your current fee. Money on signature, now — 15% of the fee',
+      'If the picture performs, the sequels are made and you are the one person on set not renegotiating (a second part normally pays 60% more; a third, 120%)',
+      'If it does not perform, nothing happens and you keep the money',
+      'Walking out of an optioned sequel later is walking out of a contract: −6 standing']} />
+    <H>Messages</H>
+    <P>The people in your life text about what actually happened this month: a film that closed, a scandal a parent saw, a list your name was on, a partner who has not seen you in ten days, a contact who went cold. Every reply moves the relationship the way anything else does, and the ones that cost an energy are the ones that mean something. Texts you never answer stop being texts after six months.</P>
   </div>);
 }
 

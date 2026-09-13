@@ -243,6 +243,7 @@ export function runTick(s) {
 
 function closeRun(s, credit, r) {
   credit.running = false;
+  credit.closedAt = (s.year || 0) * 12 + (s.month || 0);   // so the phone knows somebody saw it this month
   delete credit._rel;
   credit.boxOffice = r.finalGross || 0;
   // Belt and braces. `r` comes off the credit and is gone the moment a run closes, so if

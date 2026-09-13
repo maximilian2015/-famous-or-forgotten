@@ -1,4 +1,6 @@
+import { useEffect } from 'react';
 import { theme } from '../../ui/theme.js';
+import { smsReply, smsReadAll } from '../../systems/social/sms.js';
 import { dispatch } from '../../state/store.js';
 import { acceptOffer, declineOffer, runCampaign, campaignCost } from '../../systems/career/offers.js';
 import { hotGenre } from '../../systems/meta/news.js';
@@ -9,6 +11,9 @@ export function Messages({ g }) {
   const offers = g.offers || [];
   const trend = hotGenre(g);
   const al = agentLine(g);
+  const sms = g.sms || [];
+  // Opening the app is reading the texts. The reply is the only thing that costs anything.
+  useEffect(() => { if (sms.some((m) => !m.read)) dispatch(smsReadAll); }, [sms.length]);
   return (<div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
     {/* Who represents you. They arrive by email when you are worth a desk — see agent.js. */}
     {al ? (<div style={{ background: theme.panel2, border: '1px solid ' + theme.line, borderRadius: 14, padding: 12 }}>
@@ -21,9 +26,21 @@ export function Messages({ g }) {
       <button onClick={() => { if (window.confirm('Let ' + al.name + ' go? Offers dry up until somebody else asks.')) dispatch(fireAgent); }} style={{ ...btn(''), marginTop: 8, fontSize: 11 }}>Let them go</button>
     </div>)
     : <div style={{ background: theme.panel2, borderRadius: 14, padding: 12 }}><div style={{ fontSize: 11, fontWeight: 900, color: theme.accent, textTransform: 'uppercase', marginBottom: 4 }}>OpenCall · System</div><div style={{ fontSize: 13, lineHeight: 1.5 }}>{agentDropped(g) ? 'No agent. Nobody represents the liability — get off the Avoided rung and somebody will ask.' : (g.fame || 0) >= 40 || (g.respect || 0) >= 50 ? 'No agent. When one wants you, the letter is in Email.' : 'No agent yet. Offers this good come through people — an agent asks at fame 40, or at standing 50 if directors know you before the public does. Until then, work the open castings.'}</div></div>}
+    {/* The people in your life. Every text here was triggered by something that happened this
+        month — a film that closed, a scandal, a list — see systems/social/sms.js. */}
+    {sms.map((m) => (<div key={m.id} style={{ background: theme.panel2, border: '1px solid ' + theme.line, borderRadius: 14, padding: 12 }}>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline' }}>
+        <div style={{ fontSize: 11, fontWeight: 900, color: theme.good, textTransform: 'uppercase' }}>💬 {m.from}</div>
+        <div style={{ fontSize: 10.5, color: theme.muted }}>{monthsAgo(g, m.when)}</div>
+      </div>
+      <div style={{ fontSize: 13.5, lineHeight: 1.5, marginTop: 4 }}>{m.text}</div>
+      <div style={{ display: 'flex', gap: 7, marginTop: 9 }}>
+        {(m.replies || []).map((r, i) => <button key={i} onClick={() => dispatch(smsReply, m.id, i)} disabled={!!r.ap && (g.ap || 0) < r.ap} style={{ ...btn(i === 0 ? 'pri' : ''), opacity: r.ap && (g.ap || 0) < r.ap ? .5 : 1 }}>{r.label}{r.ap ? ' · 1 energy' : ''}</button>)}
+      </div>
+    </div>))}
     {/* This told an A-lister with four films to build credits and buzz. An empty inbox
         means something different depending on who is looking at it. */}
-    {!offers.length && <div style={{ fontSize: 12.5, color: theme.muted, textAlign: 'center', padding: 24, lineHeight: 1.6 }}>
+    {!offers.length && !sms.length && <div style={{ fontSize: 12.5, color: theme.muted, textAlign: 'center', padding: 24, lineHeight: 1.6 }}>
       {(g.fame || 0) >= 75 ? <>Nothing new today.<br />At your level they wait until they have something worth your name on.</>
         : (g.fame || 0) >= 40 ? <>No new offers.<br />Keep something coming out — an empty year is what makes the phone go quiet.</>
         : <>No new offers.<br />Build credits and buzz — people write to stars they can sell.</>}</div>}
@@ -56,3 +73,5 @@ export function Messages({ g }) {
   </div>);
 }
 const btn = (k) => ({ flex: 1, border: 'none', borderRadius: 10, padding: '9px 8px', fontSize: 12.5, fontWeight: 800, cursor: 'pointer', background: k === 'pri' ? `linear-gradient(135deg,${theme.accent2},${theme.accent})` : k === 'gold' ? 'rgba(255,209,102,.18)' : k === 'dan' ? 'rgba(255,90,122,.15)' : 'rgba(158,116,255,.16)', color: k === 'pri' ? '#fff' : k === 'gold' ? theme.gold : k === 'dan' ? '#ffa8bb' : '#d9cffa' });
+
+function monthsAgo(g, when) { const d = ((g.year || 0) * 12 + (g.month || 0)) - (when || 0); return d <= 0 ? 'this month' : d === 1 ? 'last month' : d + ' months ago'; }

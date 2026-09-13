@@ -47,6 +47,20 @@ const ROOMS = [
   ['A private address', 'No press, no phones at the door, and everyone in that room can greenlight something.'],
   ['A producer’s house', 'Forty people, one long table, and the reason you are on the list is not stated.'],
 ];
+const FANS = ['a fan', 'Someone in Osaka', 'A school in Leeds', 'Marta, 14', 'The night shift at a hospital'];
+const FAN_SUBJ = ['You will not read this but', 'Thank you', 'I have seen it nine times', 'From all of us'];
+const FAN_BODY = [
+  'Handwritten, four pages, and it is about a scene you barely remember shooting. It meant something to somebody on a bad night.',
+  'A whole class wrote to you. The teacher apologises for the spelling. One of them has drawn you with enormous hands.',
+  'Nine times. They have the ticket stubs. They wanted you to know that it got them through something.',
+  'A photo of a ward, everybody in scrubs, holding a poster of your film. "Every Tuesday. It is the only thing we agree on."',
+];
+const SPAM = [
+  ['Studio Payments Dept', 'Your fee is being held', 'Your fee cannot be released until you confirm your account details. Click the link within 24 hours.', 'Confirm details', 'The link was not the studio. The card was yours. The number is now somebody else’s.'],
+  ['Prince Adebayo Okonkwo', 'CONFIDENTIAL — A Proposal', 'A sum of eleven million requires a partner of your standing to leave the country. A small administrative fee unlocks it.', 'Pay the fee', 'The fee left. The eleven million did not arrive. Your assistant does not say anything, which is worse.'],
+  ['Verified Fan Club', 'Congratulations — a prize', 'You have been selected for a luxury retreat. To secure the booking, a refundable deposit is required today.', 'Secure the booking', 'The retreat does not exist. The deposit was not refundable. It was not a deposit.'],
+  ['Crypto Talent Fund', 'Tokenise your career', 'Fans invest directly in your next film via CelebCoin. Early investors get a private dinner with you. Minimum buy-in applies.', 'Buy in', 'CelebCoin is down ninety-four per cent by Thursday. The dinner is with a man named Dennis.'],
+];
 const pickOne = (list) => list[Math.floor(Math.random() * list.length)];
 export function emailTick(s) {
   if (!s.alive || !inCareer(s)) return;
@@ -67,6 +81,39 @@ export function emailTick(s) {
   }
   // And the moment it is settled the letter is gone — not sitting there for a decade.
   if (!(s.rentMissed > 0)) s.inbox = (s.inbox || []).filter((m) => m.tag !== 'rent');
+  // ── the studio wants an option ──
+  // "Contracts — the options are not thought through." franchise.js has carried `optioned`
+  // for a year and nothing ever set it. Now the studio asks, while you are shooting a
+  // picture of theirs: an option on two more at THIS fee. Money now for the option; if
+  // it is a hit they make the sequels and you are the one person on set not renegotiating
+  // (sequelRaise is 1.6× to 2.6×, and you get none of it); if it is not, nothing happens.
+  const p = s.production;
+  if (p && ['feature', 'blockbuster'].includes(p.scale) && (p.tier === 'lead' || p.tier === 'tentpole') && (p.part || 1) === 1
+    && !p.optioned && !p._optionAsked && (p.months - p.monthsLeft) >= 1 && chance(45)) {
+    p._optionAsked = true;
+    const bonus = Math.round((p.salary || 0) * 0.15);
+    push(s, { from: 'Business affairs', subj: `Option agreement — ${p.title}`, tag: 'option', kind: 'contract', title: p.title,
+      body: `The studio would like an option on two further ${p.title} pictures at your current fee of €${(p.salary || 0).toLocaleString()}. €${bonus.toLocaleString()} on signature, now. If the picture performs, the sequels are made and your fee is the fee in this letter while everybody else's goes up. If it does not, nothing happens and you keep the money. It lapses at wrap.`,
+      cta: [{ label: `Sign · €${bonus.toLocaleString()} now`, option: 'sign', pay: bonus, reply: `Signed. €${bonus.toLocaleString()} clears the same afternoon. Two more, at this fee, if they want them.` },
+        { label: 'Refuse — keep the raise', option: 'refuse', reply: 'You pass. If there is a sequel you will be negotiating it like everybody else — which is the point.' }] });
+  }
+  // A letter about a picture you are no longer shooting is not a letter.
+  if (has(s, 'option') && !(p && (s.inbox || []).some((m) => m.tag === 'option' && m.title === p.title))) s.inbox = (s.inbox || []).filter((m) => m.tag !== 'option');
+  // ── fan mail, hate mail, spam ──
+  const flopped = (s.filmography || []).some((c) => (c.rating || 0) < 45 && c.closedAt && key - c.closedAt <= 3);
+  if (fame >= 35 && offer(s, 'fan', 0, flopped ? 22 : 10)) {
+    if (flopped) push(s, { from: 'anon', subj: 'saw your film', tag: 'fan', kind: 'hate', body: 'It is three paragraphs long and they have opinions about your face, your voice and your parents. It has been forwarded to you by someone who thought you should see it.',
+      cta: [{ label: 'Read it', fx: { mental: -3 }, reply: 'You read it twice. That was the mistake.' }, { label: 'Delete unread', fx: {}, reply: 'Gone. It was never about you anyway.' }] });
+    else push(s, { from: pickOne(FANS), subj: pickOne(FAN_SUBJ), tag: 'fan', kind: 'fan', body: pickOne(FAN_BODY),
+      cta: [{ label: 'Read it', fx: { mental: 2 }, reply: 'You read it to the end. It helps more than it should.' }, { label: 'Have someone reply', fx: { mental: 1 }, reply: 'A signed photo goes out. Somebody, somewhere, is very happy.' }] });
+    coolDown(s, 'fan', rint(4, 9));
+  }
+  if (offer(s, 'spam', 0, 7)) {
+    const sp = pickOne(SPAM);
+    push(s, { from: sp[0], subj: sp[1], tag: 'spam', kind: 'spam', body: sp[2],
+      cta: [{ label: 'Delete', fx: {}, reply: 'Deleted.' }, { label: sp[3], pay: -rint(1800, 9000), fx: { mental: -2 }, reply: sp[4] }] });
+    coolDown(s, 'spam', rint(6, 12));
+  }
   // Somebody wants to represent you. Once per approach; a 'not now' goes quiet for six months.
   if (agentWantsYou(s) && !has(s, 'agent')) {
     const o = offerAgent(s); const t = AGENT_TIERS[o.tier];
@@ -86,6 +133,8 @@ export function emailAct(s, id, i) {
   if (typeof out.pay === 'number' || typeof c.pay === 'number') s.cash = (s.cash || 0) + (out.pay || c.pay || 0);
   if (c.clear === 'rent') s.rentMissed = 0;
   if (c.sign === 'agent') signAgent(s, m.agentOffer);
+  if (c.option === 'sign' && s.production && s.production.title === m.title) { s.production.optioned = true; s.production.optionParts = 3; addTimeline(s, `Signed an option on two more ${m.title} pictures at €${(s.production.salary || 0).toLocaleString()}.`); }
+  if (c.option === 'refuse') addTimeline(s, `Refused the option on ${m.title}. Any sequel gets negotiated fresh.`);
   if (c.decline === 'agent') declineAgent(s);
   const fx = out.fx || {};
   // Fame and standing have single write points (status.js). Writing them here bypassed the
