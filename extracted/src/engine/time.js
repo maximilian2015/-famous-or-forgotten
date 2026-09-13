@@ -3,6 +3,8 @@ import { advanceStage } from '../systems/life/stages.js';
 import { applyMonthly, applyYearly, relevanceDrift, homeEnergy } from './economy.js';
 import { maybeGenerateOffer, offersTick } from '../systems/career/offers.js';
 import { emailTick } from '../systems/meta/email.js';
+import { agentTick } from '../systems/career/agent.js';
+import { standingTick } from '../systems/meta/standing.js';
 import { maybeStartArc } from '../systems/life/arcs.js';
 import { maybeYouthEvent } from '../systems/life/youth.js';
 import { familyYear } from '../systems/life/family.js';
@@ -76,6 +78,8 @@ export function advanceMonth(state) {
   maybeGenerateEvent(s);
   offersTick(s);      // and a part you never answered goes to somebody else
   maybeGenerateOffer(s);
+  agentTick(s);      // the agent leaves the liability, or moves you up a desk
+  standingTick(s);   // and the trades find a word for what you are now
   emailTick(s);
   maybeStartArc(s);
   iconTick(s);        // and the last rung says why it is out of reach

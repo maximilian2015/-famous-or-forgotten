@@ -2,12 +2,25 @@ import { theme } from '../../ui/theme.js';
 import { dispatch } from '../../state/store.js';
 import { acceptOffer, declineOffer, runCampaign, campaignCost } from '../../systems/career/offers.js';
 import { hotGenre } from '../../systems/meta/news.js';
+import { agentLine, fireAgent } from '../../systems/career/agent.js';
+import { agentDropped } from '../../systems/meta/standing.js';
 export function Messages({ g }) {
   const agent = g.agent && g.agent.level > 0 ? g.agent.name : null;
   const offers = g.offers || [];
   const trend = hotGenre(g);
+  const al = agentLine(g);
   return (<div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-    {!agent && <div style={{ background: theme.panel2, borderRadius: 14, padding: 12 }}><div style={{ fontSize: 11, fontWeight: 900, color: theme.accent, textTransform: 'uppercase', marginBottom: 4 }}>OpenCall · System</div><div style={{ fontSize: 13, lineHeight: 1.5 }}>No agent yet. Offers this good come through people. Until then, work the open castings.</div></div>}
+    {/* Who represents you. They arrive by email when you are worth a desk — see agent.js. */}
+    {al ? (<div style={{ background: theme.panel2, border: '1px solid ' + theme.line, borderRadius: 14, padding: 12 }}>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline' }}>
+        <div style={{ fontSize: 11, fontWeight: 900, color: theme.gold, textTransform: 'uppercase' }}>Your agent · {al.name}</div>
+        <div style={{ fontSize: 10.5, color: theme.muted, fontWeight: 800 }}>{al.cut}% of everything</div>
+      </div>
+      <div style={{ fontSize: 12.5, lineHeight: 1.5, marginTop: 4 }}>{al.desk}. {al.blurb}</div>
+      <div style={{ fontSize: 11.5, color: theme.muted, lineHeight: 1.5, marginTop: 3 }}>Right now: {al.doing}.</div>
+      <button onClick={() => { if (window.confirm('Let ' + al.name + ' go? Offers dry up until somebody else asks.')) dispatch(fireAgent); }} style={{ ...btn(''), marginTop: 8, fontSize: 11 }}>Let them go</button>
+    </div>)
+    : <div style={{ background: theme.panel2, borderRadius: 14, padding: 12 }}><div style={{ fontSize: 11, fontWeight: 900, color: theme.accent, textTransform: 'uppercase', marginBottom: 4 }}>OpenCall · System</div><div style={{ fontSize: 13, lineHeight: 1.5 }}>{agentDropped(g) ? 'No agent. Nobody represents the liability — get off the Avoided rung and somebody will ask.' : (g.fame || 0) >= 40 || (g.respect || 0) >= 50 ? 'No agent. When one wants you, the letter is in Email.' : 'No agent yet. Offers this good come through people — an agent asks at fame 40, or at standing 50 if directors know you before the public does. Until then, work the open castings.'}</div></div>}
     {/* This told an A-lister with four films to build credits and buzz. An empty inbox
         means something different depending on who is looking at it. */}
     {!offers.length && <div style={{ fontSize: 12.5, color: theme.muted, textAlign: 'center', padding: 24, lineHeight: 1.6 }}>

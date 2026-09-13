@@ -1,7 +1,7 @@
 import { rint, chance, pick } from '../../engine/rng.js';
 import { setQuote, setRespect } from '../meta/status.js';
 import { addTimeline } from '../../engine/timeline.js';
-import { earn } from '../../engine/economy.js';
+import { paid } from './agent.js';
 import { hotGenre } from '../meta/news.js';
 import { addGenreXP, genreBonus } from './genres.js';
 import { scheduleRelease } from './release.js';
@@ -184,7 +184,7 @@ export function productionTick(s) {
   // would starve you out of your flat long before the premiere.
   const perMonth = Math.round((p.salary || 0) / Math.max(1, p.months || 1));
   p.paid = (p.paid || 0) + perMonth;
-  if (perMonth > 0) earn(s, perMonth, `"${p.title}" — month ${(p.months - p.monthsLeft)}`);
+  if (perMonth > 0) paid(s, perMonth, `"${p.title}" — month ${(p.months - p.monthsLeft)}`);
   if (p.monthsLeft > 0) {
     // The money can walk at any point up to the last day, but you are paid for the days
     // you actually worked — so this is rolled AFTER the month is paid. Rolling it first
@@ -313,7 +313,7 @@ function wrapProduction(s) {
   // Whatever the monthly instalments did not cover — rounding, and the offers that were
   // written before instalments existed.
   const owed = Math.max(0, (p.salary || 0) - (p.paid || 0));
-  if (owed > 0) earn(s, owed, `"${credit.title}" — final payment`);
+  if (owed > 0) paid(s, owed, `"${credit.title}" — final payment`);
   s.confidence = clamp((s.confidence || 0) + 2);
   // What the crew says about you travels immediately — long before anyone sees the film.
   const lead = p.crew[0];

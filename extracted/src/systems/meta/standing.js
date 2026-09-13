@@ -27,71 +27,84 @@
 // you are forgotten, how fast scandal fades) and release.js (the comeback).
 
 import { comboOf } from '../../engine/combo.js';
+import { inCareer } from '../../engine/stage.js';
+import { addTimeline } from '../../engine/timeline.js';
 export { comboOf };
 
 export const COMBOS = {
   beginning: {
     label: 'Beginning', tone: 'plain',
+    enter: 'The word on you has faded. Rooms are what they were, and nobody is checking the name before they say yes.',
     line: 'Nothing on either ladder has decided anything yet. That is not a problem, it is a starting position.',
     long: 'Nobody has formed an opinion of the name, and not enough people know it for the opinion to matter yet. Everything above you is open in principle and closed in practice, which is what the first ten years of any career are.',
     fx: [],
   },
   difficult: {
     label: 'Difficult', tone: 'bad',
+    enter: 'The word on you has gone round the casting offices. Rooms are colder than they were, and the next crew has heard about the last one.',
     line: 'Not famous enough for it to be a story. Avoided all the same.',
     long: 'Avoided before anybody knows who you are. The public has no opinion; the business does, and it is a small business — the casting offices talk, and the crew on your next set has heard about your last one before you walk in. Bad work alone does not put you here. Behaviour does.',
     fx: ['Auditions are 15% harder — the room has heard', 'Crews start colder: the director’s opinion of you begins twelve points lower'],
   },
   craft: {
     label: 'The actor’s actor', tone: 'good',
+    enter: 'Directors have started saying your name in meetings. The public still has no idea who you are.',
     line: 'The public could not pick you out of a line-up. Every director in the city can.',
     long: 'Respected before you are known. The board sends you parts your fame does not yet justify, and the agent comes to you earlier than fame would bring them. What you do not have is an audience — and nothing on this list sells a single ticket.',
     fx: ['The board reaches further: standing above 40 counts toward the parts you are sent', 'An agent will take you at standing 50, without waiting for fame 40'],
   },
   working: {
     label: 'The working actor', tone: 'plain',
+    enter: 'Recognised, trusted, employed. You are a working actor now, which is more than most of the people you started with.',
     line: 'Recognised in the street, trusted on the set. Not a star, and working every year.',
     long: 'A Known Face with a reputation to match. Nothing is shut to you at this height and nothing is handed to you either; this is the middle of the business, where most of the people who last are.',
     fx: [],
   },
   face: {
     label: 'The face', tone: 'bad',
+    enter: 'The trades have a word for you now: a face. Everyone knows it. Nobody good wants it on their film, and the prestige shelf has quietly closed.',
     line: 'Everyone knows the name. Nobody good wants it on their film.',
     long: 'Known everywhere and trusted nowhere. The money still comes — fame is what the money follows — but the prestige shelf has quietly closed to you, and the press has decided you are a story rather than an actor: bad press sticks to you for longer than it does to anyone else.',
     fx: ['No prestige series or drama leads on the board until standing is back at 30', 'Scandal fades at 60% of the normal speed'],
   },
   liability: {
     label: 'The liability', tone: 'bad',
+    enter: 'Nobody will insure you. The studios have stopped calling, the prestige shelf is gone, and the sets you do get onto have already decided what you are like.',
     line: 'Famous enough to sell it. Nobody will insure it.',
     long: 'A star the business avoids. The audience still turns up, which is the only reason anybody still calls — but the studio shelf has closed along with the prestige one, your agent has stopped bringing you things, and every set you walk onto has already decided what you are like. This is the A-lister who is Avoided, and it is a worse place than Forgotten.',
     fx: ['No studio features, blockbusters or prestige work on the board until you are off the Avoided rung', 'Your agent brings you nothing', 'Auditions are 15% harder, and crews start twelve points colder', 'Scandal fades at 60% of the normal speed'],
   },
   star: {
     label: 'A star', tone: 'plain',
+    enter: 'Known, and taken seriously. This is what a career that is working looks like from the inside.',
     line: 'Known, and taken seriously enough. The ordinary shape of a career that is working.',
     long: 'Both numbers are doing their job. Nothing is shut to you and nothing is handed to you — this is what most successful careers look like from the inside.',
     fx: [],
   },
   real: {
     label: 'The real thing', tone: 'good',
+    enter: 'Known and trusted, both at once. When people say "a star", this is what they mean — and people keep asking for you.',
     line: 'Known and trusted. This is what people mean when they say "a star".',
     long: 'Fame and standing both high, and they feed each other: the public wants you and so do the directors, and because people keep asking for you, the world is slower to forget you between films.',
     fx: ['Forgotten at 80% of the normal speed — people keep asking', 'Every door on both ladders is open'],
   },
   faded: {
     label: 'Faded', tone: 'bad',
+    enter: 'Nobody is angry with you. Nobody is thinking about you at all. The scripts that arrive are fewer than a newcomer gets.',
     line: 'Nobody is angry with you. Nobody is thinking about you at all.',
     long: 'Forgotten, and only that. The business has no quarrel with the name; it simply has not heard it in a while, and a has-been is sent fewer scripts than a newcomer because everybody already knows how the story ends. One good film and they will call it a comeback.',
     fx: ['The board is thinner than a newcomer’s', 'A comeback needs a film rated 70'],
   },
   tale: {
     label: 'The cautionary tale', tone: 'bad',
+    enter: 'You are the story people tell newcomers now. Not the good kind. Anything less than a genuinely great film will not be called a comeback.',
     line: 'They remember the name, and they remember why.',
     long: 'Forgotten by the public and avoided by the business at the same time. The board is nearly empty, the room has heard, and a comeback — the one way out — has to be genuinely good rather than merely good, because the trades will not use the word for anything less.',
     fx: ['A comeback needs a film rated 80, not 70', 'The board is thinner than a newcomer’s', 'Auditions are 15% harder, and crews start twelve points colder'],
   },
   asked: {
     label: 'Still asked about', tone: 'good',
+    enter: 'The public has moved on. In the meetings, they still say your name — one decent film and the trades will call it a comeback.',
     line: 'The public moved on. The business did not.',
     long: 'Forgotten by the audience and respected by everyone who hires. Directors still say your name in meetings, which is why the board is not thinner for you the way it is for the merely fallen — and why a comeback needs less: a decent film is enough, because people were waiting for a reason.',
     fx: ['The board is not thinned by being Forgotten', 'A comeback needs a film rated 60, not 70'],
@@ -126,3 +139,26 @@ export function coldStart(s) { const c = comboOf(s); return c === 'difficult' ||
 export function comebackFloor(s) { const c = comboOf(s); return c === 'tale' ? 80 : c === 'asked' ? 60 : 70; }
 // Forgotten thins the board — unless the business is still asking about you.
 export function boardThinned(s) { const c = comboOf(s); return c === 'faded' || c === 'tale'; }
+
+// ── the trades find a word for it ──────────────────────────────────────────────────────
+// Nothing said anything when you became the face, or stopped being the liability: the
+// strip on the home screen changed and that was all. A combination that has held for two
+// months is announced once, in the timeline and the event line. Two months, because the
+// borders are numbers and a name sitting on 55 crosses it twice a year without anything
+// having happened. Beginning is only announced on the way OUT of a bad one — arriving
+// there from nowhere is not news.
+export function standingTick(s) {
+  if (!s || !s.alive || !inCareer(s)) return;
+  const now = comboOf(s);
+  if (!s._combo) { s._combo = now; return; }
+  if (now === s._combo) { s._comboPend = null; s._comboHeld = 0; return; }
+  if (s._comboPend !== now) { s._comboPend = now; s._comboHeld = 1; return; }
+  if (++s._comboHeld < 2) return;
+  const from = s._combo;
+  s._combo = now; s._comboPend = null; s._comboHeld = 0;
+  const c = COMBOS[now];
+  if (!c || !c.enter) return;
+  if (now === 'beginning' && COMBOS[from].tone !== 'bad') return;
+  addTimeline(s, (now === 'beginning' ? '' : c.label + '. ') + c.enter, c.tone === 'bad');
+  s.lastEvent = (now === 'beginning' ? '' : '◆ ' + c.label + '\n\n') + c.enter;
+}

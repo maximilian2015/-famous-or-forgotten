@@ -2,6 +2,8 @@ import { inCareer } from '../../engine/stage.js';
 import { rint, chance } from '../../engine/rng.js';
 import { addTimeline } from '../../engine/timeline.js';
 import { HOUSING } from '../../engine/economy.js';
+import { setFame, setRespect } from './status.js';
+import { agentWantsYou, offerAgent, signAgent, declineAgent, AGENT_TIERS } from '../career/agent.js';
 const clamp = (v) => Math.max(0, Math.min(100, v));
 export function emUnread(s) { return (s.inbox || []).filter((m) => !m.read).length; }
 function has(s, tag) { return (s.inbox || []).some((m) => m.tag === tag); }
@@ -65,6 +67,13 @@ export function emailTick(s) {
   }
   // And the moment it is settled the letter is gone — not sitting there for a decade.
   if (!(s.rentMissed > 0)) s.inbox = (s.inbox || []).filter((m) => m.tag !== 'rent');
+  // Somebody wants to represent you. Once per approach; a 'not now' goes quiet for six months.
+  if (agentWantsYou(s) && !has(s, 'agent')) {
+    const o = offerAgent(s); const t = AGENT_TIERS[o.tier];
+    push(s, { from: o.name, subj: 'I would like to represent you', tag: 'agent', kind: 'agent', agentOffer: o,
+      body: `${t.label}. ${t.blurb} They take ${Math.round(t.cut * 100)}% of every fee, bring you offers, and reach further than you can at the table.`,
+      cta: [{ label: 'Sign', sign: 'agent', reply: `${o.name} is your agent now.` }, { label: 'Not now', decline: 'agent', reply: 'They say to call when you change your mind. They will not call you.' }] });
+  }
   if (fame >= 40 && fame < 75 && offer(s, 'show', 0, 45)) { const sh = pickOne(SHOWS); push(s, { from: sh[0], subj: "We'd love to have you on", tag: 'show', kind: 'invite', body: sh[1], cta: [{ label: 'Go on the show', check: { stat: 'charisma', diff: 48 }, good: { fx: { fame: 3, media: 5, mental: 1 }, reply: 'You kill it. "So likeable" trends with your name.' }, bad: { fx: { scandal: 3, media: 2, mental: -3 }, reply: 'You freeze. The awkward clip loops.' } }, { label: 'Politely decline', fx: {}, reply: 'Safe, forgettable, no clip.' }] }); }
   if (fame >= 55 && offer(s, 'event', 0, 40)) { const cp = pickOne(CARPETS); push(s, { from: cp[0], subj: 'Red carpet invitation', tag: 'event', kind: 'invite', body: cp[1], cta: [{ label: 'Walk the carpet', check: { stat: 'looks', diff: 46 }, good: { fx: { fame: 2, media: 4, respect: 1 }, reply: 'Best dressed. Your look leads the galleries.' }, bad: { fx: { media: 2, scandal: 2 }, reply: '"Worst dressed" lists are also lists.' } }, { label: 'Send regrets', fx: { mental: 1 }, reply: 'The night happens without you.' }] }); }
   if (fame >= 75 && offer(s, 'vip', 0, 34)) { const rm = pickOne(ROOMS); push(s, { from: rm[0], subj: "You're on the list", tag: 'vip', kind: 'invite', body: rm[1], cta: [{ label: 'Go — work the room', check: { stat: 'charisma', diff: 52 }, good: { fx: { fame: 2, respect: 4, media: 2 }, reply: "You leave with a director's promise." }, bad: { fx: { scandal: 4, mental: -3 }, reply: 'You say the wrong thing to the wrong legend.' } }, { label: 'Too risky — skip', fx: {}, reply: 'That room does not send twice.' }] }); }
@@ -76,8 +85,15 @@ export function emailAct(s, id, i) {
   if (c.check) { const odds = 30 + (s[c.check.stat] || 0) * 0.5; const ok = chance(odds); out = ok ? (c.good || {}) : (c.bad || {}); head = ok ? '✅ ' : '❌ '; }
   if (typeof out.pay === 'number' || typeof c.pay === 'number') s.cash = (s.cash || 0) + (out.pay || c.pay || 0);
   if (c.clear === 'rent') s.rentMissed = 0;
+  if (c.sign === 'agent') signAgent(s, m.agentOffer);
+  if (c.decline === 'agent') declineAgent(s);
   const fx = out.fx || {};
-  ['fame','media','mental','scandal','respect','looks'].forEach((k) => { if (typeof fx[k] === 'number') s[k] = clamp((s[k] || 0) + fx[k]); });
+  // Fame and standing have single write points (status.js). Writing them here bypassed the
+  // fame ceiling and — worse — clamped standing at zero, so walking a carpet at −9 put you
+  // on 0: an email was the one thing in the game that could not go below zero.
+  ['media','mental','scandal','looks'].forEach((k) => { if (typeof fx[k] === 'number') s[k] = clamp((s[k] || 0) + fx[k]); });
+  if (typeof fx.fame === 'number') setFame(s, (s.fame || 0) + fx.fame);
+  if (typeof fx.respect === 'number') setRespect(s, (s.respect || 0) + fx.respect);
   s.lastEvent = `✉️ ${m.subj}\n\n${head}${out.reply || c.reply || c.label}`;
   addTimeline(s, `${m.subj}: ${c.label}.`, head === '❌ ');
   // Answered. That kind of night goes quiet for a while rather than arriving again next

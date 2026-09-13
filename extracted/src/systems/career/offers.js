@@ -4,7 +4,7 @@ import { rint, chance, pick } from '../../engine/rng.js';
 import { computeAccess } from './access.js';
 import { quoteFor, setFame, setRespect } from '../meta/status.js';
 import { addTimeline } from '../../engine/timeline.js';
-import { earn } from '../../engine/economy.js';
+import { paid } from './agent.js';
 import { GENRES } from '../meta/news.js';
 import { startProduction } from './production.js';
 import { rollStability } from './stability.js';
@@ -105,7 +105,7 @@ export function acceptOffer(s, id) {
     salary: o.salary, rating, status, year: s.year, minor: true };   // a day's work — Other work, not a film credit
   const bucket = s.dream === 'singer' ? 'discography' : 'filmography';
   (s[bucket] = s[bucket] || []).unshift(credit);
-  earn(s, o.salary, `"${credit.title}" paid`);
+  paid(s, o.salary, `"${credit.title}" paid`);
   setFame(s, s.fame + o.fame + (rating >= 85 ? 4 : 0));
   s.confidence = clamp(s.confidence + 2);
   s.offers = (s.offers || []).filter((x) => x.id !== id);
