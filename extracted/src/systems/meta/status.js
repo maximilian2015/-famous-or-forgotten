@@ -346,18 +346,23 @@ export const RESPECT_OPENS = {
   reliable: [
     'Brands start putting your name on a list',
     'Directors take the meeting',
+    'The shadow: a film under 45 now costs you about three points. Nobody expected anything of you before — from here they do',
+    'And the brand deal that arrives at Star is a choice: the money costs five points of this',
   ],
   serious: [
     'The break-even at the table — every point above forty makes them likelier to meet your number',
     'Your standing starts to weigh more than your fame in whether they shoot your version',
+    'The shadow: at forty a bad film is news, and costs the full four',
   ],
   name: [
     'Sixty is its own way into the elite, whatever your fame says',
     'An adoption board counts it in your favour',
+    'The shadow: every way up is slower from here — a good film or a director’s word is worth half what it was at zero, and a bad film still costs the full four',
   ],
   spoken: [
     'No gate here — this is simply what a long run of good work looks like',
     'At eighty, standing alone is worth 37 points on whether the director listens to you',
+    'The shadow: gains are worth a third of what they were, losses are still whole. There is nothing above this rung; the only direction left is down',
   ],
 };
 
