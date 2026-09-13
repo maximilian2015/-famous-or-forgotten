@@ -77,6 +77,14 @@ export function startProduction(s, offer) {
   // could take short work forever — two hundred careers still averaged a hundred and
   // forty-four credits. And walking onto a call sheet while you are already tired costs
   // more again: that is the decision the whole system is about.
+  // A part you got through somebody's dinner table. The crew knows, and the director starts
+  // ten points colder than they would for anyone else — you have a shoot to prove it wrong.
+  if (offer.viaPartner) {
+    const lead = s.production.crew[0];
+    lead.bond = clamp(lead.bond - 10); lead.bond0 = lead.bond;
+    s.production.viaPartner = offer.viaPartner;
+    addTimeline(s, `Everybody on ${s.production.title} knows how you got the part. ${lead.name} has not said anything, which is how you know.`, true);
+  }
   s.strain = Math.min(100, (s.strain || 0) + 6 + ((s.strain || 0) > 48 ? 9 : 0));
   s.lastEvent = `Cameras roll on "${s.production.title}". First day on set.`;
   addTimeline(s, `Production began: ${s.production.title}.`);
@@ -303,7 +311,8 @@ function wrapProduction(s) {
     season: p.season || 0, part: p.part > 1 ? p.part : 0, episodes: p.episodes || 0,
     // Who directed it, and how long it ran. The crew is thrown away at wrap, and the
     // filmography had no director on it — every real one lists them under the title.
-    director: ((p.crew || [])[0] || {}).name || null, months: p.months || 0 };
+    director: ((p.crew || [])[0] || {}).name || null, months: p.months || 0,
+    wrappedAt: (s.year || 0) * 12 + (s.month || 0) };   // so the phone knows somebody wants to celebrate
   // The credit does NOT land here. It goes into post and opens months from now —
   // fame, box office and the score all arrive on premiere night, not on the last
   // day of shooting. See systems/career/release.js.

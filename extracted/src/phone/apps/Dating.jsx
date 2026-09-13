@@ -6,7 +6,7 @@ import { onCooldown } from '../../engine/cooldown.js';
 import { relBand } from '../../systems/life/bonds.js';
 import { refreshDatingPool, goOnDate, proposeMarriage, moveInTogether, canMoveIn,
   divorce, settlement, wantsOf, meansOf, whoPays, DATES, DATE_ORDER, dateCost, WEDDINGS, WEDDING_ORDER,
-  weddingCost, PROPOSE_AT, MOVE_IN_AT } from '../../systems/life/dating.js';
+  weddingCost, PROPOSE_AT, MOVE_IN_AT, canMoveInWithThem, moveInWithThem, MOVE_IN_WITH_AT, connected, hostName } from '../../systems/life/dating.js';
 import { spouseOf, tryForBaby, fertility, fertilityNote, applyToAdopt, adoptCost, adoptionOdds,
   livingChildren, ADOPT_MONTHS } from '../../systems/life/children.js';
 
@@ -68,7 +68,8 @@ function Who({ p, sub }) {
       </div>
     </div>
     <div style={{ fontSize: 11.5, color: theme.muted, marginTop: 2 }}>{sub}</div>
-    <div style={{ fontSize: 11.5, color: theme.gold, marginTop: 4, fontWeight: 700 }}>{meansOf(p).label}</div>
+    <div style={{ fontSize: 11.5, color: theme.gold, marginTop: 4, fontWeight: 700 }}>{meansOf(p).label}{connected(p) ? ' · in the business' : ''}</div>
+    {connected(p) && <div style={{ fontSize: 11.5, color: theme.muted, marginTop: 2, lineHeight: 1.45 }}>Knows everyone. Close enough to them, and doors open that fame alone does not — and everybody on the other side of them knows why.</div>}
     <div style={{ fontSize: 11.5, color: theme.accent, marginTop: 6, fontWeight: 700 }}>{w.label}</div>
     <div style={{ fontSize: 11.5, color: theme.muted, marginTop: 2, lineHeight: 1.45 }}>{w.blurb}</div>
   </div>);
@@ -202,6 +203,11 @@ export function Dating({ g }) {
       {!p.livingTogether && <button onClick={() => dispatch(moveInTogether)} disabled={!move.ok} style={{ ...btn(!move.ok), marginBottom: 8 }}>
         {move.ok ? 'Ask them to move in' : `Move in together · needs ${MOVE_IN_AT} closeness`}
       </button>}
+      {/* The other direction: their place, their lease. Only somebody with money has the room. */}
+      {!p.livingTogether && ['money', 'serious'].includes(p.means) && <button onClick={() => dispatch(moveInWithThem)} disabled={!canMoveInWithThem(g).ok} style={{ ...btn(!canMoveInWithThem(g).ok), marginBottom: 8 }}>
+        {canMoveInWithThem(g).ok ? 'Move in with them · no rent' : `Move in with them · needs ${MOVE_IN_WITH_AT} closeness`}
+      </button>}
+      {p.livingTogether && g.hostedBy === p.id && <div style={{ fontSize: 11.5, color: theme.muted, marginBottom: 8, lineHeight: 1.45 }}>You live at {hostName(g)}'s. No rent, their tier of house — and it ends when they do.</div>}
       <button onClick={() => setAsking(true)} disabled={!ready || onCooldown(g, 'propose')} style={btn(!ready || onCooldown(g, 'propose'))}>
         {ready ? 'Propose' : `Propose · needs ${PROPOSE_AT} closeness`}
       </button>

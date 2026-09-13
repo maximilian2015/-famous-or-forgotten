@@ -36,12 +36,24 @@ export const HOUSING = {
   },
 };
 export const HOUSING_ORDER = ['room', 'studio', 'flat', 'house', 'penthouse'];
-export function home(s) { return HOUSING[s.housing || 'room'] || HOUSING.room; }
+// Somebody with money can put you up. While they do, you live at their tier and the rent is
+// theirs — see systems/life/dating.js moveInWithThem. Defined here with no imports because
+// the rent and the home's energy are read here; dating.js imports it from here.
+export function hostOf(s) {
+  if (!s || !s.hostedBy) return null;
+  if (s.partner && s.partner.id === s.hostedBy) return s.partner;
+  return (s.family || []).find((f) => f.id === s.hostedBy && f.alive && f.relation === 'Spouse') || null;
+}
+export function home(s) {
+  const host = hostOf(s);
+  if (host) return HOUSING[host.means === 'serious' ? 'house' : 'flat'];
+  return HOUSING[s.housing || 'room'] || HOUSING.room;
+}
 // Read by systems/life/health.js — a damp shared room is a real reason to fall ill,
 // and a doorway is a much better one.
 export function homeIllness(s) { return s.homeless ? 26 : (s.hasApartment ? (home(s).ill || 0) : 0); }
 // Read by engine/time.js — space and quiet give you back part of the month.
-export function homeEnergy(s) { return s.hasApartment ? (home(s).ap || 0) : 0; }
+export function homeEnergy(s) { return (s.hasApartment || hostOf(s)) ? (home(s).ap || 0) : 0; }
 // Read wherever you spend time with someone — you cannot host anyone in a rented room.
 export function homeBond(s) { return s.hasApartment ? (home(s).bond ?? 1) : 1; }
 export function canRaiseChild(s) { return !!(s.hasApartment && home(s).kids); }
@@ -72,7 +84,8 @@ export function monthlyCosts(s) {
   // A house you inherited is yours: the bills stop, which is the whole point of it.
   // You do not pay rent on a house you own. See systems/life/money.js.
   const owned = s.owns && s.owns === (s.housing || 'room');
-  const rent = s.hasApartment && !s.inheritedHome && !owned ? (HOUSING[s.housing || 'room']?.cost || 0) : 0;
+  // And no rent at all while somebody with money is putting you up.
+  const rent = s.hasApartment && !s.inheritedHome && !owned && !hostOf(s) ? (HOUSING[s.housing || 'room']?.cost || 0) : 0;
   const food = s.hasApartment ? (DIET[s.diet || 'cook']?.cost || 0) : 0;
   const gym = s.hasApartment && s.gym ? GYM_COST : 0;
   // The entourage and what it costs to keep the things. STAFF and THINGS live in

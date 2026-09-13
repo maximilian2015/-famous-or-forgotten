@@ -302,7 +302,7 @@ export function promiseTick(s) {
 }
 
 function leave(s, who, line) {
-  if (who.where === 'partner') s.partner = null;
+  if (who.where === 'partner') { if (s.hostedBy === s.partner.id) { delete s.hostedBy; addTimeline(s, 'Two van loads back the other way. The rent is yours again.', true); } s.partner = null; }
   else who.ref.relationship = clamp((who.ref.relationship || 0) - 60);
   s.mental = clamp((s.mental || 0) - 12);
   s.lastEvent = line;

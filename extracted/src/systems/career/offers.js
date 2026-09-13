@@ -38,6 +38,19 @@ export function generateOffer(s) {
     stability: rollStability({ tentpole: 'blockbuster', lead: 'feature', supporting: 'indie' }[tier]),
     deadline: rint(2, 4) };
 }
+// The one in a million. Somebody you are close to is in the business, and there was a
+// dinner, and somebody at it was casting. Straight to a studio picture whatever your fame
+// says — and everybody on that set will know how you got the part (production.js).
+export function roomOffer(s, who) {
+  const tier = 'tentpole';
+  const quote = quoteFor(s, 'film_tentpole') || quoteFor(s, 'film_studio') || rint(250000, 600000);
+  const salary = Math.round(quote * (0.7 + Math.random() * 0.3));
+  return { id: uid(s, 'off'), kind: 'room', viaPartner: who.name,
+    projectTitle: '⭐ ' + title(s, true), role: 'Lead', type: s.dream === 'singer' ? 'World Tour' : 'Blockbuster',
+    genre: pick(GENRES), salary, months: rint(6, 11), fame: 9, prestigeScore: rint(60, 90), tier,
+    scale: 'blockbuster', stability: rollStability('blockbuster'), deadline: rint(2, 3),
+    note: `${who.name.split(' ')[0]} got you in the room. Everybody on that set will know it — make it not matter.` };
+}
 export function campaignCost(o) { return Math.max(800, Math.round(o.salary * 0.15)); }
 export function runCampaign(s, id) {
   const o = (s.offers || []).find((x) => x.id === id); if (!o || o.tier === 'supporting' || o.campaign) return s;

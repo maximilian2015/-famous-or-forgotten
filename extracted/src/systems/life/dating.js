@@ -14,7 +14,7 @@ import { uid } from '../../engine/id.js';
 import { rint, chance, pick } from '../../engine/rng.js';
 import { onCooldown, markUsed } from '../../engine/cooldown.js';
 import { addTimeline } from '../../engine/timeline.js';
-import { canRaiseChild, HOUSING } from '../../engine/economy.js';
+import { canRaiseChild, HOUSING, hostOf } from '../../engine/economy.js';
 import { applyBond, clampRel } from './bonds.js';
 import { level as drinkLevel, dependent } from './drink.js';
 
@@ -23,6 +23,8 @@ const MFIRST = ['Jonas','Marco','Idris','Felix','Ren','Cole','Adrian','Nico','Sa
 const FFIRST = ['Sasha','Iris','Noor','Elin','Priya','Wren','Yara','Freya','Talia','Mira'];
 const LAST = ['Vale','Kade','Roy','Mercer','Onyx','Frost','Dune','Salt','Wren','Bright','Hale'];
 const JOBS = ['barista','architect','nurse','photographer','teacher','chef','personal trainer','graphic designer','musician','accountant'];
+const CONNECTED_JOBS = ['film producer', 'studio executive', 'runs a production company', 'a director, actually', 'head of a talent agency'];
+export const connected = (p) => !!(p && (p.industryWeight || 0) >= 80);
 
 // ── what they are actually looking for ────────────────────────────────────────
 // This is the whole personality. It decides which evenings land, whether your name is an
@@ -81,9 +83,16 @@ export function prospect(s) {
   const wants = pick(WANT_KEYS);
   const means = rollMeans();
   const w = WANTS[wants];
-  return { id: uid(s, 'date'), name, gender, age,
+  const p = { id: uid(s, 'date'), name, gender, age,
     job: pick(MEANS[means].jobs), charm: rint(30, 85), relationship: 0, dates: 0, means,
     wants, patience: rint(w.patience[0], w.patience[1]), livingTogether: false, married: false };
+  // One in forty is in the business — a producer, a studio executive, somebody who can put
+  // you in a room. Maxi: "a rich lover can get you into films, but it should be one in a
+  // million, and if you are that lucky it is straight into A-list pictures." See access.js
+  // knowsPowerBroker and sms.js: the room. Rare on purpose, and it comes with a set that
+  // knows how you got the part.
+  if (chance(2.5)) { p.industryWeight = rint(80, 96); p.job = pick(CONNECTED_JOBS); p.means = chance(50) ? 'serious' : 'money'; }
+  return p;
 }
 export function refreshDatingPool(s, force) {
   s.datingPool = s.datingPool || [];
@@ -207,6 +216,42 @@ export function moveInTogether(s) {
   return s;
 }
 
+// ── living at theirs ──────────────────────────────────────────────────────────
+// The other direction. Somebody who comes from money has the room, and when you are broke
+// and twenty-three that is not a footnote, it is a way to live: no rent, their tier of
+// house, an extra Energy if it is a real house. It ends when they do — two van loads back
+// the other way, and the rent is yours again. See engine/economy.js hostOf.
+export const MOVE_IN_WITH_AT = 50;
+export function canMoveInWithThem(s) {
+  if (!s.partner || s.partner.livingTogether || s.partner.married) return { ok: false, why: '' };
+  if (!['money', 'serious'].includes(s.partner.means)) return { ok: false, why: `${s.partner.name.split(' ')[0]} does not have the room.` };
+  if ((s.partner.relationship || 0) < MOVE_IN_WITH_AT) return { ok: false, why: `Not yet. ${s.partner.name.split(' ')[0]} would have to want you there.` };
+  return { ok: true, why: '' };
+}
+export function moveInWithThem(s) {
+  const fit = canMoveInWithThem(s);
+  if (!fit.ok) { s.lastEvent = fit.why || 'Not now.'; return s; }
+  s.partner.livingTogether = true;
+  s.partner.movedIn = (s.year || 0) * 12 + (s.month || 0);
+  s.hostedBy = s.partner.id;
+  // If you were on the street or at your parents', this is a roof: you have a home again.
+  if (s.homeless || !s.hasApartment) { s.homeless = false; s.hasApartment = true; s.livingWith = 'own_place'; s.housing = s.housing || 'room'; s.monthsOnStreet = 0; }
+  s.rentMissed = 0;
+  applyBond(s, s.partner, 8);
+  s.mental = clamp((s.mental || 50) + 4);
+  const label = HOUSING[s.partner.means === 'serious' ? 'house' : 'flat'].label.toLowerCase();
+  s.lastEvent = `You moved in with ${s.partner.name}. Their ${label}, their name on the lease, and no rent on the first of the month.`;
+  addTimeline(s, `Moved in with ${s.partner.name}. No rent.`);
+  return s;
+}
+export function unhost(s, why) {
+  if (!s.hostedBy) return;
+  delete s.hostedBy;
+  s.mental = clamp((s.mental || 50) - 4);
+  addTimeline(s, `Two van loads back the other way. ${why} The rent is yours again.`, true);
+}
+export function hostName(s) { const h = hostOf(s); return h ? h.name.split(' ')[0] : null; }
+
 // ── the wedding ───────────────────────────────────────────────────────────────
 export const WEDDINGS = {
   registry: { id: 'registry', label: 'A registry office', blurb: 'Two witnesses off the street and lunch afterwards.', cost: 400, fame: 0, bond: 4 },
@@ -248,8 +293,10 @@ export function proposeMarriage(s, style = 'proper', prenup = false) {
   setFame(s, (s.fame || 0) + w.fame);
   const partner = s.partner;
   applyBond(s, partner, w.bond + (prenup ? -8 : 0));
+  const spouseId = 'fam' + Math.random().toString(36).slice(2, 8);
+  if (s.hostedBy === partner.id) s.hostedBy = spouseId;   // their house is still their house
   (s.family = s.family || []).push({
-    id: 'fam' + Math.random().toString(36).slice(2, 8), name: partner.name, relation: 'Spouse',
+    id: spouseId, name: partner.name, relation: 'Spouse',
     gender: partner.gender, age: partner.age, alive: true, health: partner.health || rint(70, 95),
     relationship: partner.relationship, job: partner.job, retired: false,
     wants: partner.wants, patience: partner.patience, livingTogether: true, means: partner.means,
@@ -295,6 +342,7 @@ export function divorce(s, filedByThem = false) {
   if (!spouse) { s.lastEvent = 'There is nobody to divorce.'; return s; }
   const take = settlement(s, spouse);
   s.cash = Math.max(0, (s.cash || 0) - take);
+  if (s.hostedBy === spouse.id) unhost(s, 'It was their house.');
   spouse.alive = true; spouse.relation = 'Ex-spouse';
   spouse.relationship = clampRel((spouse.relationship || 0) - 30);
   s.mental = clamp((s.mental || 50) - 18);
@@ -324,6 +372,7 @@ export function datingYear(s) {
     // Patience is how much of your absence they will take before it stops being worth it.
     const bar = 12 + (100 - (s.partner.patience || 60)) * 0.35;
     if (rel < bar && chance(55)) {
+      unhost(s, `${s.partner.name.split(' ')[0]} ended it.`);
       addTimeline(s, `${s.partner.name} ended it. ${w.label.toLowerCase()}, and this was never going to be it.`, true);
       s.mental = clamp((s.mental || 50) - 10);
       s.lastFamilyEvent = `${s.partner.name} ended things.`;

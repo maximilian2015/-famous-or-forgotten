@@ -13,6 +13,9 @@ import { rint, chance, pick } from '../../engine/rng.js';
 import { addTimeline } from '../../engine/timeline.js';
 import { applyBond } from '../life/bonds.js';
 import { findPerson } from '../life/interactions.js';
+import { canMoveInWithThem, moveInWithThem, connected } from '../life/dating.js';
+import { roomOffer } from '../career/offers.js';
+import { HOUSING } from '../../engine/economy.js';
 
 const clamp = (v) => Math.max(0, Math.min(100, v));
 const stamp = (s) => (s.year || 0) * 12 + (s.month || 0);
@@ -66,6 +69,13 @@ const COME_HOME = ['Are you coming home at some point this week?', 'Dinner. Ours
 const PAPERS = ['Your mother saw the papers.', 'Your father has the article open on the kitchen table. He has not said anything. Ring him.', 'Is it true? Ring me. Not a text, a call.'];
 const PROUD = ['Saw the list. Proud of you.', 'THE LIST. You are ON THE LIST.', 'Nominated. I told everyone at work. Sorry.'];
 const DRINKS = ['Drinks Thursday? You owe me about six.', 'Long time. Come out with us Friday.', 'Are you alive? Pub, this week, no excuses.'];
+const LUNCH = ['Sunday lunch? Your grandmother is asking.', 'Are you coming Sunday. Not a question.', 'Roast. One o’clock. Bring nothing, you always bring the wrong thing.'];
+const SAW_YOU = ['Saw you on the sofa last night. You were very good at pretending to laugh.', 'You are in the paper. The good page.', 'Everyone at work saw the carpet thing. You looked expensive.'];
+const WRAP = ['Wrapped? Come out. Tonight.', 'You are done! Drinks. I am not asking.', 'Heard you wrapped. Sleep first, then me.'];
+const GIFT = ['Left something in your account. {n}. Don’t.', 'Sent you {n}. Buy something you do not need.', '{n}. It is nothing, and I do not want to hear about it.'];
+const RENT = ['I paid the landlord. We are not discussing it.', 'The rent is done. Don’t make a thing of it.', 'Sorted the flat. Come over instead of worrying.'];
+const MOVE_IN = ['Move in with me. I have the room, and you have a landlord.', 'Come and live here. It is stupid that you do not.', 'There is a whole floor nobody uses. Bring your things.'];
+const ROOM = ['Dinner Thursday. Someone will be there who is casting.', 'Come to the thing on Friday. Bring the face. There is a part going.', 'A producer I know is casting something big and I mentioned you. Dinner, Saturday. Do not be late.'];
 const WHILE = ['It has been a while.', 'Not heard from you in ages. Everything alright?', 'Guess we are the kind of people who drift. Or I could just ask: coffee?'];
 
 export function smsTick(s) {
@@ -96,11 +106,11 @@ export function smsTick(s) {
   }
   // 3. The partner asks. Not while you are answering it on a set eleven months away — that
   //    is exactly when they ask.
-  if (s.partner && (s.partner.relationship || 0) >= 45 && !pending(s, 'over') && !cooling(s, 'over') && chance(s.production ? 30 : 16)) {
+  if (s.partner && (s.partner.relationship || 0) >= 45 && !pending(s, 'over') && !cooling(s, 'over') && chance(s.production ? 48 : 36)) {
     push(s, { from: s.partner.name, pid: s.partner.id, tag: 'over', text: pick(s.partner.livingTogether ? COME_HOME : COME_OVER),
       replies: [{ label: 'On my way', ap: 1, rel: 5, mental: 3, reply: `You go. It is a good night, and ${first(s.partner)} does not ask about work once.` },
         { label: s.production ? 'Can’t. Shooting.' : 'Can’t tonight', rel: -3, reply: `${first(s.partner)}: "Ok." Two letters.` }] });
-    coolDown(s, 'over', 3);
+    coolDown(s, 'over', 1);
   }
   // 4. The papers. A jump in scandal, and a parent has seen it.
   const sc = s.scandal || 0;
@@ -119,11 +129,67 @@ export function smsTick(s) {
   s._smsNoms = noms;
   // 6. A friend, now and then.
   const friends = who.filter((t) => t.rel === 'contact' || t.rel === 'sibling');
-  if (friends.length && !pending(s, 'drinks') && !cooling(s, 'drinks') && chance(9)) {
+  if (friends.length && !pending(s, 'drinks') && !cooling(s, 'drinks') && chance(32)) {
     const t = pick(friends);
     push(s, { from: t.p.name, pid: t.p.id, tag: 'drinks', text: pick(DRINKS),
       replies: [{ label: 'Go', ap: 1, rel: 5, mental: 2, reply: `A night that is not about you. You had forgotten what those were like.` }, { label: 'Rain check', rel: -1, reply: `${first(t.p)}: "Sure." You both know.` }] });
-    coolDown(s, 'drinks', 4);
+    coolDown(s, 'drinks', 1);
+  }
+  // 7. Family, now and then. Sunday.
+  const fam = who.filter((t) => t.rel === 'parent' || t.rel === 'grandparent' || t.rel === 'sibling');
+  if (fam.length && !pending(s, 'lunch') && !cooling(s, 'lunch') && chance(24)) {
+    const t = pick(fam);
+    push(s, { from: t.p.name, pid: t.p.id, tag: 'lunch', text: pick(LUNCH),
+      replies: [{ label: 'Go', ap: 1, rel: 4, mental: 2, reply: `Three hours, too much food, and nobody asked about the film. That was the point.` }, { label: 'Next time', rel: -1, reply: `${first(t.p)}: "Next time, then." They have said that before.` }] });
+    coolDown(s, 'lunch', 2);
+  }
+  // 8. You were on television, or in the galleries, and somebody saw.
+  if ((s.media || 0) - (s._smsMedia || 0) >= 4 && who.length && !pending(s, 'sawyou') && !cooling(s, 'sawyou')) {
+    const t = pick(who);
+    push(s, { from: t.p.name, pid: t.p.id, tag: 'sawyou', text: pick(SAW_YOU), replies: [{ label: 'Reply', rel: 2, mental: 1, reply: `${first(t.p)} sends a screenshot. You look tired in it.` }] });
+    coolDown(s, 'sawyou', 4);
+  }
+  s._smsMedia = s.media || 0;
+  // 9. A wrap, and somebody wants to celebrate it.
+  const wrapped = (s.filmography || []).find((c) => c.wrappedAt === now);
+  if (wrapped && who.length && !pending(s, 'wrap') && !cooling(s, 'wrap')) {
+    const t = s.partner && (s.partner.relationship || 0) >= 40 ? { p: s.partner, rel: 'partner' } : pick(who);
+    push(s, { from: t.p.name, pid: t.p.id, tag: 'wrap', text: pick(WRAP), replies: [{ label: 'Yes', ap: 1, rel: 4, mental: 3, reply: 'The first night in months that ends when it ends.' }, { label: 'Too tired', rel: -1, mental: 1, reply: 'You sleep for eleven hours instead. Also fine.' }] });
+    coolDown(s, 'wrap', 2);
+  }
+  // ── somebody with money ──────────────────────────────────────────────────────
+  const rich = s.partner && ['money', 'serious'].includes(s.partner.means) ? s.partner : null;
+  if (rich && (rich.relationship || 0) >= 55 && !pending(s, 'gift') && !cooling(s, 'gift') && chance(rich.means === 'serious' ? 16 : 9)) {
+    // A gift lands when it lands; the text is the notice. Scaled to what they have.
+    const amount = rich.means === 'serious' ? rint(40, 160) * 1000 : rint(3, 12) * 1000;
+    s.cash = (s.cash || 0) + amount;
+    addTimeline(s, `${rich.name.split(' ')[0]} transferred €${amount.toLocaleString()}. "Don't."`);
+    push(s, { from: rich.name, pid: rich.id, tag: 'gift', text: pick(GIFT).replace('{n}', '€' + amount.toLocaleString()),
+      replies: [{ label: 'Thank them', rel: 3, reply: `${first(rich)}: "It is only money." Which is a thing people with money say.` }] });
+    coolDown(s, 'gift', 4);
+  }
+  // The rent you could not make. They can.
+  if (rich && (rich.relationship || 0) >= 45 && (s.rentMissed || 0) > 0 && !pending(s, 'rentpaid')) {
+    const owed = (HOUSING[s.housing || 'room'] || {}).cost || 0;
+    s.cash = (s.cash || 0) + owed; s.rentMissed = 0;
+    s.inbox = (s.inbox || []).filter((m) => m.tag !== 'rent');
+    push(s, { from: rich.name, pid: rich.id, tag: 'rentpaid', text: pick(RENT), replies: [{ label: 'Thank them', rel: 2, reply: 'They change the subject. It is the kindest thing they could do with it.' }, { label: 'Say you will pay it back', rel: 4, mental: 2, reply: `${first(rich)}: "I know you will." Neither of you mentions it again.` }] });
+  }
+  // Move in with me. Asked once, when it would actually help.
+  if (rich && canMoveInWithThem(s).ok && !s.hostedBy && !pending(s, 'movein') && !cooling(s, 'movein')
+    && ((s.cash || 0) < 3 * ((HOUSING[s.housing || 'room'] || {}).cost || 0) || (s.rentMissed || 0) > 0 || s.homeless || !s.hasApartment)) {
+    push(s, { from: rich.name, pid: rich.id, tag: 'movein', text: pick(MOVE_IN),
+      replies: [{ label: 'Yes', act: 'movein', reply: 'You say yes. The lease was never in your name.' }, { label: 'Not yet', rel: -2, reply: `${first(rich)}: "The offer stands." It does, for a while.` }] });
+    coolDown(s, 'movein', 8);
+  }
+  // ── the room ─────────────────────────────────────────────────────────────────
+  // One in forty prospects is in the business (dating.js). Close enough to them, and once
+  // in a while there is a dinner, and somebody at it is casting a studio picture.
+  const inside = [s.partner, ...(s.family || []).filter((f) => f.alive && f.relation === 'Spouse')].filter((p) => p && connected(p) && (p.relationship || 0) >= 60)[0];
+  if (inside && !pending(s, 'room') && !cooling(s, 'room') && (s.offers || []).length < 2 && chance(4)) {
+    push(s, { from: inside.name, pid: inside.id, tag: 'room', text: pick(ROOM),
+      replies: [{ label: 'Go', ap: 1, act: 'room', reply: 'You go. By dessert you have a part in a studio picture, and everybody at the table knows why.' }, { label: 'Not like this', rel: -2, mental: 2, reply: `${first(inside)}: "Suit yourself." They mean it kindly. Probably.` }] });
+    coolDown(s, 'room', 9);
   }
   // Old texts you never answered stop being texts.
   s.sms = (s.sms || []).filter((m) => now - (m.when || now) < 6);
@@ -138,6 +204,8 @@ export function smsReply(s, id, i) {
   let moved = 0;
   if (found && r.rel) moved = applyBond(s, found.p, r.rel);
   if (r.mental) s.mental = clamp((s.mental || 50) + r.mental);
+  if (r.act === 'movein') moveInWithThem(s);
+  if (r.act === 'room' && found) { const o = roomOffer(s, found.p); (s.offers = s.offers || []).push(o); addTimeline(s, `${found.p.name.split(' ')[0]} got you in the room. "${o.projectTitle.replace('⭐ ', '')}" — a studio picture, and the offer is in Messages.`); }
   s.lastEvent = `💬 ${m.from}: "${m.text}"\n\n${r.reply}${moved ? ` (${moved > 0 ? '+' : ''}${moved})` : ''}`;
   if (r.rel && r.rel < 0) addTimeline(s, `${m.from} texted. You did not really answer.`, true);
   s.sms = (s.sms || []).filter((x) => x.id !== id);

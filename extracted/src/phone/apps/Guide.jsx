@@ -172,6 +172,12 @@ function PhoneGuide() {
       'Walking out of an optioned sequel later is walking out of a contract: −6 standing']} />
     <H>Messages</H>
     <P>The people in your life text about what actually happened this month: a film that closed, a scandal a parent saw, a list your name was on, a partner who has not seen you in ten days, a contact who went cold. Every reply moves the relationship the way anything else does, and the ones that cost an energy are the ones that mean something. Texts you never answer stop being texts after six months.</P>
+    <H>Somebody with money</H>
+    <P>A partner who comes from money picks up the bill on dates, and once you are close, sends money now and then, pays the rent you could not, and — when you are broke — asks you to move in: their place, their tier of house, no rent on the first of the month. It ends when they do. Marrying them keeps the house; a divorce takes it with it.</P>
+    <Rung label="In the business" min="one prospect in forty" lines={[
+      'A producer, a studio executive, somebody who knows everyone. Rare on purpose',
+      'Close enough to them (60) and the tentpoles open the way a hit would — and once in a while there is a dinner, and somebody at it is casting a studio picture. Whatever your fame says',
+      'Everybody on that set knows how you got the part. The director starts ten points colder, and you have a shoot to prove it wrong']} />
   </div>);
 }
 
