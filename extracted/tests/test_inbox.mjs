@@ -176,4 +176,19 @@ const byTag = (s, tag) => (s.sms || []).find((m) => m.tag === tag);
   const c1 = sp2.cash; EM.emailAct(sp2, (sp2.inbox || []).find((x) => x.tag === 'spam').id, 0);
   ok('deleting it does not', sp2.cash === c1);
 }
+// ── the casting office writes back ──
+{
+  const K = await import(P + 'systems/career/castings.js');
+  const s = actor({ fame: 20, peakFame: 20, cash: 5000, ap: 3 });
+  K.refreshCastingPool(s, true);
+  const c = s.castingPool.find((x) => (x.months || 1) >= 2 && !(K.reach(s) < (x.minFame || 0)));
+  ok('there is a part to read for', !!c);
+  K.auditionFor(s, c.id, 85);
+  ok('a read goes into the waiting list', (s.submissions || []).length === 1);
+  s.submissions[0].due = stamp(s);
+  K.submissionsTick(s);
+  const m = (s.inbox || []).find((x) => x.tag === 'reply');
+  ok('and the answer comes as a letter too', !!m && new RegExp(c.title).test(m.subj), JSON.stringify((s.inbox || []).map((x) => x.subj)));
+  ok('a letter you can delete', m && m.cta.length === 1 && (EM.emailAct(s, m.id, 0), !(s.inbox || []).some((x) => x.tag === 'reply')));
+}
 console.log(fails ? `\n${fails} FAILED` : '\nall passed');

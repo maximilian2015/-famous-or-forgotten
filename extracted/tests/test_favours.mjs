@@ -90,7 +90,7 @@ function actor(over) {
 {
   const s = actor({ respect: 40, people: [{ id: 'c1', name: 'Tomas Reel', role: 'Fellow Actor', relationship: 40, industryWeight: 30, lastSeen: 0 }] });
   F.vouchFor(s, 'c1');
-  ok('three points, and they owe you', s.respect === 37 && s.people[0].owes === true && s.people[0].relationship >= 50, String(s.people[0].relationship));
+  ok('three points, and they owe you', s.respect === 37 && s.people[0].owes === true && s.people[0].relationship >= 45, String(s.people[0].relationship));
   const r = s.respect; F.vouchFor(s, 'c1');
   ok('not twice in two years', s.respect === r && /pattern/.test(s.lastEvent || ''));
 }
@@ -108,5 +108,25 @@ function actor(over) {
   ok('once, while it is on the board', !F.canOpenShelf(s));
   ok('a star does not need it', !F.canOpenShelf(actor({ fame: 62, respect: 45 })));
   ok('and the flag never lingers', s._openShelfOnce === undefined);
+}
+// ── limited, and dearer every time ──
+{
+  const s = actor({ respect: 90, people: [{ id: 'c1', name: 'A', role: 'Fellow Actor', relationship: 40, lastSeen: 0 }, { id: 'c2', name: 'B', role: 'Fellow Actor', relationship: 40, lastSeen: 0 }, { id: 'c3', name: 'C', role: 'Fellow Actor', relationship: 40, lastSeen: 0 }, { id: 'c4', name: 'D', role: 'Fellow Actor', relationship: 40, lastSeen: 0 }] });
+  ok('three asks a year', F.asksLeft(s) === 3);
+  ok('the first word for a friend costs three', F.costOf(s, 'vouch') === 3);
+  F.vouchFor(s, 'c1');
+  ok('the second costs half as much again', F.costOf(s, 'vouch') === 5 && F.asksLeft(s) === 2, String(F.costOf(s, 'vouch')));
+  F.vouchFor(s, 'c2');
+  ok('the third, double', F.costOf(s, 'vouch') === 6 && F.asksLeft(s) === 1);
+  F.vouchFor(s, 'c3');
+  const r = s.respect;
+  ok('and the fourth this year is refused', !F.canUse(s, 'vouch').ok && /three times this year/.test(F.canUse(s, 'vouch').why));
+  F.vouchFor(s, 'c4');
+  ok('and does nothing', s.respect === r && !s.people[3].owes);
+  ok('the price of anything else has risen too', F.costOf(s, 'lead') === Math.round(6 * 2.5) && F.costOf(s, 'sequel') === 20);
+  s.year += 1;
+  ok('a year on, you can ask again — at a price that remembers the last two years', F.asksLeft(s) === 3 && F.costOf(s, 'vouch') === Math.round(3 * 2.5));
+  s.year += 2;
+  ok('two years on, the price is back where it started', F.costOf(s, 'vouch') === 3);
 }
 console.log(fails ? `\n${fails} FAILED` : '\nall passed');

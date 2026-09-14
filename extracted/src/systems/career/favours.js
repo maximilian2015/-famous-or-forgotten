@@ -33,19 +33,35 @@ export const FAVOURS = {
 };
 export const FAVOUR_ORDER = ['lead', 'sequel', 'smooth', 'vouch', 'shelf'];
 
-// Can you afford to ask — the rung, and something left to spend.
+// Limited, and dearer every time. Maxi: "the points have to be limited and hard to earn —
+// think about how Hollywood Animal spends popularity." A name can be leaned on three
+// times a year, and each ask in the last two years adds half the price to the next one:
+// the fourth favour in eighteen months costs two and a half times the first. Measured
+// before this: a perfect player who spent whenever it could used forty favours in a
+// career. That is not a name being used, that is a name being run down.
+export const ASKS_A_YEAR = 3;
+const stamp = (s) => (s.year || 0) * 12 + (s.month || 0);
+function recentAsks(s) { return (s.asks || []).filter((t) => stamp(s) - t < 24).length; }
+function asksThisYear(s) { return (s.asks || []).filter((t) => stamp(s) - t < 12).length; }
+export function costOf(s, id) { const f = FAVOURS[id]; return f ? Math.round(f.cost * (1 + 0.5 * recentAsks(s))) : 0; }
+export function asksLeft(s) { return Math.max(0, ASKS_A_YEAR - asksThisYear(s)); }
+// Can you afford to ask — the rung, the count, and something left to spend.
 export function canUse(s, id) {
   const f = FAVOURS[id]; if (!f) return { ok: false, why: '' };
   const r = s.respect || 0;
   if (r < f.min) return { ok: false, why: `Nobody takes that call from a name under ${f.min}.` };
-  if (r - f.cost < -40) return { ok: false, why: 'There is nothing left of your name to spend.' };
-  return { ok: true, why: '' };
+  if (asksLeft(s) <= 0) return { ok: false, why: 'You have leaned on your name three times this year. People have noticed.' };
+  const cost = costOf(s, id);
+  if (r - cost < -40) return { ok: false, why: 'There is nothing left of your name to spend.' };
+  return { ok: true, why: '', cost };
 }
 function spend(s, id, what) {
-  const f = FAVOURS[id];
-  setRespect(s, (s.respect || 0) - f.cost);
-  s.nameSpent = (s.nameSpent || 0) + f.cost;
-  addTimeline(s, `${what} — ${f.cost} standing.`);
+  const cost = costOf(s, id);
+  setRespect(s, (s.respect || 0) - cost);
+  s.nameSpent = (s.nameSpent || 0) + cost;
+  (s.asks = s.asks || []).push(stamp(s));
+  s.asks = s.asks.filter((t) => stamp(s) - t < 24);
+  addTimeline(s, `${what} — ${cost} standing.`);
 }
 
 // ── Ask for the lead: a supporting listing on the board becomes a lead ──

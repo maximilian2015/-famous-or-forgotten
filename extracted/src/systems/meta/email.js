@@ -7,8 +7,10 @@ import { agentWantsYou, offerAgent, signAgent, declineAgent, AGENT_TIERS } from 
 const clamp = (v) => Math.max(0, Math.min(100, v));
 export function emUnread(s) { return (s.inbox || []).filter((m) => !m.read).length; }
 function has(s, tag) { return (s.inbox || []).some((m) => m.tag === tag); }
+export function sendMail(s, m) { push(s, m); return s; }
 function push(s, m) {
   m.id = 'em' + (s._emSeq = (s._emSeq || 0) + 1); m.read = false;
+  s.inbox = (s.inbox || []).filter((x) => !(x.tag === 'reply' && x.subj === m.subj));
   (s.inbox = s.inbox || []).unshift(m);
   // Post you never answered stops being post. Bills you ignored pile up for a while and
   // then the pile stops growing — an inbox of fifteen unanswered rent notices is not a
@@ -101,7 +103,7 @@ export function emailTick(s) {
   if (has(s, 'option') && !(p && (s.inbox || []).some((m) => m.tag === 'option' && m.title === p.title))) s.inbox = (s.inbox || []).filter((m) => m.tag !== 'option');
   // ── fan mail, hate mail, spam ──
   const flopped = (s.filmography || []).some((c) => (c.rating || 0) < 45 && c.closedAt && key - c.closedAt <= 3);
-  if (fame >= 35 && offer(s, 'fan', 0, flopped ? 22 : 10)) {
+  if (fame >= 15 && offer(s, 'fan', 0, flopped ? 22 : fame >= 35 ? 10 : 5)) {
     if (flopped) push(s, { from: 'anon', subj: 'saw your film', tag: 'fan', kind: 'hate', body: 'It is three paragraphs long and they have opinions about your face, your voice and your parents. It has been forwarded to you by someone who thought you should see it.',
       cta: [{ label: 'Read it', fx: { mental: -3 }, reply: 'You read it twice. That was the mistake.' }, { label: 'Delete unread', fx: {}, reply: 'Gone. It was never about you anyway.' }] });
     else push(s, { from: pickOne(FANS), subj: pickOne(FAN_SUBJ), tag: 'fan', kind: 'fan', body: pickOne(FAN_BODY),

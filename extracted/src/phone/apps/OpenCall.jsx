@@ -9,7 +9,7 @@ import { negotiationFor, haggleOdds, applyHaggle } from '../../systems/career/ne
 import { stabilityBand, riskCostFor, volatility } from '../../systems/career/stability.js';
 import { ageFit } from '../../systems/career/age.js';
 import { canWork } from '../../systems/life/strain.js';
-import { askForLead, canUse, FAVOURS } from '../../systems/career/favours.js';
+import { askForLead, canUse, costOf, FAVOURS } from '../../systems/career/favours.js';
 import { hotGenre } from '../../systems/meta/news.js';
 
 // Only appears once you are somebody. Below Star you are told the number.
@@ -208,7 +208,7 @@ export function OpenCall({ g, ocTab, setOcTab, teenMode }) {
           {!locked && c.shelf === 'film' && c.role !== 'Lead' && !c.askedLead && (() => { const fit = canUse(g, 'lead');
             return (<button onClick={() => dispatch(askForLead, c.id)} disabled={!fit.ok} title={fit.ok ? FAVOURS.lead.blurb : fit.why}
               style={{ marginTop: 7, width: '100%', border: `1px solid ${fit.ok ? theme.gold + '66' : 'transparent'}`, borderRadius: 10, padding: '7px', fontSize: 11.5, fontWeight: 800, cursor: fit.ok ? 'pointer' : 'default', background: fit.ok ? 'rgba(255,209,102,.10)' : 'rgba(120,110,150,.12)', color: fit.ok ? theme.gold : '#6b6390' }}>
-              ◆ Ask for the lead · −{FAVOURS.lead.cost} standing{fit.ok ? '' : ` · ${fit.why}`}
+              ◆ Ask for the lead · −{costOf(g, 'lead')} standing{fit.ok ? '' : ` · ${fit.why}`}
             </button>); })()}
           {!locked && <Haggle g={g} c={c} />}
           {/* The months before you walk in are yours to spend. See systems/career/castings.js. */}

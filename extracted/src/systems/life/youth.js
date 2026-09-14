@@ -5,8 +5,12 @@ export const YOUTH_EVENTS = [
     choices: [ { label: 'Raise your hand — take the lead', fx: { confidence: 6, acting: 3 }, reply: 'You forget two lines and love every second. Something just woke up in you.' },
       { label: 'Too scared, stay backstage', fx: { discipline: 3, acting: 1 }, reply: 'You paint the sets instead. Safer. But you watch the lead and wonder "what if".' } ] }) },
   { age: 10, id: 'dreamChoice', build: () => ({ speaker: "A daydream that won't leave", text: `You're ten, and you've decided what you want to be when you grow up. It's all you think about. Which dream grabs you?`,
-    choices: [ { label: 'A movie star — acting', fx: { acting: 5, confidence: 3 }, set: { dream: 'actor' }, reply: 'Acting. You start watching films differently — studying faces, not just stories.' },
-      { label: 'A music star — singing', fx: { singing: 5, charisma: 3 }, set: { dream: 'singer' }, reply: "Music. You sing in the shower like it's Wembley. One day, maybe it will be." } ] }) },
+    // Both roads are acting. The singer road existed and was half a game — two series rows,
+    // no posters, "Music Show · Guest" on every line of the board (Maxi: "why do the series
+    // all say Music Show?"). The base game is an actor's life; the code for a singer stays,
+    // for old saves and a later expansion, but nobody is sent down it at ten any more.
+    choices: [ { label: 'A movie star — the screen', fx: { acting: 4, charisma: 3, confidence: 3 }, set: { dream: 'actor' }, reply: 'Films. You start watching them differently — studying faces, not just stories.' },
+      { label: 'A serious actor — the stage', fx: { acting: 6, discipline: 3 }, set: { dream: 'actor' }, reply: 'The stage. Two hours a night with nowhere to hide, and you cannot imagine wanting anything else.' } ] }) },
   { age: 14, id: 'talentShow', build: (s) => ({ speaker: 'The school talent show', text: `There's a talent show, and for once you could actually be seen. Your friends dare you to sign up. Do you?`,
     choices: [ { label: 'Sign up and perform', check: { stat: 'confidence', diff: 45 }, good: { fx: { confidence: 6, charisma: 4, [s.dream === 'singer' ? 'singing' : 'acting']: 4 }, reply: "You nail it. For a week, the whole school knows your name. You'll chase that feeling forever." }, bad: { fx: { confidence: -3, mental: -2 }, reply: 'You choke halfway through. The laughter still echoes sometimes. But you survived — and you learned.' } },
       { label: 'Chicken out', fx: { mental: 1, confidence: -1 }, reply: "You don't sign up. Relief, then a small quiet regret that lingers." } ] }) },

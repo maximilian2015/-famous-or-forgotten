@@ -14,7 +14,7 @@ import { computeLegacy, getHall, heirsOf, heirOpts, enshrine } from './systems/m
 import { fameTier, setHousing, FAME_TIERS, fameCeiling, ladderBlurb, TIER_OPENS, alistKey, iconKey, scandalReport, respectReport, RESPECT_MOVES, RESPECT_TIERS, RESPECT_OPENS, respectTier, FORGOTTEN, FORGOTTEN_OPENS, isForgotten, forgottenDepth } from './systems/meta/status.js';
 import { rehearse, riskyTake, bondWithCrew, meterTier } from './systems/career/production.js';
 import { agentCut } from './systems/career/agent.js';
-import { FAVOURS, FAVOUR_ORDER, canUse, canSmooth, smoothOver, canPushSequel, pushSequel, vouchFor, canOpenShelf, openShelf } from './systems/career/favours.js';
+import { FAVOURS, FAVOUR_ORDER, canUse, costOf, asksLeft, ASKS_A_YEAR, canSmooth, smoothOver, canPushSequel, pushSequel, vouchFor, canOpenShelf, openShelf } from './systems/career/favours.js';
 import { addPrestigeListing } from './systems/career/castings.js';
 import { TimingBar } from './ui/components/TimingBar.jsx';
 import { GridRisk } from './ui/components/GridRisk.jsx';
@@ -334,7 +334,7 @@ function UseYourName({ g }) {
   return (<Card style={{ marginBottom: 14, borderColor: theme.gold + '44' }}>
     <div style={{ fontSize: 11, fontWeight: 900, letterSpacing: '.08em', textTransform: 'uppercase', color: theme.gold, marginBottom: 4 }}>◆ Use your name</div>
     <div style={{ fontSize: 12, color: theme.muted, lineHeight: 1.55, marginBottom: 8 }}>
-      Standing is not only a ladder. It spends — and every ask costs the asking, whether it works or not, because the business notices you had to. Spend enough and you drop a rung.{g.nameSpent ? ` Spent so far: ${g.nameSpent}.` : ''}
+      Standing is not only a ladder. It spends — and every ask costs the asking, whether it works or not, because the business notices you had to. Three asks a year, and each one in the last two years makes the next dearer.{g.nameSpent ? ` Spent so far: ${g.nameSpent}.` : ''} {asksLeft(g)} of {ASKS_A_YEAR} left this year.
     </div>
     {FAVOUR_ORDER.map((id) => { const f = FAVOURS[id]; const fit = canUse(g, id); const open = fit.ok && now[id];
       return (<div key={id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', gap: 8, padding: '6px 0', borderTop: `1px solid ${theme.line}`, opacity: open ? 1 : .55 }}>
@@ -343,8 +343,8 @@ function UseYourName({ g }) {
           <div style={{ fontSize: 11, color: theme.muted, lineHeight: 1.4 }}>{!fit.ok ? fit.why : now[id] ? (id === 'shelf' ? 'Available now.' : `Available now — ${where[id]}.`) : `Nothing to spend it on right now. It lives ${where[id]}.`}</div>
         </div>
         {id === 'shelf' && open
-          ? <button onClick={() => dispatch(openShelf, addPrestigeListing)} style={{ border: 'none', borderRadius: 9, padding: '6px 10px', fontSize: 11, fontWeight: 800, cursor: 'pointer', background: 'rgba(255,209,102,.18)', color: theme.gold, whiteSpace: 'nowrap' }}>−{f.cost} · open it</button>
-          : <div style={{ fontSize: 12, fontWeight: 900, color: theme.gold, whiteSpace: 'nowrap' }}>−{f.cost}</div>}
+          ? <button onClick={() => dispatch(openShelf, addPrestigeListing)} style={{ border: 'none', borderRadius: 9, padding: '6px 10px', fontSize: 11, fontWeight: 800, cursor: 'pointer', background: 'rgba(255,209,102,.18)', color: theme.gold, whiteSpace: 'nowrap' }}>−{costOf(g, id)} · open it</button>
+          : <div style={{ fontSize: 12, fontWeight: 900, color: theme.gold, whiteSpace: 'nowrap' }}>−{costOf(g, id)}</div>}
       </div>); })}
   </Card>);
 }
@@ -1576,6 +1576,9 @@ function PersonSheet({ g, id, onClose }) {
   const tone = { good: theme.good, love: '#ff8ab5', plain: theme.text, bad: theme.bad };
   return (<div style={{ position: 'fixed', inset: 0, background: `linear-gradient(180deg, ${theme.bg}, ${theme.bgDeep})`, zIndex: 40, overflowY: 'auto' }}>
     <div style={{ maxWidth: 440, margin: '0 auto', padding: 16, paddingBottom: 110 }}>
+      {/* Maxi: "how do I go back — there is no arrow." There was a button at the bottom, under
+          every action; the way back belongs at the top, where every other screen has it. */}
+      <button onClick={onClose} style={{ background: 'rgba(158,116,255,.16)', border: 'none', borderRadius: 10, padding: '7px 12px', fontSize: 12.5, fontWeight: 800, cursor: 'pointer', color: '#d9cffa', marginBottom: 12 }}>‹ People</button>
       <div style={{ display: 'flex', gap: 12, alignItems: 'center', marginBottom: 4 }}>
         <Avatar look={lookOfPerson(p)} size={78} title={p.name} />
         <div style={{ flex: 1 }}>
@@ -1613,7 +1616,7 @@ function PersonSheet({ g, id, onClose }) {
             style={{ width: '100%', textAlign: 'left', background: theme.panel, border: `1px solid ${fit.ok && !recent ? theme.gold + '55' : 'rgba(255,255,255,.06)'}`, borderRadius: 12, padding: '10px 13px', cursor: fit.ok && !recent ? 'pointer' : 'default', color: theme.text, opacity: fit.ok && !recent ? 1 : .42 }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', gap: 8 }}>
               <div style={{ fontSize: 13.5, fontWeight: 800 }}>◆ {FAVOURS.vouch.label}</div>
-              <div style={{ fontSize: 11, fontWeight: 800, color: theme.gold, whiteSpace: 'nowrap' }}>−{FAVOURS.vouch.cost} standing</div>
+              <div style={{ fontSize: 11, fontWeight: 800, color: theme.gold, whiteSpace: 'nowrap' }}>−{costOf(g, 'vouch')} standing</div>
             </div>
             <div style={{ fontSize: 11.5, color: theme.muted, marginTop: 2 }}>{recent ? 'You did that for them already. Twice in two years is a pattern.' : fit.ok ? FAVOURS.vouch.blurb : fit.why}</div>
           </button>
@@ -1949,7 +1952,7 @@ function CreditRow({ group, g }) {
       {canPushSequel(g, c.id) && (() => { const fit = canUse(g, 'sequel');
         return (<button onClick={() => dispatch(pushSequel, c.id)} disabled={!fit.ok} title={fit.ok ? FAVOURS.sequel.blurb : fit.why}
           style={{ marginTop: 6, border: `1px solid ${fit.ok ? theme.gold + '66' : 'transparent'}`, borderRadius: 9, padding: '5px 9px', fontSize: 10.5, fontWeight: 800, cursor: fit.ok ? 'pointer' : 'default', background: fit.ok ? 'rgba(255,209,102,.10)' : 'rgba(120,110,150,.12)', color: fit.ok ? theme.gold : '#6b6390' }}>
-          ◆ Push for a sequel · −{FAVOURS.sequel.cost} standing
+          ◆ Push for a sequel · −{costOf(g, 'sequel')} standing
         </button>); })()}
       {/* the marks that never come off, and what it made */}
       {(group.worldHit || r >= 85 || group.askers > 0 || c.comeback > 0 || group.boxOffice > 0 || group.viewers > 0) && (
@@ -2294,7 +2297,7 @@ function ProductionCard({ g }) {
     </div>) : (<div style={{ display: 'flex', gap: 7, marginBottom: 12 }}>
       <button onClick={() => dispatch(rehearse)} disabled={noEnergy} style={actBtn(false)}>Rehearse</button>
       {canSmooth(g) && <button onClick={() => dispatch(smoothOver)} disabled={!canUse(g, 'smooth').ok} title={canUse(g, 'smooth').ok ? FAVOURS.smooth.blurb : canUse(g, 'smooth').why}
-        style={{ ...actBtn(true), background: canUse(g, 'smooth').ok ? 'rgba(255,209,102,.18)' : 'rgba(120,110,150,.15)', color: canUse(g, 'smooth').ok ? theme.gold : '#6b6390' }}>◆ Have a word · −{FAVOURS.smooth.cost}</button>}
+        style={{ ...actBtn(true), background: canUse(g, 'smooth').ok ? 'rgba(255,209,102,.18)' : 'rgba(120,110,150,.15)', color: canUse(g, 'smooth').ok ? theme.gold : '#6b6390' }}>◆ Have a word · −{costOf(g, 'smooth')}</button>}
       <button onClick={openRiskyTake} disabled={noEnergy} style={actBtn(true)}>Risky take</button>
     </div>)}
     <div style={{ fontSize: 10.5, fontWeight: 900, letterSpacing: '.08em', textTransform: 'uppercase', color: theme.muted, marginBottom: 6 }}>Crew</div>

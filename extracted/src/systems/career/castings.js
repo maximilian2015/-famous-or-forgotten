@@ -14,6 +14,7 @@ import { rollStability, feeFactor, riskPrestige } from './stability.js';
 import { askerStanding } from './awards.js';
 import { ageFit, seenForIt } from './age.js';
 import { canWork, insurability, depressed } from '../life/strain.js';
+import { sendMail } from '../meta/email.js';
 // What a casting office will see you for. Usually that is fame — but an Asker counts,
 // and it is the one route into work above your level that does not run through
 // blockbusters. An actor with a statuette and forty fame gets read for parts that used
@@ -324,6 +325,7 @@ function answerSubmission(s, sub) {
     s.mental = clamp((s.mental || 50) - 2);
     s.lastEvent = `They went another way on "${c.title}". No reason given, because there never is one.`;
     addTimeline(s, `Did not get ${c.title}.`);
+    sendMail(s, { from: 'Casting', subj: `Re: ${c.title}`, tag: 'reply', kind: 'reply', body: `Thank you for coming in to read for ${c.role} on ${c.title}. They have decided to go in a different direction. We will keep you in mind.`, cta: [{ label: 'Delete', fx: {}, reply: 'Kept on file, they said. Nobody has ever been taken off a file.' }] });
     return s;
   }
   // A yes is an offer, not a summons. If you are shooting, it waits on the board until it
@@ -340,6 +342,7 @@ function answerSubmission(s, sub) {
   });
   s.lastEvent = `You got "${c.title}". They want you.`;
   addTimeline(s, `Booked ${c.title}.`);
+  sendMail(s, { from: 'Casting', subj: `Re: ${c.title} — offer`, tag: 'reply', kind: 'reply', body: `Good news. They would like to offer you ${c.role} on ${c.title}. The offer is in Messages, with the money and the dates. Congratulations.`, cta: [{ label: 'Delete', fx: {}, reply: 'You read it twice before you delete it.' }] });
   s.bigMoment = { id: 'booked', kind: 'good', title: 'You got it',
     body: `"${c.title}" is yours. ${c.role}${c.months ? `, ${count(c.months, 'month')} of shooting` : ''}. `
       + 'Somebody in an office made a list and your name was at the top of it, and you will never find out why.' };
