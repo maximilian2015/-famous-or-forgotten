@@ -15,6 +15,14 @@ function normalize(saved) {
   merged.created = true;   // an existing save already has a character — never re-run the creator over it
   // The singer road is closed for now — Maxi: 'we are working on acting.' A save that chose
   // singing at ten is an actor from here: the craft carries over, the tile says Acting.
+  // Listings drawn for a singer do not belong on an actor's board, whichever build drew them.
+  // (The first migration turned the dream into 'actor' and left the board; the guard below
+  // then never fired again. Maxi saw Music Show for a third time.)
+  const SINGER_TYPES = /Music Show|Talent Series|Music Video|Concert Film|Stadium Tour|Jingle|Brand Song|Open Mic|Festival Slot|Session Work|Album|World Tour/;
+  if (merged.dream !== 'singer') {
+    merged.castingPool = (merged.castingPool || []).filter((c) => !SINGER_TYPES.test(c.type || ''));
+    merged.offers = (merged.offers || []).filter((o) => !SINGER_TYPES.test(o.type || ''));
+  }
   if (merged.dream === 'singer') {
     merged.dream = 'actor'; merged.acting = Math.max(merged.acting || 0, merged.singing || 0); merged.singing = 0;
     // The board was drawn for a singer — Music Show on every line. It is redrawn for an actor
