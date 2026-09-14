@@ -356,6 +356,13 @@ function closeRun(s, credit, r) {
   if (r.job) {
     const next = maybeContinue(s, credit, r.job);
     if (next) (s.offers = s.offers || []).push(next);
+    // The studio said no. A name in the room can push for it later — favours.js pushSequel —
+    // if the thing was not a bomb and the franchise is not already four deep.
+    else {
+      const part = r.job.part || 1, season = r.job.season || 0;
+      const eligible = season ? season < 6 && r.rating >= 55 : verdict !== 'bomb' && part < 4;
+      if (eligible) { credit.job = r.job; credit.pushable = true; }
+    }
   }
 
   s.bigMoment = {

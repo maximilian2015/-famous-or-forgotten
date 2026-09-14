@@ -197,7 +197,8 @@ function mediumOf(p) {
 }
 
 // Called at the end of every production. Returns an offer to push, or null.
-export function maybeContinue(s, credit, p) {
+// `force` — a name in the room pushed for it (favours.js): the roll is skipped, the rest is the same.
+export function maybeContinue(s, credit, p, force = false) {
   const isSeries = !!p.episodes || !!p.season;
   const season = p.season || 1;
   const part = p.part || 1;
@@ -206,7 +207,7 @@ export function maybeContinue(s, credit, p) {
     // Always build from the name of the SHOW, never from last season's project title.
     const root = seriesRoot(p.seriesTitle || p.title);
     const odds = renewalOdds(credit.rating, season, p.type);
-    if (!chance(odds)) {
+    if (!force && !chance(odds)) {
       if (season > 1) addTimeline(s, `"${root}" was not renewed after ${season} season${season === 1 ? '' : 's'}.`, true);
       return null;
     }
@@ -242,7 +243,7 @@ export function maybeContinue(s, credit, p) {
 
   const obliged = !!p.optioned && part < (p.optionParts || 3);
   const odds = sequelOdds(credit.rating, part, obliged, credit.verdict);
-  if (!chance(odds)) return null;
+  if (!force && !chance(odds)) return null;
   const nextPart = part + 1;
   const arc = p.arc || rollArc();
   // Against the first part, never against the last one. See ceilingFor above.

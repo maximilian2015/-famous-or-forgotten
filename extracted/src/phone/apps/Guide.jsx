@@ -7,6 +7,7 @@ import { STAFF, STAFF_ORDER, THINGS, THING_ORDER, HOME_PRICE } from '../../syste
 import { TAKES } from '../../systems/career/story.js';
 import { HOUSING } from '../../engine/economy.js';
 import { COMBOS, comboOf } from '../../systems/meta/standing.js';
+import { FAVOURS, FAVOUR_ORDER } from '../../systems/career/favours.js';
 
 // The bible. Every rule the game runs on, in one place, off the screens where it was
 // taking up room. Maxi: "the explanations are everywhere and they take a lot of space —
@@ -86,6 +87,9 @@ function RespectGuide({ g }) {
       {RESPECT_MOVES.down.map((m, i) => <Move key={i} m={m} col="#ff5a72" />)}
     </div>
     <P>None of it can be bought. It is the only number in the game money does not touch.</P>
+    <H>Using your name</H>
+    <P>It spends, though. Every ask below costs the asking whether it works or not — the business notices you had to — and spend enough and you drop a rung, with everything the rung was holding open. That is the decision.</P>
+    {FAVOUR_ORDER.map((id) => { const f = FAVOURS[id]; return <Rung key={id} label={f.label} min={`−${f.cost} · from ${f.min}`} lines={[f.blurb]} />; })}
   </div>);
 }
 function Move({ m, col }) {

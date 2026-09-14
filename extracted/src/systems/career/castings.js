@@ -162,14 +162,14 @@ export function rerollBoard(s) {
   return s;
 }
 
-export function refreshCastingPool(s, force) {
+export function refreshCastingPool(s, force, extra = 0) {
   s.castingPool = s.castingPool || [];
   const now = (s.year || 0) * 12 + (s.month || 0);
   // Throw out anything whose window has closed BEFORE deciding there is nothing to do.
   // The early return was above this line, so a full board never expired anything and the
   // same four listings sat there for the rest of the life.
   s.castingPool = force ? [] : s.castingPool.filter((c) => (c._expires || 0) > now);
-  const want = boardSize(s);
+  const want = boardSize(s) + extra;
   if (!force && s.castingPool.length >= want) return;
   const career = s.dream === 'singer' ? 'singer' : 'actor';
   const shelves = POOLS[career];
@@ -206,7 +206,10 @@ export function refreshCastingPool(s, force) {
     if (maxFame != null && reach(s) > maxFame) continue;
     // And nobody good wants a name they do not respect on their prestige series. The face —
     // famous, unrespected — does not see that shelf at all. See systems/meta/standing.js.
-    if ((scale === 'prestige' || /^Prestige/.test(type)) && prestigeShut(s)) continue;
+    const prestigeRow = scale === 'prestige' || /^Prestige/.test(type);
+    if (prestigeRow && prestigeShut(s) && !s._openShelfOnce) continue;
+    // A word with the studio (favours.js): one prestige listing, and only a prestige one.
+    if (s._openShelfOnce && !prestigeRow) continue;
     // And nobody will insure the liability on a studio picture, whatever the audience says.
     if ((scale === 'feature' || scale === 'blockbuster') && insuranceShut(s)) continue;
     // What YOU are worth in this medium. Zero means they would not have you at any
@@ -236,7 +239,15 @@ export function refreshCastingPool(s, force) {
       genre: pick(GENRES), minFame: minFame || 0,
       _expires: (s.year || 0) * 12 + (s.month || 0) + rint(2, 4),
     });
+    if (s._openShelfOnce) { s.castingPool[s.castingPool.length - 1].openedByName = true; delete s._openShelfOnce; }
   }
+  delete s._openShelfOnce;
+}
+// One prestige listing on the board because you asked for it. See favours.js openShelf.
+export function addPrestigeListing(s) {
+  s._openShelfOnce = true;
+  refreshCastingPool(s, false, 1);
+  return (s.castingPool || []).find((c) => c.openedByName) || null;
 }
 export function castingChance(s, c) {
   const skill = s.dream === 'singer' ? s.singing : s.acting;
