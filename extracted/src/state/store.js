@@ -13,6 +13,9 @@ function normalize(saved) {
   for (const k of Object.keys(base)) { if (typeof base[k] === 'number') { const v = Number(merged[k]); merged[k] = Number.isFinite(v) ? v : base[k]; } }
   merged.version = CURRENT_VERSION;
   merged.created = true;   // an existing save already has a character — never re-run the creator over it
+  // The singer road is closed for now — Maxi: 'we are working on acting.' A save that chose
+  // singing at ten is an actor from here: the craft carries over, the tile says Acting.
+  if (merged.dream === 'singer') { merged.dream = 'actor'; merged.acting = Math.max(merged.acting || 0, merged.singing || 0); merged.singing = 0; }
   ensureAppearance(merged); // saves made before the avatar existed still need a face
   return merged;
 }
