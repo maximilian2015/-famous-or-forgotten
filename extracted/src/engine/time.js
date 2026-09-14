@@ -52,6 +52,10 @@ export function advanceMonth(state) {
       if (note) { addTimeline(s, note, true); s.lastEvent = note; }
     }
   }
+  // You are paid before you pay. Wages landed after the rent was taken, so the first month
+  // in a room of your own — €767 in hand, a job that pays €2,200 — bounced the rent and
+  // threatened the locks, and then the wage arrived. Played from birth to twenty to find it.
+  workTick(s);
   applyMonthly(s);
   bondsTick(s);      // people you did not call drift away
   childhoodTick(s);  // and a childhood spent watching you leave for a set counts double
@@ -59,7 +63,6 @@ export function advanceMonth(state) {
   healthTick(s);
   if (!s.alive) return s;   // sudden collapse ends the month right here
   relevanceDrift(s);
-  workTick(s);
   rehabTick(s);      // a year away, and the Energy comes back
   strainTick(s);     // the work accumulates in you, and eventually it stops you
   drinkTick(s);      // and the other way out takes its cut of the craft

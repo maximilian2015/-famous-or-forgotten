@@ -10,6 +10,7 @@ function has(s, tag) { return (s.inbox || []).some((m) => m.tag === tag); }
 export function sendMail(s, m) { push(s, m); return s; }
 function push(s, m) {
   m.id = 'em' + (s._emSeq = (s._emSeq || 0) + 1); m.read = false;
+  m.when = (s.year || 0) * 12 + (s.month || 0);
   s.inbox = (s.inbox || []).filter((x) => !(x.tag === 'reply' && x.subj === m.subj));
   (s.inbox = s.inbox || []).unshift(m);
   // Post you never answered stops being post. Bills you ignored pile up for a while and
@@ -68,6 +69,9 @@ export function emailTick(s) {
   if (!s.alive || !inCareer(s)) return;
   const key = (s.year || 0) * 12 + (s.month || 0);
   if (s._emTick === key) return; s._emTick = key;
+  // Post you never answered stops being post. A casting reply is news for a month or two;
+  // played from twenty to twenty-one, six of them sat there and pushed everything else out.
+  s.inbox = (s.inbox || []).filter((m) => !((m.kind === 'reply' && key - (m.when ?? key) >= 2) || (m.kind === 'spam' && key - (m.when ?? key) >= 3) || (m.kind === 'fan' && key - (m.when ?? key) >= 4)));
   const fame = s.fame || 0;
   // Rent is taken automatically every month by engine/economy.js applyMonthly. This letter
   // used to arrive every quarter regardless, quoting €800 off a field that does not exist

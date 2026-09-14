@@ -205,6 +205,10 @@ export function refreshCastingPool(s, force, extra = 0) {
     // Above the ceiling this kind of work simply stops being sent to you. Nobody offers an
     // A-lister a background call.
     if (maxFame != null && reach(s) > maxFame) continue;
+    // And a board that is all locked is not a board. A shelf of two rows drew two series
+    // regulars at 'fame 25' for an Unknown at 0 — every line locked. One rung above your
+    // reach can show (something to aim at); anything further up does not exist for you yet.
+    if ((minFame || 0) > reach(s) + 12) continue;
     // And nobody good wants a name they do not respect on their prestige series. The face —
     // famous, unrespected — does not see that shelf at all. See systems/meta/standing.js.
     const prestigeRow = scale === 'prestige' || /^Prestige/.test(type);
