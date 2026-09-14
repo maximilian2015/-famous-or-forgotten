@@ -15,7 +15,13 @@ function normalize(saved) {
   merged.created = true;   // an existing save already has a character — never re-run the creator over it
   // The singer road is closed for now — Maxi: 'we are working on acting.' A save that chose
   // singing at ten is an actor from here: the craft carries over, the tile says Acting.
-  if (merged.dream === 'singer') { merged.dream = 'actor'; merged.acting = Math.max(merged.acting || 0, merged.singing || 0); merged.singing = 0; }
+  if (merged.dream === 'singer') {
+    merged.dream = 'actor'; merged.acting = Math.max(merged.acting || 0, merged.singing || 0); merged.singing = 0;
+    // The board was drawn for a singer — Music Show on every line. It is redrawn for an actor
+    // on the next look; singer offers and reads go with it.
+    merged.castingPool = []; merged.submissions = [];
+    merged.offers = (merged.offers || []).filter((o) => !/Album|World Tour|Music Video|Tour/.test(o.type || ''));
+  }
   ensureAppearance(merged); // saves made before the avatar existed still need a face
   return merged;
 }
