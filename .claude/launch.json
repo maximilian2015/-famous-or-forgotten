@@ -4,8 +4,22 @@
     {
       "name": "fof-dev",
       "runtimeExecutable": "C:\\Program Files\\nodejs\\node.exe",
-      "runtimeArgs": ["extracted/node_modules/vite/bin/vite.js", "extracted", "--port", "5173", "--strictPort"],
+      "runtimeArgs": [
+        "extracted/node_modules/vite/bin/vite.js",
+        "extracted",
+        "--port",
+        "5173",
+        "--strictPort"
+      ],
       "port": 5173
+    },
+    {
+      "name": "fof-dist",
+      "runtimeExecutable": "C:\\Program Files\\nodejs\\node.exe",
+      "runtimeArgs": [
+        "extracted/serve-dist.mjs"
+      ],
+      "port": 5174
     }
   ]
 }

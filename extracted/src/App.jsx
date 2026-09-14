@@ -198,10 +198,11 @@ export default function App() {
        </>}
       </div>
 
-      <SettingsRow />
-      <div style={{ marginTop: 14 }}>
+      {/* Settings on Home, the end of a life on Legacy. Maxi: 'that button is everywhere — remove it.' */}
+      {screen === 'life' && <SettingsRow />}
+      {screen === 'legacy' && <div style={{ marginTop: 14 }}>
         <Button kind="danger" onClick={() => setConfirmEnd(true)}>End this life & start anew</Button>
-      </div>
+      </div>}
       <BottomNav screen={screen} setScreen={setScreen} g={g} />
     </div>
   );

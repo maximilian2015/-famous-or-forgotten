@@ -47,11 +47,16 @@ function css() {
   button:disabled { opacity: .55; }
 
   @keyframes fofIn { from { opacity: 0; transform: translateY(9px); } to { opacity: 1; transform: none; } }
-  .fof-in { animation: fofIn .26s cubic-bezier(.2,.8,.3,1) both; }
+  /* fill-mode 'both' kept the final keyframe applied as an ANIMATED transform — an identity
+     matrix, not 'none' — and an element with any transform is the containing block for its
+     fixed descendants. So every fixed overlay inside a screen (the person sheet in People)
+     was sized to a 0px parent and invisible. Maxi: 'I tap on people and they disappear.'
+     'backwards' keeps the fade-in and leaves nothing behind. */
+  .fof-in { animation: fofIn .26s cubic-bezier(.2,.8,.3,1) backwards; }
 
   @keyframes fofPop { 0% { opacity: 0; transform: scale(.955) translateY(14px); }
                       60% { transform: scale(1.006) translateY(0); } 100% { opacity: 1; transform: none; } }
-  .fof-pop { animation: fofPop .34s cubic-bezier(.2,.9,.3,1) both; }
+  .fof-pop { animation: fofPop .34s cubic-bezier(.2,.9,.3,1) backwards; }
 
   /* A month passing should be felt, not just read. */
   @keyframes fofTick { 0% { opacity: .35; transform: translateY(-4px); } 100% { opacity: 1; transform: none; } }
