@@ -90,6 +90,8 @@ export function bondsTick(s) {
 
   const kept = [];
   for (const p of (s.people || [])) {
+    // Your agent is paid to stay in touch. They do not drift because you did not ring.
+    if (p.agent) { p.lastSeen = now; kept.push(p); continue; }
     const note = fadeOne(s, p, 'contact', now); if (note) notes.push(note);
     // They used to be DELETED at this point, which is why the People screen was always
     // nearly empty: every contact you did not ring monthly was gone within a year. A phone

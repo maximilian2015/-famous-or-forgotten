@@ -35,6 +35,11 @@ function normalize(saved) {
   for (const o of merged.offers || []) {
     if (typeof o.deadline !== 'number') o.deadline = typeof o.expires === 'number' ? Math.max(1, o.expires - ((merged.year || 0) * 12 + (merged.month || 0))) : 3;
   }
+  // The agent became a person in Contacts. A save with an agent and no such person gets one.
+  if (merged.agent && merged.agent.level > 0 && !(merged.people || []).some((p) => p.agent)) {
+    (merged.people = merged.people || []).unshift({ id: 'p-agent-' + Math.random().toString(36).slice(2, 7), name: merged.agent.name, role: 'Agent', agent: true,
+      industryWeight: { novice: 45, solid: 60, strong: 78, legend: 92 }[merged.agent.tier] || 45, relationship: 50, met: String(merged.year), lastSeen: (merged.year || 0) * 12 + (merged.month || 0) });
+  }
   ensureAppearance(merged); // saves made before the avatar existed still need a face
   return merged;
 }

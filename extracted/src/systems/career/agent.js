@@ -27,9 +27,8 @@ export const AGENT_TIERS = {
 };
 const ORDER = ['novice', 'solid', 'strong', 'legend'];
 
-const FIRST = ['Lena', 'Marcus', 'Ines', 'Theo', 'Priya', 'Jonas', 'Ruth', 'Casper', 'Amara', 'Felix'];
-const LAST = ['Voss', 'Adeyemi', 'Kowalski', 'Brandt', 'Okafor', 'Lindqvist', 'Moreau', 'Haddad', 'Nakamura', 'Steen'];
-const pick = (a) => a[Math.floor(Math.random() * a.length)];
+import { personName, namesInUse } from '../world/names.js';
+import { uid } from '../../engine/id.js';
 
 // Which desk would take you today. The entry is fame 40 — or standing 50 for the actor's
 // actor, who gets an agent before the public has heard of them.
@@ -53,11 +52,27 @@ export function agentWantsYou(s) {
 }
 export function offerAgent(s) {
   const tier = tierFor(s) || 'novice';
-  return { name: `${pick(FIRST)} ${pick(LAST)}`, tier };
+  return { name: personName(Math.random() < 0.5 ? 'female' : 'male', namesInUse(s)), tier };
+}
+// The agent is a person in your phone like anybody else — Contacts, under "Your agent" —
+// so there is one place to find them, talk to them, and see what the desk is doing. Maxi:
+// "where do I find the agent — in email, in messages, in People?" Here.
+const AGENT_WEIGHT = { novice: 45, solid: 60, strong: 78, legend: 92 };
+function agentIntoContacts(s) {
+  s.people = (s.people || []).filter((p) => !p.agent);
+  s.people.unshift({ id: uid(s, 'p'), name: s.agent.name, role: 'Agent', agent: true, industryWeight: AGENT_WEIGHT[s.agent.tier] || 45,
+    relationship: 50, met: `${s.year}`, lastSeen: (s.year || 0) * 12 + (s.month || 0) });
+}
+function agentOutOfContacts(s, name) {
+  const gone = (s.people || []).find((p) => p.agent);
+  if (!gone) return;
+  // A former agent stays a contact, colder, under their real role. The business is small.
+  gone.agent = false; gone.role = 'Former agent'; gone.relationship = Math.min(gone.relationship || 40, 30);
 }
 export function signAgent(s, o) {
   const tier = (o && o.tier) || tierFor(s) || 'novice';
   s.agent = { name: (o && o.name) || offerAgent(s).name, tier, level: 1, since: (s.year || 0) * 12 + (s.month || 0) };
+  agentIntoContacts(s);
   addTimeline(s, `${s.agent.name} is your agent now. ${AGENT_TIERS[tier].label}, ${Math.round(AGENT_TIERS[tier].cut * 100)}% of everything.`);
   return s;
 }
@@ -68,6 +83,7 @@ export function declineAgent(s) {
 export function fireAgent(s) {
   if (!hasAgent(s)) return s;
   addTimeline(s, `You let ${s.agent.name} go.`);
+  agentOutOfContacts(s, s.agent.name);
   s.agent = null;
   s._agentCool = (s.year || 0) * 12 + (s.month || 0) + 3;
   return s;
@@ -85,6 +101,7 @@ export function agentTick(s) {
   if (!hasAgent(s)) return;
   if (agentDropped(s)) {
     const name = s.agent.name;
+    agentOutOfContacts(s, name);
     s.agent = null;
     s._agentCool = (s.year || 0) * 12 + (s.month || 0) + 4;
     addTimeline(s, `${name} has stopped returning your calls. Nobody keeps a client the studios will not insure.`, true);
@@ -95,6 +112,7 @@ export function agentTick(s) {
   if (want && ORDER.indexOf(want) > ORDER.indexOf(s.agent.tier)) {
     const from = AGENT_TIERS[s.agent.tier], to = AGENT_TIERS[want];
     s.agent.tier = want;
+    const me = (s.people || []).find((p) => p.agent); if (me) me.industryWeight = AGENT_WEIGHT[want] || me.industryWeight;
     addTimeline(s, `${s.agent.name} moved you up: ${from.label.toLowerCase()} to ${to.label.toLowerCase()}.${to.cut !== from.cut ? ` They take ${Math.round(to.cut * 100)}% now.` : ''}`);
   }
 }

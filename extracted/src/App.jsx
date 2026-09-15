@@ -13,7 +13,7 @@ import { resolveArc } from './systems/life/arcs.js';
 import { computeLegacy, getHall, heirsOf, heirOpts, enshrine } from './systems/meta/legacy.js';
 import { fameTier, setHousing, FAME_TIERS, fameCeiling, ladderBlurb, TIER_OPENS, alistKey, iconKey, scandalReport, respectReport, RESPECT_MOVES, RESPECT_TIERS, RESPECT_OPENS, respectTier, FORGOTTEN, FORGOTTEN_OPENS, isForgotten, forgottenDepth } from './systems/meta/status.js';
 import { rehearse, riskyTake, bondWithCrew, meterTier } from './systems/career/production.js';
-import { agentCut } from './systems/career/agent.js';
+import { agentCut, agentLine, fireAgent } from './systems/career/agent.js';
 import { COST, canAfford } from './engine/energy.js';
 import { EnergyBar } from './ui/components/EnergyBar.jsx';
 import { FAVOURS, FAVOUR_ORDER, canUse, costOf, asksLeft, ASKS_A_YEAR, canSmooth, smoothOver, canPushSequel, pushSequel, vouchFor, canOpenShelf, openShelf } from './systems/career/favours.js';
@@ -22,6 +22,8 @@ import { TimingBar } from './ui/components/TimingBar.jsx';
 import { GridRisk } from './ui/components/GridRisk.jsx';
 import { Reviews } from './ui/components/BigMoment.jsx';
 import { WalkOfFame } from './ui/components/WalkOfFame.jsx';
+import { Diary } from './ui/components/Diary.jsx';
+import { FamilyTree } from './ui/components/FamilyTree.jsx';
 import { tierById, isInvited, attendEvent, askForInvite, sneakIntoEvent, inviteHelpers, helperOdds, hasAsked } from './systems/social/events.js';
 import { HOUSING, HOUSING_ORDER, monthlyCosts, DIET, GYM_COST, setDiet, toggleGym } from './engine/economy.js';
 import { GENRES, hotGenre } from './systems/meta/news.js';
@@ -31,7 +33,7 @@ import { an, count } from './engine/text.js';
 import { inCareer } from './engine/stage.js';
 import { hostName, anniversaryMonth, anniversaryYears } from './systems/life/dating.js';
 import { onCooldown } from './engine/cooldown.js';
-import { combo, comboOf, COMBOS } from './systems/meta/standing.js';
+import { combo, comboOf, COMBOS, agentDropped } from './systems/meta/standing.js';
 import { theme, setSkin, skinId, onSkinChange } from './ui/theme.js';
 import { THEMES, THEME_ORDER } from './ui/skins.js';
 import { FONT, FONT_DISPLAY } from './ui/chrome.js';
@@ -1592,6 +1594,15 @@ function PersonSheet({ g, id, onClose }) {
           </div>
         </div>
       </div>
+      {/* The desk: what they are doing for you, what they take, and the door. */}
+      {p.agent && (() => { const al = agentLine(g); if (!al) return null;
+        return (<Card style={{ margin: '12px 0', borderColor: 'rgba(255,209,102,.3)' }}>
+          <div style={{ fontSize: 12, fontWeight: 800, color: theme.gold }}>{al.desk} · {al.cut}% of everything you earn</div>
+          <div style={{ fontSize: 12, lineHeight: 1.5, marginTop: 4 }}>{al.blurb}</div>
+          <div style={{ fontSize: 11.5, color: theme.muted, lineHeight: 1.5, marginTop: 3 }}>Right now: {al.doing}. What they bring lands in Messages under their name.</div>
+          <button onClick={() => { if (window.confirm('Let ' + al.name + ' go? Offers dry up until somebody else asks.')) { dispatch(fireAgent); onClose(); } }}
+            style={{ marginTop: 8, border: `1px solid ${theme.bad}55`, borderRadius: 9, padding: '6px 10px', fontSize: 11, fontWeight: 800, cursor: 'pointer', background: 'rgba(255,90,122,.10)', color: '#ffa8bb' }}>Let them go</button>
+        </Card>); })()}
       {/* A child who went into the business has a career of their own, and watching it is
           most of the point of having raised one. See systems/life/children.js. */}
       {p.path === 'industry' && (
@@ -1645,37 +1656,76 @@ function PersonSheet({ g, id, onClose }) {
     </div>
   </div>);
 }
+// Two tabs. The family as a tree in its own window, and everybody else — directors,
+// co-stars, icons, the agent, the ex — in one list with filters, closest first. Three tabs
+// would have split five friends from five directors; two is what a phone actually holds.
+const CONTACT_FILTERS = [
+  ['all', 'All', () => true],
+  ['directors', 'Directors', (p) => /Director|Producer/.test(p.role || '')],
+  ['actors', 'Actors', (p) => /Actor|Star|Icon|Musician/.test(p.role || '')],
+  ['stars', 'Icons & stars', (p) => /Star|Icon/.test(p.role || '') || (p.industryWeight || 0) >= 80],
+  ['business', 'Business', (p) => /Agent|Casting|Manager|Journalist|Studio/.test(p.role || '')],
+  ['friends', 'Friends', (p) => /Friend|School|Classmate|Ex/.test(p.role || '')],
+];
 function PeopleScreen({ g, openId, setOpenId }) {
+  const [ptab, setPtab] = useState('family');
+  const [filter, setFilter] = useState('all');
   const family = (g.family || []).filter((p) => p.alive);
   const deceased = (g.family || []).filter((p) => !p.alive);
   const people = g.people || [];
   const [showDrifted, setShowDrifted] = useState(false);
-  const warm = people.filter((p) => !p.cold).sort((a, b) => (b.relationship || 0) - (a.relationship || 0));
-  const drifted = people.filter((p) => p.cold);
+  const pass = (CONTACT_FILTERS.find((f) => f[0] === filter) || CONTACT_FILTERS[0])[2];
+  const warm = people.filter((p) => !p.cold && !p.agent && pass(p)).sort((a, b) => (b.relationship || 0) - (a.relationship || 0));
+  const drifted = people.filter((p) => p.cold && pass(p));
+  const agentPerson = people.find((p) => p.agent);
+  const al = agentLine(g);
   // A person who is no longer there — a partner who left, or somebody from a previous life
   // (the open id lives in App and survived "start anew") — left the whole tab blank: the
   // sheet returned null and nothing else rendered. Maxi: "I go into People and nothing."
   const stale = openId && !findPerson(g, openId);
   useEffect(() => { if (stale) setOpenId(null); }, [stale]);
   if (openId && !stale) return <PersonSheet g={g} id={openId} onClose={() => setOpenId(null)} />;
+  const tabBtn = (id, label) => (<button onClick={() => setPtab(id)} style={{ flex: 1, border: 'none', borderRadius: 10, padding: '8px 4px', fontSize: 12.5, fontWeight: 800, cursor: 'pointer',
+    background: ptab === id ? `linear-gradient(135deg,${theme.accent2},${theme.accent})` : 'rgba(158,116,255,.16)', color: ptab === id ? '#fff' : '#d9cffa' }}>{label}</button>);
   return (<div>
-    {g.partner && (<><div style={{ fontSize: 11, fontWeight: 900, letterSpacing: '.09em', textTransform: 'uppercase', color: theme.muted, marginBottom: 8 }}>Partner</div>
-    <PersonRow g={g} p={g.partner} sub={`${g.partner.job} · ${g.partner.age}`} onOpen={() => setOpenId(g.partner.id)} /></>)}
-    <div style={{ fontSize: 11, fontWeight: 900, letterSpacing: '.09em', textTransform: 'uppercase', color: theme.muted, margin: '14px 0 8px' }}>Family</div>
-    {family.map((p) => (<PersonRow key={p.id} g={g} p={p} sub={`${p.relation}, ${p.age}`} onOpen={() => setOpenId(p.id)} />))}
-    {deceased.length > 0 && <div style={{ fontSize: 11, color: theme.muted, marginTop: 4, marginBottom: 10, opacity: .7 }}>In memory: {deceased.map((p) => `${p.name} (${p.relation})`).join(', ')}</div>}
-    {/* Closest first, and the ones who drifted folded away at the bottom rather than mixed in —
-        a phone with forty names in it is only usable if the ones that matter are on top. */}
-    {warm.length > 0 && (<><div style={{ fontSize: 11, fontWeight: 900, letterSpacing: '.09em', textTransform: 'uppercase', color: theme.muted, margin: '14px 0 8px' }}>Industry contacts · {warm.length}</div>{warm.map((p) => { const opensDoor = p.unlocks === 'aaa' && p.industryWeight >= 80;
-      return (<PersonRow key={p.id} g={g} p={p} onOpen={() => setOpenId(p.id)}
-        sub={`${p.role}${p.fromSet ? ` · from ${p.fromSet}` : ''}${opensDoor && p.relationship >= 60 ? ' · opens A-list ★' : opensDoor ? ' · could open doors' : ''}`} />); })}</>)}
-    {drifted.length > 0 && (<div style={{ marginTop: 10 }}>
-      <button onClick={() => setShowDrifted(!showDrifted)} style={{ background: 'none', border: 'none', color: theme.muted, fontSize: 11, fontWeight: 900, letterSpacing: '.09em', textTransform: 'uppercase', cursor: 'pointer', padding: '4px 0' }}>
-        {showDrifted ? '▾' : '▸'} Drifted away · {drifted.length}
-      </button>
-      {showDrifted && drifted.map((p) => <PersonRow key={p.id} g={g} p={p} onOpen={() => setOpenId(p.id)} sub={`${p.role} · you stopped calling`} />)}
-    </div>)}
-    {!inCareer(g) && <div style={{ fontSize: 11.5, color: theme.muted, textAlign: 'center', padding: '14px 10px', opacity: .8 }}>Industry contacts start once your career begins. Keep school friends close on Spotlight — some of them go far.</div>}
+    <div style={{ display: 'flex', gap: 6, marginBottom: 12 }}>{tabBtn('family', `Family · ${family.length + (g.partner ? 1 : 0)}`)}{tabBtn('contacts', `Contacts · ${people.filter((p) => !p.cold).length}`)}</div>
+    {ptab === 'family' && <>
+      <FamilyTree g={g} onOpen={(id) => setOpenId(id)} yourLook={lookOf(g)} />
+      <div style={{ fontSize: 11, fontWeight: 900, letterSpacing: '.09em', textTransform: 'uppercase', color: theme.muted, margin: '14px 0 8px' }}>Everyone</div>
+      {g.partner && <PersonRow g={g} p={g.partner} sub={`${g.partner.job} · ${g.partner.age}`} onOpen={() => setOpenId(g.partner.id)} />}
+      {family.map((p) => (<PersonRow key={p.id} g={g} p={p} sub={`${p.relation}, ${p.age}`} onOpen={() => setOpenId(p.id)} />))}
+      {deceased.length > 0 && <div style={{ fontSize: 11, color: theme.muted, marginTop: 4, marginBottom: 10, opacity: .7 }}>In memory: {deceased.map((p) => `${p.name} (${p.relation})`).join(', ')}</div>}
+    </>}
+    {ptab === 'contacts' && <>
+      {/* Who represents you. A person like the others — tap to talk — with what the desk is doing for you. */}
+      <div style={{ fontSize: 11, fontWeight: 900, letterSpacing: '.09em', textTransform: 'uppercase', color: theme.muted, marginBottom: 8 }}>Your agent</div>
+      {al && agentPerson
+        ? <PersonRow g={g} p={agentPerson} sub={`${al.desk} · ${al.cut}%`} onOpen={() => setOpenId(agentPerson.id)} />
+        : al
+        ? <Card style={{ marginBottom: 8 }}><div style={{ fontSize: 13.5, fontWeight: 800 }}>{al.name}</div><div style={{ fontSize: 11.5, color: theme.muted, marginTop: 2 }}>{al.desk} · {al.cut}% of everything · {al.doing}</div></Card>
+        : <Card style={{ marginBottom: 8 }}><div style={{ fontSize: 12.5, lineHeight: 1.55, color: theme.muted }}>
+            {agentDropped(g) ? 'Nobody. Nobody represents the liability — get off the Avoided rung and somebody will ask.'
+              : (g.fame || 0) >= 40 || (g.respect || 0) >= 50 ? 'Nobody yet — when an agency wants you, the letter lands in Email.'
+              : 'Nobody yet. An agent asks at fame 40, or at standing 50 if directors know you before the public does. Their offers will come to Messages under their name.'}
+          </div></Card>}
+      <div style={{ display: 'flex', gap: 5, flexWrap: 'wrap', margin: '12px 0 8px' }}>
+        {CONTACT_FILTERS.map(([id, label]) => (<button key={id} onClick={() => setFilter(id)} style={{ border: `1px solid ${filter === id ? theme.accent : theme.line}`, borderRadius: 20, padding: '4px 10px', fontSize: 11, fontWeight: 800, cursor: 'pointer',
+          background: filter === id ? 'rgba(158,116,255,.22)' : 'transparent', color: filter === id ? theme.text : theme.muted }}>{label}</button>))}
+      </div>
+      {/* Closest first, and the ones who drifted folded away at the bottom rather than mixed in —
+          a phone with forty names in it is only usable if the ones that matter are on top. */}
+      {warm.length === 0 && <div style={{ fontSize: 12, color: theme.muted, textAlign: 'center', padding: 14 }}>{people.length ? 'Nobody under that filter.' : 'Nobody yet. Sets, parties and premieres are where people come from.'}</div>}
+      {warm.map((p) => { const opensDoor = p.unlocks === 'aaa' && p.industryWeight >= 80;
+        return (<PersonRow key={p.id} g={g} p={p} onOpen={() => setOpenId(p.id)}
+          sub={`${p.role}${p.fromSet ? ` · from ${p.fromSet}` : ''}${opensDoor && p.relationship >= 60 ? ' · opens A-list ★' : opensDoor ? ' · could open doors' : ''}`} />); })}
+      {drifted.length > 0 && (<div style={{ marginTop: 10 }}>
+        <button onClick={() => setShowDrifted(!showDrifted)} style={{ background: 'none', border: 'none', color: theme.muted, fontSize: 11, fontWeight: 900, letterSpacing: '.09em', textTransform: 'uppercase', cursor: 'pointer', padding: '4px 0' }}>
+          {showDrifted ? '▾' : '▸'} Drifted away · {drifted.length}
+        </button>
+        {showDrifted && drifted.map((p) => <PersonRow key={p.id} g={g} p={p} onOpen={() => setOpenId(p.id)} sub={`${p.role} · you stopped calling`} />)}
+      </div>)}
+      {!inCareer(g) && <div style={{ fontSize: 11.5, color: theme.muted, textAlign: 'center', padding: '14px 10px', opacity: .8 }}>Industry contacts start once your career begins. Keep school friends close on Spotlight — some of them go far.</div>}
+    </>}
   </div>);
 }
 const CITIES = ['Amsterdam', 'London', 'Los Angeles', 'New York', 'Paris', 'Berlin', 'Seoul', 'São Paulo'];
@@ -2119,80 +2169,7 @@ function OtherWork({ list }) {
     ))}
   </div>);
 }
-// The old prototype had a planner and Maxi missed it: twelve months ahead, with what is
-// booked, what expires when, and where the free space is.
-function Diary({ g }) {
-  const now = (g.year || 0) * 12 + (g.month || 0);
-  const cells = [];
-  for (let i = 0; i < 12; i++) {
-    const abs = now + i;
-    const yr = Math.floor(abs / 12), mo = abs % 12;
-    const shooting = g.production && i < g.production.monthsLeft;
-    const parties = (g.events || []).filter((e) => e.monthsLeft - 1 === i).length;
-    const deadlines = (g.offers || []).filter((o) => (o.deadline || 0) - 1 === i).length;
-    // A premiere is the single most important date in the year and it was not on here.
-    const premieres = (g.releases || []).filter((r) => r.due === abs);
-    // Post-production is not an event — nothing happens in those months and you are free
-    // to work. It gets a quiet tint so you can see the wait, not an icon of its own.
-    const inPost = (g.releases || []).filter((r) => r.due > abs).sort((a, b) => a.due - b.due)[0] || null;
-    // Signed off. These months are not yours to book anything in.
-    const off = g.burnout && i < (g.burnout.left || 0);
-    // A carpet or a talk show sitting unanswered in the inbox is a thing you are supposed
-    // to be doing THIS month, and it was nowhere on the calendar at all.
-    const invites = i === 0 ? (g.inbox || []).filter((m) => m.kind === 'invite') : [];
-    // And the answer to a read you did comes back on a month you can see coming.
-    const hearing = (g.submissions || []).filter((x) => x.due === abs);
-    // The other person in your life is on here too: the anniversary, the evening you had
-    // this month, and a text of theirs you have not answered. Maxi: "dates on the calendar."
-    const anniv = g.partner && anniversaryMonth(g, abs) ? anniversaryYears(g, abs) : 0;
-    const evening = i === 0 && g.partner && onCooldown(g, 'partner');
-    const asked = i === 0 && (g.sms || []).some((m) => m.tag === 'over' || m.tag === 'anniv');
-    cells.push({ i, yr, mo, shooting, parties, deadlines, premieres, inPost, off, invites, hearing, anniv, evening, asked });
-  }
-  return (<div style={{ marginBottom: 16 }}>
-    <div style={{ fontSize: 11, fontWeight: 900, letterSpacing: '.09em', textTransform: 'uppercase', color: theme.muted, marginBottom: 8 }}>The year ahead</div>
-    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4,1fr)', gap: 6, marginBottom: 8 }}>
-      {cells.map((c) => (<div key={c.i} style={{
-        background: c.off ? 'rgba(255,106,138,.10)' : c.i === 0 ? 'rgba(158,116,255,.18)' : c.inPost && !c.shooting ? 'rgba(158,116,255,.07)' : theme.panel,
-        border: `1px solid ${c.off ? 'rgba(255,106,138,.45)' : c.premieres.length ? 'rgba(255,209,102,.75)' : c.shooting ? 'rgba(255,209,102,.5)' : c.i === 0 ? theme.accent : theme.line}`,
-        borderRadius: 9, padding: '7px 6px', minHeight: 52, opacity: c.off ? 0.75 : 1 }}>
-        <div style={{ fontSize: 10.5, fontWeight: 800, color: c.off ? theme.bad : c.i === 0 ? theme.accent : theme.muted }}>{MON[c.mo]}{c.mo === 0 ? ` ’${String(c.yr).slice(2)}` : ''}</div>
-        <div style={{ display: 'flex', gap: 3, marginTop: 4, flexWrap: 'wrap' }}>
-          {c.off && <span title="signed off" style={{ fontSize: 11 }}>🚫</span>}
-          {c.shooting && !c.off && <span title="shooting" style={{ fontSize: 11 }}>🎬</span>}
-          {c.premieres.map((r) => <span key={r.id} title={`${r.title} opens`} style={{ fontSize: 11 }}>🍿</span>)}
-          {c.parties > 0 && <span title="event expires" style={{ fontSize: 11 }}>🎉</span>}
-          {c.deadlines > 0 && <span title="offer expires" style={{ fontSize: 11 }}>⏳</span>}
-          {c.invites.length > 0 && <span title="an invitation waiting in your inbox" style={{ fontSize: 11 }}>✉️</span>}
-          {c.hearing.length > 0 && <span title="you hear back about a part" style={{ fontSize: 11 }}>📞</span>}
-          {c.anniv > 0 && <span title="anniversary" style={{ fontSize: 11 }}>💍</span>}
-          {c.evening && <span title="an evening together this month" style={{ fontSize: 11 }}>💞</span>}
-          {c.asked && !c.evening && <span title="they texted — it is in Messages" style={{ fontSize: 11 }}>💬</span>}
-        </div>
-        {c.invites.length > 0 && <div style={{ fontSize: 8.5, fontWeight: 800, color: theme.accent, marginTop: 2, lineHeight: 1.2 }}>
-          {c.invites[0].subj}
-        </div>}
-        {c.hearing.length > 0 && <div style={{ fontSize: 8.5, fontWeight: 800, color: theme.accent, marginTop: 2, lineHeight: 1.2 }}>
-          {c.hearing[0].title} — they answer
-        </div>}
-        {c.anniv > 0 && <div style={{ fontSize: 8.5, fontWeight: 800, color: '#ff8d9e', marginTop: 2, lineHeight: 1.2 }}>
-          {c.anniv} {c.anniv === 1 ? 'year' : 'years'} with {g.partner.name.split(' ')[0]}{c.i === 0 ? ' — do something' : ''}
-        </div>}
-        {/* A premiere was named and a shoot was not, so eight months of the year said
-            nothing but "🎬". What you are actually on is the thing you want to read. */}
-        {c.shooting && !c.off && <div style={{ fontSize: 8.5, fontWeight: 800, color: theme.gold, marginTop: 2, lineHeight: 1.2, overflow: 'hidden' }}>
-          {g.production.title} · {c.i === (g.production.monthsLeft - 1) ? 'wraps' : `month ${(g.production.months || 0) - (g.production.monthsLeft || 0) + c.i + 1} of ${g.production.months}`}
-        </div>}
-        {c.premieres.length > 0 && <div style={{ fontSize: 8.5, fontWeight: 800, color: theme.gold, marginTop: 2, lineHeight: 1.2, overflow: 'hidden' }}>{c.premieres[0].title}</div>}
-        {/* And the quiet months are not empty either — something of yours is in post. */}
-        {!c.shooting && !c.off && !c.premieres.length && c.inPost && <div style={{ fontSize: 8.5, color: theme.muted, marginTop: 2, lineHeight: 1.2, overflow: 'hidden' }}>{c.inPost.title} · in post</div>}
-      </div>))}
-    </div>
-    <div style={{ display: 'flex', gap: 10, justifyContent: 'center', fontSize: 10.5, color: theme.muted, flexWrap: 'wrap' }}>
-      <span>🎬 shooting</span><span>🍿 premiere</span><span>✉️ invitation</span><span>📞 they answer</span><span>💍 anniversary</span><span>💞 evening</span><span>🎉 party ends</span><span>⏳ offer expires</span>{g.burnout && <span style={{ color: theme.bad }}>🚫 signed off</span>}
-    </div>
-  </div>);
-}
+// The year ahead lives in ui/components/Diary.jsx — a row a month, every line written out.
 function TrainingScreen({ g }) {
   const key = trainingKey(g);
   const skill = Math.round(g[key] || 0), cap = skillCap(g);
