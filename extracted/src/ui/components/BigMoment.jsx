@@ -47,6 +47,20 @@ function Scene({ id, look, accent, moment }) {
       <path d="M70 110 L130 110 L122 120 L78 120 Z" fill="#8a3459" opacity=".8" />
     </svg>);
   }
+  // The year in film: the trade's year-end issue, a ranked column with one line lit.
+  if (id === 'yearbook') {
+    return (<svg viewBox="0 0 200 120" style={{ width: '100%', maxWidth: 300, display: 'block', margin: '0 auto' }}>
+      <rect x="40" y="10" width="120" height="104" rx="3" fill={theme.ink} stroke={theme.edge} strokeWidth="2" />
+      <rect x="40" y="10" width="120" height="18" rx="3" fill={accent} opacity=".85" />
+      <text x="100" y="22.5" textAnchor="middle" fontSize="7.5" fontWeight="900" fill="#1a1206" letterSpacing="2">THE LISTS</text>
+      {[0, 1, 2, 3, 4, 5].map((i) => (<g key={i}>
+        <rect x="50" y={36 + i * 12} width="10" height="7" rx="1.5" fill={i === 0 ? accent : theme.ink2} stroke={theme.edge} strokeWidth="1" />
+        <rect x="64" y={37.5 + i * 12} width={70 - i * 6} height="4" rx="2" fill={i === 0 ? accent : theme.edge} opacity={i === 0 ? 1 : 0.7} />
+        <rect x="138" y={37.5 + i * 12} width="14" height="4" rx="2" fill={theme.edge} opacity=".6" />
+      </g>))}
+      <text x="100" y="110" textAnchor="middle" fontSize="7" fontWeight="800" fill={theme.sceneText} letterSpacing="2">{moment.title}</text>
+    </svg>);
+  }
   // Awards night. A statuette on a lit plinth, and a room of seats facing it.
   if (id === 'nomination' || id === 'ceremony') {
     const won = moment.kind === 'good' && id === 'ceremony';
@@ -191,7 +205,7 @@ function Scene({ id, look, accent, moment }) {
   </svg>);
 }
 
-const CTA = { premiere: 'Read the reviews', shutdown: 'Go home', nomination: 'Let it sink in', ceremony: 'Take the night',
+const CTA = { premiere: 'Read the reviews', shutdown: 'Go home', nomination: 'Let it sink in', ceremony: 'Take the night', yearbook: 'Close the paper',
   burnout: 'Sleep', depression: 'Close the curtains', lifted: 'Open them',
   checkpoint: 'Keep going', rehab: 'Walk out' };
 function headFor(m) {
@@ -206,7 +220,8 @@ function headFor(m) {
   if (m.id === 'booked') return 'They rang back';
   if (m.id === 'shutdown') return m.frozen ? 'The shoot has stopped' : 'The project is dead';
   if (m.id === 'nomination') return 'The Askers';
-  if (m.id === 'ceremony') return m.kind === 'good' ? 'And the Asker goes to' : 'And the Asker goes to';
+  if (m.id === 'yearbook') return 'The year in film';
+  if (m.id === 'ceremony') return m.quiet ? 'The Askers went to' : 'And the Asker goes to';
   return m.kind === 'good' ? 'Something came to you' : 'This is happening';
 }
 
@@ -219,7 +234,8 @@ export function BigMoment({ moment, look, onClose }) {
     const cue = moment.id === 'premiere' ? 'camera'
       : moment.id === 'verdict' ? (good ? 'fanfare' : 'flop')
       : moment.id === 'nomination' ? 'nominated'
-      : moment.id === 'ceremony' ? (good ? 'asker' : 'applause')
+      : moment.id === 'ceremony' ? (good && !moment.quiet ? 'asker' : 'applause')
+      : moment.id === 'yearbook' ? 'good'
       : moment.id === 'booked' ? 'offer'
       : moment.id === 'shutdown' ? 'flop'
       : moment.id === 'burnout' || moment.id === 'depression' ? 'ill'
@@ -233,9 +249,11 @@ export function BigMoment({ moment, look, onClose }) {
   // This renders OUTSIDE the app shell, so it has to state its own text colour and font —
   // otherwise the title comes out near-black on a near-black panel.
   return (<div style={{ position: 'fixed', inset: 0, background: `${theme.bgDeep || '#080514'}f0`, backdropFilter: 'blur(6px)', WebkitBackdropFilter: 'blur(6px)',
-    zIndex: 60, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 16,
+    // A reviews page or a year's lists can be taller than a phone. The card scrolls inside the
+    // overlay and centres only when it fits — `alignItems: center` clipped the top off.
+    zIndex: 60, display: 'flex', alignItems: 'flex-start', justifyContent: 'center', padding: 16, overflowY: 'auto',
     color: theme.text, fontFamily: FONT }}>
-    <div className="fof-pop" style={{ maxWidth: 380, width: '100%',
+    <div className="fof-pop" style={{ maxWidth: 380, width: '100%', margin: 'auto',
       background: `linear-gradient(180deg, ${theme.panel2}, ${theme.panel})`,
       border: `1px solid ${accent}55`, boxShadow: `0 0 70px -18px ${accent}, 0 30px 60px -30px #000`,
       borderRadius: 20, padding: '22px 20px 18px', textAlign: 'center' }}>
@@ -252,6 +270,20 @@ export function BigMoment({ moment, look, onClose }) {
           <Figure label="Score" value={`${moment.score}/10`} accent={accent} />
           <Figure label={String(moment.money).includes('watching') ? 'Audience' : 'Box office'}
             value={String(moment.money).replace(' at the box office', '').replace(' watching', '')} accent={accent} />
+        </div>
+      )}
+      {moment.id === 'verdict' && moment.reviews && <Reviews page={moment.reviews} accent={accent} />}
+      {moment.id === 'yearbook' && moment.sections && (
+        <div style={{ margin: '0 0 12px', textAlign: 'left' }}>
+          {moment.sections.map((sec, si) => (<div key={si} style={{ marginBottom: 10 }}>
+            <div style={{ fontSize: 10, fontWeight: 900, letterSpacing: '.12em', textTransform: 'uppercase', color: theme.muted, marginBottom: 5 }}>{sec.head}</div>
+            {sec.rows.map((r) => (<div key={r.n} style={{ display: 'flex', alignItems: 'baseline', gap: 8, fontSize: 12, padding: '4px 8px', borderRadius: 7,
+              background: r.you ? `${accent}22` : 'transparent', border: `1px solid ${r.you ? accent + '66' : 'transparent'}`, color: r.you ? theme.text : theme.muted }}>
+              <span style={{ width: 22, fontWeight: 900, color: r.you ? accent : theme.muted }}>#{r.n}</span>
+              <span style={{ flex: 1, minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', fontWeight: r.you ? 800 : 600 }}>{r.a}<span style={{ fontWeight: 500, opacity: .8 }}> · {r.b}</span></span>
+              <span style={{ fontWeight: 800, color: r.you ? accent : theme.muted, whiteSpace: 'nowrap' }}>{r.c}</span>
+            </div>))}
+          </div>))}
         </div>
       )}
       {(moment.id === 'nomination' || moment.id === 'ceremony') && moment.lines && (
@@ -274,6 +306,27 @@ export function BigMoment({ moment, look, onClose }) {
         {CTA[moment.id] || (good ? 'Take it in' : 'Face it')}
       </button>
     </div>
+  </div>);
+}
+
+// The review page: a grade, what the audience thought, what the critics did, and the
+// quotes with their stars. Built by systems/world/critics.js from what the film was.
+export function Reviews({ page, accent, compact }) {
+  if (!page) return null;
+  const star = (n) => '★'.repeat(n) + '☆'.repeat(5 - n);
+  return (<div style={{ textAlign: 'left', margin: compact ? '6px 0 0' : '0 0 12px' }}>
+    {!compact && <div style={{ display: 'flex', gap: 8, marginBottom: 10 }}>
+      <Figure label="Kinomark" value={page.grade} accent={accent} />
+      <Figure label="Audience" value={page.audience.toFixed(1)} accent={theme.good} />
+      <Figure label="Critics" value={page.critics.toFixed(1)} accent={theme.accent} />
+    </div>}
+    {page.reviews.map((r, i) => (<div key={i} style={{ padding: '7px 0', borderTop: `1px solid ${theme.line}` }}>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', gap: 8 }}>
+        <span style={{ fontSize: 10.5, fontWeight: 900, textTransform: 'uppercase', letterSpacing: '.06em', color: accent }}>{r.critic}, <span style={{ color: theme.muted }}>{r.outlet}</span></span>
+        <span style={{ fontSize: 11, color: theme.gold, whiteSpace: 'nowrap', letterSpacing: '.05em' }}>{star(r.stars)}</span>
+      </div>
+      <div style={{ fontSize: 12, color: theme.text, lineHeight: 1.5, marginTop: 3 }}>{r.text}</div>
+    </div>))}
   </div>);
 }
 

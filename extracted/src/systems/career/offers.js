@@ -9,12 +9,11 @@ import { GENRES } from '../meta/news.js';
 import { startProduction } from './production.js';
 import { rollStability } from './stability.js';
 import { canWork } from '../life/strain.js';
+import { newTitle } from '../world/titles.js';
 const clamp = (v) => Math.max(0, Math.min(100, v));
-function title(s, big) {
-  const A = big ? ['Empire','Legacy','Titan','Eternal','Crown','Apex'] : ['Small','Quiet','Last','Neon','Paper','Golden'];
-  const B = s.dream === 'singer' ? ['Anthem','Record','Tour','Sessions','Sound'] : ['Story','Hour','City','Room','Line'];
-  return `${pick(A)} ${pick(B)}`;
-}
+// Titles come from the same generator as everything else the world makes, so an agent's
+// offer cannot be called what a rival's film was called last year. See world/titles.js.
+function title(s, genre) { return newTitle(s, genre); }
 export function generateOffer(s) {
   const acc = computeAccess(s); const fame = s.fame || 0;
   let tier;
@@ -27,11 +26,12 @@ export function generateOffer(s) {
   const quote = quoteFor(s, medium) || quoteFor(s, 'film_indie');
   const prestige = { tentpole: rint(70, 95), lead: rint(45, 70), supporting: rint(20, 45) }[tier];
   const salary = Math.round(quote * share * (0.85 + Math.random() * 0.45));
+  const genre = pick(GENRES);
   return { id: uid(s, 'off'),
-    projectTitle: (tier === 'tentpole' ? '⭐ ' : '') + title(s, tier === 'tentpole'),
+    projectTitle: (tier === 'tentpole' ? '⭐ ' : '') + title(s, genre),
     role: tier === 'supporting' ? 'Supporting' : 'Lead',
     type: s.dream === 'singer' ? (tier === 'tentpole' ? 'World Tour' : 'Album') : (tier === 'tentpole' ? 'Blockbuster' : 'Feature Film'),
-    genre: pick(GENRES),
+    genre,
     salary, months: rint(3, 8), fame: { tentpole: 9, lead: 5, supporting: 2 }[tier], prestigeScore: prestige, tier,
     // What kind of picture it is — decides the post-production wait and the box office it can take.
     scale: { tentpole: 'blockbuster', lead: 'feature', supporting: 'indie' }[tier],
@@ -46,7 +46,7 @@ export function roomOffer(s, who) {
   const quote = quoteFor(s, 'film_tentpole') || quoteFor(s, 'film_studio') || rint(250000, 600000);
   const salary = Math.round(quote * (0.7 + Math.random() * 0.3));
   return { id: uid(s, 'off'), kind: 'room', viaPartner: who.name,
-    projectTitle: '⭐ ' + title(s, true), role: 'Lead', type: s.dream === 'singer' ? 'World Tour' : 'Blockbuster',
+    projectTitle: '⭐ ' + title(s, pick(GENRES)), role: 'Lead', type: s.dream === 'singer' ? 'World Tour' : 'Blockbuster',
     genre: pick(GENRES), salary, months: rint(6, 11), fame: 9, prestigeScore: rint(60, 90), tier,
     scale: 'blockbuster', stability: rollStability('blockbuster'), deadline: rint(2, 3),
     note: `${who.name.split(' ')[0]} got you in the room. Everybody on that set will know it — make it not matter.` };

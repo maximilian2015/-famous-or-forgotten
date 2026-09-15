@@ -11,6 +11,9 @@ import { rollStability, productionTrouble, volatileSwing, roughness } from './st
 import { makePremise, prestigeShift, ratingShift, swingShift, apartShift, appealShift } from './story.js';
 import { skillCap } from './actions.js';
 import { coldStart } from '../meta/standing.js';
+import { activeActors, actorById } from '../world/world.js';
+import { fameTier } from '../meta/status.js';
+import { personName, namesInUse } from '../world/names.js';
 const clamp = (v) => Math.max(0, Math.min(100, v));
 // A shoot opens on 20 and 20 used to be labelled "Disaster", so the very first thing the
 // game said about every film you ever made was that it was already a catastrophe — on day
@@ -27,15 +30,21 @@ export function meterTier(meter) {
 }
 const CREW_ROLES = { actor: ['Director', 'Co-star', 'Camera Operator'], singer: ['Producer', 'Vocal Coach', 'Sound Engineer'] };
 const TRAITS = ['diva', 'perfectionist', 'chill', 'difficult'];
-const FIRST = ['Jonas', 'Mira', 'Theo', 'Nadia', 'Rin', 'Col', 'Ivy', 'Beau', 'Sasha', 'Omar'];
-const LAST = ['Vane', 'Croft', 'Reyes', 'Marsh', 'Onyx', 'Blythe', 'Cole', 'Ferro'];
 // A crew has heard about you before you arrive. Below zero, they start colder — the
 // Avoided rung promised "crews ask not to be put on your call sheet" and nothing did it.
-function makeCrew(s) {
+function makeCrew(s, scale) {
   const dream = s.dream, cold = coldStart(s);
   // bond0 is where they started, so the verdict at wrap can ask whether you made it worse.
-  const used = new Set();
+  const used = namesInUse(s);
   const crew = CREW_ROLES[dream === 'singer' ? 'singer' : 'actor'].map((role) => makeOne(role));
+  // On the bigger pictures the other name on the poster is somebody — a person from the
+  // world, with a career you can look up, who is on the year's lists with you. An icon
+  // opposite you sells your film like theirs and puts your name next to theirs in print.
+  const star = costarFor(s, scale);
+  if (star && dream !== 'singer') {
+    crew[1] = { ...crew[1], name: star.name, worldId: star.id, bond: rint(20, 45) - cold + (star.icon ? -8 : 0) };
+    crew[1].trait = star.icon ? pick(['diva', 'perfectionist', 'chill']) : crew[1].trait;
+  }
   // A director you already know. Maxi: "people vanish" — a director you spent six months
   // with was gone at wrap, and the next shoot was three strangers again. Now a director in
   // your phone comes back to direct you, one shoot in three, and starts where you left
@@ -47,10 +56,23 @@ function makeCrew(s) {
   }
   return crew.map((c) => ({ ...c, bond0: c.bond }));
   function makeOne(role) {
-    let name; do { name = `${pick(FIRST)} ${pick(LAST)}`; } while (used.has(name));
-    used.add(name);
+    const name = personName(chance(50) ? 'female' : 'male', used);
     return { id: 'crew' + Math.random().toString(36).slice(2, 8), name, role, trait: pick(TRAITS), bond: rint(30, 55) - cold };
   }
+}
+// Who would be cast opposite you. The size of the picture decides how often it is a name at
+// all, and which names: nobody puts an icon in a short, and nobody puts a nobody in a tentpole.
+const COSTAR_ODDS = { blockbuster: 70, feature: 42, prestige: 38, indie: 18, recurring: 10 };
+const COSTAR_TIERS = { blockbuster: ['icon', 'alist', 'star'], feature: ['alist', 'star', 'known'], prestige: ['star', 'known', 'alist'], indie: ['known', 'rising', 'star'], recurring: ['known', 'rising'] };
+function costarFor(s, scale) {
+  const odds = COSTAR_ODDS[scale] || 0;
+  if (!odds || !chance(odds)) return null;
+  const tiers = COSTAR_TIERS[scale] || [];
+  const pool = activeActors(s).filter((a) => tiers.includes(a.icon ? 'icon' : fameTier(a.fame).id));
+  if (!pool.length) return null;
+  // The first tier named is the one they would want; it is not always available.
+  const first = pool.filter((a) => (a.icon ? 'icon' : fameTier(a.fame).id) === tiers[0]);
+  return pick(first.length && chance(55) ? first : pool);
 }
 // The people you spent the shoot with do not vanish at wrap. A director or a co-star who
 // warmed to you is in your phone now — a contact like any other, who fades if you never
@@ -65,13 +87,19 @@ function keepTheCrew(s, p) {
     if (existing) { existing.relationship = c.bond; existing.lastSeen = (s.year || 0) * 12 + (s.month || 0); if (c.bond > 10) existing.cold = false; continue; }
     if ((c.bond || 0) < 60) continue;
     const span = DIRECTOR_WEIGHT[p.scale] || [55, 70];
-    (s.people = s.people || []).push({ id: uid(s, 'p'), name: c.name,
-      role: isDirector ? (s.dream === 'singer' ? 'Music Producer' : 'Film Director') : (s.dream === 'singer' ? 'Fellow Musician' : 'Fellow Actor'),
-      industryWeight: isDirector ? rint(span[0], span[1]) : rint(Math.max(15, Math.round((s.fame || 0) * 0.5)), Math.min(90, Math.round((s.fame || 0) * 0.5) + 30)),
+    const star = c.worldId ? actorById(s, c.worldId) : null;
+    (s.people = s.people || []).push({ id: uid(s, 'p'), name: c.name, worldId: c.worldId || null,
+      role: isDirector ? (s.dream === 'singer' ? 'Music Producer' : 'Film Director') : star ? (star.icon ? 'Icon' : 'Star') : (s.dream === 'singer' ? 'Fellow Musician' : 'Fellow Actor'),
+      industryWeight: isDirector ? rint(span[0], span[1]) : star ? Math.round(Math.max(40, star.fame)) : rint(Math.max(15, Math.round((s.fame || 0) * 0.5)), Math.min(90, Math.round((s.fame || 0) * 0.5) + 30)),
       relationship: c.bond, unlocks: isDirector ? 'aaa' : null, met: `${s.year}`, fromSet: p.title, lastSeen: (s.year || 0) * 12 + (s.month || 0) });
     kept.push(`${c.name} (${isDirector ? 'director' : 'co-star'})`);
   }
   if (kept.length) addTimeline(s, `${kept.join(' and ')} ${kept.length > 1 ? 'are' : 'is'} in your phone now. That is what a good set leaves you.`);
+}
+// Older offers were written before releases existed and carry no scale of their own.
+function scaleOfOffer(offer) {
+  return offer.scale || (offer.episodes ? (offer.tier === 'lead' ? 'recurring' : 'episode')
+    : offer.tier === 'tentpole' ? 'blockbuster' : offer.tier === 'lead' ? 'feature' : 'indie');
 }
 export function startProduction(s, offer) {
   s.production = {
@@ -81,9 +109,7 @@ export function startProduction(s, offer) {
     // What part one was paid. Every sequel raise is measured against THIS, not against
     // whatever the last one happened to earn. See systems/career/franchise.js.
     baseSalary: offer.baseSalary || offer.salary, arc: offer.arc || null,
-    // Older offers were written before releases existed and carry no scale of their own.
-    scale: offer.scale || (offer.episodes ? (offer.tier === 'lead' ? 'recurring' : 'episode')
-      : offer.tier === 'tentpole' ? 'blockbuster' : offer.tier === 'lead' ? 'feature' : 'indie'),
+    scale: scaleOfOffer(offer),
     // Carried so the thing can continue: which season, which part of the franchise,
     // and whether you signed away the right to say no.
     episodes: offer.episodes || 0, episodeFee: offer.episodeFee || 0,
@@ -95,11 +121,17 @@ export function startProduction(s, offer) {
     // How solid the money is. Decides whether this shoot ever reaches its last day, and
     // how wildly the finished thing can turn out. See systems/career/stability.js.
     stability: offer.stability ?? rollStability(offer.scale || 'feature'),
-    crew: makeCrew(s), meter: 20,
+    crew: makeCrew(s, scaleOfOffer(offer)), meter: 20,
     // What it is about, and which version of it you end up shooting. See story.js — the
     // argument happens on day one and the room decides whether you are listened to.
     premise: makePremise(), take: null, takeWon: false,
   };
+  const star = s.production.crew.find((c) => c.worldId);
+  if (star) {
+    const a = actorById(s, star.worldId);
+    if (a) { Object.assign(s.production, { with: a.name, withId: a.id, withFame: a.fame, withIcon: !!a.icon });
+      addTimeline(s, a.icon ? `${a.name} is in it. You will be on a poster with an icon.` : `${a.name} is your co-star.`); }
+  }
   // Your quote is the biggest fee you have ever commanded for a picture, and it is set
   // by taking the job — not only by winning an argument about it. Television is priced
   // per episode and is a different currency, so it does not move this number.

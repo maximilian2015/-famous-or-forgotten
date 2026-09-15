@@ -20,6 +20,8 @@ import { FAVOURS, FAVOUR_ORDER, canUse, costOf, asksLeft, ASKS_A_YEAR, canSmooth
 import { addPrestigeListing } from './systems/career/castings.js';
 import { TimingBar } from './ui/components/TimingBar.jsx';
 import { GridRisk } from './ui/components/GridRisk.jsx';
+import { Reviews } from './ui/components/BigMoment.jsx';
+import { WalkOfFame } from './ui/components/WalkOfFame.jsx';
 import { tierById, isInvited, attendEvent, askForInvite, sneakIntoEvent, inviteHelpers, helperOdds, hasAsked } from './systems/social/events.js';
 import { HOUSING, HOUSING_ORDER, monthlyCosts, DIET, GYM_COST, setDiet, toggleGym } from './engine/economy.js';
 import { GENRES, hotGenre } from './systems/meta/news.js';
@@ -57,7 +59,7 @@ import { monthsIn, slotsLost, owedSlots, standingOf, onMeds, TALK, WEEK_TASKS, C
 import { drinkThrough, drankThisMonth, level as drinkLevel, band as drinkBand, dependent, bottlesInHouse,
   answerUltimatum, GRACE_MONTHS } from './systems/life/drink.js';
 // Big moments live on state so a system can raise one; the UI only clears it.
-function clearBigMoment(s) { s.bigMoment = null; return s; }
+function clearBigMoment(s) { s.bigMoment = (s.moments && s.moments.length) ? s.moments.shift() : null; return s; }
 const MON = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
 
 export default function App() {
@@ -1914,6 +1916,10 @@ export function money(n) {
 function CreditRow({ group, g }) {
   const c = group.best;
   const r = c.rating || 0;
+  const [showReviews, setShowReviews] = useState(false);
+  // Where it sat in its year, if it made the list. See systems/world/yearbook.js.
+  const yearEntry = g.world && g.world.years && g.world.years[c.year];
+  const ranked = yearEntry && yearEntry.films.find((f) => f.you && f.title === c.title);
   const stars = (r / 10).toFixed(1).replace('.', ',');
   const hit = r >= 85 || group.worldHit;
   const starCol = group.worldHit ? theme.gold : r >= 85 ? theme.good : r >= 60 ? theme.gold : theme.muted;
@@ -1947,6 +1953,7 @@ function CreditRow({ group, g }) {
       <div style={{ fontSize: 12, color: theme.muted, marginTop: 4 }}>
         {c.director ? <span style={{ color: theme.text, opacity: .85 }}>{c.director}</span> : null}
         {c.director ? ' · ' : ''}{c.role}
+        {c.with ? <span> · with <span style={{ color: c.withIcon ? theme.gold : theme.text, fontWeight: 700 }}>{c.with}</span></span> : null}
       </div>
       {/* The studio said no. A name in the room can push — favours.js. */}
       {canPushSequel(g, c.id) && (() => { const fit = canUse(g, 'sequel');
@@ -1965,8 +1972,16 @@ function CreditRow({ group, g }) {
             {group.boxOffice > 0 ? `${money(group.boxOffice)} box office` : `${group.viewers}m watched`}</span>}
           {c.verdict && !c.running && <span style={{ fontWeight: 900, letterSpacing: '.07em', textTransform: 'uppercase', fontSize: 9.5,
             color: VERDICT_COL[c.verdict] || theme.muted }}>{c.verdict}</span>}
+          {ranked && <span style={{ fontWeight: 900, letterSpacing: '.06em', color: ranked.rank <= 3 ? theme.gold : theme.muted }}>#{ranked.rank} OF {c.year}</span>}
         </div>
       )}
+      {/* What was written. Kept on the credit the night the run closed — world/critics.js. */}
+      {c.reviews && !c.running && <div>
+        <button onClick={() => setShowReviews(!showReviews)} style={{ background: 'none', border: 'none', padding: '5px 0 0', cursor: 'pointer', fontSize: 10.5, fontWeight: 800, color: theme.accent }}>
+          Kinomark {c.reviews.grade} · audience {c.reviews.audience.toFixed(1)} · critics {c.reviews.critics.toFixed(1)} {showReviews ? '▾' : '▸'}
+        </button>
+        {showReviews && <Reviews page={c.reviews} accent={theme.gold} compact />}
+      </div>}
     </div>
   </div>);
 }
@@ -2313,6 +2328,12 @@ function AaaTracker({ g }) {
 }
 function LegacyPanel({ g }) {
   const young = g.stage === 'child' || g.stage === 'teen';
+  return (<>
+    <WalkOfFame g={g} />
+    <LegacyCard g={g} young={young} />
+  </>);
+}
+function LegacyCard({ g, young }) {
   const L = computeLegacy(g); const hall = getHall();
   // A child has no legacy yet — but the lives before this one are still on the wall. The
   // whole panel used to vanish until eighteen, Hall of Fame included.

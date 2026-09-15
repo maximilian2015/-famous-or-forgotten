@@ -16,6 +16,7 @@ import { askerStanding } from './awards.js';
 import { ageFit, seenForIt } from './age.js';
 import { canWork, insurability, depressed } from '../life/strain.js';
 import { sendMail } from '../meta/email.js';
+import { newTitle } from '../world/titles.js';
 // What a casting office will see you for. Usually that is fame — but an Asker counts,
 // and it is the one route into work above your level that does not run through
 // blockbusters. An actor with a statuette and forty fame gets read for parts that used
@@ -111,18 +112,9 @@ export function scaleOf(c) { return SCALE[c?.scale] || SCALE.episode; }
 // Six words by six words is thirty-six titles, and six listings drawn out of that
 // collide constantly — the board regularly showed the same film twice on two shelves,
 // and two films of the same name collapsed into one row in the filmography.
-const TITLE_A = ['Late', 'Golden', 'Silent', 'Broken', 'Bright', 'Lost', 'Quiet', 'Last', 'Paper', 'Neon',
-  'Bitter', 'Hollow', 'Certain', 'Northern', 'Second', 'Patient', 'Crooked', 'Tender'];
-const TITLE_B = ['River', 'Avenue', 'Season', 'Signal', 'Harbor', 'Echo', 'Hour', 'Room', 'Line', 'City',
-  'Winter', 'Weather', 'Machine', 'Country', 'Animal', 'Kingdom', 'Daughter', 'Distance'];
-function titleFor(taken) {
-  for (let i = 0; i < 60; i++) {
-    const t = `${pick(TITLE_A)} ${pick(TITLE_B)}`;
-    if (!taken || !taken.has(t)) return t;
-  }
-  // Astronomically unlikely, but a title is never worth an infinite loop.
-  return `${pick(TITLE_A)} ${pick(TITLE_B)} ${rint(2, 99)}`;
-}
+// Titles now come from the world's generator (world/titles.js), which leans on the genre
+// and keeps every title used in a life, yours or anybody's, from coming round twice.
+function titleFor(s, genre, taken) { return newTitle(s, genre, taken); }
 // How many listings the board carries for you. This is the real shape of a career: not
 // that the work gets worse, but that there is less of it. A board that always held six
 // options meant a seventy-year-old worked exactly as hard as a thirty-year-old, and
@@ -234,15 +226,15 @@ export function refreshCastingPool(s, force, extra = 0) {
     const base = perEpisode ? episodeRate(quoted, (eps[0] + eps[1]) / 2, episodes) : quoted;
     const rate = Math.round(base * fee);
     if (rate <= 0) continue;
-    const title = titleFor(taken);
-    taken.add(title);
+    const genre = pick(GENRES);
+    const title = titleFor(s, genre, taken);
     s.castingPool.push({
       id: uid(s, 'cast'), title: title, type, role, shelf, scale, medium,
       share: share || 1,   // negotiation needs it to know the top of YOUR band for this part
       stability, feeFactor: fee,   // negotiation argues inside the band this job actually pays in
       months, episodes, perEpisode, episodeFee: perEpisode ? rate : 0,
       salary: perEpisode ? rate * episodes : rate,        // the whole fee, paid across the shoot
-      genre: pick(GENRES), minFame: minFame || 0,
+      genre, minFame: minFame || 0,
       _expires: (s.year || 0) * 12 + (s.month || 0) + rint(2, 4),
     });
     if (s._openShelfOnce) { s.castingPool[s.castingPool.length - 1].openedByName = true; delete s._openShelfOnce; }

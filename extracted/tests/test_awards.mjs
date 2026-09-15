@@ -81,7 +81,8 @@ function season(over, workOver) {
 }
 let nominated = 0;
 for (let i = 0; i < 400; i++) { const { p } = season({}, { rating: 90, genre: 'Drama', scale: 'indie' }); if (p) nominated++; }
-ok('a superb drama is usually nominated', nominated > 240, `${nominated}/400`);
+// Annual seasons: each film's own chance is lower than it was biennially, and there are twice as many nights.
+ok('a superb drama is usually nominated', nominated > 200, `${nominated}/400`);
 let horrorNoms = 0;
 for (let i = 0; i < 400; i++) { const { p } = season({}, { rating: 90, genre: 'Horror', scale: 'blockbuster' }); if (p) horrorNoms++; }
 ok('a superb horror blockbuster rarely is', horrorNoms < 120 && horrorNoms > 10, `${horrorNoms}/400`);
@@ -197,15 +198,18 @@ ok('no two nominees are up for the same film', collisions === 0, `${collisions} 
 import { startProduction, productionTick } from '../src/systems/career/production.js';
 import { releaseTick } from '../src/systems/career/release.js';
 import { isSeasonYear, EVERY } from '../src/systems/career/awards.js';
-ok('the season is held every other year', EVERY === 2 && isSeasonYear(2062) && !isSeasonYear(2063));
+import { closeYear } from '../src/systems/world/yearbook.js';
+// Annual, now that the field is the world's real work and not five random names.
+ok('the season is held every year', EVERY === 1 && isSeasonYear(2062) && isSeasonYear(2063));
 
 function lifetime(acting, meter, scale, genre) {
   const s = st({ ageY: 25, fame: 45, peakFame: 45, respect: 60, acting, quote: 0, year: 2050,
     looks: 62, singing: 0, confidence: 60, dream: 'actor' });
-  s.filmography = []; s.offers = []; s.releases = []; s.frozen = []; s.genreXP = {};
+  s.filmography = []; s.offers = []; s.releases = []; s.frozen = []; s.genreXP = {}; s.people = []; s.family = [];
   let gap = 0;
   for (let m = 0; m < 30 * 12; m++) {
-    s.month++; if (s.month > 11) { s.month = 0; s.year++; s.ageY++; runNominations(s); }
+    // The world publishes its year first — that is where the other four nominees come from.
+    s.month++; if (s.month > 11) { s.month = 0; s.year++; s.ageY++; closeYear(s, s.year - 1); runNominations(s); }
     if (!s.production && ++gap >= 14) {
       gap = 0;
       startProduction(s, { id: 'x', projectTitle: 'P' + m, role: 'Lead', type: 'Feature Film',

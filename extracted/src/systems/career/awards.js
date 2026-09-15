@@ -9,6 +9,7 @@
 import { rint, chance, pick } from '../../engine/rng.js';
 import { setQuote, setFame, setRespect } from '../meta/status.js';
 import { addTimeline } from '../../engine/timeline.js';
+import { actorById, maybeIcon } from '../world/world.js';
 
 const clamp = (v, a = 0, b = 100) => Math.max(a, Math.min(b, v));
 // The same diminishing curve the premieres use. Five nominations at a flat +6 each put a
@@ -155,7 +156,11 @@ export function pickWinner(nominees) {
 // sixteen nomination nights in a thirty-year career. Held biennially over a two-year
 // field, a win is rare enough to be the thing it is supposed to be, and two of your own
 // films land in the same race more often, which is when the vote splits.
-export const EVERY = 2;
+// Annual again, now that there is a world to lose to. Biennial was a way of keeping wins
+// rare when the field was five random names; the field is now the year's best work by
+// forty people with careers, which is what keeps a statuette rare — and Maxi played a
+// life and never saw the night, because it only ever happened when he was nominated.
+export const EVERY = 1;
 export function isSeasonYear(year) { return year % EVERY === 0; }
 export function eligibleWork(s, year) {
   const from = year - (EVERY - 1);
@@ -168,30 +173,66 @@ function categoryFor(c) {
     ? 'supporting' : 'lead';
 }
 
-// Called once a year. Decides what, if anything, you are up for.
+// The best work anybody else made that year, as nominees. yearbook.js keeps the year's
+// top films by the critics on the entry; a rival's picture is scored by the same
+// awardStrength as yours. Small parts in small films are the supporting race.
+function worldField(s, year, category) {
+  const entry = s.world && s.world.years && s.world.years[year];
+  const pool = (entry && entry.pool) || [];
+  return pool
+    .filter((f) => category === 'picture' ? true : (f.category || 'lead') === category)
+    .map((f) => { const a = actorById(s, f.actorId); const strength = awardStrength(f) * (category === 'picture' ? 0.9 : 1);
+      // The room is theirs before it is yours: friends, campaigns, and thirty years of favours
+      // you have not done yet. Without this a great film of yours was the favourite every time.
+      // And the room tires of anybody. Nine statuettes on one shelf is not a career, it is a bug.
+      const enough = a ? 1 / (1 + (a.askers || 0) * 0.35) : 1;
+      return { id: f.actorId, name: f.actor, work: f.title, strength: strength * 2.0 * enough, respect: a ? a.respect : 50, losses: a ? Math.max(0, Math.min(4, (a.noms || 0) - (a.askers || 0))) : 0, campaign: 0, them: true }; })
+    .filter((n) => n.strength > 0)
+    .sort((a, b) => b.strength - a.strength);
+}
+function fieldFor(s, year, category, you, taken) {
+  const field = you ? [you] : [];
+  const theirs = worldField(s, year, category).filter((n) => !taken.has(n.work));
+  // Never the same actor twice in one race.
+  const seen = new Set();
+  for (const n of theirs) { if (field.length >= 5) break; if (seen.has(n.id)) continue; seen.add(n.id); taken.add(n.work); field.push(n); }
+  while (field.length < 5) field.push(makeRival(you ? you.strength : 120, taken));
+  return field;
+}
+
+// Called once a year. Decides what, if anything, you are up for — and what everybody
+// else is, because the night happens whether or not your name is read out.
 export function runNominations(s) {
   if (!isSeasonYear(s.year || 0)) return null;
-  const year = (s.year || 0) - 1;         // the season judges the two years just gone
+  const year = (s.year || 0) - 1;         // the season judges the year just gone
   const work = eligibleWork(s, year);
   s.awards = s.awards || { losses: 0, wins: [], nominations: [], pending: null, history: [] };
-  if (!work.length) return null;
+  if (!work.length) return theirNight(s, year);
 
   const noms = [];
   for (const c of work) {
     const strength = awardStrength(c);
     if (strength <= 0) continue;
     // Getting into the five is itself a contest against everything else made that year.
-    if (chance(clamp(strength * 0.72, 0, 88))) {
+    // Annual now, and the field is real: a nomination has to be rarer per film than it was
+    // when the night came round every other year against five names nobody had heard of.
+    if (chance(clamp(strength * 0.3, 0, 45))) {
       noms.push({ credit: c, category: categoryFor(c), branch: branchOf(c.scale), strength });
     }
     // The film itself can be up for the night's biggest award whether or not you are.
     // It is harder to get into and it is not really about you — but it is the one that
     // makes a good year feel like a good year.
-    if (chance(clamp(strength * 0.42, 0, 70))) {
+    if (chance(clamp(strength * 0.3, 0, 55))) {
       noms.push({ credit: c, category: 'picture', branch: branchOf(c.scale), strength: strength * 0.9 });
     }
   }
-  if (!noms.length) return null;
+  // Nobody is up for four things in one year: one performance and, at most, one picture.
+  // The strongest of each; the rest were "snubbed", which is a word the trades enjoy.
+  noms.sort((a, b) => b.strength - a.strength);
+  const kept = []; let acting = 0, picture = 0;
+  for (const n of noms) { if (n.category === 'picture') { if (picture++ < 1) kept.push(n); } else if (acting++ < 1) kept.push(n); }
+  noms.splice(0, noms.length, ...kept);
+  if (!noms.length) return theirNight(s, year);
 
   // Two of your own in one category split the room. The classic good-year trap.
   const perCat = {};
@@ -202,12 +243,20 @@ export function runNominations(s) {
     const you = { id: 'you', name: s.name || 'You', work: n.credit.title, strength: n.strength,
       respect: s.respect || 50, losses: s.awards.losses || 0, campaign: n.credit.campaignShare || 0, them: false };
     const taken = new Set([n.credit.title, ...work.map((c) => c.title)]);
-    const field = [you];
-    while (field.length < 5) field.push(makeRival(n.strength, taken));
+    const field = fieldFor(s, year, n.category, you, taken);
     const odds = oddsFor(field);
-    return { category: n.category, branch: n.branch, title: n.credit.title, creditYear: n.credit.year,
+    return { category: n.category, branch: n.branch, title: n.credit.title, creditYear: n.credit.year, year,
       field, odds, yourOdds: odds[0], due: (s.year || 0) * 12 + (s.month || 0) + rint(2, 4) };
   });
+  // The races you are not in still happen that night.
+  const due = pending[0].due;
+  for (const cat of ['lead', 'supporting', 'picture']) {
+    if (pending.some((p) => p.category === cat)) continue;
+    const taken = new Set(pending.map((p) => p.title));
+    const field = fieldFor(s, year, cat, null, taken);
+    pending.push({ category: cat, branch: 'film', title: null, year, field, odds: oddsFor(field), yourOdds: 0, due, theirs: true });
+  }
+  for (const p of pending) for (const n of p.field) { if (n.them && n.id) { const a = actorById(s, n.id); if (a) a.noms = (a.noms || 0) + 1; } }
 
   s.awards.pending = pending;
   s.awards.nominations = (s.awards.nominations || []).concat(pending.map((p) => ({ title: p.title, category: p.category, year })));
@@ -228,6 +277,30 @@ export function runNominations(s) {
   return pending;
 }
 
+// The season you are not in. The three races are drawn from the world and the night is
+// still held; you find out who won like everybody else does.
+function theirNight(s, year) {
+  const pending = [];
+  const due = (s.year || 0) * 12 + (s.month || 0) + rint(2, 4);
+  for (const cat of ['lead', 'supporting', 'picture']) {
+    const taken = new Set(pending.map((p) => p.field.map((n) => n.work)).flat());
+    const field = fieldFor(s, year, cat, null, taken);
+    pending.push({ category: cat, branch: 'film', title: null, year, field, odds: oddsFor(field), yourOdds: 0, due, theirs: true });
+  }
+  for (const p of pending) for (const n of p.field) { if (n.them && n.id) { const a = actorById(s, n.id); if (a) a.noms = (a.noms || 0) + 1; } }
+  s.awards.pending = pending;
+  return null;
+}
+// A rival who wins is a rival who is more famous tomorrow. Written on the year's entry so
+// the wall in Legacy can show who took what.
+function recordTheirWin(s, p, winner) {
+  if (!winner.them) return;
+  const a = winner.id ? actorById(s, winner.id) : null;
+  if (a) { a.askers = (a.askers || 0) + 1; a.fame = Math.min(100, (a.fame || 0) + 10); a.respect = Math.min(100, (a.respect || 50) + 10); maybeIcon(a, s.year, ((s.world && s.world.actors) || []).filter((x) => x.icon && x.alive && !x.retired).length); }
+  const entry = s.world && s.world.years && s.world.years[p.year];
+  if (entry) (entry.askers = entry.askers || []).push({ category: p.category, name: winner.name, work: winner.work });
+}
+
 // Runs monthly. The ceremony lands a couple of months after the nominations.
 export function ceremonyTick(s) {
   const a = s.awards;
@@ -238,16 +311,39 @@ export function ceremonyTick(s) {
   const results = [];
   for (const p of a.pending) {
     const winner = pickWinner(p.field);
-    results.push({ category: p.category, title: p.title, won: !winner.them, winner: winner.name, work: winner.work, odds: p.yourOdds });
+    if (!winner.them) { const entry = s.world && s.world.years && s.world.years[p.year]; if (entry) (entry.askers = entry.askers || []).push({ category: p.category, name: s.name, work: p.title, you: true }); }
+    recordTheirWin(s, p, winner);
+    results.push({ category: p.category, title: p.title, won: !winner.them, winner: winner.name, work: winner.work, odds: p.yourOdds, theirs: !!p.theirs });
   }
+  const yours = results.filter((r) => !r.theirs);
   a.pending = null;
+  // Nothing of yours was up. The night still happened, and you know who won.
+  if (!yours.length) {
+    const lead = results.find((r) => r.category === 'lead') || results[0];
+    addTimeline(s, `The Askers: ${results.map((r) => `${CATEGORIES.find((c) => c.id === r.category)?.label} — ${r.winner}`).join(' · ')}.`);
+    a.history = (a.history || []).concat(results.map((r) => ({ ...r, year: s.year })));
+    if (s.stage === 'career') {
+      s.bigMoment = {
+        id: 'ceremony', kind: 'good', quiet: true, title: lead.winner, work: lead.work,
+        category: CATEGORIES.find((c) => c.id === lead.category)?.label || '', odds: 0, losses: a.losses || 0,
+        lines: results.map((r) => `${CATEGORIES.find((c) => c.id === r.category)?.label} — ${r.winner}${r.work ? ` for "${r.work}"` : ''}`),
+        body: (s.filmography || []).length
+          ? 'You watched it from the sofa. Next year, the idea is, you watch it from the room.'
+          : 'You watched it on television, like everybody else in the country.',
+      };
+      s.lastEvent = `${lead.winner} won the Asker for "${lead.work}".`;
+    }
+    return s;
+  }
+  // Only your own races count for the shelf and the losses. The others are context.
+  results.splice(0, results.length, ...yours, ...results.filter((r) => r.theirs));
 
   // Best Picture belongs to the producers. Being in it is a fine night and it is worth
   // something, but it is not your statuette and it never goes on your shelf — counting
   // it as one was handing out four and five Askers a lifetime when real careers top out
   // at one to three.
-  const acting = results.filter((r) => r.won && r.category !== 'picture');
-  const picture = results.filter((r) => r.won && r.category === 'picture');
+  const acting = results.filter((r) => r.won && r.category !== 'picture' && !r.theirs);
+  const picture = results.filter((r) => r.won && r.category === 'picture' && !r.theirs);
   const won = acting;
   for (const r of picture) {
     const c = [...(s.filmography || []), ...(s.discography || [])].find((x) => x.title === r.title);
@@ -275,11 +371,11 @@ export function ceremonyTick(s) {
     addTimeline(s, `🏆 Won the Asker for ${won.map((r) => CATEGORIES.find((c) => c.id === r.category)?.label).join(' and ')}.`);
   } else if (!picture.length) {
     a.losses = (a.losses || 0) + 1;
-    addTimeline(s, `Went to the Askers and came home empty-handed. ${results[0].winner} took it.`, true);
+    addTimeline(s, `Went to the Askers and came home empty-handed. ${yours[0].winner} took it.`, true);
   }
   a.history = (a.history || []).concat(results.map((r) => ({ ...r, year: s.year })));
 
-  const first = results[0];
+  const first = yours[0];
   const anyGood = won.length || picture.length;
   s.bigMoment = {
     id: 'ceremony', kind: anyGood ? 'good' : 'bad',
@@ -287,7 +383,7 @@ export function ceremonyTick(s) {
     work: won.length ? won[0].title : picture.length ? picture[0].title : first.work,
     category: CATEGORIES.find((c) => c.id === first.category)?.label || '',
     odds: first.odds, losses: a.losses,
-    lines: results.map((r) => `${CATEGORIES.find((c) => c.id === r.category)?.label} — ${r.won ? 'YOU' : r.winner}`),
+    lines: results.map((r) => `${CATEGORIES.find((c) => c.id === r.category)?.label} — ${r.won ? 'YOU' : r.winner}${r.theirs && r.work ? ` for "${r.work}"` : ''}`),
     body: won.length
       ? (won.length > 1
         ? `Twice in one night. You are going to be introduced differently for the rest of your life.`

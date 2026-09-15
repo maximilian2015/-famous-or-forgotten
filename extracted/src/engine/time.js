@@ -21,6 +21,7 @@ import { frozenTick } from '../systems/career/stability.js';
 import { laterOffersTick } from '../systems/career/franchise.js';
 import { submissionsTick, refreshCastingPool } from '../systems/career/castings.js';
 import { runNominations, ceremonyTick } from '../systems/career/awards.js';
+import { closeYear } from '../systems/world/yearbook.js';
 import { agingNote } from '../systems/career/age.js';
 import { iconTick, quoteTick } from '../systems/meta/status.js';
 import { strainTick } from '../systems/life/strain.js';
@@ -45,6 +46,7 @@ export function advanceMonth(state) {
     applyYearly(s); familyYear(s); allowanceTick(s); datingYear(s); spotlightYear(s);
     agingTick(s);
     if (mortalityCheck(s)) return s;   // life is over — nothing else runs this tick
+    closeYear(s, s.year - 1);   // the rest of the business publishes its year
     if (inCareer(s)) {
       runNominations(s);   // the season judges last year's work
       // The board quietly changes shape as you age. Say so once, out loud, rather than
@@ -99,12 +101,19 @@ export function advanceMonth(state) {
   s.apMax = 100;
   s.apMaxEff = monthEnergy(s, { home: homeEnergy(s), staff: staffEnergy(s), jobSlots: jobSlots(s), lostSlots: slotsLost(s) });
   s.ap = s.apMaxEff;
+  showQueued(s);
+  return s;
+}
+// Moments that waited their turn (the year's lists, for one) come up once nothing louder is on screen.
+export function showQueued(s) {
+  if (!s.bigMoment && s.moments && s.moments.length) s.bigMoment = s.moments.shift();
   return s;
 }
 
 export function advanceYear(state) {
   const s = { ...state, timeline: [...(state.timeline || [])] };
   s.year += 1; s.ageY += 1; s.month = 0;
+  closeYear(s, s.year - 1);   // the business publishes its year whether you are in it or not
   applyYearly(s);
   familyYear(s);
   allowanceTick(s);
@@ -121,5 +130,6 @@ export function advanceYear(state) {
   s.apMax = 100;
   s.apMaxEff = monthEnergy(s, { home: homeEnergy(s), staff: 0, jobSlots: jobSlots(s), lostSlots: 0 });
   s.ap = s.apMaxEff;
+  showQueued(s);
   return s;
 }

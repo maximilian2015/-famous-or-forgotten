@@ -16,6 +16,8 @@ import { hotGenre } from '../meta/news.js';
 import { maybeContinue } from './franchise.js';
 import { appealShift } from './story.js';
 import { comebackFloor } from '../meta/standing.js';
+import { reviewsFor } from '../world/critics.js';
+import { actorById, applyFilmToActor } from '../world/world.js';
 
 const clamp = (v, a = 0, b = 100) => Math.max(a, Math.min(b, v));
 
@@ -62,13 +64,20 @@ function luck() { return 0.5 + (Math.random() + Math.random()) * 0.55; }
 export function isFilm(scale) { return ['small', 'indie', 'feature', 'blockbuster'].includes(scale); }
 
 // The commercial result. Star power sells tickets — that is what a name is FOR.
-export function boxOfficeFor(s, rel) {
-  const budget = BUDGET[rel.scale];
+// One formula for everybody: your films and the ones the rest of the world makes in the
+// same year sit on the same list, so they have to be priced by the same arithmetic.
+export function grossFor({ scale, rating, genre, fame = 0, trend = false, appealMod = 1 }) {
+  const budget = BUDGET[scale];
   if (!budget) return 0;
-  const star = 0.7 + (s.fame || 0) / 180;                  // 0.7 at nobody, 1.26 at icon
-  const trend = rel.genre === hotGenre(s) ? 1.25 : 1;
-  const gross = budget * PAR * qualityPull(rel.rating) * (APPEAL[rel.genre] || 1) * (rel.appealMod ?? 1) * star * trend * luck();
+  const star = 0.7 + (fame || 0) / 180;                    // 0.7 at nobody, 1.26 at icon
+  const gross = budget * PAR * qualityPull(rating) * (APPEAL[genre] || 1) * (appealMod ?? 1) * star * (trend ? 1.25 : 1) * luck();
   return Math.round(gross * 1000000);
+}
+export function boxOfficeFor(s, rel) {
+  // The bigger name on the poster sells the tickets. A nobody opposite an icon opens like
+  // an icon's film, mostly — which is the whole reason to want to be in one.
+  const fame = Math.max(s.fame || 0, (rel.withFame || 0) * 0.85);
+  return grossFor({ scale: rel.scale, rating: rel.rating, genre: rel.genre, fame, trend: rel.genre === hotGenre(s), appealMod: rel.appealMod ?? 1 });
 }
 export function viewersFor(s, rel) {
   const span = VIEWERS[rel.scale] || VIEWERS.episode;
@@ -123,7 +132,9 @@ export function scheduleRelease(s, credit, p) {
     // Carried for the Asker season: whether it was pushed, and how good the material was.
     campaign: !!p.campaign, prestigeScore: p.prestigeScore, director: credit.director || null,
     // And how the set went, because the business judges the performance, not only the film.
-    meter: p.meter || 0, viaPartner: p.viaPartner || null,
+    meter: p.meter || 0, viaPartner: p.viaPartner || null, fellApart: !!p.fellApart,
+    // Who was on the poster with you, if it was somebody. See production.js makeCrew.
+    with: p.with || null, withId: p.withId || null, withFame: p.withFame || 0, withIcon: !!p.withIcon,
     // What the version you shot does to the box office, and the line it was pitched on.
     appealMod: appealShift(p), premise: p.premise || credit.premise || null, take: credit.take || null,
     due: (s.year || 0) * 12 + (s.month || 0) + wait, wait,
@@ -180,6 +191,7 @@ function open(s, rel) {
     scale: rel.scale, tier: rel.tier, prestigeScore: rel.prestigeScore, director: rel.director || null,
     premise: rel.premise || null, take: rel.take || null,
     campaignShare: rel.campaign ? 0.65 : 0,
+    with: rel.with || null, withId: rel.withId || null, withIcon: !!rel.withIcon,
   };
   const bucket = s.dream === 'singer' ? 'discography' : 'filmography';
   // Two years without anything coming out and the trades will call the next one a
@@ -188,6 +200,12 @@ function open(s, rel) {
   if (last && (s.year || 0) - (last.year || 0) >= 3) credit.comeback = (s.year || 0) - last.year;
   (s[bucket] = s[bucket] || []).unshift(credit);
   markReleased(s);
+  // A film you made together is on both careers. It goes on theirs tonight, at the money
+  // it will take, so the year's lists count it for them as well.
+  if (film && rel.withId) {
+    const a = actorById(s, rel.withId);
+    if (a) applyFilmToActor(a, { title: rel.title, year: s.year, rating: rel.rating, gross: rel.finalGross || 0, scale: rel.scale, genre: rel.genre, withYou: true });
+  }
 
   // Opening night is worth something on its own — the carpet, the photographs, the fact
   // that it exists. The rest of what this film does to your name waits for the run.
@@ -196,7 +214,11 @@ function open(s, rel) {
   setFame(s, (s.fame || 0) + opening * headroom(118, s.fame));
   // The finished thing is kept ON the release so runTick can close it out properly.
   credit._rel = { rating: rel.rating, worldHit: rel.worldHit, tier: rel.tier, scale: rel.scale,
-    salary: rel.salary, finalGross: rel.finalGross || 0, job: rel.job, film };
+    salary: rel.salary, finalGross: rel.finalGross || 0, job: rel.job, film,
+    // Read by closeRun and by the critics. These were read off _rel and never written to it,
+    // so a carried set and a part got over dinner were both invisible once the run closed.
+    meter: rel.meter || 0, viaPartner: rel.viaPartner || null, fellApart: !!rel.fellApart,
+    with: rel.with || null, withIcon: !!rel.withIcon };
   // BY ID, never by reference. A save is JSON, and JSON.parse hands back a fresh object for
   // every entry — so a list holding the credit itself pointed at a copy the moment anybody
   // reloaded, and the run finished on the copy while the credit in the filmography sat at
@@ -365,9 +387,17 @@ function closeRun(s, credit, r) {
     }
   }
 
+  // What was written about it — kept on the credit for the filmography, shown tonight.
+  credit.reviews = reviewsFor(s, { title: credit.title, rating: r.rating, genre: credit.genre, verdict, director: credit.director,
+    actorName: s.name, meter: r.meter, fellApart: r.fellApart, viaPartner: r.viaPartner, worldHit: r.worldHit, take: credit.take,
+    costar: r.with, costarIcon: r.withIcon, comeback: !!credit.comeback, sequel: (credit.part || 0) > 1,
+    lateShelf: /Character lead|matriarch|Elder|Grandparent/.test(credit.role || '') });
+  // Standing next to an icon is worth something on its own: the photographs, the poster,
+  // the fact that they said yes to a film you were in.
+  if (r.withIcon) { setFame(s, (s.fame || 0) + 3 * headroom(s.fame)); setRespect(s, (s.respect || 0) + 2 * soft(112, s.respect)); addTimeline(s, `Your name is on a poster next to ${r.with}'s. People noticed.`); }
   s.bigMoment = {
     id: 'verdict', kind: r.rating >= 70 || verdict === 'smash' ? 'good' : 'bad',
-    title: credit.title, score, money, verdict,
+    title: credit.title, score, money, verdict, reviews: credit.reviews,
     body: r.worldHit
       ? 'Nobody expected this. It has stopped being a film and started being an event.'
       : r.rating >= 85 ? 'The reviews are the kind people screenshot.'
