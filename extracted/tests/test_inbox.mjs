@@ -189,6 +189,9 @@ const byTag = (s, tag) => (s.sms || []).find((m) => m.tag === tag);
   K.submissionsTick(s);
   const m = (s.inbox || []).find((x) => x.tag === 'reply');
   ok('and the answer comes as a letter too', !!m && new RegExp(c.title).test(m.subj), JSON.stringify((s.inbox || []).map((x) => x.subj)));
-  ok('a letter you can delete', m && m.cta.length === 1 && (EM.emailAct(s, m.id, 0), !(s.inbox || []).some((x) => x.tag === 'reply')));
+  // An offer letter carries the answer itself (Accept / Pass); a rejection is one button, Delete.
+  const isOffer = m && !!m.offerId;
+  ok('a letter you can answer or delete', m && m.cta.length === (isOffer ? 2 : 1) && (EM.emailAct(s, m.id, isOffer ? 1 : 0), !(s.inbox || []).some((x) => x.tag === 'reply')), JSON.stringify(m && m.cta.map((c) => c.label)));
+  if (isOffer) ok('passing from the letter takes the offer with it', !(s.offers || []).some((o) => o.id === m.offerId));
 }
 console.log(fails ? `\n${fails} FAILED` : '\nall passed');

@@ -2134,7 +2134,7 @@ function Diary({ g }) {
     const premieres = (g.releases || []).filter((r) => r.due === abs);
     // Post-production is not an event — nothing happens in those months and you are free
     // to work. It gets a quiet tint so you can see the wait, not an icon of its own.
-    const inPost = (g.releases || []).some((r) => r.due > abs);
+    const inPost = (g.releases || []).filter((r) => r.due > abs).sort((a, b) => a.due - b.due)[0] || null;
     // Signed off. These months are not yours to book anything in.
     const off = g.burnout && i < (g.burnout.left || 0);
     // A carpet or a talk show sitting unanswered in the inbox is a thing you are supposed
@@ -2181,11 +2181,11 @@ function Diary({ g }) {
         {/* A premiere was named and a shoot was not, so eight months of the year said
             nothing but "🎬". What you are actually on is the thing you want to read. */}
         {c.shooting && !c.off && <div style={{ fontSize: 8.5, fontWeight: 800, color: theme.gold, marginTop: 2, lineHeight: 1.2, overflow: 'hidden' }}>
-          {g.production.title}{c.i === (g.production.monthsLeft - 1) ? ' · wraps' : ''}
+          {g.production.title} · {c.i === (g.production.monthsLeft - 1) ? 'wraps' : `month ${(g.production.months || 0) - (g.production.monthsLeft || 0) + c.i + 1} of ${g.production.months}`}
         </div>}
         {c.premieres.length > 0 && <div style={{ fontSize: 8.5, fontWeight: 800, color: theme.gold, marginTop: 2, lineHeight: 1.2, overflow: 'hidden' }}>{c.premieres[0].title}</div>}
         {/* And the quiet months are not empty either — something of yours is in post. */}
-        {!c.shooting && !c.off && !c.premieres.length && c.inPost && <div style={{ fontSize: 8.5, color: theme.muted, marginTop: 2, lineHeight: 1.2 }}>in post</div>}
+        {!c.shooting && !c.off && !c.premieres.length && c.inPost && <div style={{ fontSize: 8.5, color: theme.muted, marginTop: 2, lineHeight: 1.2, overflow: 'hidden' }}>{c.inPost.title} · in post</div>}
       </div>))}
     </div>
     <div style={{ display: 'flex', gap: 10, justifyContent: 'center', fontSize: 10.5, color: theme.muted, flexWrap: 'wrap' }}>

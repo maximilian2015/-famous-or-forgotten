@@ -329,7 +329,7 @@ function answerSubmission(s, sub) {
   // does not — which is the other half of the job nobody tells you about.
   const sc = scaleOf(c);
   (s.offers = s.offers || []).push({
-    id: uid(s, 'off'),
+    id: uid(s, 'off'), via: 'casting',
     projectTitle: c.title, role: c.role, type: c.type, genre: c.genre,
     salary: c.salary, months: c.months, tier: sc.tier, scale: c.scale,
     episodes: c.episodes, episodeFee: c.episodeFee, season: c.perEpisode ? 1 : 0,
@@ -344,7 +344,10 @@ function answerSubmission(s, sub) {
   });
   s.lastEvent = `You got "${c.title}". They want you.`;
   addTimeline(s, `Booked ${c.title}.`);
-  sendMail(s, { from: 'Casting', subj: `Re: ${c.title} — offer`, tag: 'reply', kind: 'reply', body: `Good news. They would like to offer you ${c.role} on ${c.title}. The offer is in Messages, with the money and the dates. Congratulations.`, cta: [{ label: 'Delete', fx: {}, reply: 'You read it twice before you delete it.' }] });
+  const offerId = s.offers[s.offers.length - 1].id;
+  sendMail(s, { from: 'Casting', subj: `Re: ${c.title} — offer`, tag: 'reply', kind: 'reply', offerId,
+    body: `Good news. They would like to offer you ${c.role} on ${c.title} — €${(c.salary || 0).toLocaleString()}${c.perEpisode ? ` for ${c.episodes} episodes` : ''}, ${c.months || 1} month${(c.months || 1) === 1 ? '' : 's'}. They need an answer. The full card is in Messages.`,
+    cta: [{ label: 'Accept', offer: 'accept', reply: 'You say yes before you have finished reading it.' }, { label: 'Pass', offer: 'pass', reply: 'You write back politely. Somebody else will be very happy.' }] });
   s.bigMoment = { id: 'booked', kind: 'good', title: 'You got it',
     body: `"${c.title}" is yours. ${c.role}${c.months ? `, ${count(c.months, 'month')} of shooting` : ''}. `
       + 'Somebody in an office made a list and your name was at the top of it, and you will never find out why.' };

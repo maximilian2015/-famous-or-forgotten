@@ -162,21 +162,32 @@ export function startProduction(s, offer) {
   addTimeline(s, `Production began: ${s.production.title}.`);
   return s;
 }
+// A month's rehearsal is worth a lot the first time and less each time after. Six goes at
+// fifteen energy each took any shoot to a hundred inside a month — Maxi: "that's easy,
+// don't you find?" The third pass finds a little; after that you are running it into the ground.
+const REHEARSAL_GAIN = [[4, 9], [3, 6], [1, 3]];
+function monthKey(s) { return (s.year || 0) * 12 + (s.month || 0); }
+export function rehearsalsThisMonth(s) { const p = s.production; return p && p._rehearsedMonth === monthKey(s) ? (p._rehearsals || 0) : 0; }
 export function rehearse(s) {
   const p = s.production; if (!p) return s;
+  const n = rehearsalsThisMonth(s);
+  if (n >= REHEARSAL_GAIN.length) { s.lastEvent = 'You have run it into the ground. It will not get better before the cameras do — come back next month.'; return s; }
   if (!canAfford(s, COST.rehearse)) { s.lastEvent = tooTired(s, COST.rehearse); return s; }
   spend(s, COST.rehearse);
-  const gain = rint(4, 9);
+  const span = REHEARSAL_GAIN[n];
+  const gain = rint(span[0], span[1]);
   p.meter = clamp(p.meter + gain);
-  p._workedMonth = (s.year || 0) * 12 + (s.month || 0);
-  s.lastEvent = `Solid rehearsal. Shoot quality +${gain}.`;
+  p._workedMonth = monthKey(s); p._rehearsedMonth = monthKey(s); p._rehearsals = n + 1;
+  s.lastEvent = n === 0 ? `Solid rehearsal. Shoot quality +${gain}.` : n === 1 ? `Another pass. Shoot quality +${gain}.` : `You found a little more. Shoot quality +${gain} — and that is all this month has in it.`;
   return s;
 }
+export function takesThisMonth(s) { const p = s.production; return p && p._takenMonth === monthKey(s) ? (p._takes || 0) : 0; }
 export function riskyTake(s, quality = 0) {
   const p = s.production; if (!p) return s;
+  if (takesThisMonth(s) >= 2) { s.lastEvent = 'The crew has given you two of those this month. Nobody is resetting the lights a third time.'; return s; }
   if (!canAfford(s, COST.take)) { s.lastEvent = tooTired(s, COST.take); return s; }
   spend(s, COST.take);
-  p._workedMonth = (s.year || 0) * 12 + (s.month || 0);
+  p._workedMonth = monthKey(s); p._takenMonth = monthKey(s); p._takes = takesThisMonth(s) + 1;
   if (quality >= 80) {
     const gain = rint(16, 22);
     p.meter = clamp(p.meter + gain);

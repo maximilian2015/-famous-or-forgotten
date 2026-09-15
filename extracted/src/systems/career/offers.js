@@ -27,7 +27,9 @@ export function generateOffer(s) {
   const prestige = { tentpole: rint(70, 95), lead: rint(45, 70), supporting: rint(20, 45) }[tier];
   const salary = Math.round(quote * share * (0.85 + Math.random() * 0.45));
   const genre = pick(GENRES);
-  return { id: uid(s, 'off'),
+  // Who brought it. Messages says so on the card — Maxi had three copies of one offer in
+  // three apps and no idea where any of them had come from.
+  return { id: uid(s, 'off'), via: 'agent',
     projectTitle: (tier === 'tentpole' ? '⭐ ' : '') + title(s, genre),
     role: tier === 'supporting' ? 'Supporting' : 'Lead',
     type: s.dream === 'singer' ? (tier === 'tentpole' ? 'World Tour' : 'Album') : (tier === 'tentpole' ? 'Blockbuster' : 'Feature Film'),
@@ -45,7 +47,7 @@ export function roomOffer(s, who) {
   const tier = 'tentpole';
   const quote = quoteFor(s, 'film_tentpole') || quoteFor(s, 'film_studio') || rint(250000, 600000);
   const salary = Math.round(quote * (0.7 + Math.random() * 0.3));
-  return { id: uid(s, 'off'), kind: 'room', viaPartner: who.name,
+  return { id: uid(s, 'off'), kind: 'room', via: 'partner', viaPartner: who.name,
     projectTitle: '⭐ ' + title(s, pick(GENRES)), role: 'Lead', type: s.dream === 'singer' ? 'World Tour' : 'Blockbuster',
     genre: pick(GENRES), salary, months: rint(6, 11), fame: 9, prestigeScore: rint(60, 90), tier,
     scale: 'blockbuster', stability: rollStability('blockbuster'), deadline: rint(2, 3),
@@ -82,6 +84,7 @@ export function offersTick(s) {
     // reason a deadline is on the card.
     if (o.kind === 'thaw') addTimeline(s, `${title} finally went ahead without you.`, true);
     else addTimeline(s, `They stopped waiting on ${title} and cast someone else.`, true);
+    s.inbox = (s.inbox || []).filter((m) => m.offerId !== o.id);
   }
   if (kept.length !== s.offers.length && !s.lastEvent) {
     const gone = s.offers.length - kept.length;
@@ -112,6 +115,7 @@ export function acceptOffer(s, id) {
   if (o.tier !== 'supporting' || (o.months || 0) >= 2) {
     if (s.production) { s.lastEvent = `You're already committed to "${s.production.title}" — wrap that one first.`; return s; }
     s.offers = (s.offers || []).filter((x) => x.id !== id);
+    s.inbox = (s.inbox || []).filter((m) => m.offerId !== id);
     startProduction(s, o);
     return s;
   }
@@ -126,6 +130,7 @@ export function acceptOffer(s, id) {
   setFame(s, s.fame + o.fame + (rating >= 85 ? 4 : 0));
   s.confidence = clamp(s.confidence + 2);
   s.offers = (s.offers || []).filter((x) => x.id !== id);
+  s.inbox = (s.inbox || []).filter((m) => m.offerId !== id);
   s.lastEvent = `You took "${credit.title}". It came out ${status.toLowerCase()} — rating ${Math.round(rating)}.`;
   addTimeline(s, `${credit.title}: ${status} (${Math.round(rating)}/100).`, rating < 50);
   return s;
@@ -133,6 +138,7 @@ export function acceptOffer(s, id) {
 export function declineOffer(s, id) {
   const o = (s.offers || []).find((x) => x.id === id);
   s.offers = (s.offers || []).filter((x) => x.id !== id);
+  s.inbox = (s.inbox || []).filter((m) => m.offerId !== id);
   if (!o) return s;
   const title = o.projectTitle.replace('⭐ ', '');
   // Turning down an ordinary offer is your business. Turning down the one they finally

@@ -322,16 +322,17 @@ export function ceremonyTick(s) {
     const lead = results.find((r) => r.category === 'lead') || results[0];
     addTimeline(s, `The Askers: ${results.map((r) => `${CATEGORIES.find((c) => c.id === r.category)?.label} — ${r.winner}`).join(' · ')}.`);
     a.history = (a.history || []).concat(results.map((r) => ({ ...r, year: s.year })));
+    // Queued behind anything louder this month, and it does not touch lastEvent: a night
+    // you were not part of must not overwrite the line about your own life.
     if (s.stage === 'career') {
-      s.bigMoment = {
+      (s.moments = s.moments || []).push({
         id: 'ceremony', kind: 'good', quiet: true, title: lead.winner, work: lead.work,
         category: CATEGORIES.find((c) => c.id === lead.category)?.label || '', odds: 0, losses: a.losses || 0,
         lines: results.map((r) => `${CATEGORIES.find((c) => c.id === r.category)?.label} — ${r.winner}${r.work ? ` for "${r.work}"` : ''}`),
         body: (s.filmography || []).length
           ? 'You watched it from the sofa. Next year, the idea is, you watch it from the room.'
           : 'You watched it on television, like everybody else in the country.',
-      };
-      s.lastEvent = `${lead.winner} won the Asker for "${lead.work}".`;
+      });
     }
     return s;
   }

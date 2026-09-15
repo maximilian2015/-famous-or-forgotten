@@ -54,7 +54,10 @@ export function Messages({ g }) {
       const big = o.tier !== 'supporting'; const onTrend = o.genre === trend; const cost = campaignCost(o);
       return (<div key={o.id} style={{ background: theme.panel2, border: `1px solid ${theme.line}`, borderRadius: 14, padding: 12 }}>
         <div style={{ fontSize: 11, fontWeight: 900, color: theme.accent, textTransform: 'uppercase', marginBottom: 4 }}>
-          {o.kind === 'renewal' ? 'The network' : o.kind === 'sequel' ? 'The studio' : (agent || 'Unknown Producer')}
+          {o.kind === 'renewal' ? 'The network' : o.kind === 'sequel' ? 'The studio'
+            : o.via === 'casting' ? 'Casting · you read for this'
+            : o.via === 'partner' ? `${(o.viaPartner || 'a friend').split(' ')[0]} got you in the room`
+            : o.via === 'agent' || agent ? `${agent || 'Your agent'} · your agent brought it` : 'A producer'}
         </div>
         <div style={{ fontSize: 13 }}>{o.projectTitle} — {o.role} · {o.type}</div>
         {/* A returning show or a sequel should read as the same thing coming back. */}
