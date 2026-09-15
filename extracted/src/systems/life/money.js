@@ -79,7 +79,7 @@ export function rentDue(s) {
 export const STAFF = {
   assistant: { label: 'Personal assistant', cost: 12000, minFame: 30, ap: 1,
     blurb: 'Somebody else reads the mail, books the flights and remembers the names.',
-    perk: 'An extra Energy every month, for as long as you keep them.' },
+    perk: '+10 energy every month, for as long as you keep them.' },
   household: { label: 'Trainer and a cook', cost: 18000, minFame: 25, health: 0.9, ill: -8,
     blurb: 'Two people whose entire job is that you are in shape on the day.',
     perk: 'Health goes up every month and you stop catching things.' },
@@ -119,8 +119,9 @@ export function fire(s, id) {
 }
 // Read by engine/time.js — this is the number that makes an entourage worth having.
 export function staffEnergy(s) {
-  let n = hasStaff(s, 'assistant') ? STAFF.assistant.ap : 0;
-  if (owns(s, 'jet')) n += 1;
+  let n = hasStaff(s, 'assistant') ? 10 : 0;
+  if (hasStaff(s, 'household')) n += 5;
+  if (owns(s, 'jet')) n += 10;
   return n;
 }
 // Read by systems/life/health.js.
@@ -145,7 +146,7 @@ export const THINGS = {
     blurb: 'You did not buy it to look at. You bought it because of who you are now.' },
   jet:    { label: 'A share in a jet', price: 11000000, minFame: 75, resale: 0.4, upkeep: 60000,
     blurb: 'Three continents in a week stops being a thing you dread.',
-    perk: 'An extra Energy every month.' },
+    perk: '+10 energy every month.' },
 };
 export const THING_ORDER = ['watch', 'car', 'boat', 'art', 'jet'];
 export function owns(s, id) { return !!(s.things && s.things[id]); }

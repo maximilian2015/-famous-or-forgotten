@@ -1,3 +1,4 @@
+import { COST, REFILL, canAfford } from '../../engine/energy.js';
 import { useState } from 'react';
 import { theme } from '../../ui/theme.js';
 import { dispatch } from '../../state/store.js';
@@ -10,7 +11,7 @@ export function Work({ g }) {
   const job = g.job;
   const [tab, setTab] = useState('jobs');
   const [shift, setShift] = useState(null);
-  const noEnergy = (g.ap || 0) <= 0;
+  const noEnergy = !canAfford(g, COST.shift);
   function openShift(sh) {
     setShift({ ...sh, game: Math.random() < 0.5 ? 'timing' : 'grid',
       zoneStart: 12 + Math.random() * 62, zoneWidth: 11 + Math.random() * 7, speed: 2.4 + Math.random() * 1.6, bad: 3 + (Math.random() < 0.5 ? 1 : 0) });
@@ -52,7 +53,7 @@ export function Work({ g }) {
           {job.employer} · paid monthly{job.months ? ` · ${years ? `${years}y ` : ''}${months}mo in` : ''}
         </div>
         <div style={{ fontSize: 11.5, color: theme.gold, marginBottom: 10, lineHeight: 1.45 }}>
-          Takes {job.slots} of your {g.apMax || 3} monthly actions. The money is steady; the time is gone.
+          Takes {job.slots * REFILL.jobSlot} of your {g.apMax || 100} energy every month. The money is steady; the time is gone.
         </div>
         {job.industry && <div style={{ fontSize: 11, color: theme.good, marginBottom: 10 }}>★ You're near the business here — people walk through.</div>}
         <button onClick={() => dispatch(quitJob)} style={btn('dan')}>Quit</button>
@@ -75,7 +76,7 @@ export function Work({ g }) {
         <div style={{ fontSize: 13.5, fontWeight: 800 }}>{j.title}</div>
         <div style={{ fontSize: 13, fontWeight: 900, color: theme.gold }}>€{j.pay.toLocaleString()}</div>
       </div>
-      <div style={{ fontSize: 11.5, color: theme.muted, margin: '3px 0 6px' }}>{j.employer} · takes {j.slots} action{j.slots > 1 ? 's' : ''}/month</div>
+      <div style={{ fontSize: 11.5, color: theme.muted, margin: '3px 0 6px' }}>{j.employer} · takes {j.slots * REFILL.jobSlot} energy/month</div>
       {j.industry && <div style={{ fontSize: 10.5, color: theme.good, marginBottom: 6 }}>★ close to the industry</div>}
       <button onClick={() => dispatch(takeJob, j.id)} style={btn('pri')}>Take it</button>
     </div>))}

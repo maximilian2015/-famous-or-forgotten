@@ -1,3 +1,4 @@
+import { COST, canAfford, spend, tooTired } from '../../engine/energy.js';
 import { inCareer } from '../../engine/stage.js';
 import { level as drinkLevel } from './drink.js';
 import { setFame } from '../meta/status.js';
@@ -41,12 +42,13 @@ export function throwParty(s, key) {
   const p = PARTIES[key]; if (!p) return s;
   const blocked = canThrowParty(s);
   if (blocked) { s.lastEvent = blocked; return s; }
-  if ((s.ap || 0) <= 0) { s.lastEvent = 'No energy left this period. Live a bit first.'; return s; }
+  const need = key === 'drinks' ? COST.party : key === 'proper' ? COST.partyBig : COST.partyHuge;
+  if (!canAfford(s, need)) { s.lastEvent = tooTired(s, need); return s; }
   if (onCooldown(s, 'party')) { s.lastEvent = 'You had people over this month already. Give the neighbours a rest.'; return s; }
   if ((s.cash || 0) < p.cost) { s.lastEvent = `${p.label} costs €${p.cost.toLocaleString()}. Not tonight.`; return s; }
 
   markUsed(s, 'party');
-  s.ap -= 1;
+  spend(s, need);
   s.cash -= p.cost;
   s.mental = clamp((s.mental || 50) + rint(p.mental[0], p.mental[1]));
 

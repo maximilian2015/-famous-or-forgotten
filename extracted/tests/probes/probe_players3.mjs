@@ -17,7 +17,7 @@ function live(kind, years = 45) {
   const s = createInitialState({ name: 'P', dream: 'actor', created: true });
   beginLife(s);
   Object.assign(s, { stage: 'career', ageY: 22, year: 2050, month: 0, hasApartment: true,
-    housing: 'room', cash: 9000, alive: true, ap: 3, apMax: 3, apMaxEff: 3, fame: 0, peakFame: 0 });
+    housing: 'room', cash: 9000, alive: true, ap: 100, apMax: 100, apMaxEff: 100, fame: 0, peakFame: 0 });
   let t = s, iconAge = null, alistAge = null;
   for (let m = 0; m < years * 12; m++) {
     t.bigMoment = null; t.pendingArc = null;

@@ -1,3 +1,4 @@
+import { COST, canAfford, spend, tooTired } from '../../engine/energy.js';
 import { setRespect } from '../meta/status.js';
 import { rint } from '../../engine/rng.js';
 import { addTimeline } from '../../engine/timeline.js';
@@ -15,23 +16,26 @@ export const SCHOOLS = [
 export function trainingKey(s) { return s.dream === 'singer' ? 'singing' : 'acting'; }
 export function train(s, id) {
   const sc = SCHOOLS.find((x) => x.id === id); if (!sc) return s;
-  if ((s.ap || 0) <= 0) { s.lastEvent = 'No energy left this period. Live a bit first.'; return s; }
+  if (!canAfford(s, COST.train)) { s.lastEvent = tooTired(s, COST.train); return s; }
   if ((s.cash || 0) < sc.cost) { s.lastEvent = `${sc.label} costs €${sc.cost.toLocaleString()}. You can't cover it.`; return s; }
-  s.ap = (s.ap || 0) - 1;
-  s.cash = (s.cash || 0) - sc.cost;
-
   const key = trainingKey(s); const skill = s[key] || 0; const cap = skillCap(s);
+  // Said before anything is charged. A conservatory used to take €4,000 and the month's
+  // energy to tell you it could not teach you anything.
   if (skill >= cap) {
     s.mental = clamp((s.mental || 50) - 1);
     s.lastEvent = `You've plateaued at ${skill}. No teacher can take you further — only real work raises the ceiling now.`;
     return s;
   }
+  spend(s, COST.train);
+  s.cash = (s.cash || 0) - sc.cost;
   let gain = rint(sc.gain[0], sc.gain[1]);
   if ((s.discipline || 0) > 65) gain += 1;
   // Diminishing returns as you approach mastery — the last ten points are the hardest.
   if (skill >= 70) gain = Math.ceil(gain * 0.5);
-  gain = Math.max(1, Math.min(gain, cap - skill));
-  s[key] = clamp(skill + gain);
+  // The skill itself can be fractional (a set teaches in tenths), so the gap to the cap is
+  // rounded up — "+2.7739696411595958" was on somebody's timeline.
+  gain = Math.max(1, Math.min(gain, Math.ceil(cap - skill)));
+  s[key] = clamp(Math.min(cap, skill + gain));
   if (sc.mental) s.mental = clamp((s.mental || 50) + sc.mental);
   if (sc.respect) setRespect(s, (s.respect || 0) + sc.respect);
   const hitCap = s[key] >= cap;

@@ -14,7 +14,7 @@ function born(over) {
   beginLife(s);
   return Object.assign(s, { stage: 'career', ageY: 34, year: 2064, month: 0, hasApartment: true,
     livingWith: 'own_place', housing: 'room', cash: 500000, mental: 50, health: 80, alive: true,
-    ap: 3, apMax: 3, apMaxEff: 3, fame: 40, diet: 'cook',
+    ap: 100, apMax: 100, apMaxEff: 100, fame: 40, diet: 'cook',
     filmography: [{ title: 'x', rating: 80, tier: 'lead', role: 'Lead', year: 2062 }] }, over);
 }
 
@@ -68,7 +68,7 @@ function born(over) {
   const before = s.mental, ap = s.ap;
   MD.callSomebody(s);
   ok('a call lifts you', s.mental > before, `${before} → ${s.mental}`);
-  ok('and it costs a slot', s.ap === ap - 1);
+  ok('and it costs energy', s.ap === ap - 5, String(ap - s.ap));
   const again = s.mental;
   MD.callSomebody(s);
   ok('and only once a month', s.mental === again, s.lastEvent);
@@ -92,7 +92,7 @@ function born(over) {
   const before = s.mental;
   MD.getAway(s);
   ok('and it is worth a lot', s.mental > before + 10, `${before} → ${s.mental}`);
-  s.ap = 3;
+  s.ap = 100;
   const after = s.mental;
   MD.getAway(s);
   ok('but it stops working if you never come back', s.mental === after, s.lastEvent);

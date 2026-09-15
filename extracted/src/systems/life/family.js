@@ -167,11 +167,12 @@ export function spendWithFamily(s, id) {
   s.lastEvent = `You spent time with ${p.name}. It was good for both of you. (Closeness +${gain}, Mental +)`;
   return s;
 }
-export function askFamilyForMoney(s) {
-  const parent = (s.family || []).find((x) => x.relation === 'Mother' || x.relation === 'Father');
+// Called from the person sheet, which has already charged the energy for the ask; you ask the
+// parent you are sitting with, not whichever one comes first in the list.
+export function askFamilyForMoney(s, parentId) {
+  const parents = (s.family || []).filter((x) => x.relation === 'Mother' || x.relation === 'Father');
+  const parent = parents.find((x) => x.id === parentId) || parents[0];
   if (!parent || !parent.alive) { s.lastEvent = 'No parents around to ask.'; return s; }
-  if ((s.ap || 0) <= 0) { s.lastEvent = 'No energy left this period. Live a bit first.'; return s; }
-  s.ap = (s.ap || 0) - 1;
   if (parent.relationship < 40) { s.lastEvent = `You asked for money. "${parent.name.split(' ')[0]}" is not happy. "You need to stand on your own feet." Nothing given.`; return s; }
   // What they can give depends on what they have. Set at birth by systems/life/origin.js
   // and carried on state so this module needs no import back into it.

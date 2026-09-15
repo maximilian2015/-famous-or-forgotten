@@ -117,8 +117,8 @@ export function drinkThrough(s) {
   // this file to ask whether tonight covers the month, and systems do not import in circles.
   const owed = s.depression ? ((s.depression.passed || 0) >= 1 ? 1 : 2) : (s.scarred || 0);
   if (owed > 0) {
-    s.apMaxEff = (s.apMaxEff || s.apMax || 3) + owed;
-    s.ap = (s.ap || 0) + owed;
+    s.apMaxEff = (s.apMaxEff || s.apMax || 100) + owed * 30;
+    s.ap = (s.ap || 0) + owed * 30;
   }
   s.lastEvent = before >= DEPENDENT_AT
     ? (s.depression ? 'You drank because you had to. The month is open again.' : 'You drank because you had to.')

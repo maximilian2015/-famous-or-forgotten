@@ -18,7 +18,7 @@ const pin = (v, fn) => { Math.random = () => v; try { return fn(); } finally { M
 function actor(over) {
   const s = createInitialState({ name: 'X', dream: 'actor', created: true }); beginLife(s);
   return Object.assign(s, { stage: 'career', ageY: 32, year: 2062, month: 3, alive: true, hasApartment: true, livingWith: 'own_place', housing: 'flat', cash: 50000,
-    ap: 3, apMax: 3, apMaxEff: 3, fame: 30, peakFame: 30, respect: 10, scandal: 0, media: 0, acting: 60, charisma: 50, looks: 50, luck: 50, mental: 60,
+    ap: 100, apMax: 100, apMaxEff: 100, fame: 30, peakFame: 30, respect: 10, scandal: 0, media: 0, acting: 60, charisma: 50, looks: 50, luck: 50, mental: 60,
     people: [{ id: 'c1', name: 'Nadia Onyx', relationship: 60, industryWeight: 40, lastSeen: 0 }],
     filmography: [{ id: 'f0', title: 'one', rating: 60, tier: 'lead', role: 'Lead', year: 2060, score: 6 }] }, over);
 }
@@ -74,7 +74,7 @@ const byTag = (s, tag) => (s.sms || []).find((m) => m.tag === tag);
   ok('a jump in scandal: a parent has seen the papers', !!m && s.family.some((f) => f.name === m.from && /Mother|Father/.test(f.relation)), m && m.from);
   const ap0 = s.ap; const mother = s.family.find((f) => f.name === m.from); const r0 = mother.relationship;
   SMS.smsReply(s, m.id, 0);
-  ok('calling them costs an energy and mends it', s.ap === ap0 - 1 && mother.relationship > r0);
+  ok('calling them costs energy and mends it', s.ap === ap0 - 10 && mother.relationship > r0, String(ap0 - s.ap));
   s.month += 1; s.awards = { nominations: [{ title: 'x' }], wins: [], history: [] }; SMS.smsTick(s);
   ok('a nomination: somebody saw the list', !!byTag(s, 'proud'), JSON.stringify((s.sms || []).map((x) => x.tag)));
   // no energy: the reply is refused
@@ -92,8 +92,8 @@ const byTag = (s, tag) => (s.sms || []).find((m) => m.tag === tag);
   // and not twice while one is sitting there unanswered
   s.month += 1; pin(0.001, () => SMS.smsTick(s));
   ok('they do not ask twice while one is unanswered', (s.sms || []).filter((x) => x.tag === 'over').length === 1);
-  s.ap = 2; SMS.smsReply(s, m.id, 0);
-  ok('with one, you go: relationship and mental up', !byTag(s, 'over') && s.partner.relationship > 70 && s.ap === 1);
+  s.ap = 100; SMS.smsReply(s, m.id, 0);
+  ok('with energy, you go: relationship and mental up', !byTag(s, 'over') && s.partner.relationship > 70 && s.ap === 90);
 }
 {
   // housekeeping
@@ -179,7 +179,7 @@ const byTag = (s, tag) => (s.sms || []).find((m) => m.tag === tag);
 // ── the casting office writes back ──
 {
   const K = await import(P + 'systems/career/castings.js');
-  const s = actor({ fame: 20, peakFame: 20, cash: 5000, ap: 3 });
+  const s = actor({ fame: 20, peakFame: 20, cash: 5000, ap: 100 });
   K.refreshCastingPool(s, true);
   const c = s.castingPool.find((x) => (x.months || 1) >= 2 && !(K.reach(s) < (x.minFame || 0)));
   ok('there is a part to read for', !!c);

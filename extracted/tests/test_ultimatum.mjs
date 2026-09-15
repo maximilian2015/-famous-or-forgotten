@@ -13,7 +13,7 @@ const ok = (n, c, e = '') => { if (!c) { fails++; console.log('FAIL  ' + n + (e 
 function life(over = {}) {
   const s = createInitialState({ name: 'Test', dream: 'actor' });
   Object.assign(s, { stage: 'career', ageY: 38, year: 2060, month: 0, cash: 4000000, acting: 88,
-    fame: 70, respect: 65, mental: 50, health: 78, apMax: 3, hasApartment: true, housing: 'flat',
+    fame: 70, respect: 65, mental: 50, health: 78, apMax: 100, hasApartment: true, housing: 'flat',
     burnouts: 1, strain: 30, alive: true, bottles: { cheap: 9999 }, meds: {}, depression: null });
   s.people = []; s.family = [];
   s.partner = { id: 'pp', name: 'Ada Rune', gender: 'f', age: 37, job: 'architect', relationship: 78, married: false, health: 85 };

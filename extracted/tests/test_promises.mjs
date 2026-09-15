@@ -14,7 +14,7 @@ const ok = (n, c, e = '') => { if (!c) { fails++; console.log('FAIL  ' + n + (e 
 function actor(over) {
   const s = createInitialState({ name: 'X', dream: 'actor', created: true }); beginLife(s);
   return Object.assign(s, { stage: 'career', ageY: 28, year: 2058, month: 2, alive: true, hasApartment: true, livingWith: 'own_place', housing: 'studio', cash: 5000,
-    ap: 3, apMax: 3, apMaxEff: 3, fame: 20, peakFame: 20, respect: 10, mental: 60, health: 80, strain: 30, acting: 50,
+    ap: 100, apMax: 100, apMaxEff: 100, fame: 20, peakFame: 20, respect: 10, mental: 60, health: 80, strain: 30, acting: 50,
     filmography: [{ id: 'f0', title: 'one', rating: 60, tier: 'lead', role: 'Lead', year: 2057 }] }, over);
 }
 const arc = (id) => AR.ARCS.find((a) => a.id === id);
@@ -68,8 +68,8 @@ function play(s, id, i) { s.pendingArc = { id, ...arc(id).build(s) }; return AR.
   s.events = [{ id: 'ev1', tier: 'mixer', invited: true, monthsLeft: 2, title: 'A mixer' }];
   EV.attendEvent(s, 'ev1');
   ok('at zero energy you cannot go', s.events.length === 1 && /No energy/.test(s.lastEvent || ''), s.lastEvent);
-  s.ap = 2; EV.attendEvent(s, 'ev1');
-  ok('with energy you go, and it costs one', s.events.length === 0 && s.ap === 1, String(s.ap));
+  s.ap = 100; EV.attendEvent(s, 'ev1');
+  ok('with energy you go, and it costs twenty', s.events.length === 0 && s.ap === 80, String(s.ap));
 }
 
 // ── a party warms the people closest to you ──

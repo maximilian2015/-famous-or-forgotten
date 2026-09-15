@@ -1,3 +1,4 @@
+import { COST, canAfford, spend, tooTired } from '../../engine/energy.js';
 // Two buttons on a person is not a relationship. This is the full menu: what you can
 // say to someone, what it costs, and what it can cost you when it lands badly.
 //
@@ -52,22 +53,22 @@ export const GROUPS = [
 
 export const INTERACTIONS = [
   // ── friendly ────────────────────────────────────────────────────────────────
-  { id: 'chat', group: 'friendly', label: 'Chat', blurb: 'Nothing in particular. That is the point.',
+  { id: 'chat', group: 'friendly', label: 'Chat', blurb: 'Nothing in particular. That is the point.', ap: COST.chat,
     when: () => true,
     run: ({ s, p }) => { const g = move(s, p,rint(2, 5)); s.mental = clamp(s.mental + 1); return `You and ${first(p)} talked about nothing much. (+${g})`; } },
 
-  { id: 'joke', group: 'friendly', label: 'Tell a joke', blurb: 'Lands or it does not — that is on you',
+  { id: 'joke', group: 'friendly', label: 'Tell a joke', blurb: 'Lands or it does not — that is on you', ap: COST.joke,
     when: () => true,
     run: ({ s, p }) => {
       if (lands(s, p, 34)) { const g = move(s, p,rint(4, 9)); s.mental = clamp(s.mental + 2); return `${first(p)} actually laughed. (+${g})`; }
       const g = move(s, p,-rint(1, 3)); return `It did not land. ${first(p)} smiled the way people do. (${g})`;
     } },
 
-  { id: 'compliment', group: 'friendly', label: 'Say something kind', blurb: 'Small, sincere, and it works',
+  { id: 'compliment', group: 'friendly', label: 'Say something kind', blurb: 'Small, sincere, and it works', ap: COST.kind,
     when: () => true,
     run: ({ s, p }) => { const g = move(s, p,rint(3, 6)); return `You told ${first(p)} something true and kind. (+${g})`; } },
 
-  { id: 'advice', group: 'friendly', label: 'Ask their advice', blurb: 'They have lived longer than this year',
+  { id: 'advice', group: 'friendly', label: 'Ask their advice', blurb: 'They have lived longer than this year', ap: COST.advice,
     when: ({ p }) => (p.relationship || 0) >= 25,
     run: ({ s, p }) => {
       const g = move(s, p,rint(2, 4));
@@ -94,7 +95,7 @@ export const INTERACTIONS = [
       return `You bought ${first(p)} something they did not expect. €${cost.toLocaleString()}. (+${g})`;
     } },
 
-  { id: 'evening', group: 'friendly', label: 'Spend the evening together', blurb: 'A whole evening, and it shows', ap: 1,
+  { id: 'evening', group: 'friendly', label: 'Spend the evening together', blurb: 'A whole evening, and it shows', ap: COST.evening,
     when: ({ p }) => (p.relationship || 0) >= 20,
     run: ({ s, p, kind }) => {
       const raw = kind === 'contact' ? bondGain(s, p) : Math.round(rint(5, 11) * homeBond(s));
@@ -102,7 +103,7 @@ export const INTERACTIONS = [
       return `A long evening with ${first(p)}. You both needed it. (+${g})`;
     } },
 
-  { id: 'deep', group: 'friendly', label: 'Talk about something real', blurb: 'The conversation you have been avoiding', ap: 1,
+  { id: 'deep', group: 'friendly', label: 'Talk about something real', blurb: 'The conversation you have been avoiding', ap: COST.realTalk,
     when: ({ p }) => (p.relationship || 0) >= 40,
     run: ({ s, p }) => {
       if (lands(s, p, 45)) { const g = move(s, p,rint(9, 16)); s.mental = clamp(s.mental + 4); return `You told ${first(p)} the truth about something. It went well. (+${g})`; }
@@ -111,18 +112,18 @@ export const INTERACTIONS = [
     } },
 
   // ── romantic ────────────────────────────────────────────────────────────────
-  { id: 'flirt', group: 'romantic', label: 'Flirt', blurb: 'Test the water',
+  { id: 'flirt', group: 'romantic', label: 'Flirt', blurb: 'Test the water', ap: COST.chat,
     applies: ({ rel }) => isRomantic(rel),
     run: ({ s, p }) => {
       if (lands(s, p, 30)) { const g = move(s, p,rint(6, 12)); s.mental = clamp(s.mental + 2); return `${first(p)} flirted right back. (+${g})`; }
       const g = move(s, p,-rint(2, 5)); return `You misread the room. ${first(p)} changed the subject. (${g})`;
     } },
 
-  { id: 'kiss', group: 'romantic', label: 'Kiss them', blurb: 'No words involved',
+  { id: 'kiss', group: 'romantic', label: 'Kiss them', blurb: 'No words involved', ap: COST.chat,
     applies: ({ rel }) => isRomantic(rel), when: ({ p }) => (p.relationship || 0) >= 40,
     run: ({ s, p }) => { const g = move(s, p,rint(5, 10)); s.mental = clamp(s.mental + 3); return `You kissed ${first(p)}. (+${g})`; } },
 
-  { id: 'night', group: 'romantic', label: 'Spend the night together', blurb: 'Needs a place of your own', ap: 1,
+  { id: 'night', group: 'romantic', label: 'Spend the night together', blurb: 'Needs a place of your own', ap: COST.evening,
     applies: ({ rel }) => isRomantic(rel),
     when: ({ p, s }) => (p.relationship || 0) >= 55 && s.hasApartment,
     lockedWhy: ({ s, p }) => (!s.hasApartment ? 'Not under your parents’ roof — you need a place of your own.'
@@ -133,11 +134,11 @@ export const INTERACTIONS = [
       return `The night was yours. (+${g})`;
     } },
 
-  { id: 'propose', group: 'romantic', label: 'Propose', blurb: 'The whole question, out loud', ap: 1,
+  { id: 'propose', group: 'romantic', label: 'Propose', blurb: 'The whole question, out loud', ap: COST.ask,
     applies: ({ rel }) => rel === 'partner', when: ({ p }) => (p.relationship || 0) >= 65,
     run: ({ s }) => { proposeMarriage(s); return s.lastEvent; } },
 
-  { id: 'baby', group: 'romantic', label: 'Try for a baby', blurb: 'Needs a room to put them in', ap: 1,
+  { id: 'baby', group: 'romantic', label: 'Try for a baby', blurb: 'Needs a room to put them in', ap: COST.ask,
     applies: ({ rel }) => rel === 'spouse',
     lockedWhy: ({ s }) => (!canRaiseChild(s) ? `Not until you have at least a ${HOUSING.flat.label.toLowerCase()}.` : ''),
     run: ({ s }) => { tryForBaby(s); return s.lastEvent; } },
@@ -160,12 +161,12 @@ export const INTERACTIONS = [
     lockedWhy: ({ s, p }) => canBack(s, p).why,
     run: ({ s, p }) => { backChild(s, p.id); return s.lastEvent; } },
 
-  { id: 'money', group: 'practical', label: 'Ask for money', blurb: 'They will remember that you asked', ap: 1,
+  { id: 'money', group: 'practical', label: 'Ask for money', blurb: 'They will remember that you asked', ap: COST.ask,
     applies: ({ rel }) => rel === 'parent', when: ({ s }) => s.stage !== 'child',
     lockedWhy: ({ s }) => (s.stage === 'child' ? 'You are too young to be asking for cash.' : ''),
-    run: ({ s }) => { askFamilyForMoney(s); return s.lastEvent; } },
+    run: ({ s, p }) => { askFamilyForMoney(s, p.id); return s.lastEvent; } },
 
-  { id: 'favour', group: 'practical', label: 'Ask them to put in a word', blurb: 'Spend the goodwill you built', ap: 1,
+  { id: 'favour', group: 'practical', label: 'Ask them to put in a word', blurb: 'Spend the goodwill you built', ap: COST.ask,
     applies: ({ kind }) => kind === 'contact', when: ({ p }) => (p.relationship || 0) >= 50,
     run: ({ s, p }) => {
       move(s, p,-rint(4, 9));   // a favour costs goodwill whether it works or not
@@ -178,11 +179,11 @@ export const INTERACTIONS = [
     } },
 
   // ── mean ────────────────────────────────────────────────────────────────────
-  { id: 'argue', group: 'mean', label: 'Pick a fight', blurb: 'Say the thing you have been holding',
+  { id: 'argue', group: 'mean', label: 'Pick a fight', blurb: 'Say the thing you have been holding', ap: COST.apology,
     when: () => true,
     run: ({ s, p }) => { const g = move(s, p,-rint(8, 16)); s.mental = clamp(s.mental - 3); return `You and ${first(p)} said things. (${g})`; } },
 
-  { id: 'blame', group: 'mean', label: 'Blame them', blurb: 'For how any of this turned out',
+  { id: 'blame', group: 'mean', label: 'Blame them', blurb: 'For how any of this turned out', ap: COST.chat,
     when: ({ p }) => (p.relationship || 0) >= 20,
     run: ({ s, p }) => { const g = move(s, p,-rint(14, 25)); s.mental = clamp(s.mental - 6); return `You told ${first(p)} it was their fault. Some of it was. (${g})`; } },
 
@@ -206,7 +207,7 @@ export function interactionsFor(s, id) {
     if (!open) why = (a.lockedWhy && a.lockedWhy(ctx)) || 'Not yet — get closer first.';
     else if (a.lockedWhy && a.lockedWhy(ctx)) why = a.lockedWhy(ctx);
     else if (cost && (s.cash || 0) < cost) why = `You need €${cost.toLocaleString()}.`;
-    else if (a.ap && (s.ap || 0) <= 0) why = 'No energy left this period.';
+    else if (a.ap && !canAfford(s, a.ap)) why = tooTired(s, a.ap);
     else if (onCooldown(s, `int:${a.id}:${id}`)) why = 'Already, this month.';
     return { id: a.id, label: a.label, blurb: a.blurb, group: a.group, cost, ap: a.ap || 0, open, why };
   });
@@ -222,11 +223,11 @@ export function interact(s, personId, actionId) {
   const cost = typeof a.cost === 'function' ? a.cost(ctx) : (a.cost || 0);
   if (a.lockedWhy && a.lockedWhy(ctx)) { s.lastEvent = a.lockedWhy(ctx); return s; }
   if (cost && (s.cash || 0) < cost) { s.lastEvent = `That costs €${cost.toLocaleString()} and you do not have it.`; return s; }
-  if (a.ap && (s.ap || 0) <= 0) { s.lastEvent = 'No energy left this period. Live a bit first.'; return s; }
+  if (a.ap && !canAfford(s, a.ap)) { s.lastEvent = tooTired(s, a.ap); return s; }
   const key = `int:${a.id}:${personId}`;
   if (onCooldown(s, key)) { s.lastEvent = `You already did that with ${first(found.p)} this month.`; return s; }
   markUsed(s, key);
-  if (a.ap) s.ap = (s.ap || 0) - 1;
+  if (a.ap) spend(s, a.ap);
   const msg = a.run({ ...ctx, cost });
   if (msg) s.lastEvent = msg;
   return s;

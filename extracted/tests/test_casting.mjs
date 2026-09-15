@@ -5,7 +5,7 @@ let fails = 0;
 const ok = (n, c, e = '') => { if (!c) { fails++; console.log('FAIL  ' + n + (e ? ' :: ' + e : '')); } else console.log('ok    ' + n); };
 const st = (over) => ({ version: 'x', ageY: 28, stage: 'career', dream: 'actor', hasApartment: true, housing: 'room',
   cash: 5000, mental: 60, health: 80, acting: 60, singing: 0, charisma: 50, looks: 50, luck: 50, scandal: 0,
-  fame: 70, ap: 3, year: 2030, month: 0, filmography: [], discography: [], genreXP: {}, timeline: [], ...over });
+  fame: 70, ap: 100, year: 2030, month: 0, filmography: [], discography: [], genreXP: {}, timeline: [], ...over });
 
 // pool shape
 const pool = st(); refreshCastingPool(pool, true);
@@ -36,7 +36,7 @@ function bookScale(scale) {
     refreshCastingPool(s, true);
     const c = s.castingPool.find((x) => x.scale === scale);
     if (!c) continue;
-    s.ap = 3;
+    s.ap = 100;
     auditionFor(s, c.id, 100);
     // A read for anything with a schedule is answered in one to three months, and a yes
     // arrives as an offer rather than as a summons. See systems/career/castings.js.
@@ -108,7 +108,7 @@ console.log('      fame gates — ' + Object.entries(gates).map(([k, v]) => `${k
 const gated = st({ fame: 5 }); refreshCastingPool(gated, true);
 let blocked = null;
 for (let i = 0; i < 200 && !blocked; i++) { refreshCastingPool(gated, true); blocked = gated.castingPool.find((c) => c.minFame > 5); }
-if (blocked) { gated.ap = 3; auditionFor(gated, blocked.id, 100);
+if (blocked) { gated.ap = 100; auditionFor(gated, blocked.id, 100);
   ok('and a nobody is turned away', !gated.production && /more fame/.test(gated.lastEvent), gated.lastEvent); }
 else ok('and a nobody is turned away', false, 'no gated listing generated');
 
@@ -154,6 +154,8 @@ ok('and every draw lands inside the band', lo >= 900 && hi <= 4000, `€${lo}–
 
 // anchors that survived the recalibration
 ok('an unknown on a soap still starts at €900', QUOTE.tv_daytime.unknown[0] === 900);
+ok('a soap season never out-earns an indie picture at any tier', ['unknown', 'rising', 'known', 'star'].every((k) => QUOTE.tv_daytime[k][1] * 33 <= QUOTE.film_indie[k][1] * 1.5), 'daytime tops out where daytime does');
+ok('daytime closes above Star', QUOTE.tv_daytime.alist === null && QUOTE.tv_daytime.icon === null);
 ok('a rising star still clears €25,000 on network drama', QUOTE.tv_network.rising[1] >= 25000, '€' + QUOTE.tv_network.rising[1].toLocaleString());
 ok('a rising star still gets €500,000 for a studio picture', QUOTE.film_studio.rising[0] === 500000);
 ok('an icon tentpole starts at €40m', QUOTE.film_tentpole.icon[0] >= 40000000, '€' + QUOTE.film_tentpole.icon[0].toLocaleString());
@@ -171,6 +173,8 @@ const project = (fame, medium) => { const b = quoteBand(st({ fame }), medium); i
 for (const [id, f] of Object.entries(TIER_FAME)) {
   const tent = project(f, 'film_tentpole'); if (!tent) continue;
   const soap = project(f, 'tv_daytime');
+  // Above Star daytime does not have you at all — the soap shelf closes.
+  if (soap == null) { ok(`at ${id}, daytime has closed`, true); continue; }
   ok(`at ${id}, a blockbuster beats a soap season`, tent > soap,
     `tentpole €${tent.toLocaleString()} vs soap €${soap.toLocaleString()}`);
 }

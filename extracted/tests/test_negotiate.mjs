@@ -5,7 +5,7 @@ import { quoteBand } from '../src/systems/meta/status.js';
 let fails = 0;
 const ok = (n, c, e = '') => { if (!c) { fails++; console.log('FAIL  ' + n + (e ? ' :: ' + e : '')); } else console.log('ok    ' + n); };
 const st = (over) => ({ version: 'x', ageY: 34, stage: 'career', dream: 'actor', cash: 0, fame: 60,
-  charisma: 50, respect: 40, scandal: 0, quote: 0, ap: 3, year: 2035, month: 0,
+  charisma: 50, respect: 40, scandal: 0, quote: 0, ap: 100, year: 2035, month: 0,
   castingPool: [], filmography: [], timeline: [], ...over });
 const film = (over) => ({ id: 'c1', title: 'Golden Echo', medium: 'film_studio', scale: 'feature', share: 1,
   perEpisode: false, salary: 6000000, episodes: 0, episodeFee: 0, ...over });

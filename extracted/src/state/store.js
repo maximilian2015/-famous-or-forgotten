@@ -30,6 +30,11 @@ function normalize(saved) {
     merged.castingPool = []; merged.submissions = [];
     merged.offers = (merged.offers || []).filter((o) => !/Album|World Tour|Music Video|Tour/.test(o.type || ''));
   }
+  // Offers won on the casting board used to carry an absolute month called `expires` that
+  // no tick read, so they never left Messages. They get the countdown every other offer has.
+  for (const o of merged.offers || []) {
+    if (typeof o.deadline !== 'number') o.deadline = typeof o.expires === 'number' ? Math.max(1, o.expires - ((merged.year || 0) * 12 + (merged.month || 0))) : 3;
+  }
   ensureAppearance(merged); // saves made before the avatar existed still need a face
   return merged;
 }

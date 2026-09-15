@@ -7,9 +7,10 @@ import { GridRisk } from '../../ui/components/GridRisk.jsx';
 import { useAccent } from '../../ui/appTheme.js';
 import { negotiationFor, haggleOdds, applyHaggle } from '../../systems/career/negotiate.js';
 import { stabilityBand, riskCostFor, volatility } from '../../systems/career/stability.js';
-import { ageFit } from '../../systems/career/age.js';
+import { ageFit, bandFor } from '../../systems/career/age.js';
 import { canWork } from '../../systems/life/strain.js';
 import { askForLead, canUse, costOf, FAVOURS } from '../../systems/career/favours.js';
+import { COST, canAfford } from '../../engine/energy.js';
 import { hotGenre } from '../../systems/meta/news.js';
 
 // Only appears once you are somebody. Below Star you are told the number.
@@ -101,14 +102,22 @@ export function OpenCall({ g, ocTab, setOcTab, teenMode }) {
   const [result, setResult] = useState(null);
   const [openId, setOpenId] = useState(null);
   const trend = hotGenre(g);
+  // At thirteen no casting office reads you at all, so a refresh can legitimately leave the
+  // board empty. Keyed on the pool's length and the month rather than the array itself: an
+  // empty board that came back empty must not ask again on the very next render — that was a
+  // render loop and a white screen the first time a thirteen-year-old opened the app.
+  const poolLen = (g.castingPool || []).length;
   useEffect(() => {
-    if (!g.castingPool || !g.castingPool.length) dispatch((s) => { refreshCastingPool(s); return s; });
-  }, [g.castingPool]);
+    if (!poolLen) dispatch((s) => { refreshCastingPool(s); return s; });
+  }, [poolLen, g.year, g.month]);
   const pool = g.castingPool || [];
   function openAudition(c) {
     setAudition({ id: c.id, title: c.title, game: Math.random() < 0.5 ? 'timing' : 'grid',
       zoneStart: 12 + Math.random() * 62, zoneWidth: 10 + Math.random() * 6, speed: 2.6 + Math.random() * 1.7,
-      bad: 3 + (Math.random() < 0.5 ? 1 : 0) });
+      // Two or three bad tiles, and five clean ones is a perfect read. Three or four with all
+      // eight needed made the grid read worth about fifteen quality on average against the
+      // timing bar's seventy — which audition you got was a bigger swing than how you played it.
+      bad: 2 + (Math.random() < 0.5 ? 1 : 0) });
   }
   function finishAudition(quality) {
     dispatch(auditionFor, audition.id, quality);
@@ -128,7 +137,7 @@ export function OpenCall({ g, ocTab, setOcTab, teenMode }) {
       </div>
       {audition.game === 'timing'
         ? <TimingBar zoneStart={audition.zoneStart} zoneWidth={audition.zoneWidth} speed={audition.speed} onResult={finishAudition} />
-        : <GridRisk cols={4} rows={3} bad={audition.bad} labelSafe="✓" labelBad="✕" onResult={finishAudition} />}
+        : <GridRisk cols={4} rows={3} bad={audition.bad} full={5} labelSafe="✓" labelBad="✕" onResult={finishAudition} />}
     </div>);
   }
   if (result) {
@@ -155,7 +164,9 @@ export function OpenCall({ g, ocTab, setOcTab, teenMode }) {
       border: '1px solid rgba(255,106,138,.35)', borderRadius: 10, padding: '9px 11px', marginBottom: 10, lineHeight: 1.5 }}>
       {canWork(g).why}
     </div>}
-    {!list.length && <div style={{ fontSize: 12.5, color: theme.muted, textAlign: 'center', padding: 22 }}>Nothing on this shelf right now.</div>}
+    {!list.length && <div style={{ fontSize: 12.5, color: theme.muted, textAlign: 'center', padding: 22, lineHeight: 1.5 }}>
+      {(g.ageY || 0) < 15 ? 'Casting offices do not read anyone under fifteen. The board opens at fifteen — until then it is school, the play, and lessons.' : 'Nothing on this shelf right now.'}
+    </div>}
     {/* A board, not a wall. Every listing used to arrive fully open — backing, negotiation,
         the sides, the read, eight lines apiece, five apiece per shelf — and Maxi called it
         what it was. Now a row is a row: what it is, what it pays, how long, your odds.
@@ -167,6 +178,7 @@ export function OpenCall({ g, ocTab, setOcTab, teenMode }) {
       const bandCol = band ? (BAND_COL[band.id] || theme.muted) : null;
       const onTrend = c.genre === trend;
       const f = ageFit(g, c.role);
+      const tooYoung = (g.ageY || 0) < bandFor(c.role)[0];
       const lateShelf = /Character lead|matriarch|Elder|Grandparent/.test(c.role);
       return (<div key={c.id} style={{ background: theme.panel, border: `1px solid ${isOpen ? theme.accent + '66' : theme.line}`, borderRadius: 12, marginBottom: 7, overflow: 'hidden' }}>
         <button onClick={() => setOpenId(isOpen ? null : c.id)} style={{ width: '100%', textAlign: 'left', background: 'transparent', border: 'none', padding: '9px 12px', cursor: 'pointer', color: theme.text }}>
@@ -190,7 +202,7 @@ export function OpenCall({ g, ocTab, setOcTab, teenMode }) {
           {c.perEpisode && <div style={{ fontSize: 10.5, color: theme.muted, marginBottom: 6 }}>€{c.salary.toLocaleString()} for {c.episodes} episodes</div>}
           {f < 0.98 && <div style={{ fontSize: 10.5, color: f < 0.6 ? theme.bad : theme.gold, marginBottom: 6, lineHeight: 1.4 }}>
             {lateShelf ? 'Written for someone who has lived a bit. That is you now.'
-              : f < 0.6 ? 'They are picturing someone younger. You would be a stretch.'
+              : f < 0.6 ? (tooYoung ? 'They are picturing someone a little older. You would be a stretch.' : 'They are picturing someone younger. You would be a stretch.')
               : 'You are at the top end of what they had in mind.'}
           </div>}
           {byAsker && <div style={{ fontSize: 10.5, fontWeight: 800, color: theme.gold, marginBottom: 6 }}>🏆 They read you on the Asker — your fame alone would not get you in.</div>}
@@ -215,21 +227,25 @@ export function OpenCall({ g, ocTab, setOcTab, teenMode }) {
           {!locked && (() => {
             const step = nextPrep(c); const bonus = prepBonus(c);
             const cost = step ? Math.round(step.cost * (1 + Math.min(2, (g.fame || 0) / 60))) : 0;
-            const dead = !step || (g.ap || 0) <= 0 || cost > (g.cash || 0);
-            const off = !canWork(g).ok; const deadRead = off || (g.ap || 0) <= 0;
             const waits = (c.months || 1) >= 2;
+            // One call sheet at a time. This used to let you pay for the sides and then refuse
+            // the read — the same thing auditionFor refuses, said before the money goes.
+            const busy = !!g.production && waits;
+            const dead = busy || !step || !canAfford(g, COST.sides) || cost > (g.cash || 0);
+            const off = !canWork(g).ok; const deadRead = busy || off || !canAfford(g, COST.audition);
             return (<div style={{ marginTop: 8 }}>
               {bonus > 0 && <div style={{ fontSize: 10.5, fontWeight: 800, color: theme.good, marginBottom: 5 }}>Prepared · +{bonus} to your chances</div>}
               <div style={{ display: 'flex', gap: 7 }}>
                 {step && <button onClick={() => dispatch(prepareFor, c.id)} disabled={dead}
                   style={{ flex: 1, border: `1px solid ${dead ? 'transparent' : theme.line}`, borderRadius: 10, padding: '9px 6px', fontSize: 11.5, fontWeight: 800, cursor: dead ? 'default' : 'pointer',
                     background: dead ? 'rgba(120,110,150,.12)' : 'rgba(158,116,255,.14)', color: dead ? '#6b6390' : '#d9cffa' }}>
-                  {step.label}{cost ? ` · €${cost.toLocaleString()}` : ''} · 1 ⚡
+                  {step.label}{cost ? ` · €${cost.toLocaleString()}` : ''} · {COST.sides} ⚡
                 </button>}
                 <button onClick={() => openAudition(c)} disabled={deadRead} style={{ flex: 1, border: 'none', borderRadius: 10, padding: '9px 6px', fontSize: 12.5, fontWeight: 800, cursor: deadRead ? 'default' : 'pointer', background: deadRead ? 'rgba(120,110,150,.15)' : `linear-gradient(135deg,${theme.accent2},${theme.accent})`, color: deadRead ? '#6b6390' : '#fff' }}>
-                  {off ? 'Signed off' : 'Audition · 1 ⚡'}
+                  {busy ? 'On a shoot' : off ? 'Signed off' : `Audition · ${COST.audition} ⚡`}
                 </button>
               </div>
+              {busy && <div style={{ fontSize: 10.5, color: theme.muted, textAlign: 'center', marginTop: 5 }}>You are shooting "{g.production.title}". Nobody can be in two places — a day's work is fine, a part is not.</div>}
               {waits && !deadRead && <div style={{ fontSize: 10.5, color: theme.muted, textAlign: 'center', marginTop: 5 }}>They answer in one to three months.</div>}
             </div>);
           })()}

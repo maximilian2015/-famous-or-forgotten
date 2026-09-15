@@ -19,7 +19,7 @@ function life(over = {}) {
   const s = createInitialState({ name: 'Test', dream: 'actor' });
   Object.assign(s, {
     stage: 'career', ageY: 38, year: 2060, month: 0, cash: 4000000, acting: 88, fame: 70,
-    respect: 65, mental: 45, health: 78, apMax: 3, hasApartment: true, housing: 'flat',
+    respect: 65, mental: 45, health: 78, apMax: 100, hasApartment: true, housing: 'flat',
     burnouts: 4, strain: 40, alive: true, bottles: {}, meds: {},
   });
   s.people = [{ id: 'p1', name: 'Ada Rune', relationship: 70, alive: true }];
@@ -77,9 +77,9 @@ function answer(s, well) {
     energies.push(s.apMaxEff);          // and after tonight
   }
   const dry = energies.filter((_, i) => i % 2 === 0), wet = energies.filter((_, i) => i % 2 === 1);
-  ok('every month starts short', dry.every((e) => e <= 1), dry.join(','));
-  ok('and every drink opens it again', wet.every((e) => e >= 3), wet.join(','));
-  ok('and it never runs away with itself', Math.max(...wet) <= 3, String(Math.max(...wet)));
+  ok('every month starts short — depression takes two slots of thirty', dry.every((e) => e <= 45), dry.join(','));
+  ok('and every drink opens it again', wet.every((e) => e >= 70), wet.join(','));
+  ok('and it never runs away with itself', Math.max(...wet) <= 120, String(Math.max(...wet)));
 }
 
 // ── 4. you cannot drink your way to a recovery ────────────────────────────────
@@ -98,7 +98,7 @@ function run(strategy, months = 60) {
     if (strategy.close && s.people[0]) s.people[0].relationship = 75;
     const wasDepressed = !!s.depression;
     s = advanceMonth(s);
-    lowest.push(s.apMaxEff);
+    lowest.push(D.slotsLost(s));   // the depression's own take on the month, apart from strain and illness
     if (s.depression && s.depression.pending) answer(s, strategy.answer !== false);
     if (wasDepressed && !s.depression) {
       return { scar: s.scarred || 0, level: K.level(s), acting: s.acting, months: m, energy: lowest };
@@ -142,8 +142,8 @@ ok('drinking through it wrecks the odds', drunk.clean < good.clean * 0.6, `${pct
 ok('pills alone are not enough', lazy.clean < N * 0.2, pct(lazy.clean, N));
 ok('and doing nothing almost never gets out clean', nothing.clean <= N * 0.06, pct(nothing.clean, N));
 ok('drinking also costs the craft', Number(drunk.acting) < Number(good.acting) - 8, `${drunk.acting} vs ${good.acting}`);
-ok('Energy never goes backwards while you are ill',
-  good.energy.every((run) => run.every((e, i) => i === 0 || e >= run[i - 1] - 0.001)), 'it dropped mid-illness');
+ok('the depression never takes a slot back once a checkpoint returned it',
+  good.energy.every((run) => run.every((e, i) => i === 0 || e <= run[i - 1] + 0.001)), 'a slot went missing again');
 
 // ── 5. the clinic, from inside the real loop ──────────────────────────────────
 {

@@ -19,7 +19,7 @@ const pin = (v, fn) => { Math.random = () => v; try { return fn(); } finally { M
 function actor(over) {
   const s = createInitialState({ name: 'X', dream: 'actor', created: true }); beginLife(s);
   return Object.assign(s, { stage: 'career', ageY: 26, year: 2056, month: 3, alive: true, hasApartment: true, livingWith: 'own_place', housing: 'studio', cash: 4000,
-    ap: 3, apMax: 3, apMaxEff: 3, fame: 12, peakFame: 12, respect: 5, scandal: 0, media: 0, acting: 40, charisma: 50, looks: 55, luck: 50, mental: 60,
+    ap: 100, apMax: 100, apMaxEff: 100, fame: 12, peakFame: 12, respect: 5, scandal: 0, media: 0, acting: 40, charisma: 50, looks: 55, luck: 50, mental: 60,
     filmography: [{ id: 'f0', title: 'one', rating: 55, tier: 'supporting', role: 'Supporting', year: 2055 }] }, over);
 }
 const partner = (over) => ({ id: 'p1', name: 'Wren Hale', gender: 'f', age: 27, job: 'sits on boards', means: 'serious', wants: 'thelife', patience: 40, relationship: 62, dates: 4, livingTogether: false, married: false, ...over });
@@ -111,7 +111,7 @@ const byTag = (s, tag) => (s.sms || []).find((m) => m.tag === tag);
   pin(0.01, () => SMS.smsTick(s));
   const m = byTag(s, 'room');
   ok('once in a while there is a dinner', !!m && /casting|part/.test(m.text), JSON.stringify((s.sms || []).map((x) => x.tag)));
-  s.ap = 1; SMS.smsReply(s, m.id, 0);
+  s.ap = 100; SMS.smsReply(s, m.id, 0);
   const off = (s.offers || []).find((x) => x.kind === 'room');
   ok('and by dessert there is a studio picture on the phone', !!off && off.tier === 'tentpole' && off.scale === 'blockbuster' && off.viaPartner === 'Wren Hale', JSON.stringify(off));
   ok('at fame 12', s.fame === 12);
@@ -190,8 +190,8 @@ const byTag = (s, tag) => (s.sms || []).find((m) => m.tag === tag);
   pin(0.9, () => SMS.smsTick(f));
   const b = byTag(f, 'anniv');
   ok('forgotten: they say so, and it costs nine', !!b && /forgot|did not say|Do not answer/.test(b.text) && f.partner.relationship === r2 - 9, b && b.text + ' ' + f.partner.relationship);
-  f.ap = 2; SMS.smsReply(f, b.id, 0);
-  ok('and you can make it up, for an energy', f.partner.relationship > r2 - 9 && f.ap === 1);
+  f.ap = 100; SMS.smsReply(f, b.id, 0);
+  ok('and you can make it up, for an energy', f.partner.relationship > r2 - 9 && f.ap === 90);
   // crossing a band is said
   const c = actor({ partner: partner({ means: 'ordinary', relationship: 54 }), cash: 20000 });
   D.goOnDate(c, 'home');

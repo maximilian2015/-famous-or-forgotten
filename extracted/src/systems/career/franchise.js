@@ -232,7 +232,7 @@ export function maybeContinue(s, credit, p, force = false) {
       prestigeScore: seasonMaterial(p.prestigeScore || 50, nextSeason, arc), arc,
       months: Math.max(2, Math.round((p.months || 4) * (0.9 + Math.random() * 0.25))),
       prestigeScore: Math.min(96, (p.prestigeScore || 45) + rint(2, 7)), tier: p.tier || 'lead',
-      fame: p.tier === 'tentpole' ? 9 : 5, deadline: rint(2, 3),
+      fame: p.tier === 'tentpole' ? 9 : 5, deadline: rint(2, 3), waitsForWrap: true,   // your own show waits for you
       note: nextSeason === 3 && pct > 0
         ? `Third season — the whole cast renegotiates together and the network knows it. ${pct}% more an episode.`
         : pct > 0 ? `The network wants you back. Same part, ${pct}% more an episode.`
@@ -262,7 +262,7 @@ export function maybeContinue(s, credit, p, force = false) {
     projectTitle: sequelTitle(p.title, nextPart), role: p.role, type: p.type, genre: p.genre,
     salary, baseSalary: first, months: Math.max(2, Math.round((p.months || 5) * (0.95 + Math.random() * 0.25))),
     prestigeScore: sequelMaterial(p.prestigeScore || 50, nextPart, arc), arc,
-    tier: p.tier || 'lead', fame: p.tier === 'tentpole' ? 9 : 5, deadline: rint(2, 3),
+    tier: p.tier || 'lead', fame: p.tier === 'tentpole' ? 9 : 5, deadline: rint(2, 3), waitsForWrap: true,   // and so does your own sequel
     note: obliged
       ? 'You signed for this one. The fee is the fee you agreed to years ago.'
       : credit.verdict === 'smash'

@@ -8,7 +8,7 @@ let fails = 0;
 const ok = (n, c, e = '') => { if (!c) { fails++; console.log('FAIL  ' + n + (e ? ' :: ' + e : '')); } else console.log('ok    ' + n); };
 const st = (over) => ({ version: 'x', ageY: 32, gender: 'male', stage: 'career', dream: 'actor',
   hasApartment: true, housing: 'flat', cash: 500000, mental: 78, health: 85, acting: 85, singing: 0,
-  charisma: 65, looks: 62, luck: 50, scandal: 0, fame: 60, respect: 65, ap: 3, quote: 0,
+  charisma: 65, looks: 62, luck: 50, scandal: 0, fame: 60, respect: 65, ap: 100, quote: 0,
   year: 2060, month: 0, strain: 0, burnout: null, filmography: [], discography: [], releases: [],
   frozen: [], offers: [], people: [], family: [], genreXP: {}, timeline: [], castingPool: [],
   awards: { losses: 0, wins: [], nominations: [], pending: null, history: [] }, alive: true, ...over });
@@ -45,7 +45,7 @@ function normalCareer(years, gapMonths) {
     releaseTick(s);
     if (s.bigMoment && s.bigMoment.id === 'burnout') { collapses++; s.bigMoment = null; }
     peak = Math.max(peak, s.strain || 0);
-    s.ap = 3;
+    s.ap = 100;
   }
   return { peak, collapses, credits: s.filmography.length };
 }

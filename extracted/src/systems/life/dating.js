@@ -1,3 +1,4 @@
+import { COST, canAfford, spend, tooTired } from '../../engine/energy.js';
 import { setFame } from '../meta/status.js';
 import { uid } from '../../engine/id.js';
 // Somebody was a number that went up when you pressed a button and down when you did not.
@@ -115,10 +116,10 @@ const SCENES = {
 // expensive weekend every month is not a strategy — it is how you find out they wanted to
 // stay in.
 export const DATES = {
-  home:   { id: 'home',   label: 'A night in',        blurb: 'Cooking, badly, and nowhere to be.',            base: 9,  cost: 40,    energy: 0 },
-  dinner: { id: 'dinner', label: 'Dinner somewhere',  blurb: 'A table at the back. Quiet enough to talk.',    base: 10, cost: 260,   energy: 0 },
-  public: { id: 'public', label: 'Be seen together',  blurb: 'A premiere, an opening, a photograph or forty.', base: 9, cost: 900,   energy: 1 },
-  away:   { id: 'away',   label: 'Go away for a week', blurb: 'Somewhere with no signal and nobody watching.', base: 18, cost: 14000, energy: 1 },
+  home:   { id: 'home',   label: 'A night in',        blurb: 'Cooking, badly, and nowhere to be.',            base: 9,  cost: 40,    energy: COST.dateHome },
+  dinner: { id: 'dinner', label: 'Dinner somewhere',  blurb: 'A table at the back. Quiet enough to talk.',    base: 10, cost: 260,   energy: COST.dateDinner },
+  public: { id: 'public', label: 'Be seen together',  blurb: 'A premiere, an opening, a photograph or forty.', base: 9, cost: 900,   energy: COST.datePublic },
+  away:   { id: 'away',   label: 'Go away for a week', blurb: 'Somewhere with no signal and nobody watching.', base: 18, cost: 14000, energy: COST.dateAway },
 };
 export const DATE_ORDER = ['home', 'dinner', 'public', 'away'];
 
@@ -150,13 +151,13 @@ export function goOnDate(s, key, id) {
   if (!p) { s.lastEvent = 'There is nobody to ask.'; return s; }
   const tag = s.partner ? 'partner' : 'date:' + p.id;
   if (onCooldown(s, tag)) { s.lastEvent = `You have already had your evening with ${p.name.split(' ')[0]} this month.`; return s; }
-  if (d.energy && (s.ap || 0) < d.energy) { s.lastEvent = 'No energy left this period. Live a bit first.'; return s; }
+  if (d.energy && !canAfford(s, d.energy)) { s.lastEvent = tooTired(s, d.energy); return s; }
   const cost = dateCost(s, key);
   const paying = whoPays(s, p, key) === 'you';
   if (paying && (s.cash || 0) < cost) { s.lastEvent = `That costs €${cost.toLocaleString()} and you're short.`; return s; }
   markUsed(s, tag);
   if (paying) s.cash -= cost;
-  if (d.energy) s.ap = Math.max(0, (s.ap || 0) - d.energy);
+  if (d.energy) spend(s, d.energy);
 
   // Getting somebody to say yes in the first place is a different question from how the
   // evening goes, and only applies before there is an "us".

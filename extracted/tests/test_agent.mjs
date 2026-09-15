@@ -17,7 +17,7 @@ const ok = (n, c, e = '') => { if (!c) { fails++; console.log('FAIL  ' + n + (e 
 function actor(over) {
   const s = createInitialState({ name: 'X', dream: 'actor', created: true }); beginLife(s);
   return Object.assign(s, { stage: 'career', ageY: 32, year: 2062, month: 3, alive: true, hasApartment: true, livingWith: 'own_place', housing: 'flat', cash: 50000,
-    ap: 3, apMax: 3, apMaxEff: 3, fame: 0, peakFame: 0, respect: 0, scandal: 0, media: 0, acting: 60, charisma: 50, looks: 50, luck: 50,
+    ap: 100, apMax: 100, apMaxEff: 100, fame: 0, peakFame: 0, respect: 0, scandal: 0, media: 0, acting: 60, charisma: 50, looks: 50, luck: 50,
     filmography: [{ title: 'one', rating: 60, tier: 'lead', role: 'Lead', year: 2060, score: 6 }] }, over);
 }
 const letter = (s) => (s.inbox || []).find((m) => m.tag === 'agent');

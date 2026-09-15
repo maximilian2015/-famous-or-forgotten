@@ -1,5 +1,6 @@
 import { beginLife, allowanceTick, classOf, CLASSES, CLASS_ORDER } from '../src/systems/life/origin.js';
 import { askFamilyForMoney } from '../src/systems/life/family.js';
+import { interact } from '../src/systems/life/interactions.js';
 import { createInitialState } from '../src/state/initialState.js';
 
 let fails = 0;
@@ -121,7 +122,7 @@ function beg(cls) {
   const parent = s.family.find((p) => p.relation === 'Mother' || p.relation === 'Father');
   parent.relationship = 80; parent.job = CLASSES[cls].jobs[0];
   let total = 0;
-  for (let i = 0; i < 40; i++) { s.ap = 3; s.cash = 0; parent.relationship = 80; askFamilyForMoney(s); total += s.cash; }
+  for (let i = 0; i < 40; i++) { s.ap = 100; s.cash = 0; parent.relationship = 80; askFamilyForMoney(s); total += s.cash; }
   return Math.round(total / 40);
 }
 const begPoor = beg('struggling'), begRich = beg('rich');
@@ -129,10 +130,19 @@ ok('poor parents give little', begPoor < 400, '€' + begPoor);
 ok('rich parents give a lot more', begRich > begPoor * 5, '€' + begRich);
 console.log(`      average handout — struggling €${begPoor}, rich €${begRich}`);
 
-// no money changes hands without energy
-const noAp = born(); noAp.ageY = 20; noAp.ap = 0; noAp.cash = 0;
-askFamilyForMoney(noAp);
-ok('no energy, no handout', noAp.cash === 0);
+// no money changes hands without energy — the ask goes through the person sheet, which
+// is where the energy is charged (family.js no longer charges it a second time)
+const noAp = born(); noAp.ageY = 20; noAp.stage = 'career'; noAp.ap = 0; noAp.cash = 0;
+const noApParent = noAp.family.find((p) => p.relation === 'Mother' || p.relation === 'Father');
+noApParent.relationship = 80;
+interact(noAp, noApParent.id, 'money');
+ok('no energy, no handout', noAp.cash === 0, '€' + noAp.cash);
+const oneAsk = born(); oneAsk.ageY = 20; oneAsk.stage = 'career'; oneAsk.ap = 100; oneAsk.cash = 0;
+const oneParent = oneAsk.family.find((p) => p.relation === 'Father') || oneAsk.family.find((p) => p.relation === 'Mother');
+oneParent.relationship = 80;
+interact(oneAsk, oneParent.id, 'money');
+ok('one ask costs energy once', oneAsk.ap === 90, 'ap ' + oneAsk.ap);
+ok('the parent you asked is the one who answers', oneAsk.lastEvent.includes('Your ' + oneParent.relation.toLowerCase()), oneAsk.lastEvent);
 
 console.log(fails ? `\n${fails} FAILED` : '\nall passed');
 process.exit(fails ? 1 : 0);

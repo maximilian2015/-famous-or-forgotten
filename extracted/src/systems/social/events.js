@@ -1,3 +1,4 @@
+import { COST, canAfford, spend, tooTired } from '../../engine/energy.js';
 import { inCareer } from '../../engine/stage.js';
 import { setFame } from '../meta/status.js';
 import { uid } from '../../engine/id.js';
@@ -56,8 +57,8 @@ export function askForInvite(s, eventId, personId) {
   const ev = (s.events || []).find((x) => x.id === eventId); if (!ev) return s;
   const p = inviteHelpers(s).find((x) => x.id === personId); if (!p) return s;
   if (hasAsked(ev, personId)) { s.lastEvent = `You already asked ${p.name} about that one. Asking twice would be pushing it.`; return s; }
-  if ((s.ap || 0) <= 0) { s.lastEvent = 'No energy left this period. Live a bit first.'; return s; }
-  s.ap = (s.ap || 0) - 1;
+  if (!canAfford(s, COST.askHelp)) { s.lastEvent = tooTired(s, COST.askHelp); return s; }
+  spend(s, COST.askHelp);
   (ev.asked = ev.asked || []).push(personId);
   const t = tierById(ev.tier);
   if (chance(helperOdds(p))) {
@@ -72,8 +73,8 @@ export function askForInvite(s, eventId, personId) {
 }
 export function sneakIntoEvent(s, eventId, quality = 0) {
   const ev = (s.events || []).find((x) => x.id === eventId); if (!ev) return s;
-  if ((s.ap || 0) <= 0) { s.lastEvent = 'No energy left this period. Live a bit first.'; return s; }
-  s.ap = (s.ap || 0) - 1;
+  if (!canAfford(s, COST.askHelp)) { s.lastEvent = tooTired(s, COST.askHelp); return s; }
+  spend(s, COST.askHelp);
   const t = tierById(ev.tier);
   // Steep bar: bluffing your way past a real door should mostly fail.
   if (quality >= 75) {
@@ -99,8 +100,8 @@ export function attendEvent(s, eventId) {
   if (s._wentOut === stamp) { s.lastEvent = "You've already been out this month. Two nights in a row is how people start talking."; return s; }
   // The button in EventsScreen was greyed out at zero energy; the rule underneath never
   // checked. A night out is an evening, and an evening is one energy.
-  if ((s.ap || 0) <= 0) { s.lastEvent = 'No energy left this period. Live a bit first.'; return s; }
-  s.ap -= 1;
+  if (!canAfford(s, COST.event)) { s.lastEvent = tooTired(s, COST.event); return s; }
+  spend(s, COST.event);
   s._wentOut = stamp;
   const t = tierById(ev.tier);
   ev.attended = true;

@@ -6,7 +6,7 @@ let fails = 0;
 const ok = (n, c, e = '') => { if (!c) { fails++; console.log('FAIL  ' + n + (e ? ' :: ' + e : '')); } else console.log('ok    ' + n); };
 const st = (over) => ({ version: 'x', ageY: 30, stage: 'career', dream: 'actor', hasApartment: true, housing: 'room',
   cash: 5000, mental: 60, health: 80, acting: 80, singing: 0, charisma: 60, looks: 60, luck: 90, scandal: 0,
-  fame: 40, respect: 40, confidence: 40, ap: 3, year: 2060, month: 0, peakFame: 40, worldHits: 0,
+  fame: 40, respect: 40, confidence: 40, ap: 100, year: 2060, month: 0, peakFame: 40, worldHits: 0,
   filmography: [], discography: [], releases: [], frozen: [], genreXP: {}, timeline: [], ...over });
 
 // a day's work is flagged the moment it is booked
@@ -16,7 +16,7 @@ for (let i = 0; i < 600 && !booked; i++) {
   refreshCastingPool(s, true);
   const c = s.castingPool.find((x) => (x.months || 1) < 2);
   if (!c) continue;
-  s.ap = 3; auditionFor(s, c.id, 100);
+  s.ap = 100; auditionFor(s, c.id, 100);
   if (s.filmography.length) booked = s.filmography[0];
 }
 ok('a day of work is booked as Other work', booked && booked.minor === true, JSON.stringify(booked));
@@ -29,7 +29,7 @@ for (let i = 0; i < 600 && !shot; i++) {
   const c = s.castingPool.find((x) => (x.months || 1) >= 2 && (s.fame || 0) >= (x.minFame || 0));
   if (!c) continue;
   // A read is a read now: they answer in one to three months, and a yes is an offer.
-  s.ap = 3; auditionFor(s, c.id, 100);
+  s.ap = 100; auditionFor(s, c.id, 100);
   for (let w = 0; w < 5 && !(s.offers || []).length; w++) { s.month++; if (s.month > 11) { s.month = 0; s.year++; } submissionsTick(s); }
   if ((s.offers || []).length) { startProduction(s, s.offers[0]); s.offers = []; }
   if (s.production) shot = s.production;

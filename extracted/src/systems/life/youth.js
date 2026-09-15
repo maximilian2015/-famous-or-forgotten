@@ -17,7 +17,7 @@ export const YOUTH_EVENTS = [
   { age: 16, id: 'firstCrush', build: () => ({ speaker: 'Sixteen', text: `There's someone. Your stomach flips when they're around. First real crush — and it's terrifying. What do you do?`,
     choices: [ { label: 'Tell them how you feel', check: { stat: 'charisma', diff: 45 }, good: { fx: { confidence: 5, mental: 4 }, reply: 'They feel the same. Your first taste of being chosen. You walk on air for months.' }, bad: { fx: { mental: -4, confidence: -2 }, reply: 'They let you down gently. It stings like nothing has before. You write a lot of bad poetry.' } },
       { label: 'Keep it to yourself', fx: { mental: -1, discipline: 2 }, reply: 'You say nothing and pour it into your dream instead. Heartache makes good fuel.' } ] }) },
-  { age: 17, id: 'parentsDoubt', build: () => ({ speaker: 'Your parents', text: `Graduation is close. Your parents sit you down: "This acting-slash-singing thing... it's a nice hobby. But shouldn't you have a real backup plan?" How do you answer?`,
+  { age: 17, id: 'parentsDoubt', build: () => ({ speaker: 'Your parents', text: `Graduation is close. Your parents sit you down: "This acting thing... it's a nice hobby. But shouldn't you have a real backup plan?" How do you answer?`,
     choices: [ { label: '"This IS my plan. All in."', fx: { confidence: 6, discipline: 3, mental: -2 }, reply: "They sigh, worried. But they see the fire in your eyes and stop arguing. It's your life now." },
       { label: "\"You’re right, I’ll have a backup.\"", fx: { discipline: 5, mental: 3, confidence: -2 }, reply: 'You promise to be sensible. It calms them — and plants a small seed of doubt in you.' } ] }) },
 ];

@@ -45,7 +45,7 @@ for (let i = 0; i < N; i++) {
   const s = createInitialState({ name: 'X' + i, dream: 'actor', created: true });
   beginLife(s);
   Object.assign(s, { stage: 'career', ageY: 20, year: 2050, month: 0, hasApartment: true, livingWith: 'own_place',
-    housing: 'room', cash: 12000, alive: true, ap: 3, apMax: 3, apMaxEff: 3 });
+    housing: 'room', cash: 12000, alive: true, ap: 100, apMax: 100, apMaxEff: 100 });
   let t = s, wasForgotten = false, backFrom = false;
   // three kinds of life, so the scales are pushed in every direction
   const kind = i % 3;   // 0 climbs, 1 climbs then stops working, 2 drifts
@@ -94,7 +94,7 @@ ok('and nobody went through the floor', minR >= S.RESPECT_FLOOR, String(minR));
   function shoot(over) {
     const s = createInitialState({ name: 'D', dream: 'actor', created: true }); beginLife(s);
     Object.assign(s, { stage: 'career', ageY: 30, year: 2060, month: 0, hasApartment: true, livingWith: 'own_place',
-      housing: 'flat', cash: 200000, alive: true, ap: 3, apMax: 3, apMaxEff: 3, fame: 40, respect: 30, acting: 60,
+      housing: 'flat', cash: 200000, alive: true, ap: 100, apMax: 100, apMaxEff: 100, fame: 40, respect: 30, acting: 60,
       filmography: [{ title: 'x', rating: 70, tier: 'lead', role: 'Lead', year: 2058 }] }, over);
     PR.startProduction(s, { id: 'o', projectTitle: 'Test Picture', role: 'Lead', type: 'Feature Film', genre: 'Drama',
       salary: 500000, months: 5, prestigeScore: 55, tier: 'lead', scale: 'feature', stability: 85 });
@@ -105,8 +105,8 @@ ok('and nobody went through the floor', minR >= S.RESPECT_FLOOR, String(minR));
   const bondA0 = a.production.crew[0].bond, bondB0 = b.production.crew[0].bond;
   a.production.crew[0].bond = 45; b.production.crew[0].bond = 45;
   for (let m = 0; m < 4; m++) {
-    a.ap = 3; PR.rehearse(a); a = advanceMonth(a);
-    b.ap = 3; b = advanceMonth(b);
+    a.ap = 100; PR.rehearse(a); a = advanceMonth(a);
+    b.ap = 100; b = advanceMonth(b);
   }
   const bondA = a.production ? a.production.crew[0].bond : -1, bondB = b.production ? b.production.crew[0].bond : -1;
   ok('a director you rehearse for stays where they were', bondA >= 44, String(bondA));

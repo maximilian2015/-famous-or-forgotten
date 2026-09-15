@@ -1,4 +1,5 @@
 import { inCareer } from './stage.js';
+import { monthEnergy } from './energy-month.js';
 import { advanceStage } from '../systems/life/stages.js';
 import { applyMonthly, applyYearly, relevanceDrift, homeEnergy } from './economy.js';
 import { maybeGenerateOffer, offersTick } from '../systems/career/offers.js';
@@ -93,8 +94,10 @@ export function advanceMonth(state) {
   s.peakFame = Math.max(s.peakFame || 0, s.fame || 0);
   advanceStage(s);
   pruneCooldowns(s);
-  // What the illness is actually taking: Energy out of your month.
-  s.apMaxEff = Math.max(1, (s.apMax || 3) + homeEnergy(s) + staffEnergy(s) - jobSlots(s) - slotsLost(s));
+  // What the month gives you: where you live, who you pay, the day job, the illness, the
+  // strain. See engine/energy.js and energy-month.js.
+  s.apMax = 100;
+  s.apMaxEff = monthEnergy(s, { home: homeEnergy(s), staff: staffEnergy(s), jobSlots: jobSlots(s), lostSlots: slotsLost(s) });
   s.ap = s.apMaxEff;
   return s;
 }
@@ -115,7 +118,8 @@ export function advanceYear(state) {
   advanceStage(s);
   maybeYouthEvent(s);
   pruneCooldowns(s);
-  s.apMaxEff = Math.max(1, (s.apMax || 3) + homeEnergy(s) - jobSlots(s));
+  s.apMax = 100;
+  s.apMaxEff = monthEnergy(s, { home: homeEnergy(s), staff: 0, jobSlots: jobSlots(s), lostSlots: 0 });
   s.ap = s.apMaxEff;
   return s;
 }

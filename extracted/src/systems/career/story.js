@@ -1,3 +1,4 @@
+import { COST, canAfford, spend, tooTired } from '../../engine/energy.js';
 import { setRespect } from '../meta/status.js';
 // What the film is actually ABOUT, and the argument you have about it on day one.
 //
@@ -129,12 +130,18 @@ export function pushOdds(s, takeId, p) {
   return Math.round(clamp(20 + standing + ally + known + broke - take.push, 3, 93));
 }
 
-// What the trend is doing, and the trap in it: you are choosing now for a film that opens
-// in about two years. See release.js — post-production alone is five to twelve months.
-export function trendNote(s, genre) {
+// What the trend is doing, and the trap in it: you are choosing now for something that
+// opens later — a blockbuster two years out, a guest spot on a series in a few months.
+// Mirrors POST_MONTHS in release.js, which this file cannot import without a cycle.
+const POST_MID = { oneoff: 1, small: 3, indie: 6, episode: 3, recurring: 3, prestige: 5, feature: 7, blockbuster: 9 };
+export function opensIn(p) {
+  const months = (p.monthsLeft || p.months || 1) + (POST_MID[p.scale] || 6);
+  return months <= 6 ? 'in a few months' : months <= 15 ? 'in about a year' : 'in about two years';
+}
+export function trendNote(s, p) {
   const hot = hotGenre(s);
-  if (genre === hot) return `${genre} is what everyone is watching right now — and you open in about two years.`;
-  return `${hot} is what everyone is watching right now. This is ${genre}.`;
+  if (p.genre === hot) return `${p.genre} is what everyone is watching right now — and you open ${opensIn(p)}.`;
+  return `${hot} is what everyone is watching right now. This is ${p.genre}.`;
 }
 
 // ── the room ──────────────────────────────────────────────────────────────────
@@ -160,8 +167,8 @@ export function pushTake(s, takeId) {
     s.lastEvent = TAKES.straight.said;
     return s;
   }
-  if ((s.ap || 0) <= 0) { s.lastEvent = 'No energy left this period. Live a bit first.'; return s; }
-  s.ap -= 1;
+  if (!canAfford(s, COST.argue)) { s.lastEvent = tooTired(s, COST.argue); return s; }
+  spend(s, COST.argue);
   s.mental = clamp((s.mental || 50) - 2);
   const odds = pushOdds(s, takeId, p);
   if (chance(odds)) {

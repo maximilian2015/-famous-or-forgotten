@@ -1,3 +1,4 @@
+import { COST, canAfford, spend, tooTired } from '../../engine/energy.js';
 import { an } from '../../engine/text.js';
 import { rint, chance, pick } from '../../engine/rng.js';
 import { addTimeline } from '../../engine/timeline.js';
@@ -54,8 +55,8 @@ export function pickShift(s) { const list = s ? availableShifts(s) : SHIFTS; ret
 export function doShift(s, shiftId, quality = 50) {
   const sh = SHIFTS.find((x) => x.id === shiftId) || SHIFTS[0];
   if ((s.ageY || 0) < sh.minAge) { s.lastEvent = `You have to be ${sh.minAge} for that one.`; return s; }
-  if ((s.ap || 0) <= 0) { s.lastEvent = 'No energy left this period. Live a bit first.'; return s; }
-  s.ap = (s.ap || 0) - 1;
+  if (!canAfford(s, COST.shift)) { s.lastEvent = tooTired(s, COST.shift); return s; }
+  spend(s, COST.shift);
   // Do it well and they tip, ask you back, round it up. Do it badly and you get docked.
   const mult = quality >= 80 ? 1.35 : quality >= 55 ? 1.1 : quality >= 30 ? 0.85 : 0.55;
   const pay = Math.round(sh.base * mult * (0.9 + Math.random() * 0.25));

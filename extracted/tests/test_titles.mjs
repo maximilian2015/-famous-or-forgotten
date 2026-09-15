@@ -4,7 +4,7 @@ let fails = 0;
 const ok = (n, c, e = '') => { if (!c) { fails++; console.log('FAIL  ' + n + (e ? ' :: ' + e : '')); } else console.log('ok    ' + n); };
 const st = (over) => ({ version: 'x', ageY: 30, stage: 'career', dream: 'actor', hasApartment: true, housing: 'flat',
   cash: 50000, mental: 70, health: 85, acting: 80, singing: 0, charisma: 60, looks: 60, luck: 50, scandal: 0,
-  fame: 62, respect: 55, ap: 3, year: 2060, month: 0, filmography: [], discography: [], releases: [], frozen: [],
+  fame: 62, respect: 55, ap: 100, year: 2060, month: 0, filmography: [], discography: [], releases: [], frozen: [],
   offers: [], genreXP: {}, timeline: [], ...over });
 
 // Found by playing: "Late Echo" was on the board twice at once, on two different shelves.

@@ -14,7 +14,7 @@ for (let i = 0; i < 120; i++) {
   const s = createInitialState({ name: 'P' + i, dream: 'actor', created: true });
   beginLife(s);
   Object.assign(s, { stage: 'career', ageY: 20, year: 2050, month: 0, hasApartment: true,
-    housing: 'room', cash: 30000, alive: true, ap: 3, apMax: 3, apMaxEff: 3 });
+    housing: 'room', cash: 30000, alive: true, ap: 100, apMax: 100, apMaxEff: 100 });
   let t = s, exp = 0, sawOffer = 0;
   for (let m = 0; m < 70 * 12; m++) {
     t.bigMoment = null; t.pendingArc = null;

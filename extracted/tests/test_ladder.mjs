@@ -12,7 +12,7 @@ function born(over) {
   const s = createInitialState({ name: 'F', dream: 'actor', created: true });
   beginLife(s);
   return Object.assign(s, { stage: 'career', ageY: 36, year: 2066, month: 0, hasApartment: true,
-    livingWith: 'own_place', housing: 'flat', cash: 900000, alive: true, ap: 3, apMax: 3, apMaxEff: 3,
+    livingWith: 'own_place', housing: 'flat', cash: 900000, alive: true, ap: 100, apMax: 100, apMaxEff: 100,
     fame: 60, peakFame: 60, _idleMonths: 12,
     filmography: [{ title: 'x', rating: 80, tier: 'lead', role: 'Lead', year: 2064 }] }, over);
 }

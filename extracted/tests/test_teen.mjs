@@ -3,7 +3,7 @@ import { SHIFTS, availableShifts, pickShift, doShift } from '../src/systems/life
 
 let fails = 0;
 const ok = (n, c, e = '') => { if (!c) { fails++; console.log('FAIL  ' + n + (e ? ' :: ' + e : '')); } else console.log('ok    ' + n); };
-const st = (over) => ({ version: 'x', ageY: 15, stage: 'teen', ap: 3, cash: 0, mental: 60, health: 80,
+const st = (over) => ({ version: 'x', ageY: 15, stage: 'teen', ap: 100, cash: 0, mental: 60, health: 80,
   confidence: 40, charisma: 40, discipline: 40, acting: 0, singing: 0, fame: 0, dream: 'actor',
   family: [{ id: 'p1', relation: 'Mother', alive: true, relationship: 70 }], timeline: [], ...over });
 

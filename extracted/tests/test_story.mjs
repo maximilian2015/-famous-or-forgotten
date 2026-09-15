@@ -14,7 +14,7 @@ function actor(over = {}) {
   const s = createInitialState({ name: 'Vera Sol', dream: 'actor', created: true });
   beginLife(s);
   Object.assign(s, { stage: 'career', ageY: 34, year: 2060, month: 0, hasApartment: true,
-    housing: 'flat', cash: 2000000, alive: true, ap: 3, apMax: 3, apMaxEff: 3, acting: 82,
+    housing: 'flat', cash: 2000000, alive: true, ap: 100, apMax: 100, apMaxEff: 100, acting: 82,
     fame: 60, peakFame: 60, respect: 60, looks: 60, mental: 70, health: 80,
     offers: [], castingPool: [], submissions: [], running: [], releases: [], laterOffers: [] });
   s.family = []; s.people = [];
@@ -87,7 +87,7 @@ function shoot(s, over = {}) {
   (p.crew || [])[0].bond = 95;
   const before = s.ap;
   S.pushTake(s, 'about');
-  ok('arguing costs the energy either way', s.ap === before - 1);
+  ok('arguing costs the energy either way', s.ap === before - 10, String(before - s.ap));
   ok('and it settles the question once', (S.pushTake(s, 'bigger'), p.take !== 'bigger'), p.take);
 }
 {

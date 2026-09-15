@@ -6,7 +6,7 @@ import { tryForBaby } from '../src/systems/life/dating.js';
 let fails = 0;
 const ok = (n, c, e = '') => { if (!c) { fails++; console.log('FAIL  ' + n + (e ? ' :: ' + e : '')); } else console.log('ok    ' + n); };
 const st = (housing, over) => ({ version: 'x', ageY: 30, stage: 'career', hasApartment: true, housing,
-  cash: 50000, mental: 50, health: 60, looks: 50, diet: 'cook', gym: false, ap: 3, apMax: 3,
+  cash: 50000, mental: 50, health: 60, looks: 50, diet: 'cook', gym: false, ap: 100, apMax: 100,
   family: [], timeline: [], cooldowns: {}, ...over });
 
 // every tier has to declare all five effects
@@ -42,7 +42,7 @@ ok('living with parents has no housing penalty', infectionOdds({ ...st('room'), 
 
 // energy
 ok('a room gives no extra energy', homeEnergy(st('room')) === 0);
-ok('a canal house gives an hour back', homeEnergy(st('house')) === 1);
+ok('a canal house gives fifteen energy a month back', homeEnergy(st('house')) === 15);
 ok('parents give nothing either', homeEnergy({ ...st('house'), hasApartment: false }) === 0);
 
 // closeness scales with somewhere to sit down

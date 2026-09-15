@@ -8,7 +8,7 @@ import { negotiationFor } from '../src/systems/career/negotiate.js';
 let fails = 0;
 const ok = (n, c, e = '') => { if (!c) { fails++; console.log('FAIL  ' + n + (e ? ' :: ' + e : '')); } else console.log('ok    ' + n); };
 const st = (over) => ({ version: 'x', ageY: 30, stage: 'career', dream: 'actor', cash: 0, fame: 40, respect: 40,
-  mental: 70, acting: 70, singing: 0, looks: 50, charisma: 50, luck: 50, scandal: 0, confidence: 40, ap: 3,
+  mental: 70, acting: 70, singing: 0, looks: 50, charisma: 50, luck: 50, scandal: 0, confidence: 40, ap: 100,
   quote: 0, genreXP: {}, filmography: [], discography: [], offers: [], releases: [], frozen: [], timeline: [],
   year: 2030, month: 0, ...over });
 const prod = (over) => ({ title: 'Golden Echo', role: 'Lead', type: 'Feature Film', genre: 'Thriller',

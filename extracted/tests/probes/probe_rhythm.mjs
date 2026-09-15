@@ -15,7 +15,7 @@ function fresh() {
   const s = createInitialState({ name: 'Player One', dream: 'actor', created: true });
   beginLife(s);
   Object.assign(s, { stage: 'career', ageY: 19, year: 2045, month: 0, hasApartment: true,
-    housing: 'room', cash: 4000, alive: true, ap: 3, apMax: 3, apMaxEff: 3 });
+    housing: 'room', cash: 4000, alive: true, ap: 100, apMax: 100, apMaxEff: 100 });
   return s;
 }
 const clear = (s) => { s.bigMoment = null; s.pendingArc = null; };

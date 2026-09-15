@@ -1,6 +1,8 @@
+import { COST, canAfford, spend, tooTired } from '../../engine/energy.js';
 import { addTimeline } from '../../engine/timeline.js';
 import { rint, chance } from '../../engine/rng.js';
 import { markRested } from '../life/strain.js';
+import { onCooldown, markUsed } from '../../engine/cooldown.js';
 const clamp = (v) => Math.max(0, Math.min(100, v));
 // What teaching can take you to. It has to be earned on real jobs, because the alternative
 // is what this used to do: start every actor at a ceiling of 50 and count a deodorant
@@ -55,14 +57,23 @@ export const ACTIONS = [
       // Resting properly is the only thing that pulls the strain down faster than time does.
       markRested(s);
       return 'You took time for yourself. Mind and body thank you.'; } },
-  { id: 'school', label: () => 'Focus on school', desc: () => 'Build discipline for the road ahead', when: (s) => s.stage === 'teen' || s.stage === 'child',
-    run: (s) => { const g = rint(1, 3); s.discipline = clamp(s.discipline + g); return `You put in the work at school. Discipline +${g}.`; } },
+  // Twice a year, not six times. A hundred energy against fifteen a go meant six terms of
+  // homework in every year of childhood, discipline maxed at eight, and six identical lines
+  // on the timeline for each year — there was no choice left in it.
+  { id: 'school', label: () => 'Focus on school', desc: (s) => onCooldown(s, 'school:2') ? 'That is this year’s homework done — go and be a kid' : 'Build discipline for the road ahead', when: (s) => s.stage === 'teen' || s.stage === 'child',
+    blocked: (s) => (onCooldown(s, 'school:2') ? 'You have done this year’s work. The rest of it is being young.' : ''),
+    run: (s) => {
+      markUsed(s, onCooldown(s, 'school:1') ? 'school:2' : 'school:1');
+      const g = rint(2, 4); s.discipline = clamp(s.discipline + g); return `You put in the work at school. Discipline +${g}.`; } },
 ];
 export function runAction(s, id) {
   const a = ACTIONS.find((x) => x.id === id);
   if (!a || (a.when && !a.when(s))) return s;
-  if ((s.ap || 0) <= 0) { s.lastEvent = 'No energy left this period. Live a bit — time gives you room to act again.'; return s; }
-  s.ap = (s.ap || 0) - 1;
+  // Said before anything is charged, and not written to the timeline.
+  const why = a.blocked ? a.blocked(s) : '';
+  if (why) { s.lastEvent = why; return s; }
+  if (!canAfford(s, COST.careerAction)) { s.lastEvent = tooTired(s, COST.careerAction); return s; }
+  spend(s, COST.careerAction);
   const msg = a.run(s); s.lastEvent = msg; addTimeline(s, msg);
   return s;
 }

@@ -1,3 +1,4 @@
+import { COST, canAfford, spend, tooTired } from '../../engine/energy.js';
 // Messages.
 //
 // The phone rang about offers and about nothing else. Maxi: "Messages is always empty."
@@ -110,7 +111,7 @@ export function smsTick(s) {
   //    is exactly when they ask.
   if (s.partner && (s.partner.relationship || 0) >= 45 && !pending(s, 'over') && !cooling(s, 'over') && chance(s.production ? 48 : 36)) {
     push(s, { from: s.partner.name, pid: s.partner.id, tag: 'over', text: pick(s.partner.livingTogether ? COME_HOME : COME_OVER),
-      replies: [{ label: 'On my way', ap: 1, rel: 5, mental: 3, reply: `You go. It is a good night, and ${first(s.partner)} does not ask about work once.` },
+      replies: [{ label: 'On my way', ap: 10, rel: 5, mental: 3, reply: `You go. It is a good night, and ${first(s.partner)} does not ask about work once.` },
         { label: s.production ? 'Can’t. Shooting.' : 'Can’t tonight', rel: -3, reply: `${first(s.partner)}: "Ok." Two letters.` }] });
     coolDown(s, 'over', 1);
   }
@@ -119,7 +120,7 @@ export function smsTick(s) {
   if (sc - (s._smsScandal || 0) >= 8) {
     const par = who.find((t) => t.rel === 'parent');
     if (par && !pending(s, 'papers')) push(s, { from: par.p.name, pid: par.p.id, tag: 'papers', text: pick(PAPERS),
-      replies: [{ label: 'Call them', ap: 1, rel: 5, mental: 2, reply: `An hour on the phone. Most of it was not about the papers.` }, { label: 'Not now', rel: -4, mental: -1, reply: 'You do not ring. It sits there.' }] });
+      replies: [{ label: 'Call them', ap: 10, rel: 5, mental: 2, reply: `An hour on the phone. Most of it was not about the papers.` }, { label: 'Not now', rel: -4, mental: -1, reply: 'You do not ring. It sits there.' }] });
   }
   s._smsScandal = sc;
   // 5. Nominated, and somebody saw the list.
@@ -134,7 +135,7 @@ export function smsTick(s) {
   if (friends.length && !pending(s, 'drinks') && !cooling(s, 'drinks') && chance(32)) {
     const t = pick(friends);
     push(s, { from: t.p.name, pid: t.p.id, tag: 'drinks', text: pick(DRINKS),
-      replies: [{ label: 'Go', ap: 1, rel: 5, mental: 2, reply: `A night that is not about you. You had forgotten what those were like.` }, { label: 'Rain check', rel: -1, reply: `${first(t.p)}: "Sure." You both know.` }] });
+      replies: [{ label: 'Go', ap: 10, rel: 5, mental: 2, reply: `A night that is not about you. You had forgotten what those were like.` }, { label: 'Rain check', rel: -1, reply: `${first(t.p)}: "Sure." You both know.` }] });
     coolDown(s, 'drinks', 1);
   }
   // 7. Family, now and then. Sunday.
@@ -142,7 +143,7 @@ export function smsTick(s) {
   if (fam.length && !pending(s, 'lunch') && !cooling(s, 'lunch') && chance(24)) {
     const t = pick(fam);
     push(s, { from: t.p.name, pid: t.p.id, tag: 'lunch', text: pick(LUNCH),
-      replies: [{ label: 'Go', ap: 1, rel: 4, mental: 2, reply: `Three hours, too much food, and nobody asked about the film. That was the point.` }, { label: 'Next time', rel: -1, reply: `${first(t.p)}: "Next time, then." They have said that before.` }] });
+      replies: [{ label: 'Go', ap: 10, rel: 4, mental: 2, reply: `Three hours, too much food, and nobody asked about the film. That was the point.` }, { label: 'Next time', rel: -1, reply: `${first(t.p)}: "Next time, then." They have said that before.` }] });
     coolDown(s, 'lunch', 2);
   }
   // 8. You were on television, or in the galleries, and somebody saw.
@@ -156,7 +157,7 @@ export function smsTick(s) {
   const wrapped = (s.filmography || []).find((c) => c.wrappedAt === now);
   if (wrapped && who.length && !pending(s, 'wrap') && !cooling(s, 'wrap')) {
     const t = s.partner && (s.partner.relationship || 0) >= 40 ? { p: s.partner, rel: 'partner' } : pick(who);
-    push(s, { from: t.p.name, pid: t.p.id, tag: 'wrap', text: pick(WRAP), replies: [{ label: 'Yes', ap: 1, rel: 4, mental: 3, reply: 'The first night in months that ends when it ends.' }, { label: 'Too tired', rel: -1, mental: 1, reply: 'You sleep for eleven hours instead. Also fine.' }] });
+    push(s, { from: t.p.name, pid: t.p.id, tag: 'wrap', text: pick(WRAP), replies: [{ label: 'Yes', ap: 10, rel: 4, mental: 3, reply: 'The first night in months that ends when it ends.' }, { label: 'Too tired', rel: -1, mental: 1, reply: 'You sleep for eleven hours instead. Also fine.' }] });
     coolDown(s, 'wrap', 2);
   }
   // 10. Last month was the anniversary. Either you remembered, or you did not.
@@ -168,7 +169,7 @@ export function smsTick(s) {
     push(s, { from: s.partner.name, pid: s.partner.id, tag: 'anniv',
       text: remembered ? pick(ANNIV_YES).replace('{n}', String(yrs)) : pick(ANNIV_NO).replace('{n}', String(yrs)),
       replies: remembered ? [{ label: 'Reply', rel: 2, reply: `${first(s.partner)} sends the photograph from that night.` }]
-        : [{ label: 'Make it up to them', ap: 1, rel: 7, mental: 1, reply: 'You cancel a thing and turn up with the right flowers for once. It helps. It does not fix it.' }, { label: 'Say sorry', rel: 1, reply: `${first(s.partner)}: "Ok." You have seen that one before.` }] });
+        : [{ label: 'Make it up to them', ap: 10, rel: 7, mental: 1, reply: 'You cancel a thing and turn up with the right flowers for once. It helps. It does not fix it.' }, { label: 'Say sorry', rel: 1, reply: `${first(s.partner)}: "Ok." You have seen that one before.` }] });
   }
   // ── somebody with money ──────────────────────────────────────────────────────
   const rich = s.partner && ['money', 'serious'].includes(s.partner.means) ? s.partner : null;
@@ -211,8 +212,9 @@ export function smsTick(s) {
 export function smsReply(s, id, i) {
   const m = (s.sms || []).find((x) => x.id === id); if (!m) return s;
   const r = m.replies && m.replies[i]; if (!r) return s;
-  if (r.ap && (s.ap || 0) < r.ap) { s.lastEvent = 'No energy left this period. Live a bit first.'; return s; }
-  if (r.ap) s.ap = (s.ap || 0) - r.ap;
+  const need = r.ap ? COST.sms : 0;
+  if (need && !canAfford(s, need)) { s.lastEvent = tooTired(s, need); return s; }
+  if (need) spend(s, need);
   const found = findPerson(s, m.pid);
   let moved = 0;
   if (found && r.rel) moved = applyBond(s, found.p, r.rel);

@@ -1,5 +1,6 @@
-import { useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { theme } from '../ui/theme.js';
+import { EnergyBar } from '../ui/components/EnergyBar.jsx';
 import { AppTheme } from '../ui/appTheme.js';
 import { visibleApps } from './apps/registry.js';
 import { Messages } from './apps/Messages.jsx';
@@ -18,6 +19,22 @@ export function Phone({ g }) {
   const [openApp, setOpenApp] = useState(null);
   const [ocTab, setOcTab] = useState(null);
   const apps = visibleApps(g);
+  // What just happened, said inside the phone. Every app used to write its result to the
+  // Home screen only: a shift ended and the jobs list simply came back, a date happened and
+  // nothing said how it went, Accept did nothing and the reason was printed two taps away.
+  // OpenCall keeps its own result screen, so it is left out.
+  const [toast, setToast] = useState(null);
+  const seenRef = useRef(g.lastEvent);
+  useEffect(() => {
+    if (!openApp || openApp === 'opencall') { seenRef.current = g.lastEvent; return; }
+    if (g.lastEvent && g.lastEvent !== seenRef.current) {
+      seenRef.current = g.lastEvent;
+      setToast(g.lastEvent);
+      const id = setTimeout(() => setToast(null), 7000);
+      return () => clearTimeout(id);
+    }
+  }, [g.lastEvent, openApp]);
+  useEffect(() => { seenRef.current = g.lastEvent; setToast(null); }, [openApp]);
   // "Not in the career stage" is not the same thing as "a teenager". An actor who loses
   // their flat drops back to `moving_out`, and this called a thirty-one-year-old with a
   // feature credit a teen: the whole casting board vanished and the app told them real
@@ -41,13 +58,16 @@ export function Phone({ g }) {
         <div style={{ width: 22, height: 22, borderRadius: 7, background: app.bg, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: app.icon.length > 2 ? 8 : 12, fontWeight: 900, color: '#fff', boxShadow: `0 0 12px ${accent}66` }}>{app.icon}</div>
         <div style={{ fontSize: 15, fontWeight: 900, flex: 1, color: accent, textShadow: `0 0 14px ${accent}66` }}>{app.name}</div>
         <div style={{ display: 'flex', gap: 4, alignItems: 'center' }}>
-          {Array.from({ length: g.apMaxEff || g.apMax || 3 }).map((_, i) => (<span key={i} style={{ width: 8, height: 8, borderRadius: '50%', background: i < (g.ap || 0) ? accent : 'rgba(255,255,255,.14)', boxShadow: i < (g.ap || 0) ? `0 0 6px ${accent}` : 'none' }} />))}
+          <EnergyBar g={g} accent={accent} compact />
         </div>
       </div>
       {/* Without this, every button in every app just goes dead and the app reads as broken —
           the "out of energy" line only ever appeared on the Home screen. */}
-      {(g.ap || 0) <= 0 && <div style={{ fontSize: 11.5, color: theme.gold, textAlign: 'center', padding: '8px 12px', background: 'rgba(255,209,102,.08)', borderBottom: `1px solid ${theme.line}`, lineHeight: 1.45 }}>
+      {(g.ap || 0) < 5 && <div style={{ fontSize: 11.5, color: theme.gold, textAlign: 'center', padding: '8px 12px', background: 'rgba(255,209,102,.08)', borderBottom: `1px solid ${theme.line}`, lineHeight: 1.45 }}>
         Out of energy — nothing here will respond until you live some time.
+      </div>}
+      {toast && <div onClick={() => setToast(null)} className="fof-in" style={{ position: 'relative', fontSize: 12.5, color: theme.text, padding: '9px 13px', background: `${accent}1f`, borderBottom: `1px solid ${accent}44`, lineHeight: 1.5, cursor: 'pointer' }}>
+        {toast}
       </div>}
       <div style={{ position: 'relative', padding: '12px 13px' }}>
         {openApp === 'messenger' && <Messages g={g} />}

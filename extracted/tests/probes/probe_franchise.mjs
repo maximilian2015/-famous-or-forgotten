@@ -12,7 +12,7 @@ function star(fame = 78) {
   beginLife(s);
   Object.assign(s, { stage: 'career', ageY: 30, year: 2056, month: 0, hasApartment: true,
     housing: 'flat', cash: 3000000, alive: true, fame, peakFame: fame, acting: 88, respect: 70,
-    ap: 3, apMax: 3, apMaxEff: 3, offers: [], castingPool: [], submissions: [], running: [], releases: [] });
+    ap: 100, apMax: 100, apMaxEff: 100, offers: [], castingPool: [], submissions: [], running: [], releases: [] });
   return s;
 }
 

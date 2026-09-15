@@ -1,4 +1,5 @@
 import { rint, chance, pick } from '../../engine/rng.js';
+import { COST, canAfford, spend, tooTired } from '../../engine/energy.js';
 import { uid } from '../../engine/id.js';
 import { setQuote, setRespect } from '../meta/status.js';
 import { addTimeline } from '../../engine/timeline.js';
@@ -131,8 +132,8 @@ export function startProduction(s, offer) {
 }
 export function rehearse(s) {
   const p = s.production; if (!p) return s;
-  if ((s.ap || 0) <= 0) { s.lastEvent = 'No energy left this period. Live a bit first.'; return s; }
-  s.ap = (s.ap || 0) - 1;
+  if (!canAfford(s, COST.rehearse)) { s.lastEvent = tooTired(s, COST.rehearse); return s; }
+  spend(s, COST.rehearse);
   const gain = rint(4, 9);
   p.meter = clamp(p.meter + gain);
   p._workedMonth = (s.year || 0) * 12 + (s.month || 0);
@@ -141,8 +142,8 @@ export function rehearse(s) {
 }
 export function riskyTake(s, quality = 0) {
   const p = s.production; if (!p) return s;
-  if ((s.ap || 0) <= 0) { s.lastEvent = 'No energy left this period. Live a bit first.'; return s; }
-  s.ap = (s.ap || 0) - 1;
+  if (!canAfford(s, COST.take)) { s.lastEvent = tooTired(s, COST.take); return s; }
+  spend(s, COST.take);
   p._workedMonth = (s.year || 0) * 12 + (s.month || 0);
   if (quality >= 80) {
     const gain = rint(16, 22);
@@ -163,8 +164,8 @@ export function riskyTake(s, quality = 0) {
 export function bondWithCrew(s, crewId) {
   const p = s.production; if (!p) return s;
   const c = (p.crew || []).find((x) => x.id === crewId); if (!c) return s;
-  if ((s.ap || 0) <= 0) { s.lastEvent = 'No energy left this period. Live a bit first.'; return s; }
-  s.ap = (s.ap || 0) - 1;
+  if (!canAfford(s, COST.bond)) { s.lastEvent = tooTired(s, COST.bond); return s; }
+  spend(s, COST.bond);
   p._workedMonth = (s.year || 0) * 12 + (s.month || 0);
   const gain = rint(6, 14);
   c.bond = clamp(c.bond + gain);
@@ -361,7 +362,9 @@ function wrapProduction(s) {
   // Whatever the monthly instalments did not cover — rounding, and the offers that were
   // written before instalments existed.
   const owed = Math.max(0, (p.salary || 0) - (p.paid || 0));
-  if (owed > 0) paid(s, owed, `"${credit.title}" — final payment`);
+  // Rounding alone left "final payment: +€1" on the timeline. Pennies go in quietly.
+  if (owed >= 50) paid(s, owed, `"${credit.title}" — final payment`);
+  else if (owed > 0) s.cash = (s.cash || 0) + owed;
   s.confidence = clamp((s.confidence || 0) + 2);
   // What the crew says about you travels immediately — long before anyone sees the film.
   const lead = p.crew[0];

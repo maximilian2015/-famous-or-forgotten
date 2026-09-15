@@ -1,3 +1,4 @@
+import { COST, canAfford, spend, tooTired } from '../../engine/energy.js';
 import { count } from '../../engine/text.js';
 import { uid } from '../../engine/id.js';
 import { rint, chance, pick } from '../../engine/rng.js';
@@ -301,10 +302,10 @@ export function prepareFor(s, id) {
   const c = (s.castingPool || []).find((x) => x.id === id); if (!c) return s;
   const step = nextPrep(c);
   if (!step) { s.lastEvent = 'You know it as well as you are going to.'; return s; }
-  if ((s.ap || 0) <= 0) { s.lastEvent = 'No energy left this period. Live a bit first.'; return s; }
+  if (!canAfford(s, COST.sides)) { s.lastEvent = tooTired(s, COST.sides); return s; }
   const cost = Math.round(step.cost * (1 + Math.min(2, (s.fame || 0) / 60)));
   if (cost > (s.cash || 0)) { s.lastEvent = `A coach for this costs €${cost.toLocaleString()}. You cannot cover it.`; return s; }
-  s.ap -= 1; s.cash = (s.cash || 0) - cost;
+  spend(s, COST.sides); s.cash = (s.cash || 0) - cost;
   c.prep = prepOf(c) + 1;
   s.lastEvent = step.level === 1
     ? `You went through "${c.title}" line by line. You will walk in knowing it.`
@@ -342,7 +343,12 @@ function answerSubmission(s, sub) {
     episodes: c.episodes, episodeFee: c.episodeFee, season: c.perEpisode ? 1 : 0,
     stability: c.stability, perEpisode: c.perEpisode, medium: c.medium,
     prestigeScore: rint(sc.prestige[0], sc.prestige[1]) + Math.round((sub.quality - 50) * 0.12) + riskPrestige(c.stability),
-    expires: (s.year || 0) * 12 + (s.month || 0) + rint(2, 4),
+    // Counted down by offersTick like every other offer. This used to be an absolute month
+    // under a different name that nothing read: a part you won and never answered sat in
+    // Messages for life, and two of them shut the agent's pipeline for good. One extra,
+    // because offersTick runs later in the same tick and takes the first month straight off.
+    deadline: rint(2, 4) + 1,
+    waitsForWrap: !!s.production,   // read while shooting: the offer waits for the wrap
   });
   s.lastEvent = `You got "${c.title}". They want you.`;
   addTimeline(s, `Booked ${c.title}.`);
@@ -368,8 +374,8 @@ export function auditionFor(s, id, quality = 50) {
   const fit = canWork(s);
   if (!fit.ok) { s.lastEvent = fit.why; return s; }
   if (reach(s) < (c.minFame || 0)) { s.lastEvent = 'You need more fame before they will see you for this.'; return s; }
-  if ((s.ap || 0) <= 0) { s.lastEvent = 'No energy left this period. Live a bit first.'; return s; }
-  s.ap = (s.ap || 0) - 1;
+  if (!canAfford(s, COST.audition)) { s.lastEvent = tooTired(s, COST.audition); return s; }
+  spend(s, COST.audition);
   const odds = clamp(castingChance(s, c) + (quality - 50) * 0.55 + prepBonus(c));
   // Anything with a real schedule does not answer you in the room. You did your read, you
   // went home, and somewhere between one and three months later a phone rings or it does

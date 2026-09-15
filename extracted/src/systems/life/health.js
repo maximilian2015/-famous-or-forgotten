@@ -1,3 +1,4 @@
+import { COST, canAfford, spend, tooTired } from '../../engine/energy.js';
 import { inCareer } from '../../engine/stage.js';
 import { rint, chance, pick } from '../../engine/rng.js';
 import { addTimeline } from '../../engine/timeline.js';
@@ -18,10 +19,19 @@ export const ILLNESSES = {
   ],
   serious: [
     { id: 'pneumonia', name: 'Pneumonia', drain: 6, cure: 2800, months: 3, freezes: true },
-    { id: 'ulcer', name: 'An ulcer', drain: 5, cure: 3800, months: 4, freezes: true },
-    { id: 'heart', name: 'Heart trouble', drain: 7, cure: 9500, months: 5, freezes: true },
+    { id: 'mono', name: 'Glandular fever', drain: 4, cure: 1400, months: 3, freezes: true, maxAge: 32 },
+    { id: 'fracture', name: 'A broken ankle', drain: 3, cure: 2200, months: 3, freezes: true },
+    { id: 'ulcer', name: 'An ulcer', drain: 5, cure: 3800, months: 4, freezes: true, minAge: 26 },
+    { id: 'heart', name: 'Heart trouble', drain: 7, cure: 9500, months: 5, freezes: true, minAge: 40 },
   ],
 };
+// A nineteen-year-old does not get heart trouble after a bad month; a sixty-year-old does
+// not get glandular fever. The serious list is drawn by age.
+export function seriousFor(s) {
+  const age = s.ageY || 0;
+  const ok = ILLNESSES.serious.filter((i) => (i.minAge == null || age >= i.minAge) && (i.maxAge == null || age <= i.maxAge));
+  return ok.length ? ok : ILLNESSES.serious;
+}
 
 // Insurance is the same bet as in life: a monthly bill against a bill you can't predict.
 export const INSURANCE = {
@@ -110,7 +120,7 @@ export function healthTick(s) {
       s.lastEvent = `${was} has finally passed. You feel human again.`;
       addTimeline(s, `Recovered from ${was.toLowerCase()}.`);
     } else if (!s.illness.serious && s.illness.months >= 2 && chance(22)) {
-      const up = pick(ILLNESSES.serious);
+      const up = pick(seriousFor(s));
       s.illness = { ...up, serious: true, months: 0, left: up.months };
       s.lastEvent = `Left too long, it became something real: ${up.name.toLowerCase()}. Everything else stops.`;
       addTimeline(s, `It got worse: ${up.name.toLowerCase()}.`, true);
@@ -134,7 +144,7 @@ export function healthTick(s) {
     const catchable = ((s.year || 0) * 12 + (s.month || 0)) >= (s.immuneUntil || 0);
     if (catchable && chance(infectionOdds(s))) {
       const serious = h < 35 ? chance(50) : chance(12);
-      const ill = pick(serious ? ILLNESSES.serious : ILLNESSES.minor);
+      const ill = pick(serious ? seriousFor(s) : ILLNESSES.minor);
       s.illness = { ...ill, serious, months: 0, left: ill.months };
       s.lastEvent = `You've come down with something: ${ill.name.toLowerCase()}.${ill.freezes ? ' Work stops until you are through it.' : ''}`;
       addTimeline(s, `Fell ill: ${ill.name.toLowerCase()}.`, true);
@@ -180,8 +190,8 @@ export function seeDoctor(s) {
 // Push through it yourself: a minigame instead of a bill. Free, but you can make it worse.
 export function pushThrough(s, quality = 50) {
   if (!s.illness) return s;
-  if ((s.ap || 0) <= 0) { s.lastEvent = 'No energy left this period. Live a bit first.'; return s; }
-  s.ap = (s.ap || 0) - 1;
+  if (!canAfford(s, COST.doctor)) { s.lastEvent = tooTired(s, COST.doctor); return s; }
+  spend(s, COST.doctor);
   const was = s.illness.name;
   if (quality >= 75) {
     s.illness = null;

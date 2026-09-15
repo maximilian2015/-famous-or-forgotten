@@ -4,7 +4,10 @@ import { play } from '../sfx.js';
 
 // Press-your-luck grid, minesweeper-flavoured. Reveal tiles one at a time: each clean one
 // gets you further, but some hide trouble. Bank what you've got, or push for more.
-export function GridRisk({ cols = 4, rows = 3, bad = 4, labelSafe = '✓', labelBad = '✕', onResult }) {
+// `full` is how many clean tiles count as a perfect result. By default it is every clean
+// tile on the board, which suits a shift; a read is scored against half of them, because a
+// grid that only paid out at eight-for-eight was a coin flip that lost on average.
+export function GridRisk({ cols = 4, rows = 3, bad = 4, full = 0, labelSafe = '✓', labelBad = '✕', onResult }) {
   const total = cols * rows;
   const badSet = useRef(null);
   if (badSet.current === null) {
@@ -16,7 +19,8 @@ export function GridRisk({ cols = 4, rows = 3, bad = 4, labelSafe = '✓', label
   const [busted, setBusted] = useState(null);
   const doneRef = useRef(false);
   const safeTotal = total - badSet.current.size;
-  const quality = Math.round((revealed.length / safeTotal) * 100);
+  const goal = full > 0 ? Math.min(full, safeTotal) : safeTotal;
+  const quality = Math.min(100, Math.round((revealed.length / goal) * 100));
 
   function reveal(i) {
     if (doneRef.current || revealed.includes(i)) return;
@@ -40,7 +44,7 @@ export function GridRisk({ cols = 4, rows = 3, bad = 4, labelSafe = '✓', label
     const next = [...revealed, i];
     setRevealed(next);
     play('tap');
-    if (next.length >= safeTotal) { doneRef.current = true; play('good'); setTimeout(() => onResult(100), 500); }
+    if (next.length >= goal) { doneRef.current = true; play('good'); setTimeout(() => onResult(100), 500); }
   }
   function bank() {
     if (doneRef.current || revealed.length === 0) return;

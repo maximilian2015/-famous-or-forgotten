@@ -64,7 +64,7 @@ export const TIER_OPENS = {
   star: [
     'Season lead on a prestige series',
     'Presenting at an awards show',
-    'A canal house — an extra Energy every month',
+    'A canal house — 15 more energy every month',
   ],
   alist: [
     'Studio blockbusters, once the tentpoles are open to you',
@@ -96,7 +96,10 @@ export const TIER_OPENS = {
 // The ladder is still far steeper at the top than the real industry. That is the point:
 // an icon is paid obscenely for anything. But film stays the biggest single prize.
 export const QUOTE = {
-  tv_daytime:   { unknown: [900, 2500],    rising: [2500, 9000],      known: [9000, 45000],       star: [45000, 200000],      alist: [200000, 550000],      icon: [550000, 900000] },
+  // Daytime has no money. A soap paid a Star €200k an episode — thirty-three of them — and
+  // the season out-earned a studio picture. It tops out where daytime tops out, and above
+  // Star the shelf closes: nobody offers an A-lister a soap, and nobody takes one.
+  tv_daytime:   { unknown: [900, 2500],    rising: [2500, 7000],      known: [7000, 16000],       star: [16000, 30000],       alist: null,                  icon: null },
   tv_network:   { unknown: [1500, 4500],   rising: [4500, 25000],     known: [25000, 130000],     star: [130000, 600000],     alist: [600000, 1800000],     icon: [1800000, 3500000] },
   tv_prestige:  { unknown: null,           rising: [25000, 60000],    known: [60000, 320000],     star: [320000, 1500000],    alist: [1500000, 4000000],    icon: [4000000, 8000000] },
   film_indie:   { unknown: [25000, 60000], rising: [120000, 300000],  known: [300000, 800000],    star: [800000, 2500000],    alist: [2500000, 6000000],    icon: [6000000, 12000000] },

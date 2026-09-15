@@ -10,7 +10,7 @@
 // Nothing here is a second currency. There is one number, it is the one on the Respect
 // screen, and it goes down when you use it.
 
-import { setRespect, quoteFor } from '../meta/status.js';
+import { setRespect } from '../meta/status.js';
 import { addTimeline } from '../../engine/timeline.js';
 import { rint, chance } from '../../engine/rng.js';
 import { applyBond } from '../life/bonds.js';
@@ -76,8 +76,10 @@ export function askForLead(s, castingId) {
     s.lastEvent = `You asked. They said no — politely, and they will remember you asked. The supporting part is still yours to read for.`;
     return s;
   }
+  // The same offer, scaled to the part: a re-roll of the band could come out LOWER than
+  // the supporting fee, which is not what asking for the lead means.
+  c.salary = Math.round(c.salary / (c.share || 0.5));
   c.role = 'Lead'; c.share = 1; c.askedLead = true;
-  c.salary = Math.round((quoteFor(s, c.medium) || c.salary) * (c.feeFactor || 1));
   s.lastEvent = `They will read you for the lead on ${c.title}. The part is bigger, and so is the fee.`;
   addTimeline(s, `${c.title}: they agreed to read you for the lead.`);
   return s;

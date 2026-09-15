@@ -5,7 +5,7 @@ const { advanceMonth } = await import(P + 'engine/time.js');
 const AG = await import(P + 'systems/career/agent.js');
 function run(withAgent) {
   let s = createInitialState({ name: 'X', dream: 'actor', created: true }); beginLife(s);
-  Object.assign(s, { stage: 'career', ageY: 36, year: 2066, month: 0, alive: true, hasApartment: true, livingWith: 'own_place', housing: 'flat', cash: 500000, ap: 3, apMax: 3, apMaxEff: 3,
+  Object.assign(s, { stage: 'career', ageY: 36, year: 2066, month: 0, alive: true, hasApartment: true, livingWith: 'own_place', housing: 'flat', cash: 500000, ap: 100, apMax: 100, apMaxEff: 100,
     fame: 57, peakFame: 57, respect: 35, acting: 66, filmography: [{ title: 'one', rating: 70, tier: 'lead', role: 'Lead', year: 2064, score: 7 }] });
   if (withAgent) AG.signAgent(s, { name: 'Lena Voss', tier: 'solid' });
   let got = 0;

@@ -11,7 +11,7 @@ const base = () => ({ since: 0, sessions: 0, checks: 0, passed: 0, windowMonths:
   windowRests: 0, medMonths: 0, medsThisMonth: false, pending: null });
 const st = (over) => ({ version: 'x', ageY: 40, gender: 'male', stage: 'career', dream: 'actor',
   hasApartment: true, housing: 'flat', cash: 300000, mental: 55, health: 70, acting: 85, singing: 0,
-  charisma: 60, looks: 58, luck: 50, scandal: 0, fame: 55, respect: 55, ap: 3, apMax: 3, quote: 0,
+  charisma: 60, looks: 58, luck: 50, scandal: 0, fame: 55, respect: 55, ap: 100, apMax: 100, quote: 0,
   year: 0, month: 0, strain: 40, burnout: null, burnouts: 4, scarred: 0, scarTherapy: 0, rehab: null,
   meds: {}, family: [], people: [], filmography: [], releases: [], frozen: [], offers: [], timeline: [],
   genreXP: {}, castingPool: [], alive: true, depression: base(), ...over });
@@ -21,7 +21,7 @@ function step(s, n = 1, opts = {}) {
     s.month++; if (s.month > 11) { s.month = 0; s.year++; }
     if (opts.meds) { s.meds.antidep = 1; usePills(s, 'antidep'); }
     if (opts.rest) s._rested = true;
-    if (opts.therapy && s.depression && !s.depression.sessionThisMonth) { s.ap = 3; seeSomebody(s); }
+    if (opts.therapy && s.depression && !s.depression.sessionThisMonth) { s.ap = 100; seeSomebody(s); }
     depressionTick(s);
     if (s.depression) s.depression.sessionThisMonth = false;
     s._rested = false;
@@ -114,7 +114,7 @@ ok('it does end', !has(bestRun));
 const worstRun = wholeThing({}, WORST);
 ok('doing nothing gets you out too — eventually', !has(worstRun));
 ok('but it keeps two hours of every month, for good', worstRun.scarred === 2, String(worstRun.scarred));
-ok('and the game says what it took', /two hours of every|kept two/.test((worstRun.bigMoment || {}).body || ''),
+ok('and the game says what it took', /two hours of every|kept two|kept sixty/.test((worstRun.bigMoment || {}).body || ''),
   ((worstRun.bigMoment || {}).body || '').slice(-80));
 
 const scars = { 0: 0, 1: 0, 2: 0 };

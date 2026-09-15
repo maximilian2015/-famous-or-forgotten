@@ -16,7 +16,7 @@ function actor(over = {}) {
   const s = createInitialState({ name: 'Vera Sol', dream: 'actor', created: true });
   beginLife(s);
   Object.assign(s, { stage: 'career', ageY: 24, year: 2050, month: 0, hasApartment: true,
-    housing: 'flat', cash: 20000, alive: true, ap: 3, apMax: 3, apMaxEff: 3, acting: 40,
+    housing: 'flat', cash: 20000, alive: true, ap: 100, apMax: 100, apMaxEff: 100, acting: 40,
     fame: 0, peakFame: 0, respect: 20, offers: [], castingPool: [], submissions: [],
     running: [], releases: [], laterOffers: [], frozen: [] });
   Object.assign(s, over);

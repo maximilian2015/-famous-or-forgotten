@@ -15,7 +15,7 @@ const { comboOf } = await import(P + 'engine/combo.js');
 function live(kind, bondToo, years = 15) {
   const s = createInitialState({ name: 'P', dream: 'actor', created: true }); beginLife(s);
   Object.assign(s, { stage: 'career', ageY: 34, year: 2062, month: 0, hasApartment: true, livingWith: 'own_place', housing: 'flat', cash: 900000, alive: true,
-    ap: 3, apMax: 3, apMaxEff: 3, acting: 62, respect: -25, _combo: null,
+    ap: 100, apMax: 100, apMaxEff: 100, acting: 62, respect: -25, _combo: null,
     fame: kind === 'liability' ? 78 : 30, peakFame: kind === 'liability' ? 78 : 30,
     filmography: Array.from({ length: 12 }, (_, i) => ({ title: 'f' + i, rating: 55, tier: 'lead', role: 'Lead', year: 2050 + i, score: 5.5 })) });
   let t = s, off = null, zero = null, credits = 0;

@@ -1,3 +1,4 @@
+import { COST, canAfford, spend, tooTired } from '../../engine/energy.js';
 import { uid } from '../../engine/id.js';
 import { rint, chance, pick } from '../../engine/rng.js';
 import { addTimeline } from '../../engine/timeline.js';
@@ -41,8 +42,8 @@ export function bondGain(s, p) {
 }
 export function deepenRelationship(s, id) {
   const p = (s.people || []).find((x) => x.id === id); if (!p) return s;
-  if ((s.ap || 0) <= 0) { s.lastEvent = 'No energy left this period. Live a bit first.'; return s; }
-  s.ap = (s.ap || 0) - 1;
+  if (!canAfford(s, COST.meet)) { s.lastEvent = tooTired(s, COST.meet); return s; }
+  spend(s, COST.meet);
   const gain = bondGain(s, p);
   const wasBelow = (p.relationship || 0) < 60;
   p.relationship = clamp(p.relationship + gain); s.mental = clamp(s.mental - 1);

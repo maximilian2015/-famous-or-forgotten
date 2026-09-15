@@ -8,7 +8,7 @@ const spouse = () => ({ id: 'f2', name: 'Iris Vale', relation: 'Spouse', age: 32
 const date = () => ({ id: 'd1', name: 'Jonas Kade', gender: 'm', age: 29, job: 'chef', relationship: 45 });
 const contact = () => ({ id: 'c1', name: 'Rita Vale', role: 'Casting Director', industryWeight: 70, relationship: 55, unlocks: 'castingBoost' });
 const st = (over) => ({ version: 'x', ageY: 30, stage: 'career', hasApartment: true, housing: 'flat',
-  cash: 20000, mental: 60, health: 80, charisma: 50, discipline: 40, confidence: 40, ap: 3,
+  cash: 20000, mental: 60, health: 80, charisma: 50, discipline: 40, confidence: 40, ap: 100,
   year: 2030, month: 3, family: [mum()], people: [contact()], timeline: [], _cool: {}, ...over });
 
 const ids = (s, id) => interactionsFor(s, id).filter((a) => a.open && !a.why).map((a) => a.id);
@@ -60,9 +60,9 @@ ok('a fight lowers it', s2.family[0].relationship < 60 && s2.mental < 60);
 const s3 = st(); const before3 = s3.cash; interact(s3, 'f1', 'gift');
 ok('a gift costs money and buys goodwill', s3.cash < before3 && s3.family[0].relationship > 60, `€${before3 - s3.cash}`);
 const s4 = st(); interact(s4, 'f1', 'evening');
-ok('an evening spends energy', s4.ap === 2);
+ok('an evening spends energy', s4.ap === 100 - 15, String(s4.ap));
 const s5 = st(); interact(s5, 'f1', 'chat');
-ok('a chat is free', s5.ap === 3);
+ok('a chat costs a little', s5.ap === 100 - 5, String(s5.ap));
 
 // once a month, per person, per action
 const s6 = st(); interact(s6, 'f1', 'compliment'); const after = s6.family[0].relationship;

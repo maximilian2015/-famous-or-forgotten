@@ -1,3 +1,4 @@
+import { COST, canAfford, spend, tooTired } from '../../engine/energy.js';
 // Why your head is where it is.
 //
 // Mental is read by five different systems — it slows recovery from illness, it adds to the
@@ -110,7 +111,7 @@ export function closestPerson(s) {
 export function canCall(s) {
   const p = closestPerson(s);
   if (!p) return { ok: false, why: 'There is nobody to ring.' };
-  if ((s.ap || 0) <= 0) return { ok: false, why: 'No energy left this period.' };
+  if (!canAfford(s, COST.call)) return { ok: false, why: tooTired(s, COST.call) };
   if (s._calledMonth === stamp(s)) return { ok: false, why: `You already rang ${p.name.split(' ')[0]} this month.` };
   return { ok: true, why: '', p };
 }
@@ -118,7 +119,7 @@ export function callSomebody(s) {
   const fit = canCall(s);
   if (!fit.ok) { s.lastEvent = fit.why; return s; }
   const p = fit.p;
-  s.ap = (s.ap || 0) - 1;
+  spend(s, COST.call);
   s._calledMonth = stamp(s);
   // How much it helps is how close they actually are — which is the whole argument for
   // keeping people, and the game had no place to make it.
@@ -134,7 +135,7 @@ export function callSomebody(s) {
 export const AWAY_MONTHS = 4;
 export function canGetAway(s) {
   if (!owns(s, 'boat')) return { ok: false, why: 'You have nowhere to go that nobody can reach.' };
-  if ((s.ap || 0) <= 0) return { ok: false, why: 'No energy left this period.' };
+  if (!canAfford(s, COST.therapy)) return { ok: false, why: tooTired(s, COST.therapy) };
   const since = stamp(s) - (s._awayAt ?? -99);
   if (since < AWAY_MONTHS) return { ok: false, why: `You were away ${since} month${since === 1 ? '' : 's'} ago. It stops working if you never come back.` };
   return { ok: true, why: '' };
@@ -142,7 +143,7 @@ export function canGetAway(s) {
 export function getAway(s) {
   const fit = canGetAway(s);
   if (!fit.ok) { s.lastEvent = fit.why; return s; }
-  s.ap = (s.ap || 0) - 1;
+  spend(s, COST.therapy);
   s._awayAt = stamp(s);
   s.mental = clamp(s.mental + 14);
   s.health = clamp((s.health || 0) + 3);

@@ -7,7 +7,7 @@ let fails = 0;
 const ok = (n, c, e = '') => { if (!c) { fails++; console.log('FAIL  ' + n + (e ? ' :: ' + e : '')); } else console.log('ok    ' + n); };
 const st = (age, over) => ({ version: 'x', ageY: age, gender: 'male', stage: 'career', dream: 'actor',
   hasApartment: true, housing: 'flat', cash: 2000000, mental: 75, health: 85, acting: 88, singing: 0,
-  charisma: 65, looks: 62, luck: 50, scandal: 0, fame: 70, respect: 75, ap: 3, year: 2060, month: 0,
+  charisma: 65, looks: 62, luck: 50, scandal: 0, fame: 70, respect: 75, ap: 100, year: 2060, month: 0,
   filmography: [], discography: [], releases: [], frozen: [], offers: [], genreXP: {}, timeline: [],
   awards: { losses: 0, wins: [], nominations: [], pending: null, history: [] }, ...over });
 

@@ -9,6 +9,7 @@ import { refreshDatingPool, goOnDate, proposeMarriage, moveInTogether, canMoveIn
   weddingCost, PROPOSE_AT, MOVE_IN_AT, canMoveInWithThem, moveInWithThem, MOVE_IN_WITH_AT, connected, hostName } from '../../systems/life/dating.js';
 import { spouseOf, tryForBaby, fertility, fertilityNote, applyToAdopt, adoptCost, adoptionOdds,
   livingChildren, ADOPT_MONTHS } from '../../systems/life/children.js';
+import { canRaiseChild } from '../../engine/economy.js';
 
 function btn(disabled, kind) {
   return { width: '100%', border: 'none', borderRadius: 10, padding: '9px', fontSize: 12.5, fontWeight: 800,
@@ -38,7 +39,7 @@ function Evenings({ g, person, tag }) {
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline' }}>
           <span style={{ fontSize: 13.5, fontWeight: 800 }}>{d.label}</span>
           <span style={{ fontSize: 12, fontWeight: 900, color: theirs ? theme.good : theme.gold }}>
-            {theirs ? 'they pay' : `€${cost.toLocaleString()}`}{d.energy ? ' · 1 energy' : ''}
+            {theirs ? 'they pay' : `€${cost.toLocaleString()}`}{d.energy ? ` · ${d.energy} energy` : ''}
           </span>
         </div>
         <div style={{ fontSize: 11.5, color: theme.muted, marginTop: 3, lineHeight: 1.45 }}>
@@ -242,10 +243,13 @@ export function Dating({ g }) {
       but they are all looking for something different, and one of them is looking for your name.
     </div>
     {!pool.length && <div style={{ fontSize: 12.5, color: theme.muted, textAlign: 'center', padding: 22 }}>Nobody new right now. Check back later.</div>}
-    <Children g={g} spouse={null} />
     {pool.map((p) => (<div key={p.id} style={card}>
       <Who p={p} sub={`${p.job}, ${p.age}${p.dates ? ` · ${p.dates} evening${p.dates > 1 ? 's' : ''} so far` : ''}`} />
       <Evenings g={g} person={p} tag={'date:' + p.id} />
     </div>))}
+    {/* Adopting alone is allowed, but it is not the first thing a dating app should open on
+        for a twenty-one-year-old in a rented room. It sits under the people, and only once
+        there is a home a child could actually live in. */}
+    {canRaiseChild(g) && <div style={{ marginTop: 14 }}><Children g={g} spouse={null} /></div>}
   </div>);
 }

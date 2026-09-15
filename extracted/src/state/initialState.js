@@ -33,7 +33,7 @@ export function createInitialState(opts = {}) {
     heir: opts.heir || null, heirOf: null, adoption: null, bottles: {}, datingPool: [],
     inbox: [], timeline: [], flags: {},
     look: opts.look || null,   // the creator can hand one in; otherwise ensureAppearance rolls it
-    ap: 3, apMax: 3,
+    ap: 100, apMax: 100,
     alive: true,
   };
 }

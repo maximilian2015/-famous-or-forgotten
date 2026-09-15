@@ -11,7 +11,7 @@ const dep = () => ({ since: 0, sessions: 0, checks: 0, passed: 0, windowMonths: 
   windowRests: 0, medMonths: 0, medsThisMonth: false, pending: null });
 const st = (over) => ({ version: 'x', ageY: 40, gender: 'male', stage: 'career', dream: 'actor',
   hasApartment: true, housing: 'flat', cash: 400000, mental: 50, health: 75, acting: 85, singing: 0,
-  charisma: 60, looks: 58, luck: 50, scandal: 0, fame: 60, respect: 60, ap: 3, apMax: 3, quote: 0,
+  charisma: 60, looks: 58, luck: 50, scandal: 0, fame: 60, respect: 60, ap: 100, apMax: 100, quote: 0,
   year: 0, month: 0, strain: 30, burnout: null, burnouts: 4, scarred: 0, scarTherapy: 0, rehab: null,
   drink: null, meds: {}, bottles: { cheap: 9999, good: 0, fine: 0 }, family: [], people: [], filmography: [], discography: [], releases: [], frozen: [],
   offers: [], timeline: [], genreXP: {}, castingPool: [], alive: true, depression: dep(), ...over });

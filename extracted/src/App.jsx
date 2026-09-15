@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { openStoryRoom, pushTake } from './systems/career/story.js';
+import { openStoryRoom, pushTake, trendNote } from './systems/career/story.js';
 import { useGame, dispatch, newLife } from './state/store.js';
 import { advanceTime, stepIsYear } from './engine/time.js';
 import { rentApartment, STAGE_LABEL } from './systems/life/stages.js';
@@ -14,6 +14,8 @@ import { computeLegacy, getHall, heirsOf, heirOpts, enshrine } from './systems/m
 import { fameTier, setHousing, FAME_TIERS, fameCeiling, ladderBlurb, TIER_OPENS, alistKey, iconKey, scandalReport, respectReport, RESPECT_MOVES, RESPECT_TIERS, RESPECT_OPENS, respectTier, FORGOTTEN, FORGOTTEN_OPENS, isForgotten, forgottenDepth } from './systems/meta/status.js';
 import { rehearse, riskyTake, bondWithCrew, meterTier } from './systems/career/production.js';
 import { agentCut } from './systems/career/agent.js';
+import { COST, canAfford } from './engine/energy.js';
+import { EnergyBar } from './ui/components/EnergyBar.jsx';
 import { FAVOURS, FAVOUR_ORDER, canUse, costOf, asksLeft, ASKS_A_YEAR, canSmooth, smoothOver, canPushSequel, pushSequel, vouchFor, canOpenShelf, openShelf } from './systems/career/favours.js';
 import { addPrestigeListing } from './systems/career/castings.js';
 import { TimingBar } from './ui/components/TimingBar.jsx';
@@ -174,13 +176,13 @@ export default function App() {
         <LifeCard g={g} />
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
           <div style={{ fontSize: 11, fontWeight: 900, letterSpacing: '.09em', textTransform: 'uppercase', color: theme.muted }}>What now</div>
-          <div style={{ display: 'flex', gap: 4, alignItems: 'center' }}><span style={{ fontSize: 10, color: theme.muted, marginRight: 4 }}>Energy</span>{Array.from({ length: g.apMaxEff || g.apMax || 3 }).map((_, i) => (<span key={i} style={{ width: 9, height: 9, borderRadius: '50%', background: i < (g.ap || 0) ? theme.accent : 'rgba(255,255,255,.12)' }} />))}</div>
+          <EnergyBar g={g} />
         </div>
         <div style={{ display: 'grid', gap: 8, marginBottom: 14 }}>
           <DepressionCard g={g} />
-          {availableActions(g).map((a) => { const noEnergy = (g.ap || 0) <= 0;
+          {availableActions(g).map((a) => { const noEnergy = !canAfford(g, COST.careerAction);
             return (<button key={a.id} onClick={() => dispatch(runAction, a.id)} disabled={noEnergy} style={{ textAlign: 'left', background: theme.panel, border: `1px solid ${theme.line}`, borderRadius: 12, padding: '10px 13px', cursor: noEnergy ? 'default' : 'pointer', color: theme.text, opacity: noEnergy ? .4 : 1 }}><div style={{ fontSize: 14, fontWeight: 800 }}>{a.label(g)}</div><div style={{ fontSize: 11.5, color: theme.muted, marginTop: 2 }}>{a.desc(g)}</div></button>); })}
-          {(g.ap || 0) <= 0 && <div style={{ fontSize: 11.5, color: theme.gold, textAlign: 'center', padding: '4px 0' }}>Out of energy — live time to refresh your actions.</div>}
+          {!canAfford(g, COST.careerAction) && <div style={{ fontSize: 11.5, color: theme.gold, textAlign: 'center', padding: '4px 0' }}>Not enough energy left this {g.stage === 'child' || g.stage === 'teen' ? 'year' : 'month'} for these ({COST.careerAction} each).</div>}
           {inCareer(g) && <div style={{ fontSize: 11, color: theme.muted, textAlign: 'center', padding: '6px 8px', lineHeight: 1.55, opacity: .85 }}>
             Auditions and shifts are in your Phone. Training and parties are under Career. Family is under People.
           </div>}
@@ -232,7 +234,7 @@ function OnSetNow({ g }) {
   const lead = (p.crew || [])[0];
   const stamp = (g.year || 0) * 12 + (g.month || 0);
   const worked = p._workedMonth === stamp;
-  const noEnergy = (g.ap || 0) <= 0;
+  const noEnergy = !canAfford(g, COST.rehearse);
   const b = lead ? lead.bond : 50;
   const mood = b >= 70 ? ['warm to you', '#4fc07f'] : b >= 45 ? ['fine with you', theme.muted] : b >= 26 ? ['cooling on you', '#f0b429'] : ['done with you', '#ff5a72'];
   return (<div style={{ marginTop: 8 }}>
@@ -242,7 +244,7 @@ function OnSetNow({ g }) {
     </div>}
     <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
       <Button kind={worked ? 'default' : 'pri'} sfx="slate" disabled={noEnergy || worked} onClick={() => dispatch(rehearse)} style={{ flex: 1 }}>
-        {worked ? '✓ Rehearsed this month' : noEnergy ? 'Rehearse · no energy left' : 'Rehearse · 1 energy'}</Button>
+        {worked ? '✓ Rehearsed this month' : noEnergy ? 'Rehearse · not enough energy' : `Rehearse · ${COST.rehearse} energy`}</Button>
     </div>
     {!worked && !noEnergy && <div style={{ fontSize: 11, color: theme.gold, marginTop: 6, lineHeight: 1.45 }}>
       Live the month without this and you turned up not knowing the pages. Once is nothing. A pattern, the director notices.
@@ -689,17 +691,17 @@ function MentalScreen({ g, onBack }) {
     <div style={{ display: 'grid', gap: 8 }}>
       <ActRow label={call.ok ? `Ring ${(closestPerson(g) || {}).name?.split(' ')[0] || 'somebody'}` : 'Ring somebody'}
         blurb="An hour on the phone. How much it helps is how close they actually are."
-        cost="1 energy · free" disabled={!call.ok} why={call.why} onClick={() => dispatch(callSomebody)} />
+        cost={`${COST.call} energy · free`} disabled={!call.ok} why={call.why} onClick={() => dispatch(callSomebody)} />
       <ActRow label="See somebody about it"
         blurb={scarred || g.depression ? 'The hour a month that is the only thing that actually moves this.' : 'An hour with a professional. Awkward, and it works.'}
-        cost="1 energy · €260" disabled={(g.ap || 0) <= 0 || (g.cash || 0) < 260 || (!g.depression && !scarred)}
-        why={!g.depression && !scarred ? 'There is nothing to talk about right now.' : (g.ap || 0) <= 0 ? 'No energy left this period.' : 'You cannot cover it.'}
+        cost={`${COST.therapy} energy · €260`} disabled={!canAfford(g, COST.therapy) || (g.cash || 0) < 260 || (!g.depression && !scarred)}
+        why={!g.depression && !scarred ? 'There is nothing to talk about right now.' : !canAfford(g, COST.therapy) ? 'Not enough energy left this month.' : 'You cannot cover it.'}
         onClick={() => dispatch(seeSomebody)} />
       {(g.meds || {}).sleeping > 0 && <ActRow label={`Take a sleeping pill · ${(g.meds || {}).sleeping} left`}
         blurb="For the head, not the body. It buys you a week."
         cost="free" onClick={() => dispatch(usePills, 'sleeping')} />}
       <ActRow label="Get away on the boat" blurb="Two weeks where the phone does not work and nobody knows where you are."
-        cost="1 energy" disabled={!away.ok} why={away.why} onClick={() => dispatch(getAway)} />
+        cost={`${COST.therapy} energy`} disabled={!away.ok} why={away.why} onClick={() => dispatch(getAway)} />
     </div>
     <div style={{ fontSize: 11.5, color: theme.muted, textAlign: 'center', padding: '16px 10px', lineHeight: 1.6 }}>
       Resting properly is under Home, and the pills are in the Shop. A month off is the only
@@ -767,7 +769,7 @@ function HealthScreen({ g, onBack }) {
       <div style={{ display: 'grid', gap: 8 }}>
         <button onClick={() => dispatch(seeDoctor)} disabled={!canPay} style={btn('pri', !canPay)}>See a doctor · €{cost.toLocaleString()}{cost === 0 ? ' (covered)' : ''}</button>
         <button onClick={() => setGame({ kind: Math.random() < 0.5 ? 'timing' : 'grid', zoneStart: 14 + Math.random() * 58, zoneWidth: 12 + Math.random() * 7, speed: 2.2 + Math.random() * 1.5, bad: 3 + (Math.random() < 0.5 ? 1 : 0) })}
-          disabled={(g.ap || 0) <= 0} style={btn('', (g.ap || 0) <= 0)}>Ride it out yourself</button>
+          disabled={!canAfford(g, COST.doctor)} style={btn('', !canAfford(g, COST.doctor))}>Ride it out yourself</button>
         {(meds.antibiotics > 0) && !ill.serious && <button onClick={() => dispatch(usePills, 'antibiotics')} style={btn('')}>Take antibiotics ({meds.antibiotics})</button>}
         {(meds.painkillers > 0) && ill.freezes && <button onClick={() => dispatch(usePills, 'painkillers')} style={btn('')}>Take painkillers to keep working ({meds.painkillers})</button>}
       </div>
@@ -852,7 +854,7 @@ function DepressionCard({ g }) {
   }
   // Cured, but it kept something. The long road back, or living with it.
   if (!depressed(g) && (g.scarred || 0) > 0) {
-    const noEnergy = (g.ap || 0) <= 0, poor = (g.cash || 0) < 260, went = !!g._therapyThisMonth;
+    const noEnergy = !canAfford(g, COST.therapy), poor = (g.cash || 0) < 260, went = !!g._therapyThisMonth;
     const canRehab = (g.cash || 0) >= rehabCost(g);
     return (<div style={{ background: 'rgba(255,106,138,.06)', border: '1px solid rgba(255,106,138,.28)', borderRadius: 12, padding: '12px 14px' }}>
       <div style={{ fontSize: 14, fontWeight: 800, color: theme.bad }}>What it left behind</div>
@@ -865,7 +867,7 @@ function DepressionCard({ g }) {
       </div>
       <div style={{ fontSize: 10.5, color: theme.muted, marginTop: 4 }}>{therapyProgress(g)} of {THERAPY_FOR_A_SLOT} sessions toward the next hour</div>
       <button onClick={() => dispatch(seeSomebody)} disabled={noEnergy || poor || went} style={softBtn(noEnergy || poor || went)}>
-        {went ? 'You went this month' : poor ? 'An hour costs €260' : 'A session · €260 · 1 energy'}
+        {went ? 'You went this month' : poor ? 'An hour costs €260' : `A session · €260 · ${COST.therapy} energy`}
       </button>
       <button onClick={() => dispatch(enterRehab)} disabled={!canRehab} style={{ ...softBtn(!canRehab), background: canRehab ? 'rgba(255,106,138,.18)' : 'rgba(120,110,150,.15)', color: canRehab ? theme.bad : '#6b6390' }}>
         {canRehab ? `${count(rehabMonths(g), 'month')} in a clinic · €${rehabCost(g).toLocaleString()}` : `A clinic costs €${rehabCost(g).toLocaleString()}`}
@@ -881,7 +883,7 @@ function DepressionCard({ g }) {
   const line = (on, text) => (<div style={{ fontSize: 11.5, color: on ? theme.good : theme.muted, padding: '2px 0' }}>
     {on ? '✓' : '·'} {text}
   </div>);
-  const noEnergy = (g.ap || 0) <= 0, poor = (g.cash || 0) < 260;
+  const noEnergy = !canAfford(g, COST.therapy), poor = (g.cash || 0) < 260;
   const went = !!g.depression.sessionThisMonth;
   return (<div style={{ background: 'rgba(255,106,138,.08)', border: '1px solid rgba(255,106,138,.35)', borderRadius: 12, padding: '12px 14px' }}>
     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline' }}>
@@ -897,7 +899,7 @@ function DepressionCard({ g }) {
       Nothing else counts for much until you are on the medication. The Shop has it.
     </div>}
     <button onClick={() => dispatch(seeSomebody)} disabled={noEnergy || poor || went} style={softBtn(noEnergy || poor || went)}>
-      {went ? 'You went this month' : poor ? 'An hour costs €260' : 'Go and talk to somebody · €260 · 1 energy'}
+      {went ? 'You went this month' : poor ? 'An hour costs €260' : `Go and talk to somebody · €260 · ${COST.therapy} energy`}
     </button>
     <DrinkButton g={g} />
   </div>);
@@ -950,13 +952,11 @@ function StoryRoom({ g }) {
           {room.premise}
         </div>
         <div style={{ fontSize: 11.5, color: p.genre === hot ? theme.gold : theme.muted, margin: '8px 0 14px', lineHeight: 1.5 }}>
-          {p.genre === hot
-            ? `${p.genre} is what everyone is watching right now — and you open in about two years.`
-            : `${hot} is what everyone is watching right now. This is ${p.genre}.`}
+          {trendNote(g, p)}
         </div>
         {room.takes.map((t) => {
           const free = t.id === 'straight';
-          const off = !free && (g.ap || 0) <= 0;
+          const off = !free && !canAfford(g, COST.argue);
           return (<button key={t.id} onClick={() => dispatch(pushTake, t.id)} disabled={off}
             style={{ width: '100%', textAlign: 'left', marginBottom: 9, background: theme.panel,
               border: `1px solid ${theme.line}`, borderRadius: 12, padding: '11px 13px',
@@ -969,7 +969,7 @@ function StoryRoom({ g }) {
               </span>
             </div>
             <div style={{ fontSize: 11.5, color: theme.muted, marginTop: 4, lineHeight: 1.5 }}>{t.blurb}</div>
-            {!free && <div style={{ fontSize: 10.5, color: theme.muted, marginTop: 5 }}>1 energy, win or lose</div>}
+            {!free && <div style={{ fontSize: 10.5, color: theme.muted, marginTop: 5 }}>{COST.argue} energy, win or lose</div>}
           </button>);
         })}
         <div style={{ fontSize: 11, color: theme.muted, textAlign: 'center', lineHeight: 1.5, marginTop: 4 }}>
@@ -1149,7 +1149,7 @@ function CareerScreen({ g, teenOnly }) {
     <div style={{ display: 'flex', gap: 6, marginBottom: 14 }}>
       {CAREER_TABS.map(([id, label]) => (<button key={id} onClick={() => setTab(id)} style={{ flex: 1, border: 'none', borderRadius: 10, padding: '8px 4px', fontSize: 12, fontWeight: 800, cursor: 'pointer', background: tab === id ? `linear-gradient(135deg,${theme.accent2},${theme.accent})` : 'rgba(158,116,255,.16)', color: tab === id ? '#fff' : '#d9cffa' }}>{label}</button>))}
     </div>
-    {tab === 'calendar' && <><Diary g={g} />{g.production ? <ProductionCard g={g} /> : <div style={{ fontSize: 12.5, color: theme.muted, textAlign: 'center', padding: '18px 10px', lineHeight: 1.6 }}>🎬 Nothing shooting.<br />Accept a Lead or Tentpole offer in Messages to fill the calendar.</div>}</>}
+    {tab === 'calendar' && <><Diary g={g} />{g.production ? <ProductionCard g={g} /> : <div style={{ fontSize: 12.5, color: theme.muted, textAlign: 'center', padding: '18px 10px', lineHeight: 1.6 }}>🎬 Nothing shooting.<br />Land a part — read on OpenCall, or take an offer in Messages — and the shoot goes on the calendar.</div>}</>}
     {tab === 'training' && <TrainingScreen g={g} />}
     {tab === 'credits' && <CreditsList g={g} credits={credits} label={creditsLabel} />}
     {tab === 'events' && <EventsScreen g={g} />}
@@ -1170,7 +1170,7 @@ function PartySection({ g }) {
       You are shooting {g.production.title}. A party tonight is a call you are late for tomorrow — the set loses a few points and {g.production.crew[0].name} notices. More if you drink.
     </div>}
     {PARTY_ORDER.map((key) => { const p = PARTIES[key]; const risk = partyRisk(g, key);
-      const broke = (g.cash || 0) < p.cost; const noEnergy = (g.ap || 0) <= 0;
+      const broke = (g.cash || 0) < p.cost; const noEnergy = !canAfford(g, key === 'drinks' ? COST.party : key === 'proper' ? COST.partyBig : COST.partyHuge);
       return (<Card key={key}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline' }}>
           <div style={{ fontSize: 13.5, fontWeight: 800 }}>{p.label}</div>
@@ -1632,7 +1632,7 @@ function PersonSheet({ g, id, onClose }) {
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', gap: 8 }}>
                   <div style={{ fontSize: 13.5, fontWeight: 800 }}>{a.label}</div>
                   <div style={{ fontSize: 11, fontWeight: 800, color: theme.gold, whiteSpace: 'nowrap' }}>
-                    {a.cost ? `€${a.cost.toLocaleString()}` : ''}{a.cost && a.ap ? ' · ' : ''}{a.ap ? '1 energy' : ''}
+                    {a.cost ? `€${a.cost.toLocaleString()}` : ''}{a.cost && a.ap ? ' · ' : ''}{a.ap ? `${a.ap} energy` : ''}
                   </div>
                 </div>
                 <div style={{ fontSize: 11.5, color: theme.muted, marginTop: 2 }}>{off && a.why ? a.why : a.blurb}</div>
@@ -1766,7 +1766,7 @@ function CreatorScreen() {
 
     <Button kind="pri" onClick={() => newLife({ name: name.trim() || 'Alex Moon', city, gender, startYear, created: true,
       look: { hair: safeHair, hairColor, skin, eyes, lips, outfit, owned: ['tee', outfit] } })}>Be born</Button>
-    <div style={{ fontSize: 11, color: theme.muted, textAlign: 'center', marginTop: 12, lineHeight: 1.5 }}>Actor or singer isn't decided here — that dream finds you around age ten. Nor is the family you land in: that is rolled at birth, and it decides how hard the start is.</div>
+    <div style={{ fontSize: 11, color: theme.muted, textAlign: 'center', marginTop: 12, lineHeight: 1.5 }}>The dream finds you around age ten — screen or stage. The family you land in is rolled at birth, and it decides how hard the start is.</div>
   </div>);
 }
 function EndOfLifeScreen({ g }) {
@@ -2181,7 +2181,7 @@ function Diary({ g }) {
 function TrainingScreen({ g }) {
   const key = trainingKey(g);
   const skill = Math.round(g[key] || 0), cap = skillCap(g);
-  const noEnergy = (g.ap || 0) <= 0;
+  const noEnergy = !canAfford(g, COST.rehearse);
   return (<div>
     <Card style={{ marginBottom: 14 }}>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline' }}>
@@ -2218,7 +2218,7 @@ function EventsScreen({ g }) {
   const [sneak, setSneak] = useState(null);
   const [asking, setAsking] = useState(null);
   const events = g.events || [];
-  const noEnergy = (g.ap || 0) <= 0;
+  const noEnergy = !canAfford(g, COST.rehearse);
   const helpers = inviteHelpers(g);
   const btn = (kind) => ({ flex: 1, border: 'none', borderRadius: 10, padding: '9px', fontSize: 12.5, fontWeight: 800, cursor: noEnergy ? 'default' : 'pointer', background: noEnergy ? 'rgba(120,110,150,.15)' : kind === 'pri' ? `linear-gradient(135deg,${theme.accent2},${theme.accent})` : 'rgba(158,116,255,.16)', color: noEnergy ? '#6b6390' : kind === 'pri' ? '#fff' : '#d9cffa' });
   if (!events.length) return (<div style={{ fontSize: 12.5, color: theme.muted, textAlign: 'center', padding: 24, lineHeight: 1.6 }}>🎉 Nothing on the calendar right now.<br /><br />Parties and premieres come and go — live a month and check back.</div>);
@@ -2269,7 +2269,7 @@ function EventsScreen({ g }) {
   </div>);
 }
 function ProductionCard({ g }) {
-  const p = g.production; const tier = meterTier(p.meter); const noEnergy = (g.ap || 0) <= 0;
+  const p = g.production; const tier = meterTier(p.meter); const noEnergy = !canAfford(g, COST.rehearse);
   const [minigame, setMinigame] = useState(null);
   const actBtn = (danger) => ({ flex: 1, border: 'none', borderRadius: 10, padding: '9px', fontSize: 12.5, fontWeight: 800, cursor: noEnergy ? 'default' : 'pointer', background: noEnergy ? 'rgba(120,110,150,.15)' : danger ? 'rgba(255,209,102,.18)' : `linear-gradient(135deg,${theme.accent2},${theme.accent})`, color: noEnergy ? '#6b6390' : danger ? theme.gold : '#fff' });
   function openRiskyTake() {
@@ -2295,15 +2295,15 @@ function ProductionCard({ g }) {
         ? <TimingBar zoneStart={minigame.zoneStart} zoneWidth={minigame.zoneWidth} speed={minigame.speed} onResult={onMinigameResult} />
         : <GridRisk cols={4} rows={3} bad={minigame.bad} labelSafe="✓" labelBad="✕" onResult={onMinigameResult} />}
     </div>) : (<div style={{ display: 'flex', gap: 7, marginBottom: 12 }}>
-      <button onClick={() => dispatch(rehearse)} disabled={noEnergy} style={actBtn(false)}>Rehearse</button>
+      <button onClick={() => dispatch(rehearse)} disabled={noEnergy} style={actBtn(false)}>Rehearse · {COST.rehearse}</button>
       {canSmooth(g) && <button onClick={() => dispatch(smoothOver)} disabled={!canUse(g, 'smooth').ok} title={canUse(g, 'smooth').ok ? FAVOURS.smooth.blurb : canUse(g, 'smooth').why}
         style={{ ...actBtn(true), background: canUse(g, 'smooth').ok ? 'rgba(255,209,102,.18)' : 'rgba(120,110,150,.15)', color: canUse(g, 'smooth').ok ? theme.gold : '#6b6390' }}>◆ Have a word · −{costOf(g, 'smooth')}</button>}
-      <button onClick={openRiskyTake} disabled={noEnergy} style={actBtn(true)}>Risky take</button>
+      <button onClick={openRiskyTake} disabled={!canAfford(g, COST.take)} style={actBtn(true)}>Risky take · {COST.take}</button>
     </div>)}
     <div style={{ fontSize: 10.5, fontWeight: 900, letterSpacing: '.08em', textTransform: 'uppercase', color: theme.muted, marginBottom: 6 }}>Crew</div>
     {p.crew.map((c) => (<div key={c.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '6px 0', borderBottom: `1px solid ${theme.line}` }}>
       <div><div style={{ fontSize: 12.5, fontWeight: 700 }}>{c.name}</div><div style={{ fontSize: 10.5, color: theme.muted }}>{c.role} · {c.trait} · bond {c.bond}</div></div>
-      <button onClick={() => dispatch(bondWithCrew, c.id)} disabled={noEnergy} style={{ ...actBtn(false), flex: 'none', width: 'auto', padding: '6px 10px', fontSize: 11 }}>Bond</button>
+      <button onClick={() => dispatch(bondWithCrew, c.id)} disabled={!canAfford(g, COST.bond)} style={{ ...actBtn(false), flex: 'none', width: 'auto', padding: '6px 10px', fontSize: 11 }}>Bond · {COST.bond}</button>
     </div>))}
   </Card>);
 }
@@ -2312,13 +2312,16 @@ function AaaTracker({ g }) {
   return (<Card style={{ marginBottom: 14, borderColor: acc.aaa ? 'rgba(95,206,138,.4)' : theme.line }}><div style={{ fontSize: 11, fontWeight: 900, letterSpacing: '.08em', textTransform: 'uppercase', color: acc.aaa ? theme.good : theme.muted, marginBottom: 6 }}>{acc.aaa ? '★ The tentpoles are open to you' : 'The tentpoles — closed to you'}</div><div style={{ fontSize: 12.5, color: theme.muted, lineHeight: 1.5 }}>{acc.aaa ? (acc.aaaReason === 'hit' ? 'You made a hit. Studios take your calls now.' : 'You know the right person. Doors open through them.') : 'The biggest pictures do not audition strangers. Two ways in: land a hit (rating 85+), or get genuinely close to somebody powerful in the industry (weight 80+).'}</div></Card>);
 }
 function LegacyPanel({ g }) {
-  if (g.stage === 'child' || g.stage === 'teen') return null;
+  const young = g.stage === 'child' || g.stage === 'teen';
   const L = computeLegacy(g); const hall = getHall();
-  return (<div style={{ marginTop: 18 }}><div style={{ fontSize: 11, fontWeight: 900, letterSpacing: '.09em', textTransform: 'uppercase', color: theme.muted, marginBottom: 8 }}>Legacy</div><Card><div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline' }}><div style={{ fontSize: 15, fontWeight: 900, color: theme.gold }}>{L.tier}</div><div style={{ fontSize: 13, fontWeight: 800, color: theme.muted }}>{L.points} pts</div></div><div style={{ fontSize: 11.5, color: theme.muted, marginTop: 4 }}>Peak fame {Math.round(L.peakFame)} · {L.credits} credit{L.credits !== 1 ? 's' : ''} · {L.hits} hit{L.hits !== 1 ? 's' : ''}{L.worldHits > 0 ? ` · 🌍 ${L.worldHits} world hit${L.worldHits !== 1 ? 's' : ''}` : ''}{L.askerWins > 0 ? ` · 🏆 ${L.askerWins} Asker${L.askerWins !== 1 ? 's' : ''}` : L.askerNoms > 0 ? ` · ${L.askerNoms} Asker nom${L.askerNoms !== 1 ? 's' : ''}` : ''}</div></Card>{hall.length > 0 && <div style={{ marginTop: 10 }}><div style={{ fontSize: 10.5, fontWeight: 900, letterSpacing: '.08em', textTransform: 'uppercase', color: theme.muted, marginBottom: 6 }}>Hall of Fame</div>{hall.slice(0, 5).map((h, i) => (<div key={i} style={{ display: 'flex', justifyContent: 'space-between', fontSize: 12, color: theme.muted, padding: '5px 0', borderBottom: `1px solid ${theme.line}` }}><span>{i + 1}. {h.name} · {h.tier}</span><span style={{ color: theme.gold }}>{h.points}</span></div>))}</div>}</div>);
+  // A child has no legacy yet — but the lives before this one are still on the wall. The
+  // whole panel used to vanish until eighteen, Hall of Fame included.
+  if (young && !hall.length) return null;
+  return (<div style={{ marginTop: 18 }}><div style={{ fontSize: 11, fontWeight: 900, letterSpacing: '.09em', textTransform: 'uppercase', color: theme.muted, marginBottom: 8 }}>Legacy</div>{!young && <Card><div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline' }}><div style={{ fontSize: 15, fontWeight: 900, color: theme.gold }}>{L.tier}</div><div style={{ fontSize: 13, fontWeight: 800, color: theme.muted }}>{L.points} pts</div></div><div style={{ fontSize: 11.5, color: theme.muted, marginTop: 4 }}>Peak fame {Math.round(L.peakFame)} · {L.credits} credit{L.credits !== 1 ? 's' : ''} · {L.hits} hit{L.hits !== 1 ? 's' : ''}{L.worldHits > 0 ? ` · 🌍 ${L.worldHits} world hit${L.worldHits !== 1 ? 's' : ''}` : ''}{L.askerWins > 0 ? ` · 🏆 ${L.askerWins} Asker${L.askerWins !== 1 ? 's' : ''}` : L.askerNoms > 0 ? ` · ${L.askerNoms} Asker nom${L.askerNoms !== 1 ? 's' : ''}` : ''}</div></Card>}{hall.length > 0 && <div style={{ marginTop: 10 }}><div style={{ fontSize: 10.5, fontWeight: 900, letterSpacing: '.08em', textTransform: 'uppercase', color: theme.muted, marginBottom: 6 }}>Hall of Fame</div>{hall.slice(0, 5).map((h, i) => (<div key={i} style={{ display: 'flex', justifyContent: 'space-between', fontSize: 12, color: theme.muted, padding: '5px 0', borderBottom: `1px solid ${theme.line}` }}><span>{i + 1}. {h.name} · {h.tier}</span><span style={{ color: theme.gold }}>{h.points}</span></div>))}</div>}</div>);
 }
 function StageBody({ g }) {
   if (g.stage === 'child') return <div style={{ fontSize: 14, lineHeight: 1.55 }}>You are a kid living with your parents. School, cartoons, and the first hints of a dream. Live through the years — the real choices come when you grow up.</div>;
-  if (g.stage === 'teen') return <div style={{ fontSize: 14, lineHeight: 1.55 }}>A teenager now. You daydream about being {g.dream === 'singer' ? 'on stage' : 'on screen'}. You've got your first phone, you can pick up side work, and a few years left under your parents' roof.</div>;
+  if (g.stage === 'teen') return <div style={{ fontSize: 14, lineHeight: 1.55 }}>A teenager now. You daydream about being {g.dream === 'singer' ? 'on stage' : 'on screen'}. You've got your first phone, shifts open up at fifteen, and a few years left under your parents' roof.</div>;
   // Eviction drops you back into this stage, and it is reached two very different ways.
   // Telling someone sleeping rough that staying with their parents is comfortable was
   // the single worst line in the game.

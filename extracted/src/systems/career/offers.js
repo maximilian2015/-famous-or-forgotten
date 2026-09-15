@@ -71,6 +71,10 @@ export function offersTick(s) {
   const kept = [];
   for (const o of s.offers) {
     if (typeof o.deadline !== 'number') { kept.push(o); continue; }
+    // They cast you knowing you were on a set — a part won mid-shoot, or your own show
+    // asking you back — so the clock starts when you wrap. Three parts in a row used to go
+    // to somebody else while you were still shooting the one before.
+    if (o.waitsForWrap && s.production) { kept.push(o); continue; }
     o.deadline -= 1;
     if (o.deadline > 0) { kept.push(o); continue; }
     const title = String(o.projectTitle || 'it').replace('⭐ ', '');

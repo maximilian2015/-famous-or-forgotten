@@ -129,7 +129,7 @@ function actor(over) {
   ok('and for the tale', Math.abs(chance({ fame: 9, peakFame: 70, respect: -20 }) / chance({ fame: 9, peakFame: 70, respect: 5 }) - 0.85) < 0.03);
   ok('not on the Careful rung', ST.roomHasHeard(actor({ fame: 20, respect: -15 })) === 1 && ST.roomHasHeard(actor({ fame: 20, respect: -5 })) === 1);
   // crews start colder
-  const startBond = (o) => { const s = actor({ ap: 3, cash: 100000, ...o }); PR.startProduction(s, { id: 'o', projectTitle: 'T', role: 'Lead', type: 'Indie Film', genre: 'Drama', salary: 100000, months: 3, prestigeScore: 50, tier: 'lead', scale: 'indie', stability: 80 }); return s.production.crew[0].bond; };
+  const startBond = (o) => { const s = actor({ ap: 100, cash: 100000, ...o }); PR.startProduction(s, { id: 'o', projectTitle: 'T', role: 'Lead', type: 'Indie Film', genre: 'Drama', salary: 100000, months: 3, prestigeScore: 50, tier: 'lead', scale: 'indie', stability: 80 }); return s.production.crew[0].bond; };
   const warmStarts = [], coldStarts = [];
   for (let i = 0; i < 60; i++) { warmStarts.push(startBond({ fame: 20, respect: -10 })); coldStarts.push(startBond({ fame: 20, respect: -20 })); }
   ok('an ordinary crew starts at 30–55', Math.min(...warmStarts) >= 30 && Math.max(...warmStarts) <= 55, `${Math.min(...warmStarts)}..${Math.max(...warmStarts)}`);
@@ -185,7 +185,7 @@ function actor(over) {
 {
   const PR = await import(P + 'systems/career/production.js');
   function shoot(over) {
-    const s = actor({ ageY: 30, year: 2060, month: 0, ap: 3, apMax: 3, apMaxEff: 3, fame: 40, respect: 30, cash: 200000, ...over });
+    const s = actor({ ageY: 30, year: 2060, month: 0, ap: 100, apMax: 100, apMaxEff: 100, fame: 40, respect: 30, cash: 200000, ...over });
     PR.startProduction(s, { id: 'o', projectTitle: 'Test Picture', role: 'Lead', type: 'Feature Film', genre: 'Drama',
       salary: 500000, months: 6, prestigeScore: 55, tier: 'lead', scale: 'feature', stability: 85 });
     s.production.stability = 100;   // pinned: a random collapse at 85 nulled the production once in ~120 ticks

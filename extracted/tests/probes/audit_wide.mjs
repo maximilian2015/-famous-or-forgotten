@@ -97,7 +97,7 @@ for (let i = 0; i < N; i++) {
   const s = createInitialState({ name: 'A' + i, dream: Math.random() < 0.25 ? 'singer' : 'actor', created: true });
   beginLife(s);
   Object.assign(s, { stage: 'career', ageY: 20, year: 2050, month: 0, hasApartment: true,
-    housing: 'room', cash: 12000, alive: true, ap: 3, apMax: 3, apMaxEff: 3, livingWith: 'own_place' });
+    housing: 'room', cash: 12000, alive: true, ap: 100, apMax: 100, apMaxEff: 100, livingWith: 'own_place' });
   let t = s;
   for (let m = 0; m < 60 * 12; m++) {
     const r = Math.random();

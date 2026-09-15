@@ -7,7 +7,7 @@ let fails = 0;
 const ok = (n, c, e = '') => { if (!c) { fails++; console.log('FAIL  ' + n + (e ? ' :: ' + e : '')); } else console.log('ok    ' + n); };
 const mum = (over) => ({ id: 'f1', name: 'Karen Bon', relation: 'Mother', age: 60, alive: true, relationship: 50, job: 'nurse', health: 70, ...over });
 const st = (over) => ({ version: 'x', ageY: 30, stage: 'career', hasApartment: true, housing: 'flat',
-  cash: 30000, mental: 60, health: 70, charisma: 50, ap: 3, year: 2030, month: 0,
+  cash: 30000, mental: 60, health: 70, charisma: 50, ap: 100, year: 2030, month: 0,
   family: [mum()], people: [], timeline: [], _cool: {}, familyEstate: [14000, 55000], ...over });
 
 // scale and bands

@@ -79,7 +79,7 @@ function liveOne(years = 50) {
   const s = createInitialState({ name: 'Sweep One', dream: Math.random() < 0.2 ? 'singer' : 'actor', created: true });
   beginLife(s);
   Object.assign(s, { stage: 'career', ageY: 20, year: 2050, month: 0, hasApartment: true,
-    housing: 'room', cash: 8000, alive: true, ap: 3, apMax: 3, apMaxEff: 3 });
+    housing: 'room', cash: 8000, alive: true, ap: 100, apMax: 100, apMaxEff: 100 });
   const problems = [];
   let t = s;
   for (let m = 0; m < years * 12; m++) {

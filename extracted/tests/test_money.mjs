@@ -11,7 +11,7 @@ function born() { const s = createInitialState({ name: 'M', dream: 'actor', crea
 const ok = (n, c, e = '') => { if (!c) { fails++; console.log('FAIL  ' + n + (e ? ' :: ' + e : '')); } else console.log('ok    ' + n); };
 const st = (over) => Object.assign(born(), {
   stage: 'career', ageY: 40, year: 2070, month: 0, hasApartment: true, livingWith: 'own_place',
-  housing: 'house', cash: 12000000, fame: 80, peakFame: 80, alive: true, ap: 3, apMax: 3, apMaxEff: 3,
+  housing: 'house', cash: 12000000, fame: 80, peakFame: 80, alive: true, ap: 100, apMax: 100, apMaxEff: 100,
   filmography: [{ title: 'x', rating: 88, tier: 'lead', role: 'Lead', year: 2068 }],
 }, over);
 
@@ -33,7 +33,7 @@ const st = (over) => Object.assign(born(), {
 {
   const s = st();
   M.hire(s, 'assistant');
-  ok('an assistant is an extra Energy', M.staffEnergy(s) === 1);
+  ok('an assistant is ten energy a month', M.staffEnergy(s) === 10);
   ok('and shows up in the monthly bill', monthlyCosts(s).team === M.STAFF.assistant.cost, String(monthlyCosts(s).team));
   const t = advanceMonth(s);
   ok('and is billed exactly once a month', 12000000 - t.cash === monthlyCosts(s).total, `€${(12000000 - t.cash).toLocaleString()} vs €${monthlyCosts(s).total.toLocaleString()}`);

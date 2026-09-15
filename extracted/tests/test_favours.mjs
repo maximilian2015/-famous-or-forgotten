@@ -16,7 +16,7 @@ const pin = (v, fn) => { Math.random = () => v; try { return fn(); } finally { M
 function actor(over) {
   const s = createInitialState({ name: 'X', dream: 'actor', created: true }); beginLife(s);
   return Object.assign(s, { stage: 'career', ageY: 34, year: 2064, month: 2, alive: true, hasApartment: true, livingWith: 'own_place', housing: 'flat', cash: 300000,
-    ap: 3, apMax: 3, apMaxEff: 3, fame: 45, peakFame: 45, respect: 50, acting: 65, charisma: 55, looks: 55, luck: 50, people: [],
+    ap: 100, apMax: 100, apMaxEff: 100, fame: 45, peakFame: 45, respect: 50, acting: 65, charisma: 55, looks: 55, luck: 50, people: [],
     filmography: [{ id: 'f0', title: 'one', rating: 66, tier: 'lead', role: 'Lead', year: 2062 }] }, over);
 }
 

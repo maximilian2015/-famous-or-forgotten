@@ -20,7 +20,7 @@ function live(kind, years = 45) {
   const s = createInitialState({ name: 'P', dream: 'actor', created: true });
   beginLife(s);
   Object.assign(s, { stage: 'career', ageY: 22, year: 2050, month: 0, hasApartment: true,
-    housing: 'room', cash: 9000, alive: true, ap: 3, apMax: 3, apMaxEff: 3, fame: 0, peakFame: 0 });
+    housing: 'room', cash: 9000, alive: true, ap: 100, apMax: 100, apMaxEff: 100, fame: 0, peakFame: 0 });
   let t = s, iconAge = null, alistAge = null, lowR = 0, negMonths = 0; const months = {}; const spent = { lead: 0, sequel: 0, smooth: 0 };
   for (let m = 0; m < years * 12; m++) {
     t.bigMoment = null; t.pendingArc = null;
@@ -32,8 +32,8 @@ function live(kind, years = 45) {
     if (!t.job && (t.fame || 0) < 20) { const j = W.availableJobs(t)[0]; if (j) W.takeJob(t, j.id); }
     if (t.job && (t.fame || 0) > 35) W.quitJob(t);
     // A perfect player on a shoot puts the month into the shoot, not into a class.
-    if ((kind === 'perfect' || kind === 'spender') && !t.production) { const b = [...T.SCHOOLS].reverse().find((sc) => (t.cash || 0) > sc.cost * 4); if (b && (t.ap || 0) > 1) T.train(t, b.id); }
-    else if (kind === 'ordinary' && Math.random() < 0.3) { const b = T.SCHOOLS[0]; if (b && (t.ap || 0) > 1) T.train(t, b.id); }
+    if ((kind === 'perfect' || kind === 'spender') && !t.production) { const b = [...T.SCHOOLS].reverse().find((sc) => (t.cash || 0) > sc.cost * 4); if (b && (t.ap || 0) >= 20) T.train(t, b.id); }
+    else if (kind === 'ordinary' && Math.random() < 0.3) { const b = T.SCHOOLS[0]; if (b && (t.ap || 0) >= 20) T.train(t, b.id); }
     K.refreshCastingPool(t);
     if (kind === 'spender') {
       const sup = (t.castingPool || []).find((c) => c.shelf === 'film' && c.role !== 'Lead' && !c.askedLead);
@@ -42,7 +42,7 @@ function live(kind, years = 45) {
       if (push && FV.canUse(t, 'sequel').ok) { FV.pushSequel(t, push.id); spent.sequel++; }
       if (FV.canSmooth(t) && FV.canUse(t, 'smooth').ok) { FV.smoothOver(t); spent.smooth++; }
     }
-    if (!t.production && (t.ap || 0) > 0 && (t.castingPool || []).length) {
+    if (!t.production && (t.ap || 0) >= 30 && (t.castingPool || []).length) {
       let c;
       if ((kind === 'perfect' || kind === 'spender')) { const g = t.castingPool.filter((x) => ['prestige', 'indie', 'feature', 'small'].includes(x.scale)); c = (g.length ? g : t.castingPool)[0]; }
       else c = t.castingPool[Math.floor(Math.random() * t.castingPool.length)];
@@ -51,7 +51,7 @@ function live(kind, years = 45) {
       K.auditionFor(t, c.id, (kind === 'perfect' || kind === 'spender') ? 85 : kind === 'ordinary' ? 45 + Math.random() * 35 : 30 + Math.random() * 40);
     }
     if ((t.offers || []).length && !t.production) { const o = t.offers[0]; PR.startProduction(t, o); t.offers = t.offers.filter((x) => x.id !== o.id); }
-    if ((kind === 'perfect' || kind === 'spender')) { while ((t.ap || 0) > 0 && t.production) { const b = t.ap; PR.rehearse(t); if (t.ap >= b) break; } }
+    if ((kind === 'perfect' || kind === 'spender')) { for (let k = 0; k < 3 && t.production && (t.ap || 0) >= 15; k++) PR.rehearse(t); if (t.production && (t.ap || 0) >= 10) PR.bondWithCrew(t, t.production.crew[0].id); }
     else if (kind === 'ordinary' && t.production && Math.random() < 0.5) PR.rehearse(t);
     t = advanceMonth(t);
     // a perfect or ordinary player signs the agent letter; the drifter does not open email

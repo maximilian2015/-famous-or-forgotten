@@ -6,7 +6,7 @@ let fails = 0;
 const ok = (n, c, e = '') => { if (!c) { fails++; console.log('FAIL  ' + n + (e ? ' :: ' + e : '')); } else console.log('ok    ' + n); };
 const st = (over) => ({ version: 'x', ageY: 30, stage: 'career', dream: 'actor', hasApartment: true,
   housing: 'flat', diet: 'cook', gym: false, cash: 50000, mental: 75, health: 88, looks: 60, charisma: 60,
-  confidence: 50, acting: 60, singing: 0, luck: 50, scandal: 0, fame: 40, respect: 50, ap: 3, meds: {},
+  confidence: 50, acting: 60, singing: 0, luck: 50, scandal: 0, fame: 40, respect: 50, ap: 100, meds: {},
   filmography: [], releases: [], frozen: [], offers: [], timeline: [], alive: true, year: 2060, month: 0,
   strain: 0, burnout: null, awards: { losses: 0, wins: [], nominations: [], pending: null, history: [] }, ...over });
 

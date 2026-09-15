@@ -266,9 +266,9 @@ function finish(s, choice, passed) {
       ? `${choice.note} It did not happen on a particular day. You found yourself in the middle of something ordinary, `
         + 'realising you had been there a while — and that you wanted to be.'
       : scar === 1
-      ? `${choice.note} The worst of it is behind you. But you have one hour a month less than you had, every month, `
+      ? `${choice.note} The worst of it is behind you. But you have thirty energy a month less than you had, every month, `
         + 'and it is not the kind of thing that comes back by itself. A clinic would do it. So would years of talking.'
-      : `${choice.note} You came out the other side without ever really fighting it, and it kept two of your three Energy every `
+      : `${choice.note} You came out the other side without ever really fighting it, and it kept sixty of your hundred energy every `
         + 'month as the price. A year in a clinic will get them back. So will a very long time in therapy. Nothing else will.',
   };
   return s;

@@ -11,7 +11,7 @@ import { addTimeline } from './timeline.js';
 export const HOUSING = {
   room: {
     label: 'Rented room', blurb: 'A room in a shared flat. Thin walls.', cost: 750,
-    mental: -0.6, health: -0.3, ill: 7, ap: 0, bond: 0.8, kids: false,
+    mental: -0.6, health: -0.3, ill: 7, ap: 0, bond: 0.8, kids: false,   // ap: energy the home gives a month (engine/energy.js REFILL.home)   // ap: energy the home gives a month (engine/energy.js REFILL.home)
     perk: 'Someone else’s dishes and someone else’s hours. You sleep badly and catch everything going round.',
   },
   studio: {
@@ -21,18 +21,18 @@ export const HOUSING = {
   },
   flat: {
     label: 'Two-bed apartment', blurb: 'Space to breathe. A view of something.', cost: 2900,
-    mental: 1, health: 0.2, ill: -3, ap: 0, bond: 1.25, kids: true,
+    mental: 1, health: 0.2, ill: -3, ap: 5, bond: 1.25, kids: true,
     perk: 'Room to breathe and a second bedroom. People can stay, and a child could grow up here.',
   },
   house: {
     label: 'Canal house', blurb: 'Old brick, tall windows, serious money.', cost: 7500,
-    mental: 1.8, health: 0.35, ill: -7, ap: 1, bond: 1.5, kids: true,
-    perk: 'Quiet, warm and yours. You wake with an extra hour in you every month.',
+    mental: 1.8, health: 0.35, ill: -7, ap: 15, bond: 1.5, kids: true,
+    perk: 'Quiet, warm and yours. You wake with more in you every month than a flat leaves you.',
   },
   penthouse: {
     label: 'Penthouse', blurb: 'The city underneath you, and everyone knows it.', cost: 15000,
-    mental: 2.4, health: 0.5, ill: -10, ap: 1, bond: 1.7, kids: true,
-    perk: 'The address is part of the name now. An extra hour a month, and nobody sleeps better than you.',
+    mental: 2.4, health: 0.5, ill: -10, ap: 25, bond: 1.7, kids: true,
+    perk: 'The address is part of the name now. Nobody sleeps better than you, and it shows in the month.',
   },
 };
 export const HOUSING_ORDER = ['room', 'studio', 'flat', 'house', 'penthouse'];
