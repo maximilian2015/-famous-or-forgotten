@@ -222,9 +222,25 @@ export function iconKey(s) {
   if (((s.awards && s.awards.wins) || []).length > 0) return 'asker';
   return null;
 }
+// And the room has to have a chair. Fame is comparative now that there is a world: the
+// A-list is twelve names and the very top is three, and you are one of them or you are not.
+// A hit you carried opens the door — but if twelve people are already through it, you wait
+// for one of them to fade or retire, which is what everybody at that level is doing. Maxi:
+// "to climb, you have to move somebody — that is the rivalry." This reads s.world directly
+// rather than importing world.js, which imports this file.
+export const ALIST_SEATS = 12;
+export const ICON_SEATS = 3;
+// Your place in the business, by heat — world.js rankTheWorld, once a year. Nobody ranked
+// yet (a save from before the world) is treated as first in line, not last.
+function rankOf(s) { return (s.world && s.world.rank && s.world.rank.you) || 1; }
+export function alistFull(s) { return rankOf(s) > ALIST_SEATS; }
+export function iconFull(s) { return rankOf(s) > ICON_SEATS; }
 export function fameCeiling(s) {
-  if (iconKey(s)) return 100;
-  if (alistKey(s)) return ICON_WALL;
+  // Already through a door, you keep the ceiling you earned — the room fills behind you,
+  // it does not push you back out. Being pushed out is what relevanceDrift is for.
+  const cur = s.fame || 0;
+  if (iconKey(s) && (cur > ICON_WALL || !iconFull(s))) return 100;
+  if (alistKey(s) && (cur > ALIST_WALL || !alistFull(s))) return ICON_WALL;
   return ALIST_WALL;
 }
 // What is still in the way, in one line, for the Fame tile. A wall the player cannot see
@@ -235,8 +251,8 @@ export function fameCeiling(s) {
 // is noise seventeen points early.
 export function ladderBlurb(s) {
   const c = fameCeiling(s);
-  if (c === ALIST_WALL) return 'A-list needs a hit you carried, or a nomination';
-  if (c === ICON_WALL) return 'Icon needs a world hit or an Asker — not more work';
+  if (c === ALIST_WALL) return alistKey(s) ? `The A-list is full — ${ALIST_SEATS} names, and none of them is going anywhere yet` : 'A-list needs a hit you carried, or a nomination';
+  if (c === ICON_WALL) return iconKey(s) ? `There are only ${ICON_SEATS} at the very top, and the chairs are taken` : 'Icon needs a world hit or an Asker — not more work';
   return null;
 }
 
@@ -412,6 +428,11 @@ export function iconTick(s) {
       + 'anything anyone loved, and until you do, this is as far as a working actor gets.');
     if (!s.lastEvent) s.lastEvent = 'You are working constantly and going nowhere. What is missing is one good film with your name above the title.';
   }
+  if (aKey && fame >= ALIST_WALL - 0.5 && alistFull(s) && !s._alistFullSaid) {
+    s._alistFullSaid = true;
+    addTimeline(s, `You have done the thing that opens the A-list, and the A-list is full: ${ALIST_SEATS} names, and every one of them is still working. Somebody has to fade, or stop, or die.`);
+    if (!s.lastEvent) s.lastEvent = 'You are ready for the A-list. The A-list is not ready for you — there is no chair.';
+  }
   if (aKey && !s._alistDoorSaid) {
     s._alistDoorSaid = true;
     if (s._alistWallSaid) {
@@ -428,6 +449,10 @@ export function iconTick(s) {
     addTimeline(s, 'You are as known as work alone can make you. The last step is not another credit — '
       + 'it is one enormous picture or a statuette, and neither of those can be scheduled.');
     if (!s.lastEvent) s.lastEvent = 'As far as work alone goes, you are there. The rest is not something you can book.';
+  }
+  if (key && fame >= ICON_WALL - 0.5 && iconFull(s) && !s._iconFullSaid) {
+    s._iconFullSaid = true;
+    addTimeline(s, `There are ${ICON_SEATS} people at the very top of this business, and they are all still there. What you did would have made you one of them. It will, when there is room.`);
   }
   if (key && !s._iconDoorSaid) {
     s._iconDoorSaid = true;

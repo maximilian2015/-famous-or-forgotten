@@ -57,7 +57,8 @@ export function ensureWorld(s) {
 }
 export function actorById(s, id) { return ((s.world && s.world.actors) || []).find((a) => a.id === id) || null; }
 export function ageOf(s, a) { return (s.year || 0) - (a.born || 0); }
-export function icons(s) { return ((s.world && s.world.actors) || []).filter((a) => a.icon && a.alive); }
+export function icons(s) { return ((s.world && s.world.actors) || []).filter((a) => iconNow(a)); }
+export function legends(s) { return ((s.world && s.world.actors) || []).filter((a) => a.icon && !iconNow(a)); }
 export function activeActors(s) { return ((s.world && s.world.actors) || []).filter((a) => a.alive && !a.retired); }
 
 // ── a year of everybody else's work ───────────────────────────────────────────
@@ -106,6 +107,9 @@ function verdictOf(scale, gross) {
   const ratio = gross / (budget * 1000000);
   return ratio >= 4 ? 'smash' : ratio >= 2.2 ? 'profitable' : ratio >= 1.1 ? 'broke even' : 'bomb';
 }
+// A film moves a rival's fame the way it moves yours, month to month. But the SHAPE of the
+// world is set once a year by rank (see rankTheWorld): there are three names at the very
+// top and twelve on the A-list, and who they are is decided by heat — what you did lately.
 export function applyFilmToActor(a, f) {
   const by = { blockbuster: 9, feature: 5, indie: 3, small: 2 }[f.scale] || 2;
   const v = verdictOf(f.scale, f.gross);
@@ -119,12 +123,13 @@ export function applyFilmToActor(a, f) {
 }
 // An icon is not a number. Ninety fame and either a statuette or three enormous pictures —
 // and there are never more than a handful at once: past five, the bar goes up.
-export function maybeIcon(a, year, living = 0) {
+// Only the top three chairs make an icon, and only once the name has actually got there.
+export function maybeIcon(a, year) {
   if (a.icon) return;
-  const big = a.credits.filter((c) => c.gross >= 300000000).length;
-  const bar = 90 + Math.max(0, living - 4) * 2;
-  if (a.fame >= bar && ((a.askers || 0) >= 1 || big >= 3)) { a.icon = true; a.iconSince = year; }
+  if ((a.rank || 999) <= SEATS.icon && a.fame >= 88) { a.icon = true; a.iconSince = year; }
 }
+// An icon who has slipped out of the A-list is a legend, not a name on the door.
+export function iconNow(a) { return a.icon && a.alive && !a.retired && (a.rank || 999) <= SEATS.alist; }
 
 // Runs once a year, in January, for the year just gone. Everybody works, ages, and some of
 // them stop. Your own films for the year are folded in by yearbook.js, which calls this.
@@ -144,22 +149,22 @@ export function worldYear(s, year) {
       || (years >= 10 && a.fame < 20 && chance(40))) { a.retired = true; a.retiredIn = year; continue; }
     if (age >= 68 && chance(age >= 78 ? 14 : 4)) { a.alive = false; a.died = year; continue; }
     const tier = a.icon ? 'icon' : fameTier(a.fame).id;
-    const living = w.actors.filter((x) => x.icon && x.alive && !x.retired).length;
     const n = filmsThisYear(tier);
     // Films already made with you this year are on their sheet already.
     const already = a.credits.filter((c) => c.year === year && c.withYou).length;
     for (let i = already; i < n; i++) {
       const f = makeWorldFilm(s, a, year, taken);
       applyFilmToActor(a, f);
-      maybeIcon(a, year, living);
+      maybeIcon(a, year);
       films.push(f);
     }
     if (n === 0 && !a.credits.some((c) => c.year === year)) a.fame = clamp(a.fame - (a.icon ? 2 : 4));
     // The parts thin out past a certain age, and the name goes with them — unless it is one
     // of the names that does not go.
     if (age > (a.gender === 'female' ? 45 : 52) && !a.icon) a.fame = clamp(a.fame - 1.5);
-    if (a.icon) a.fame = Math.max(a.fame, 75);
+    if (a.icon && (a.rank || 999) <= SEATS.alist) a.fame = Math.max(a.fame, 75);
   }
+  rankTheWorld(s, year);
   // Somebody new every year. Two of them, twenty-two, nobody has heard of either.
   for (let i = 0; i < 2; i++) {
     const a = makeActor(s, 'unknown', [2, 12], names, rint(18, 24));
@@ -170,6 +175,70 @@ export function worldYear(s, year) {
   if (w.actors.length > 90) w.actors = w.actors.filter((a) => a.alive && (!a.retired || year - (a.retiredIn || year) < 15)).concat(w.actors.filter((a) => !a.alive).slice(-10));
   return films;
 }
+
+// ── the shape of the business ─────────────────────────────────────────────────
+// Heat: what you did in the last three years, weighted toward this one — the money your
+// films took, how well they were received, the statuettes. This is the one number the
+// whole business is ranked by, you included, and the ranks are the rooms: three at the
+// very top, twelve on the A-list, then everybody else in order. A rival's fame is pulled
+// toward what their rank says it should be, so the world never has thirty A-listers or
+// none. Your fame is your own — but the door to a room only opens if your heat puts you
+// inside it. To climb, somebody has to be moved. Maxi: "that is the rivalry."
+export const SEATS = { icon: 3, alist: 12 };
+export function heatOf(credits, year, wins = 0, noms = 0, age = 0) {
+  let h = 0;
+  for (const c of credits || []) {
+    const dy = year - (c.year || 0);
+    if (dy < 0 || dy > 3) continue;
+    const w = dy === 0 ? 1 : dy === 1 ? 0.7 : dy === 2 ? 0.45 : 0.25;
+    h += w * (Math.sqrt(Math.max(0, c.gross || 0) / 1e6) * 3 + Math.max(0, (c.rating || 50) - 50) * 1.2);
+  }
+  h += wins * 30 + noms * 8;
+  // The business stops ringing after a certain age, whatever the last film did.
+  if (age > 55) h *= Math.max(0.5, 1 - (age - 55) * 0.03);
+  return h;
+}
+function yourHeat(s, year) {
+  const credits = (s.filmography || []).filter((c) => !c.minor && ['small', 'indie', 'feature', 'blockbuster'].includes(c.scale))
+    .map((c) => ({ year: c.year, rating: c.rating, gross: c._rel ? (c._rel.finalGross || 0) : (c.boxOffice || 0) }));
+  const wins = ((s.awards && s.awards.wins) || []).filter((w) => year - (w.year || 0) <= 4).length;
+  const noms = ((s.awards && s.awards.nominations) || []).filter((n) => year - (n.year || 0) <= 3).length;
+  return heatOf(credits, year, wins, noms, s.ageY || 0);
+}
+// What a rank is worth in fame. The top three are icons, four to twelve the A-list, and it
+// tails off from there — nobody outside the top seventy is anybody.
+function fameForRank(r) {
+  if (r <= 3) return 96 - (r - 1) * 3;
+  if (r <= 12) return 89 - (r - 4) * (14 / 8);
+  if (r <= 25) return 74 - (r - 13) * (19 / 12);
+  if (r <= 45) return 54 - (r - 26) * (19 / 19);
+  if (r <= 70) return 34 - (r - 46) * (19 / 24);
+  return Math.max(2, 14 - (r - 71) * 0.5);
+}
+export function rankTheWorld(s, year) {
+  const w = ensureWorld(s);
+  const working = w.actors.filter((a) => a.alive && !a.retired);
+  // The business gives its own names the benefit of the doubt: a rival's heat carries a
+  // third more than the same numbers would for you. You are the outsider until you are not.
+  const rows = working.map((a) => ({ a, heat: heatOf(a.credits, year, a.askers || 0, a.noms || 0, year - a.born) * 1.3 }));
+  const you = { you: true, heat: (s.stage === 'career' || (s.filmography || []).length) ? yourHeat(s, year) : -1 };
+  const all = [...rows, you].sort((x, y) => y.heat - x.heat);
+  let r = 0;
+  for (const row of all) {
+    r += 1;
+    if (row.you) { w.rank = { you: r, of: all.length, heat: Math.round(row.heat) }; continue; }
+    const a = row.a;
+    const target = fameForRank(r);
+    // Pulled halfway toward the rank each year: a name rises and fades over years, not overnight.
+    a.fame = clamp(a.fame + (target - a.fame) * 0.5);
+    if (a.icon && r <= SEATS.alist) a.fame = Math.max(a.fame, 75);
+    a.rank = r;
+    if (!a.icon && r <= SEATS.icon && a.fame >= 88) { a.icon = true; a.iconSince = year; }
+  }
+  return w.rank;
+}
+// Read by status.js: is there a chair for you in that room?
+export function yourRank(s) { return (s.world && s.world.rank && s.world.rank.you) || 999; }
 
 // ── critics ───────────────────────────────────────────────────────────────────
 // Twelve people who write about films for a living. Each has a paper, a genre they love,

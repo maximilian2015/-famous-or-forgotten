@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { theme } from '../theme.js';
 import { Card } from './Card.jsx';
 import { yearsOf, moneyOf } from '../../systems/world/yearbook.js';
-import { icons, ageOf } from '../../systems/world/world.js';
+import { icons, legends as legendsOf, ageOf } from '../../systems/world/world.js';
 
 // The wall. Who is an icon right now, who was one, and every year the business has kept
 // lists for — the ten films that took the money, the five actors whose year it was, the
@@ -54,8 +54,8 @@ export function WalkOfFame({ g }) {
   const [showAll, setShowAll] = useState(false);
   const years = yearsOf(g);
   if (!g.world || !years.length) return null;
-  const now = icons(g).filter((a) => !a.retired);
-  const legends = ((g.world && g.world.actors) || []).filter((a) => a.icon && (a.retired || !a.alive)).slice(-6).reverse();
+  const now = icons(g).sort((a, b) => (a.rank || 99) - (b.rank || 99));
+  const legends = legendsOf(g).slice(-6).reverse();
   const shown = showAll ? years : years.slice(0, 6);
   return (<div style={{ marginTop: 18 }}>
     <div style={head}>Walk of Fame</div>
@@ -70,7 +70,7 @@ export function WalkOfFame({ g }) {
         <div style={sub}>Legends</div>
         {legends.map((a) => (<div key={a.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', gap: 8, padding: '4px 8px', fontSize: 12, color: theme.muted }}>
           <span style={{ fontWeight: 700 }}>{a.name}</span>
-          <span style={{ fontSize: 11, whiteSpace: 'nowrap' }}>{!a.alive ? `† ${a.died}` : `retired ${a.retiredIn}`}{a.askers ? ` · 🏆 ${a.askers}` : ''}</span>
+          <span style={{ fontSize: 11, whiteSpace: 'nowrap' }}>{!a.alive ? `† ${a.died}` : a.retired ? `retired ${a.retiredIn}` : `icon ${a.iconSince}–`}{a.askers ? ` · 🏆 ${a.askers}` : ''}</span>
         </div>))}
       </>}
       <div style={{ fontSize: 10.5, color: theme.muted, marginTop: 8, lineHeight: 1.5 }}>

@@ -807,7 +807,10 @@ function fameSub(g) {
   // that the ordinary countdown is the more useful thing to read.
   const ceiling = fameCeiling(g);
   if (ceiling < 100 && (g.fame || 0) >= ceiling - 5) { const say = ladderBlurb(g); if (say) return say; }
-  return next ? `${t.label} · ${Math.max(1, Math.ceil(next.min - (g.fame || 0)))} to ${next.label}` : t.label;
+  // Your place in the business, once there is one. Fame is comparative now — world.js.
+  const rank = g.world && g.world.rank && g.world.rank.you;
+  const place = rank && rank <= 60 && (g.filmography || []).length ? ` · #${rank} in the business` : '';
+  return next ? `${t.label} · ${Math.max(1, Math.ceil(next.min - (g.fame || 0)))} to ${next.label}${place}` : `${t.label}${place}`;
 }
 // Acting isn't one number — it's the lanes you've actually worked in. Genre experience
 // comes only from finished credits and pays back as a rating bonus in that genre.

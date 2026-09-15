@@ -296,7 +296,7 @@ function theirNight(s, year) {
 function recordTheirWin(s, p, winner) {
   if (!winner.them) return;
   const a = winner.id ? actorById(s, winner.id) : null;
-  if (a) { a.askers = (a.askers || 0) + 1; a.fame = Math.min(100, (a.fame || 0) + 10); a.respect = Math.min(100, (a.respect || 50) + 10); maybeIcon(a, s.year, ((s.world && s.world.actors) || []).filter((x) => x.icon && x.alive && !x.retired).length); }
+  if (a) { a.askers = (a.askers || 0) + 1; a.fame = Math.min(100, (a.fame || 0) + 10); a.respect = Math.min(100, (a.respect || 50) + 10); maybeIcon(a, s.year); }
   const entry = s.world && s.world.years && s.world.years[p.year];
   if (entry) (entry.askers = entry.askers || []).push({ category: p.category, name: winner.name, work: winner.work });
 }
