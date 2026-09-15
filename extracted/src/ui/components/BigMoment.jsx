@@ -58,7 +58,7 @@ function Scene({ id, look, accent, moment }) {
         <rect x="64" y={37.5 + i * 12} width={70 - i * 6} height="4" rx="2" fill={i === 0 ? accent : theme.edge} opacity={i === 0 ? 1 : 0.7} />
         <rect x="138" y={37.5 + i * 12} width="14" height="4" rx="2" fill={theme.edge} opacity=".6" />
       </g>))}
-      <text x="100" y="110" textAnchor="middle" fontSize="7" fontWeight="800" fill={theme.sceneText} letterSpacing="2">{moment.title}</text>
+      <text x="100" y="110" textAnchor="middle" fontSize="7" fontWeight="800" fill={theme.sceneText} letterSpacing="2">{moment.sections && moment.sections[0] && moment.sections[0].rows[0] ? `#1 ${moment.sections[0].rows[0].a}`.toUpperCase().slice(0, 30) : ''}</text>
     </svg>);
   }
   // Awards night. A statuette on a lit plinth, and a room of seats facing it.

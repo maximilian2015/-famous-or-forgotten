@@ -129,7 +129,9 @@ export function maybeIcon(a, year) {
   if ((a.rank || 999) <= SEATS.icon && a.fame >= 88) { a.icon = true; a.iconSince = year; }
 }
 // An icon who has slipped out of the A-list is a legend, not a name on the door.
-export function iconNow(a) { return a.icon && a.alive && !a.retired && (a.rank || 999) <= SEATS.alist; }
+export function iconNow(a) { return a.icon && a.alive && !a.retired && (a.rank || 999) <= SEATS.icon; }
+// The A-list: the nine chairs under the three. Some of them have been higher.
+export function alist(s) { return ((s.world && s.world.actors) || []).filter((a) => a.alive && !a.retired && (a.rank || 999) > SEATS.icon && (a.rank || 999) <= SEATS.alist).sort((a, b) => a.rank - b.rank); }
 
 // Runs once a year, in January, for the year just gone. Everybody works, ages, and some of
 // them stop. Your own films for the year are folded in by yearbook.js, which calls this.
@@ -172,7 +174,13 @@ export function worldYear(s, year) {
   }
   // The roster does not grow without limit: the dead and the long-retired are kept for the
   // wall and dropped from the working list after a while.
-  if (w.actors.length > 90) w.actors = w.actors.filter((a) => a.alive && (!a.retired || year - (a.retiredIn || year) < 15)).concat(w.actors.filter((a) => !a.alive).slice(-10));
+  if (w.actors.length > 90) {
+    // Anybody your life still points at stays: the co-star on your current shoot, the names
+    // on your posters, the people in your phone. Pruning one of them left a film "with"
+    // somebody the world had forgotten.
+    const keep = new Set([s.production && s.production.withId, ...(s.filmography || []).map((c) => c.withId), ...(s.people || []).map((p) => p.worldId)].filter(Boolean));
+    w.actors = w.actors.filter((a) => keep.has(a.id) || (a.alive && (!a.retired || year - (a.retiredIn || year) < 15))).concat(w.actors.filter((a) => !a.alive && !keep.has(a.id)).slice(-10));
+  }
   return films;
 }
 

@@ -20,10 +20,18 @@ export function tierById(id) { return EVENT_TIERS.find((t) => t.id === id) || EV
 const VENUE = ['The Loft', 'Rooftop 12', 'Villa Nord', 'The Atrium', 'Hotel Meridian', 'Studio 9', 'The Old Bank', 'Pier House'];
 const HOST = ['Vega Pictures', 'Nord Media', 'the Aurora Fund', 'Lyra Studios', 'a producer everyone knows', 'the festival board'];
 
+// A house party is somebody's house. The bigger rooms are thrown by money; a house party is
+// thrown by a person — one of the working actors in the world, which is how you end up at
+// a rival's place at two in the morning.
+function hostFor(s, tier) {
+  if (tier.id !== 'local') return pick(HOST);
+  const people = ((s.world && s.world.actors) || []).filter((a) => a.alive && !a.retired && (a.fame || 0) < 60);
+  return people.length ? pick(people).name : pick(HOST);
+}
 function makeEvent(s, tier) {
   return {
     id: uid(s, 'ev'),
-    tier: tier.id, venue: pick(VENUE), host: pick(HOST),
+    tier: tier.id, venue: tier.id === 'local' ? pick(['a flat in the east end', 'a house up the hill', 'a roof somewhere', 'a warehouse that is not a warehouse']) : pick(VENUE), host: hostFor(s, tier),
     monthsLeft: rint(1, 3), attended: false,
   };
 }

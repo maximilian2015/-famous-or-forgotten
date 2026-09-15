@@ -13,9 +13,9 @@ const COMMON = {
     'Station', 'Cauldron', 'Crust', 'Attempt', 'Crossing', 'Debt', 'Promise', 'Mirror', 'Border', 'Ledger', 'Coat', 'Lantern'],
   abstract: ['Crosses', 'Mercies', 'Water', 'Light', 'Hours', 'Distances', 'Names', 'Strangers', 'Salt', 'Smoke', 'Glass',
     'Ashes', 'Rain', 'Silence', 'Thieves', 'Kings', 'Sisters', 'Mothers', 'Debts', 'Promises', 'Fools', 'Angels', 'Dust'],
-  body: ['Head', 'Hands', 'Shoulder', 'Door', 'Bed', 'Window', 'Name', 'Town', 'House', 'Heart', 'Feet', 'Eyes'],
+  body: ['Head', 'Hands', 'Door', 'Bed', 'Window', 'Name', 'Town', 'House', 'Heart', 'Eyes', 'Shoulder'],
   thing: ['Smoke', 'Rain', 'Snow', 'Light', 'A Stranger', 'Nothing', 'Water', 'Fire', 'The Sea', 'A Voice', 'Dust', 'Music'],
-  prep: ['Above', 'Beneath', 'Behind', 'After', 'Without', 'Inside', 'Beyond', 'Before'],
+  prep: ['Above', 'Beneath', 'Behind', 'After', 'Without', 'Beyond', 'Before', 'Under'],
   participle: ['Resurrected', 'Coming to Dinner', 'Talking', 'Back', 'Sorry Now', 'Lying', 'Leaving', 'Counting', 'Watching', 'Laughing'],
   question: ["Guess Who's", "Look Who's", "Ask Who's", "Nobody's", "Everybody's"],
   single: ['Stab', 'Undertow', 'Vertigo', 'Fallow', 'Ember', 'Marrow', 'Tabula Rasa', 'Terra Nova', 'Mea Culpa', 'Deus Ex',
@@ -49,7 +49,7 @@ function words(genre, key) {
   // Two in three from the genre's own list when it has one.
   return g.length && chance(66) ? g : c;
 }
-const cap = (w) => w.charAt(0).toUpperCase() + w.slice(1);
+const NUMBERED = ['Precinct', 'Colony', 'Orbit', 'Engine', 'Protocol', 'Station', 'Room', 'Signal', 'Sector', 'Unit', 'Ward', 'Platform', 'Apartment', 'Highway', 'Bunker'];
 
 function shape(genre) {
   const r = Math.random();
@@ -59,7 +59,8 @@ function shape(genre) {
   if (r < 0.72) return `The ${pick(COMMON.ordinal)} ${pick(words(genre, 'noun'))}`;
   if (r < 0.82) return `${pick(COMMON.thing)} ${pick(COMMON.prep)} Your ${pick(COMMON.body)}`;
   if (r < 0.90) return `${pick(COMMON.question)} ${pick(COMMON.participle)}`;
-  if (r < 0.95) return `${cap(pick(words(genre, 'noun')))} ${rint(2, 99)}`.replace(/ (\d)$/, ' $1');
+  // Only the nouns a number sits well on: 'Precinct 13', 'Colony 9' — not 'Roommate 63'.
+  if (r < 0.95) return `${pick(NUMBERED)} ${rint(2, 99)}`;
   return `${pick(words(genre, 'abstract'))} and ${pick(words(genre, 'abstract'))}`;
 }
 

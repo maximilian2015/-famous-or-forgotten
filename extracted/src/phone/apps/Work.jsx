@@ -65,6 +65,16 @@ export function Work({ g }) {
 
   const open = availableJobs(g);
   const tooYoung = JOBS.filter((j) => (g.ageY || 0) < j.minAge);
+  // A face people know does not pull pints. The board is for the years before that — and
+  // for the ones after a fall, when nobody knows the face any more.
+  if ((g.fame || 0) >= 35) {
+    return (<div>
+      {tabs}
+      <div style={{ fontSize: 12.5, color: theme.muted, textAlign: 'center', padding: '22px 14px', lineHeight: 1.6 }}>
+        Nobody hires a {(g.fame || 0) >= 75 ? 'star' : 'known face'} to make coffee, and you would be photographed doing it. If it ever comes to that again, the board will be here.
+      </div>
+    </div>);
+  }
   return (<div>
     {tabs}
     <div style={{ fontSize: 11.5, color: theme.muted, padding: '2px 2px 10px', lineHeight: 1.5 }}>

@@ -198,7 +198,12 @@ export function OpenCall({ g, ocTab, setOcTab, teenMode }) {
             </span>
           </div>
         </button>
-        {isOpen && <div style={{ padding: '0 12px 11px' }}>
+        {isOpen && locked && <div style={{ padding: '0 12px 11px' }}>
+          <div style={{ fontSize: 11.5, color: theme.gold, lineHeight: 1.5, background: 'rgba(255,209,102,.08)', border: '1px solid rgba(255,209,102,.3)', borderRadius: 9, padding: '8px 10px' }}>
+            🔒 Not yet. This one wants a name at fame {c.minFame} — you are at {Math.round(reach(g))}. It is on the board so you can see what is one rung up; the casting office will not send you the sides until you are there.
+          </div>
+        </div>}
+        {isOpen && !locked && <div style={{ padding: '0 12px 11px' }}>
           {c.perEpisode && <div style={{ fontSize: 10.5, color: theme.muted, marginBottom: 6 }}>€{c.salary.toLocaleString()} for {c.episodes} episodes</div>}
           {f < 0.98 && <div style={{ fontSize: 10.5, color: f < 0.6 ? theme.bad : theme.gold, marginBottom: 6, lineHeight: 1.4 }}>
             {lateShelf ? 'Written for someone who has lived a bit. That is you now.'
@@ -206,7 +211,6 @@ export function OpenCall({ g, ocTab, setOcTab, teenMode }) {
               : 'You are at the top end of what they had in mind.'}
           </div>}
           {byAsker && <div style={{ fontSize: 10.5, fontWeight: 800, color: theme.gold, marginBottom: 6 }}>🏆 They read you on the Asker — your fame alone would not get you in.</div>}
-          {locked && <div style={{ fontSize: 10.5, color: theme.muted, marginBottom: 6, lineHeight: 1.45 }}>Needs fame {c.minFame}. Nobody sends these sides to a name they have not heard.</div>}
           {/* How long this eats of your life, before you say yes to it. */}
           {(c.months || 1) > 1 && <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 6 }}>
             <div style={{ display: 'flex', gap: 2, flex: 1 }}>

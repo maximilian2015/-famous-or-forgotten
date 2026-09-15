@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { theme } from '../theme.js';
 import { Card } from './Card.jsx';
 import { yearsOf, moneyOf } from '../../systems/world/yearbook.js';
-import { icons, legends as legendsOf, ageOf } from '../../systems/world/world.js';
+import { icons, legends as legendsOf, alist as alistOf, ageOf, SEATS } from '../../systems/world/world.js';
 
 // The wall. Who is an icon right now, who was one, and every year the business has kept
 // lists for — the ten films that took the money, the five actors whose year it was, the
@@ -55,7 +55,9 @@ export function WalkOfFame({ g }) {
   const years = yearsOf(g);
   if (!g.world || !years.length) return null;
   const now = icons(g).sort((a, b) => (a.rank || 99) - (b.rank || 99));
-  const legends = legendsOf(g).slice(-6).reverse();
+  const alist = alistOf(g);
+  const legends = legendsOf(g).filter((a) => a.retired || !a.alive).slice(-6).reverse();
+  const you = g.world && g.world.rank;
   const shown = showAll ? years : years.slice(0, 6);
   return (<div style={{ marginTop: 18 }}>
     <div style={head}>Walk of Fame</div>
@@ -63,9 +65,19 @@ export function WalkOfFame({ g }) {
       <div style={sub}>Icons</div>
       {now.length === 0 && <div style={{ fontSize: 12, color: theme.muted, padding: '4px 8px' }}>Nobody, right now. The business is between them.</div>}
       {now.map((a) => (<div key={a.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', gap: 8, padding: '5px 8px', fontSize: 12.5 }}>
-        <span style={{ fontWeight: 800, color: theme.gold }}>{a.name}</span>
+        <span style={{ fontWeight: 800, color: theme.gold }}>#{a.rank} {a.name}</span>
         <span style={{ fontSize: 11, color: theme.muted, whiteSpace: 'nowrap' }}>{ageOf(g, a)} · icon since {a.iconSince}{a.askers ? ` · 🏆 ${a.askers}` : ''}</span>
       </div>))}
+      {/* The nine chairs under them — the room you are trying to get into, with your own place under it. */}
+      <div style={sub}>The A-list</div>
+      {alist.map((a) => (<div key={a.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', gap: 8, padding: '4px 8px', fontSize: 12 }}>
+        <span style={{ fontWeight: 700, color: theme.text }}>#{a.rank} {a.name}{a.icon ? <span style={{ color: theme.gold }}> ★</span> : null}</span>
+        <span style={{ fontSize: 11, color: theme.muted, whiteSpace: 'nowrap' }}>{ageOf(g, a)}{a.askers ? ` · 🏆 ${a.askers}` : ''}</span>
+      </div>))}
+      {you && you.you && (g.filmography || []).length > 0 && <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', gap: 8, padding: '6px 8px', marginTop: 4, fontSize: 12, borderRadius: 8, background: 'rgba(255,209,102,.12)', border: '1px solid rgba(255,209,102,.4)' }}>
+        <span style={{ fontWeight: 800, color: theme.gold }}>#{you.you} {g.name} — you</span>
+        <span style={{ fontSize: 11, color: theme.muted, whiteSpace: 'nowrap' }}>{you.you <= SEATS.icon ? 'one of the three' : you.you <= SEATS.alist ? 'on the A-list' : `${you.you - SEATS.alist} place${you.you - SEATS.alist === 1 ? '' : 's'} off the A-list`}</span>
+      </div>}
       {legends.length > 0 && <>
         <div style={sub}>Legends</div>
         {legends.map((a) => (<div key={a.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', gap: 8, padding: '4px 8px', fontSize: 12, color: theme.muted }}>

@@ -200,7 +200,7 @@ export default function App() {
           {(g.timeline || []).slice(0, 8).map((e, i) => (<div key={i} style={{ fontSize: 12.5, color: e.bad ? theme.bad : theme.text, padding: '6px 0', borderBottom: `1px solid ${theme.line}` }}><span style={{ color: theme.muted, marginRight: 8 }}>{e.when}</span>{e.text}</div>))}
           {(!g.timeline || !g.timeline.length) && <div style={{ fontSize: 12.5, color: theme.muted }}>Your story starts here. Live a year.</div>}
         </div>
-        <LegacyPanel g={g} />
+        <LegacyPanel g={g} wall={false} />
        </>}
       </div>
 
@@ -2306,10 +2306,11 @@ function AaaTracker({ g }) {
   const acc = computeAccess(g);
   return (<Card style={{ marginBottom: 14, borderColor: acc.aaa ? 'rgba(95,206,138,.4)' : theme.line }}><div style={{ fontSize: 11, fontWeight: 900, letterSpacing: '.08em', textTransform: 'uppercase', color: acc.aaa ? theme.good : theme.muted, marginBottom: 6 }}>{acc.aaa ? '★ The tentpoles are open to you' : 'The tentpoles — closed to you'}</div><div style={{ fontSize: 12.5, color: theme.muted, lineHeight: 1.5 }}>{acc.aaa ? (acc.aaaReason === 'hit' ? 'You made a hit. Studios take your calls now.' : 'You know the right person. Doors open through them.') : 'The biggest pictures do not audition strangers. Two ways in: land a hit (rating 85+), or get genuinely close to somebody powerful in the industry (weight 80+).'}</div></Card>);
 }
-function LegacyPanel({ g }) {
+function LegacyPanel({ g, wall = true }) {
   const young = g.stage === 'child' || g.stage === 'teen';
+  // The wall is a screen's worth on its own; Home only carries the card.
   return (<>
-    <WalkOfFame g={g} />
+    {wall && <WalkOfFame g={g} />}
     <LegacyCard g={g} young={young} />
   </>);
 }

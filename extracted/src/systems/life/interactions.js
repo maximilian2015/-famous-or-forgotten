@@ -189,7 +189,10 @@ export const INTERACTIONS = [
 
   { id: 'cutoff', group: 'mean', label: 'Cut them out of your life', blurb: 'Gone, and not coming back',
     applies: ({ kind }) => kind === 'contact',
-    run: ({ s, p }) => { s.people = (s.people || []).filter((x) => x.id !== p.id); addTimeline(s, `Cut ${p.name} out of your life.`, true); return `${p.name} is out of your life.`; } },
+    run: ({ s, p }) => {
+      // Cutting your agent out of your life is firing them, with the same cooling-off.
+      if (p.agent && s.agent) { s.agent = null; s._agentCool = (s.year || 0) * 12 + (s.month || 0) + 3; }
+      s.people = (s.people || []).filter((x) => x.id !== p.id); addTimeline(s, `Cut ${p.name} out of your life.`, true); return `${p.name} is out of your life.`; } },
 ];
 
 // Two different kinds of "no", and the difference matters:

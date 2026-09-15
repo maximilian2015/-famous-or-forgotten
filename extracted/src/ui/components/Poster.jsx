@@ -136,7 +136,7 @@ export function Poster({ title, type, genre, director, size = 52, tall }) {
       </text>
       {/* the credits block: a line of tiny type nobody can read, exactly like the real thing */}
       <text x="50" y="136" textAnchor="middle" fontSize="3.2" fill="#f6f1e6" opacity=".55" letterSpacing=".08em" fontFamily="system-ui, sans-serif">
-        {(director ? 'A FILM BY ' + director.toUpperCase() : 'A FILM BY SOMEBODY').slice(0, 30)}
+        {(director ? 'A FILM BY ' + director.toUpperCase() : 'A FILM').slice(0, 30)}
       </text>
       <text x="50" y="142" textAnchor="middle" fontSize="2.4" fill="#f6f1e6" opacity=".35" letterSpacing=".05em" fontFamily="system-ui, sans-serif">
         EXECUTIVE PRODUCER · MUSIC BY · EDITED BY · CASTING · PRODUCTION DESIGN
