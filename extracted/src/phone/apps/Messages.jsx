@@ -57,6 +57,7 @@ export function Messages({ g }) {
         <div style={{ fontSize: 11, fontWeight: 900, color: theme.accent, textTransform: 'uppercase', marginBottom: 4 }}>
           {o.kind === 'renewal' ? 'The network' : o.kind === 'sequel' ? 'The studio'
             : o.via === 'casting' ? 'Casting · you read for this'
+            : o.via === 'party' ? `${o.from || 'Somebody'} · you met at a party`
             : o.via === 'partner' ? `${(o.viaPartner || 'a friend').split(' ')[0]} got you in the room`
             : o.via === 'agent' || agent ? `${agent || 'Your agent'} · your agent brought it` : 'A producer'}
         </div>

@@ -168,6 +168,14 @@ export function releaseTick(s) {
 // finds it. Opening night is not the verdict — it is the start of finding out.
 const RUN_WEEKS = { small: 3, indie: 6, feature: 11, blockbuster: 15, oneoff: 2,
   episode: 6, recurring: 12, prestige: 10 };
+// Legs. A picture people love stays up half again as long; one nobody wants is pulled in
+// a fortnight to make room. Maxi: "if it is a success it is in cinemas longer, right?"
+function runWeeks(rel, verdict) {
+  const base = RUN_WEEKS[rel.scale] || 8;
+  if (!isFilm(rel.scale)) return base;
+  const legs = verdict === 'smash' ? 1.6 : verdict === 'profitable' ? 1.25 : verdict === 'broke even' ? 1 : rel.rating >= 55 ? 0.8 : 0.5;
+  return Math.max(2, Math.round(base * legs));
+}
 
 function open(s, rel) {
   const film = isFilm(rel.scale);
@@ -186,7 +194,7 @@ function open(s, rel) {
     rating: rel.rating, status: rel.status, year: s.year, season: rel.season,
     part: rel.part > 1 ? rel.part : 0, episodes: rel.episodes,
     // In cinemas. Everything below is provisional until runTick closes it.
-    running: true, weeks: 0, weeksTotal: RUN_WEEKS[rel.scale] || 8,
+    running: true, weeks: 0, weeksTotal: runWeeks(rel, verdict),
     boxOffice: 0, viewers: rel.viewers || 0, verdict: 'in cinemas', score: null,
     // Carried for the Asker season: what kind of thing it was, and whether it was pushed.
     scale: rel.scale, tier: rel.tier, prestigeScore: rel.prestigeScore, director: rel.director || null,

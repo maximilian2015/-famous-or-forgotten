@@ -25,6 +25,7 @@ import { WalkOfFame } from './ui/components/WalkOfFame.jsx';
 import { Diary } from './ui/components/Diary.jsx';
 import { FamilyTree } from './ui/components/FamilyTree.jsx';
 import { ContractRoom } from './ui/components/ContractRoom.jsx';
+import { NightRoom } from './ui/components/NightRoom.jsx';
 import { tierById, isInvited, attendEvent, askForInvite, sneakIntoEvent, inviteHelpers, helperOdds, hasAsked } from './systems/social/events.js';
 import { HOUSING, HOUSING_ORDER, monthlyCosts, DIET, GYM_COST, setDiet, toggleGym } from './engine/economy.js';
 import { GENRES, hotGenre } from './systems/meta/news.js';
@@ -98,6 +99,7 @@ export default function App() {
   if (g.depression?.pending) return <CheckpointModal g={g} />;
   if (g.drink?.pending) return <UltimatumModal g={g} />;
   if (g.production && !g.production.take) return <StoryRoom g={g} />;
+  if (g.night) return <NightRoom g={g} />;
   if (g.openContract) return <ContractRoom g={g} onClose={() => dispatch(closeContract)} />;
   if (showRoom) return <RoomScreen g={g} onBack={() => setShowRoom(false)} />;
   if (confirmEnd) return <EndLifeModal onCancel={() => setConfirmEnd(false)} onConfirm={() => { import('./systems/meta/legacy.js').then(m => { m.enshrine(g); newLife(); setConfirmEnd(false); setOpenPerson(null); setScreen('life'); }); }} />;

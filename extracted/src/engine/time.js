@@ -30,6 +30,7 @@ import { slotsLost, rehabTick, inRehab } from '../systems/life/depression.js';
 import { drinkTick } from '../systems/life/drink.js';
 import { addTimeline } from './timeline.js';
 import { maybeGenerateEvent, eventsTick } from '../systems/social/events.js';
+import { nightTick } from '../systems/social/night.js';
 import { agingTick, mortalityCheck } from '../systems/life/mortality.js';
 import { healthTick } from '../systems/life/health.js';
 import { pruneCooldowns } from './cooldown.js';
@@ -86,6 +87,7 @@ export function advanceMonth(state) {
   eventsTick(s);
   maybeGenerateEvent(s);
   contractsTick(s);   // the papers you sent back come back with an answer
+  nightTick(s);       // and somebody you met at a party calls, or does not
   offersTick(s);      // and a part you never answered goes to somebody else
   maybeGenerateOffer(s);
   agentTick(s);      // the agent leaves the liability, or moves you up a desk

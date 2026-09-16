@@ -1,11 +1,9 @@
 import { COST, canAfford, spend, tooTired } from '../../engine/energy.js';
 import { inCareer } from '../../engine/stage.js';
-import { setFame } from '../meta/status.js';
 import { uid } from '../../engine/id.js';
 import { rint, chance, pick } from '../../engine/rng.js';
 import { addTimeline } from '../../engine/timeline.js';
-import { makePerson } from '../life/relationships.js';
-import { prospect } from '../life/dating.js';
+import { startNight } from './night.js';
 const clamp = (v) => Math.max(0, Math.min(100, v));
 
 // Tiers gate who shows up and whether you're on the guest list at all.
@@ -24,14 +22,15 @@ const HOST = ['Vega Pictures', 'Nord Media', 'the Aurora Fund', 'Lyra Studios', 
 // thrown by a person — one of the working actors in the world, which is how you end up at
 // a rival's place at two in the morning.
 function hostFor(s, tier) {
-  if (tier.id !== 'local') return pick(HOST);
+  if (tier.id !== 'local') return { host: pick(HOST), hostId: null };
   const people = ((s.world && s.world.actors) || []).filter((a) => a.alive && !a.retired && (a.fame || 0) < 60);
-  return people.length ? pick(people).name : pick(HOST);
+  if (!people.length) return { host: pick(HOST), hostId: null };
+  const h = pick(people); return { host: h.name, hostId: h.id };
 }
 function makeEvent(s, tier) {
   return {
     id: uid(s, 'ev'),
-    tier: tier.id, venue: tier.id === 'local' ? pick(['a flat in the east end', 'a house up the hill', 'a roof somewhere', 'a warehouse that is not a warehouse']) : pick(VENUE), host: hostFor(s, tier),
+    tier: tier.id, venue: tier.id === 'local' ? pick(['a flat in the east end', 'a house up the hill', 'a roof somewhere', 'a warehouse that is not a warehouse']) : pick(VENUE), ...hostFor(s, tier),
     monthsLeft: rint(1, 3), attended: false,
   };
 }
@@ -100,40 +99,17 @@ export function sneakIntoEvent(s, eventId, quality = 0) {
 }
 // A party is an evening, not a working day — charging a full action for it meant events
 // always lost to auditions and shooting, and in a 30-life simulation none were ever attended.
-// So: showing up is free, but only one night out a month.
+// So: showing up is one evening of energy, and only one night out a month. What happens
+// inside is night.js — the Go button used to resolve the whole thing in a sentence.
 export function attendEvent(s, eventId) {
   const ev = (s.events || []).find((x) => x.id === eventId); if (!ev) return s;
   if (!isInvited(s, ev) && !ev.invited) { s.lastEvent = "You're not on the list for that one."; return s; }
   const stamp = (s.year || 0) * 12 + (s.month || 0);
   if (s._wentOut === stamp) { s.lastEvent = "You've already been out this month. Two nights in a row is how people start talking."; return s; }
-  // The button in EventsScreen was greyed out at zero energy; the rule underneath never
-  // checked. A night out is an evening, and an evening is one energy.
   if (!canAfford(s, COST.event)) { s.lastEvent = tooTired(s, COST.event); return s; }
   spend(s, COST.event);
   s._wentOut = stamp;
-  const t = tierById(ev.tier);
   ev.attended = true;
   s.events = (s.events || []).filter((x) => x.id !== eventId);
-
-  const met = [];
-  // One real connection a night is the norm — you don't leave a party with a rolodex.
-  const guests = 1 + (chance(18) ? 1 : 0);
-  for (let i = 0; i < guests; i++) {
-    // Bigger rooms skew to industry people; small ones are mostly just people.
-    const industryChance = { local: 25, mixer: 50, premiere: 60, gala: 70 }[t.id];
-    if (chance(industryChance)) {
-      const p = makePerson(s, pick(t.roles));
-      (s.people = s.people || []).push(p);
-      met.push(`${p.name} (${p.role})`);
-    } else {
-      const p = prospect(s);
-      (s.datingPool = s.datingPool || []).push(p);
-      met.push(`${p.name} — you got their number`);
-    }
-  }
-  if (t.fameGain) setFame(s, (s.fame || 0) + t.fameGain);
-  s.mental = clamp((s.mental || 50) + rint(1, 4));
-  s.lastEvent = `${t.label} at ${ev.venue}, hosted by ${ev.host}. You met ${met.join(' and ')}.`;
-  addTimeline(s, `Went to ${t.label.toLowerCase()} at ${ev.venue}.`);
-  return s;
+  return startNight(s, ev, tierById(ev.tier));
 }
