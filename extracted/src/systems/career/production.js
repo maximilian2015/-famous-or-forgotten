@@ -118,6 +118,9 @@ export function startProduction(s, offer) {
     seriesTitle: offer.seriesTitle || (offer.episodes ? offer.projectTitle.replace('⭐ ', '') : ''),
     season: offer.season || (offer.episodes ? 1 : 0), part: offer.part || 1,
     optioned: !!offer.optioned, optionParts: offer.optionParts || 0,
+    // The contract. Preparation is months on the calendar before the first day; an
+    // exclusive shoot takes your Saturdays too; points pay out when the run closes.
+    prepLeft: offer.prep || 0, prep: offer.prep || 0, exclusive: !!offer.exclusive, backend: offer.backend || 0,
     // How solid the money is. Decides whether this shoot ever reaches its last day, and
     // how wildly the finished thing can turn out. See systems/career/stability.js.
     stability: offer.stability ?? rollStability(offer.scale || 'feature'),
@@ -218,6 +221,14 @@ export function bondWithCrew(s, crewId) {
 }
 export function productionTick(s) {
   const p = s.production; if (!p) return;
+  // Preparation: the body, the accent, the stunts. Unpaid, and the set opens better for it.
+  if ((p.prepLeft || 0) > 0) {
+    p.prepLeft -= 1;
+    p.meter = clamp((p.meter || 20) + rint(5, 9));
+    if (p.prepLeft === (p.prep || 1) - 1) addTimeline(s, `Preparation for "${p.title}" — ${p.prep} month${p.prep === 1 ? '' : 's'} before the first day.`);
+    if (p.prepLeft === 0) { s.lastEvent = `Cameras roll on "${p.title}". You arrive ready.`; addTimeline(s, `Cameras roll on ${p.title}.`); }
+    return;
+  }
   // A serious illness stops the shoot dead — the schedule waits for you.
   if ((s.illness && s.illness.freezes) || (s.burnout && s.burnout.rest && s.burnout.left > 0)) {
     p.paused = (p.paused || 0) + 1;

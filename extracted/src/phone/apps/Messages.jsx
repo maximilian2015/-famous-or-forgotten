@@ -7,6 +7,7 @@ import { hotGenre } from '../../systems/meta/news.js';
 import { agentLine, fireAgent } from '../../systems/career/agent.js';
 import { agentDropped } from '../../systems/meta/standing.js';
 import { canWork } from '../../systems/life/strain.js';
+import { openContract } from '../../systems/career/contract.js';
 export function Messages({ g }) {
   const agent = g.agent && g.agent.level > 0 ? g.agent.name : null;
   const offers = g.offers || [];
@@ -63,7 +64,7 @@ export function Messages({ g }) {
         {/* A returning show or a sequel should read as the same thing coming back. */}
         {o.note && <div style={{ fontSize: 11.5, color: theme.gold, marginTop: 5, lineHeight: 1.45 }}>{o.note}</div>}
         <div style={{ fontSize: 11.5, color: theme.muted, marginTop: 5 }}>
-          {o.episodes ? `€${o.episodeFee.toLocaleString()}/ep × ${o.episodes} = €${o.salary.toLocaleString()}` : `€${o.salary.toLocaleString()}`} · {o.months} mo · {o.waitsForWrap && g.production ? 'they will wait until you wrap' : `answer within ${o.deadline} mo`}
+          {o.episodes ? `€${o.episodeFee.toLocaleString()}/ep × ${o.episodes} = €${o.salary.toLocaleString()}` : `€${o.salary.toLocaleString()}`} · {o.months} mo · {o.signed ? (g.production ? 'signed — starts when you wrap' : 'signed') : o.contract && o.contract.sent ? 'the paper is with them' : o.waitsForWrap && g.production ? 'they will wait until you wrap' : `answer within ${o.deadline} mo`}
         </div>
         <div style={{ display: 'flex', gap: 6, marginTop: 6, flexWrap: 'wrap' }}>
           {o.kind === 'renewal' && <span style={{ fontSize: 10.5, fontWeight: 800, padding: '3px 8px', borderRadius: 20, background: 'rgba(255,209,102,.18)', color: theme.gold }}>Season {o.season}</span>}
@@ -75,8 +76,10 @@ export function Messages({ g }) {
         {big && !o.campaign && <button onClick={() => dispatch(runCampaign, o.id)} style={{ ...btn(''), width: '100%', marginTop: 8 }}>Run a campaign · €{cost.toLocaleString()}</button>}
         {big && <div style={{ fontSize: 10.5, color: theme.muted, marginTop: 8 }}>Lead and tentpole roles go into production — you'll shoot it over {o.months} months, with real choices on set.</div>}
         <div style={{ display: 'flex', gap: 7, marginTop: 9 }}>
-          <button onClick={() => dispatch(acceptOffer, o.id)} disabled={!fit.ok || (!!g.production && (o.tier !== 'supporting' || (o.months || 0) >= 2))} style={{ ...btn('pri'), opacity: !fit.ok || (g.production && (o.tier !== 'supporting' || (o.months || 0) >= 2)) ? .45 : 1 }}>Accept</button>
-          <button onClick={() => dispatch(declineOffer, o.id)} style={btn('dan')}>Pass</button>
+          {big
+            ? <button onClick={() => dispatch(openContract, o.id)} disabled={!fit.ok} style={{ ...btn('pri'), opacity: !fit.ok ? .45 : 1 }}>{o.signed ? 'Signed — see the paper' : o.contract && o.contract.sent ? 'With them — see the paper' : o.contract && o.contract.round ? 'The paper came back' : 'Open the contract'}</button>
+            : <button onClick={() => dispatch(acceptOffer, o.id)} disabled={!fit.ok} style={{ ...btn('pri'), opacity: !fit.ok ? .45 : 1 }}>Accept</button>}
+          {!o.signed && <button onClick={() => dispatch(declineOffer, o.id)} style={btn('dan')}>Pass</button>}
         </div>
       </div>); })}
   </div>);

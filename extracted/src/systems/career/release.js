@@ -16,6 +16,7 @@ import { hotGenre } from '../meta/news.js';
 import { maybeContinue } from './franchise.js';
 import { appealShift } from './story.js';
 import { comebackFloor } from '../meta/standing.js';
+import { paid } from './agent.js';
 import { reviewsFor } from '../world/critics.js';
 import { actorById, applyFilmToActor } from '../world/world.js';
 
@@ -132,7 +133,7 @@ export function scheduleRelease(s, credit, p) {
     // Carried for the Asker season: whether it was pushed, and how good the material was.
     campaign: !!p.campaign, prestigeScore: p.prestigeScore, director: credit.director || null,
     // And how the set went, because the business judges the performance, not only the film.
-    meter: p.meter || 0, viaPartner: p.viaPartner || null, fellApart: !!p.fellApart,
+    meter: p.meter || 0, viaPartner: p.viaPartner || null, fellApart: !!p.fellApart, backend: p.backend || 0,
     // Who was on the poster with you, if it was somebody. See production.js makeCrew.
     with: p.with || null, withId: p.withId || null, withFame: p.withFame || 0, withIcon: !!p.withIcon,
     // What the version you shot does to the box office, and the line it was pitched on.
@@ -217,7 +218,7 @@ function open(s, rel) {
     salary: rel.salary, finalGross: rel.finalGross || 0, job: rel.job, film,
     // Read by closeRun and by the critics. These were read off _rel and never written to it,
     // so a carried set and a part got over dinner were both invisible once the run closed.
-    meter: rel.meter || 0, viaPartner: rel.viaPartner || null, fellApart: !!rel.fellApart,
+    meter: rel.meter || 0, viaPartner: rel.viaPartner || null, fellApart: !!rel.fellApart, backend: rel.backend || 0,
     with: rel.with || null, withIcon: !!rel.withIcon };
   // BY ID, never by reference. A save is JSON, and JSON.parse hands back a fresh object for
   // every entry — so a list holding the credit itself pointed at a copy the moment anybody
@@ -358,6 +359,13 @@ function closeRun(s, credit, r) {
   const soft = (limit, cur) => Math.max(0.16, 1 - (cur || 0) / limit);
   setRespect(s, (s.respect || 0) + (respectGain > 0 ? respectGain * soft(112, s.respect) : respectGain));
   if (film && verdict === 'smash') setQuote(s, Math.max(s.quote || 0, (r.salary || 0) * 1.6));
+  // Points. A percentage of what it took past what it cost — the clause that only a name gets.
+  if (film && r.backend > 0) {
+    const over = Math.max(0, (credit.boxOffice || 0) - budgetFor({ scale: r.scale }) * 2.2);
+    const cut = Math.round(over * (r.backend / 100));
+    if (cut > 0) { paid(s, cut, `"${credit.title}" — ${r.backend}% of the gross`); credit.backendPaid = cut; }
+    else addTimeline(s, `"${credit.title}" never passed break-even. Your points are worth nothing.`, true);
+  }
 
   // The gross means nothing on its own — "a billion" is only a triumph next to what it cost.
   // The industry never quotes one without the other and neither should this.

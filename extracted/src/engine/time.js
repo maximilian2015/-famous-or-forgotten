@@ -22,6 +22,7 @@ import { laterOffersTick } from '../systems/career/franchise.js';
 import { submissionsTick, refreshCastingPool } from '../systems/career/castings.js';
 import { runNominations, ceremonyTick } from '../systems/career/awards.js';
 import { closeYear } from '../systems/world/yearbook.js';
+import { contractsTick, startSigned } from '../systems/career/contract.js';
 import { agingNote } from '../systems/career/age.js';
 import { iconTick, quoteTick } from '../systems/meta/status.js';
 import { strainTick } from '../systems/life/strain.js';
@@ -70,6 +71,7 @@ export function advanceMonth(state) {
   strainTick(s);     // the work accumulates in you, and eventually it stops you
   drinkTick(s);      // and the other way out takes its cut of the craft
   productionTick(s);
+  startSigned(s);    // a paper you signed to start later starts itself when the set is free
   releaseTick(s);    // anything that finished shooting months ago opens today
   runTick(s);        // and anything already open takes another few weeks of money
   submissionsTick(s); // and somewhere a casting office finally rings back
@@ -83,6 +85,7 @@ export function advanceMonth(state) {
   ceremonyTick(s);   // and the Askers land a couple of months after the nominations
   eventsTick(s);
   maybeGenerateEvent(s);
+  contractsTick(s);   // the papers you sent back come back with an answer
   offersTick(s);      // and a part you never answered goes to somebody else
   maybeGenerateOffer(s);
   agentTick(s);      // the agent leaves the liability, or moves you up a desk

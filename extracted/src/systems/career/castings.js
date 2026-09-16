@@ -347,7 +347,7 @@ function answerSubmission(s, sub) {
   const offerId = s.offers[s.offers.length - 1].id;
   sendMail(s, { from: 'Casting', subj: `Re: ${c.title} — offer`, tag: 'reply', kind: 'reply', offerId,
     body: `Good news. They would like to offer you ${c.role} on ${c.title} — €${(c.salary || 0).toLocaleString()}${c.perEpisode ? ` for ${c.episodes} episodes` : ''}, ${c.months || 1} month${(c.months || 1) === 1 ? '' : 's'}. They need an answer. The full card is in Messages.`,
-    cta: [{ label: 'Accept', offer: 'accept', reply: 'You say yes before you have finished reading it.' }, { label: 'Pass', offer: 'pass', reply: 'You write back politely. Somebody else will be very happy.' }] });
+    cta: [{ label: 'Open the contract', offer: 'open', reply: 'The paper.' }, { label: 'Pass', offer: 'pass', reply: 'You write back politely. Somebody else will be very happy.' }] });
   s.bigMoment = { id: 'booked', kind: 'good', title: 'You got it',
     body: `"${c.title}" is yours. ${c.role}${c.months ? `, ${count(c.months, 'month')} of shooting` : ''}. `
       + 'Somebody in an office made a list and your name was at the top of it, and you will never find out why.' };
@@ -362,8 +362,10 @@ export function auditionFor(s, id, quality = 50) {
   // as an extra is an afternoon, and an actor in the middle of a fourteen-month blockbuster
   // does those on a Saturday. Blocking them meant the longest shoots were also the emptiest
   // months in the game: three Energy and nothing whatsoever to spend it on.
-  if (s.production && (c.months || 1) >= 2) {
-    s.lastEvent = `You are shooting "${s.production.title}". Nobody can be in two places.`;
+  if (s.production && ((c.months || 1) >= 2 || s.production.exclusive)) {
+    s.lastEvent = s.production.exclusive && (c.months || 1) < 2
+      ? `"${s.production.title}" is exclusive. You signed that — not a day, not a voice session, until you wrap.`
+      : `You are shooting "${s.production.title}". Nobody can be in two places.`;
     return s;
   }
   const fit = canWork(s);

@@ -47,6 +47,18 @@ function Scene({ id, look, accent, moment }) {
       <path d="M70 110 L130 110 L122 120 L78 120 Z" fill="#8a3459" opacity=".8" />
     </svg>);
   }
+  // The paper came back: a contract with a stamp, or without one.
+  if (id === 'contract') {
+    const walked = !!moment.walked;
+    return (<svg viewBox="0 0 200 120" style={{ width: '100%', maxWidth: 300, display: 'block', margin: '0 auto' }}>
+      <rect x="48" y="8" width="104" height="106" rx="2" fill="#fff7e7" stroke="#302d26" strokeWidth="1.2" transform="rotate(-3 100 60)" />
+      <path d="M62 30h60M62 42h72M62 54h50M62 66h66M62 78h40" stroke="#cabc9e" strokeWidth="2" strokeLinecap="round" transform="rotate(-3 100 60)" />
+      {[0, 1, 2].map((i) => <rect key={i} x="56" y={27 + i * 12} width="4" height="4" fill={walked ? '#cabc9e' : '#435848'} transform="rotate(-3 100 60)" />)}
+      {walked
+        ? <g transform="translate(120 88) rotate(-14)"><text x="0" y="0" textAnchor="middle" fontSize="11" fontWeight="900" fill="#8b432f" letterSpacing="2">VOID</text><rect x="-24" y="-11" width="48" height="15" fill="none" stroke="#8b432f" strokeWidth="1.5" /></g>
+        : <g transform="translate(124 90) rotate(-12)"><circle r="17" fill="none" stroke="#8b432f" strokeWidth="1.6" /><circle r="13" fill="none" stroke="#8b432f" strokeWidth=".7" /><text y="3" textAnchor="middle" fontSize="6" fontWeight="800" fill="#8b432f" letterSpacing="1">REVISED</text></g>}
+    </svg>);
+  }
   // The year in film: the trade's year-end issue, a ranked column with one line lit.
   if (id === 'yearbook') {
     return (<svg viewBox="0 0 200 120" style={{ width: '100%', maxWidth: 300, display: 'block', margin: '0 auto' }}>
@@ -205,7 +217,7 @@ function Scene({ id, look, accent, moment }) {
   </svg>);
 }
 
-const CTA = { premiere: 'Read the reviews', shutdown: 'Go home', nomination: 'Let it sink in', ceremony: 'Take the night', yearbook: 'Close the paper',
+const CTA = { premiere: 'Read the reviews', shutdown: 'Go home', nomination: 'Let it sink in', ceremony: 'Take the night', yearbook: 'Close the paper', contract: 'Read it',
   burnout: 'Sleep', depression: 'Close the curtains', lifted: 'Open them',
   checkpoint: 'Keep going', rehab: 'Walk out' };
 function headFor(m) {
@@ -221,6 +233,7 @@ function headFor(m) {
   if (m.id === 'shutdown') return m.frozen ? 'The shoot has stopped' : 'The project is dead';
   if (m.id === 'nomination') return 'The Askers';
   if (m.id === 'yearbook') return 'The year in film';
+  if (m.id === 'contract') return m.walked ? 'They walked' : 'The paper came back';
   if (m.id === 'ceremony') return m.quiet ? 'The Askers went to' : 'And the Asker goes to';
   return m.kind === 'good' ? 'Something came to you' : 'This is happening';
 }
@@ -236,6 +249,7 @@ export function BigMoment({ moment, look, onClose }) {
       : moment.id === 'nomination' ? 'nominated'
       : moment.id === 'ceremony' ? (good && !moment.quiet ? 'asker' : 'applause')
       : moment.id === 'yearbook' ? 'good'
+      : moment.id === 'contract' ? (moment.walked ? 'flop' : 'offer')
       : moment.id === 'booked' ? 'offer'
       : moment.id === 'shutdown' ? 'flop'
       : moment.id === 'burnout' || moment.id === 'depression' ? 'ill'
@@ -284,6 +298,11 @@ export function BigMoment({ moment, look, onClose }) {
               <span style={{ fontWeight: 800, color: r.you ? accent : theme.muted, whiteSpace: 'nowrap' }}>{r.c}</span>
             </div>))}
           </div>))}
+        </div>
+      )}
+      {moment.id === 'contract' && moment.lines && (
+        <div style={{ margin: '0 0 12px', textAlign: 'left' }}>
+          {moment.lines.map((l, i) => (<div key={i} style={{ fontSize: 12, padding: '6px 10px', borderRadius: 8, background: theme.panel2, border: `1px solid ${theme.line}`, marginBottom: 5, color: / — no$/.test(l) ? theme.bad : / — agreed$/.test(l) ? theme.good : theme.gold }}>{l}</div>))}
         </div>
       )}
       {(moment.id === 'nomination' || moment.id === 'ceremony') && moment.lines && (

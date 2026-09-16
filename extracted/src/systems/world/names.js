@@ -43,3 +43,7 @@ export function namesInUse(s) {
 
 export const OUTLETS = ['Southern Night', 'Funtimes', 'Exquisite Cinématique', 'Thrilling Crimes', 'The Ledger', 'Reel Talk',
   'The Harbour Review', 'Matinée', 'Kinomark', 'Late Edition', 'The Stalls', 'Picturehouse Weekly', 'The Gazette', 'Frame by Frame'];
+
+// The people who pay. A studio on the letterhead and the stamp, drawn once per offer.
+export const STUDIOS = ['Lumen Pictures', 'Vega Pictures', 'Nord Media', 'Lyra Studios', 'Aurora Films', 'Harbourlight', 'Meridian Pictures', 'Old Bank Films',
+  'Pier House Productions', 'Halcyon Studios', 'Tallwater Pictures', 'Kestrel & Sons', 'Northlight', 'Corvin Bros.', 'Saltmarsh Films', 'The Ninth Floor'];

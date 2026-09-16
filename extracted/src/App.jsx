@@ -24,6 +24,7 @@ import { Reviews } from './ui/components/BigMoment.jsx';
 import { WalkOfFame } from './ui/components/WalkOfFame.jsx';
 import { Diary } from './ui/components/Diary.jsx';
 import { FamilyTree } from './ui/components/FamilyTree.jsx';
+import { ContractRoom } from './ui/components/ContractRoom.jsx';
 import { tierById, isInvited, attendEvent, askForInvite, sneakIntoEvent, inviteHelpers, helperOdds, hasAsked } from './systems/social/events.js';
 import { HOUSING, HOUSING_ORDER, monthlyCosts, DIET, GYM_COST, setDiet, toggleGym } from './engine/economy.js';
 import { GENRES, hotGenre } from './systems/meta/news.js';
@@ -61,7 +62,13 @@ import { monthsIn, slotsLost, owedSlots, standingOf, onMeds, TALK, WEEK_TASKS, C
 import { drinkThrough, drankThisMonth, level as drinkLevel, band as drinkBand, dependent, bottlesInHouse,
   answerUltimatum, GRACE_MONTHS } from './systems/life/drink.js';
 // Big moments live on state so a system can raise one; the UI only clears it.
-function clearBigMoment(s) { s.bigMoment = (s.moments && s.moments.length) ? s.moments.shift() : null; return s; }
+function clearBigMoment(s) {
+  // The paper that came back opens itself once you have read the answer.
+  const m = s.bigMoment;
+  if (m && m.id === 'contract' && m.offerId && !m.walked) s.openContract = m.offerId;
+  s.bigMoment = (s.moments && s.moments.length) ? s.moments.shift() : null; return s;
+}
+function closeContract(s) { s.openContract = null; return s; }
 const MON = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
 
 export default function App() {
@@ -91,6 +98,7 @@ export default function App() {
   if (g.depression?.pending) return <CheckpointModal g={g} />;
   if (g.drink?.pending) return <UltimatumModal g={g} />;
   if (g.production && !g.production.take) return <StoryRoom g={g} />;
+  if (g.openContract) return <ContractRoom g={g} onClose={() => dispatch(closeContract)} />;
   if (showRoom) return <RoomScreen g={g} onBack={() => setShowRoom(false)} />;
   if (confirmEnd) return <EndLifeModal onCancel={() => setConfirmEnd(false)} onConfirm={() => { import('./systems/meta/legacy.js').then(m => { m.enshrine(g); newLife(); setConfirmEnd(false); setOpenPerson(null); setScreen('life'); }); }} />;
   return (

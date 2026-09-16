@@ -77,6 +77,8 @@ export function offersTick(s) {
     // asking you back — so the clock starts when you wrap. Three parts in a row used to go
     // to somebody else while you were still shooting the one before.
     if (o.waitsForWrap && s.production) { kept.push(o); continue; }
+    // A signed paper does not expire, and one that is with them is waiting on them, not you.
+    if (o.signed || (o.contract && o.contract.sent)) { kept.push(o); continue; }
     o.deadline -= 1;
     if (o.deadline > 0) { kept.push(o); continue; }
     const title = String(o.projectTitle || 'it').replace('⭐ ', '');

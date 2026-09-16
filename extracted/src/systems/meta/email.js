@@ -147,6 +147,7 @@ export function emailAct(s, id, i) {
   if (c.offer && m.offerId) {
     const o = (s.offers || []).find((x) => x.id === m.offerId);
     if (!o) { s.lastEvent = 'That offer is gone — they cast somebody else while you thought about it.'; s.inbox = (s.inbox || []).filter((x) => x.id !== id); return s; }
+    if (c.offer === 'open') { s.openContract = o.id; return s; }   // the paper comes up; the letter stays until it is answered
     if (c.offer === 'accept') { acceptOffer(s, o.id); if ((s.offers || []).some((x) => x.id === o.id)) return s; }   // refused (signed off, shooting): the mail stays, the reason is on screen
     else declineOffer(s, o.id);
     s.inbox = (s.inbox || []).filter((x) => x.id !== id);
