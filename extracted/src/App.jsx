@@ -171,7 +171,7 @@ export default function App() {
             <div style={{ fontSize: 11, fontWeight: 900, letterSpacing: '.08em', textTransform: 'uppercase', color: theme.gold }}>🎬 On set</div>
             <div style={{ fontSize: 11.5, color: theme.muted }}>{meterTier(g.production.meter).label}</div>
           </div>
-          <div style={{ fontSize: 14, fontWeight: 800, marginTop: 3 }}>{g.production.title} · {g.production.monthsLeft} mo left</div>
+          <div style={{ fontSize: 14, fontWeight: 800, marginTop: 3 }}>{g.production.title} · {g.production.prepLeft > 0 ? `preparing, ${g.production.prepLeft} mo` : `${g.production.monthsLeft} mo left`}</div>
           {/* The card used to say "Manage it from the Career tab" and nothing else, so a player
               who pressed Live one month from here skipped the month's rehearsal without
               ever knowing there was one to skip — and the director's opinion, the thing
@@ -1134,7 +1134,7 @@ function LifeCard({ g }) {
     {row('Living', g.homeless ? 'Nowhere — on the street' : hostName(g) ? `At ${hostName(g)}'s · no rent` : g.inheritedHome ? `${HOUSING[g.housing || 'room'].label} · yours outright` : g.hasApartment ? HOUSING[g.housing || 'room'].label : "At your parents'")}
     {g.hasApartment && row('Eating', `${DIET[g.diet || 'cook'].label}${g.gym ? ' · gym' : ''}`)}
     {row('Work', g.job ? `${g.job.title} · ${g.job.employer}` : (inCareer(g) ? 'No job' : '—'), g.job ? theme.text : theme.muted)}
-    {g.production && row('Filming', `${g.production.title} · ${g.production.monthsLeft} mo left`, theme.gold)}
+    {g.production && row('Filming', `${g.production.title} · ${g.production.prepLeft > 0 ? `preparing, ${g.production.prepLeft} mo` : `${g.production.monthsLeft} mo left`}`, theme.gold)}
     {/* The number your agent says out loud. It only means anything if you can see it. */}
     {(g.quote || 0) > 0 && row('Your quote', money(g.quote), theme.gold)}
     {/* What the work is costing you. Only shown once it is worth knowing about. */}
@@ -2285,7 +2285,7 @@ function ProductionCard({ g }) {
     setMinigame(null);
   }
   return (<Card style={{ marginBottom: 14, borderColor: 'rgba(255,209,102,.35)' }}>
-    <div style={{ fontSize: 11, fontWeight: 900, letterSpacing: '.08em', textTransform: 'uppercase', color: theme.gold, marginBottom: 6 }}>🎬 On set · {p.monthsLeft} mo left</div>
+    <div style={{ fontSize: 11, fontWeight: 900, letterSpacing: '.08em', textTransform: 'uppercase', color: theme.gold, marginBottom: 6 }}>🎬 {p.prepLeft > 0 ? `Preparing · ${p.prepLeft} mo before the first day` : `On set · ${p.monthsLeft} mo left`}</div>
     <div style={{ fontSize: 15, fontWeight: 800 }}>{p.title}</div>
     <div style={{ fontSize: 11.5, color: theme.muted, margin: '3px 0 8px' }}>{p.role} · {p.type}</div>
     <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 11.5, color: theme.muted, marginBottom: 4 }}><span>Shoot quality</span><span>{tier.label} · {Math.round(p.meter)}</span></div>
