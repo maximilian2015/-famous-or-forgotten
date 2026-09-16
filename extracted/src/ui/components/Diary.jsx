@@ -7,9 +7,9 @@ import { tierById } from '../../systems/social/events.js';
 // The agenda. This is the calendar from the first prototype, the one Maxi remembered when
 // none of ten new ones would do: a card a month, two across, "Jan 2052 · 1/12" with a pill
 // saying whether the month is yours, and inside it a card for each thing — the shoot in
-// purple with a bar that fills as it goes, post-production in blue, the premiere in gold
-// with the whole month lit, and "free" written small where nothing is. Maxi: "post one
-// colour, the shoot another, the premiere gold, so nothing gets confused."
+// purple with a bar that fills as it goes, the premiere in gold with the whole month lit,
+// and "free" written small where nothing is. Post-production is not on it — you are not
+// there for it. Maxi: "the shoot one colour, the premiere gold; only the premiere."
 const MON = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
 const clean = (t) => String(t || '').replace('⭐ ', '');
 // A premiere has a day, not just a month. Drawn from the title so it never moves.
@@ -57,13 +57,13 @@ function itemsFor(g, i, abs) {
     else if (i >= start + prep && i < start + prep + months) it('signed', '✍️', 'Signed', clean(o.projectTitle), `Shooting, month ${i - start - prep + 1} of ${months}`);
   }
   for (const r of (g.releases || [])) {
-    if (r.due === abs) it('premiere', '🎬', 'Premiere', r.title, `${dayOf(r.title)} ${MON[abs % 12]} ${Math.floor(abs / 12)}`, { big: true });
-    else if (r.due > abs) { const wait = r.wait || (r.due - now) || 1; it('post', '✂️', 'Post-production', r.title, `Editing · opens ${MON[r.due % 12]} ${Math.floor(r.due / 12)}`, { bar: Math.max(.05, (wait - (r.due - abs)) / wait) }); }
+    // Post-production is not on here: you are not there for it. Maxi: "only the premiere."
+    if (r.due === abs) it('premiere', '🎬', 'Premiere', r.title, `${dayOf(r.title)} ${MON[abs % 12]} ${Math.floor(r.due / 12)}`, { big: true });
   }
   for (const c of (g.filmography || [])) {
     if (!c.running) continue;
     const weeksLeft = Math.max(0, (c.weeksTotal || 0) - (c.weeks || 0)), left = Math.ceil(weeksLeft / 4);
-    if (i < left) it('cinemas', '🎟️', 'In cinemas', c.title, i === left - 1 ? 'Last weeks of the run' : `${weeksLeft - i * 4} weeks of the run left`);
+    if (i < left) it('cinemas', '🎟️', 'In cinemas', c.title, i === left - 1 ? 'Last weeks of the run' : `${weeksLeft - i * 4} weeks of the run left`, { card: i === 0 });
     else if (i === 0 && left === 0) it('cinemas', '🎟️', 'In cinemas', c.title, 'The run ends');
   }
   for (const x of (g.submissions || [])) if (x.due === abs) it('answer', '📞', 'They answer', x.title, 'About the part you read for');
@@ -83,18 +83,29 @@ function itemsFor(g, i, abs) {
   return out;
 }
 
+// Two sizes of thing. What takes the month is a card; the rest is a line, so twelve
+// months fit on one screen. Maxi: "smaller, so I do not have to scroll."
+// Post-production and a run in cinemas are a card this month and a blue or green line after,
+// because a picture sits in post for half a year and six cards of it is a wall.
+const CARD = new Set(['shoot', 'prep', 'signed', 'premiere', 'off', 'hold']);
 function Item({ x }) {
   const sk = SKIN[x.kind] || SKIN.answer;
-  return (<div style={{ marginTop: 7, borderRadius: 12, padding: '8px 9px', border: sk.border, background: sk.bg, boxShadow: sk.shadow || 'inset 0 0 0 1px rgba(255,255,255,.035)' }}>
-    <div style={{ display: 'flex', gap: 6, alignItems: 'center', marginBottom: 4, minWidth: 0 }}>
-      <span style={{ fontSize: 14 }}>{x.icon}</span>
-      <span style={{ fontSize: 10, fontWeight: 1000, letterSpacing: '.1em', textTransform: 'uppercase', whiteSpace: 'nowrap', color: x.kind === 'premiere' ? INK.premiere : theme.text }}>{x.label}</span>
+  if ((!CARD.has(x.kind) && !x.card) || (x.kind === 'off' && x.icon === '⏳')) {
+    const color = x.kind === 'off' ? INK.off : x.kind === 'askers' ? INK.premiere : x.kind === 'love' ? INK.love : x.kind === 'post' ? INK.post : x.kind === 'cinemas' ? INK.cinemas : theme.muted;
+    return (<div style={{ display: 'flex', gap: 3, alignItems: 'baseline', marginTop: 3, fontSize: 8.5, lineHeight: 1.25, color, fontWeight: 700, minWidth: 0 }}>
+      <span style={{ flex: 'none' }}>{x.icon}</span><span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{x.title}</span>
+    </div>);
+  }
+  return (<div style={{ marginTop: 4, borderRadius: 8, padding: '4px 6px 5px', border: sk.border, background: sk.bg, boxShadow: sk.shadow || 'inset 0 0 0 1px rgba(255,255,255,.035)' }}>
+    <div style={{ display: 'flex', gap: 4, alignItems: 'center', marginBottom: 2, minWidth: 0 }}>
+      <span style={{ fontSize: 10 }}>{x.icon}</span>
+      <span style={{ fontSize: 7.5, fontWeight: 1000, letterSpacing: '.08em', textTransform: 'uppercase', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', color: x.kind === 'premiere' ? INK.premiere : theme.text }}>{x.label}</span>
     </div>
-    <div style={{ fontSize: 13, lineHeight: 1.15, fontWeight: 850, color: '#fff', overflowWrap: 'anywhere' }}>{x.title}</div>
+    <div style={{ fontSize: 10.5, lineHeight: 1.15, fontWeight: 850, color: '#fff', overflowWrap: 'anywhere' }}>{x.title}</div>
     {x.big
-      ? <div style={{ fontSize: 17, fontWeight: 900, color: INK.premiere, marginTop: 4, letterSpacing: '.02em' }}>{x.sub}</div>
-      : <div style={{ fontSize: 11, lineHeight: 1.2, marginTop: 3, color: theme.muted }}>{x.sub}</div>}
-    {x.bar != null && <div style={{ height: 5, background: 'rgba(255,255,255,.08)', borderRadius: 999, overflow: 'hidden', marginTop: 7 }}>
+      ? <div style={{ fontSize: 12, fontWeight: 900, color: INK.premiere, marginTop: 2, letterSpacing: '.02em' }}>{x.sub}</div>
+      : <div style={{ fontSize: 8.5, lineHeight: 1.2, marginTop: 2, color: theme.muted }}>{x.sub}</div>}
+    {x.bar != null && <div style={{ height: 3, background: 'rgba(255,255,255,.08)', borderRadius: 999, overflow: 'hidden', marginTop: 4 }}>
       <span style={{ display: 'block', height: '100%', borderRadius: 999, width: `${Math.max(5, Math.min(100, Math.round(x.bar * 100)))}%`, background: sk.bar || INK[x.kind] }} />
     </div>}
   </div>);
@@ -112,11 +123,11 @@ function stateOf(items) {
 }
 const PILL = {
   free: { text: 'free', bg: 'rgba(255,255,255,.06)', border: 'rgba(255,255,255,.14)', color: '#a9a1c4' },
-  shoot: { text: 'shooting', bg: 'rgba(139,92,246,.28)', border: 'rgba(167,139,250,.55)', color: '#e6dcff' },
+  shoot: { text: 'shoot', bg: 'rgba(139,92,246,.28)', border: 'rgba(167,139,250,.55)', color: '#e6dcff' },
   prep: { text: 'prep', bg: 'rgba(139,92,246,.16)', border: 'rgba(167,139,250,.45)', color: '#e6dcff' },
   signed: { text: 'booked', bg: 'rgba(139,92,246,.16)', border: 'rgba(167,139,250,.45)', color: '#e6dcff' },
-  off: { text: 'signed off', bg: '#4a1724', border: '#ff6b8a', color: '#ffd5df' },
-  hold: { text: 'on hold', bg: 'rgba(148,163,184,.18)', border: 'rgba(148,163,184,.5)', color: '#e2e8f0' },
+  off: { text: 'off', bg: '#4a1724', border: '#ff6b8a', color: '#ffd5df' },
+  hold: { text: 'hold', bg: 'rgba(148,163,184,.18)', border: 'rgba(148,163,184,.5)', color: '#e2e8f0' },
 };
 
 export function Diary({ g }) {
@@ -124,35 +135,33 @@ export function Diary({ g }) {
   const now = (g.year || 0) * 12 + (g.month || 0);
   const cells = [];
   for (let i = 0; i < (two ? 24 : 12); i++) { const abs = now + i; cells.push({ i, abs, yr: Math.floor(abs / 12), mo: abs % 12, items: itemsFor(g, i, abs) }); }
-  const pillStyle = (k) => ({ display: 'inline-block', padding: '3px 8px', borderRadius: 999, background: PILL[k].bg, border: `1px solid ${PILL[k].border}`, fontSize: 10.5, fontWeight: 900, color: PILL[k].color, whiteSpace: 'nowrap' });
-  return (<div style={{ marginBottom: 16 }}>
-    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', marginBottom: 8 }}>
+  const pillStyle = (k) => ({ display: 'inline-block', padding: '1px 5px', borderRadius: 999, background: PILL[k].bg, border: `1px solid ${PILL[k].border}`, fontSize: 8, fontWeight: 900, color: PILL[k].color, whiteSpace: 'nowrap' });
+  return (<div style={{ marginBottom: 14 }}>
+    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', marginBottom: 6 }}>
       <div style={{ fontSize: 11, fontWeight: 900, letterSpacing: '.09em', textTransform: 'uppercase', color: theme.muted }}>Agenda</div>
-      <button onClick={() => setTwo(!two)} style={{ background: 'transparent', border: `1px solid ${theme.line}`, color: theme.muted, borderRadius: 999, padding: '3px 9px', fontSize: 10.5, fontWeight: 800, cursor: 'pointer' }}>{two ? 'This year' : 'Next year too'}</button>
+      <div style={{ display: 'flex', gap: 5, alignItems: 'center', fontSize: 9, color: theme.muted }}>
+        {[['🎥', 'shoot'], ['🎬', 'premiere'], ['🎟️', 'cinemas']].map(([ic, t]) => <span key={t}>{ic} {t}</span>)}
+        <button onClick={() => setTwo(!two)} style={{ background: 'transparent', border: `1px solid ${theme.line}`, color: theme.muted, borderRadius: 999, padding: '2px 7px', fontSize: 9, fontWeight: 800, cursor: 'pointer', marginLeft: 3 }}>{two ? '12 months' : '24 months'}</button>
+      </div>
     </div>
-    <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', margin: '0 0 10px', fontSize: 11, color: theme.muted }}>
-      {[['🎥', 'Shooting'], ['✂️', 'Post'], ['🎬', 'Premiere'], ['🎟️', 'In cinemas'], ['🚫', 'Signed off']].map(([ic, t]) => (
-        <span key={t} style={{ border: '1px solid rgba(255,255,255,.12)', borderRadius: 999, padding: '4px 8px', background: 'rgba(255,255,255,.04)' }}>{ic} {t}</span>))}
-    </div>
-    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8 }}>
+    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 5 }}>
       {cells.map((c) => {
         const st = stateOf(c.items);
-        const prem = c.items.some((x) => x.kind === 'premiere'), post = c.items.some((x) => x.kind === 'post');
+        const prem = c.items.some((x) => x.kind === 'premiere');
         // The cell: gold and lit for a premiere, red when you are signed off, a wash of
         // purple for a shoot, a cool blue for a month something of yours is in post.
-        const cell = prem ? { background: 'linear-gradient(135deg,#3a2a08,#1e1430)', border: '2px solid #ffd166', boxShadow: '0 0 0 2px rgba(255,209,102,.18), 0 0 32px rgba(255,209,102,.2), inset 0 0 18px rgba(255,209,102,.06)' }
+        const cell = prem ? { background: 'linear-gradient(135deg,#3a2a08,#1e1430)', border: '1.5px solid #ffd166', boxShadow: '0 0 0 1px rgba(255,209,102,.18), 0 0 22px rgba(255,209,102,.2), inset 0 0 14px rgba(255,209,102,.06)' }
           : st === 'off' ? { background: 'linear-gradient(135deg,#3a1421,#2b1320)', border: '1px solid #ff6b8a', boxShadow: '0 0 0 1px rgba(255,107,138,.25)' }
           : st === 'shoot' || st === 'prep' ? { background: `linear-gradient(135deg, ${theme.panel}, rgba(139,92,246,.10))`, border: '1px solid rgba(167,139,250,.35)' }
-          : post ? { background: 'linear-gradient(135deg,#151523,#151927)', border: `1px solid ${theme.line}`, boxShadow: 'inset 0 0 0 1px rgba(96,165,250,.14)' }
           : { background: theme.panel, border: `1px solid ${c.i === 0 ? theme.accent : theme.line}` };
-        return (<div key={c.i} style={{ ...cell, borderRadius: 12, padding: 8, minHeight: 82, overflow: 'hidden', position: 'relative' }}>
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 4, flexWrap: 'wrap' }}>
-            <b style={{ fontSize: 12, color: c.i === 0 ? theme.accent : theme.text }}>{MON[c.mo]} {c.yr} · {c.mo + 1}/12</b>
+        return (<div key={c.i} style={{ ...cell, borderRadius: 9, padding: '5px 6px 6px', minHeight: 54, overflow: 'hidden', position: 'relative' }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 3 }}>
+            <b style={{ fontSize: 10, color: c.i === 0 ? theme.accent : theme.text, whiteSpace: 'nowrap' }}>{MON[c.mo]} {c.i === 0 || c.mo === 0 ? c.yr : `’${String(c.yr).slice(2)}`}</b>
             <span style={pillStyle(st)}>{PILL[st].text}</span>
           </div>
-          {c.mo === 0 && c.i !== 0 && <span style={{ display: 'block', margin: '6px 0 2px', fontSize: 12, background: `linear-gradient(135deg,${theme.accent2},${theme.accent})`, color: '#fff', borderRadius: 10, padding: '7px 8px', fontWeight: 1000 }}>✨ NEW YEAR</span>}
+          {c.mo === 0 && c.i !== 0 && <span style={{ display: 'block', margin: '4px 0 0', fontSize: 8, background: `linear-gradient(135deg,${theme.accent2},${theme.accent})`, color: '#fff', borderRadius: 6, padding: '3px 5px', fontWeight: 1000, letterSpacing: '.04em' }}>✨ NEW YEAR</span>}
           {c.items.map((x, k) => <Item key={k} x={x} />)}
-          {!c.items.length && <p style={{ color: theme.muted, fontSize: 11, margin: '8px 0 0', opacity: .65 }}>free</p>}
+          {!c.items.length && <p style={{ color: theme.muted, fontSize: 9, margin: '6px 0 0', opacity: .6 }}>free</p>}
         </div>);
       })}
     </div>
