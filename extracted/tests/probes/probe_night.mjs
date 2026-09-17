@@ -1,7 +1,7 @@
 // Two hundred nights out, every kind of room, every button pressed — nothing throws, the
 // hours run out or the night ends on the glass, and what the room hands you lands.
 import fs from 'fs';
-import { startNight, goOver, answerToast, reply, drinkTogether, nightDrink, nightAct, nightChoice, leaveNight, nightTick, HOURS } from '../../src/systems/social/night.js';
+import { startNight, goOver, startTalk, moveOn, answerToast, reply, drinkTogether, nightDrink, nightAct, nightChoice, leaveNight, nightTick, HOURS } from '../../src/systems/social/night.js';
 import { EVENT_TIERS, sneakIntoEvent, answerDoor, stairsResult } from '../../src/systems/social/events.js';
 import { ensureWorld } from '../../src/systems/world/world.js';
 
@@ -19,8 +19,10 @@ for (let i = 0; i < 200; i++) {
   let guard = 0;
   while (!n.done && guard++ < 60) {
     if (n.pending) { tally.pendings[n.pending.id] = (tally.pendings[n.pending.id] || 0) + 1; nightChoice(s, ['home', 'yes', 'bite', 'number'][i % 4]); continue; }
+    if (n.talk && n.talk.stage === 'meet') { const gg = n.guests.find((x) => x.id === n.talk.guestId); if (gg.kind === 'extra' && i % 3) { moveOn(s); tally.moved = (tally.moved || 0) + 1; } else startTalk(s); continue; }
     if (n.talk) {
       if (n.talk.toast === 'ask') { answerToast(s, i % 4 !== 3); continue; }
+      if (n.talk.turn === 0 && i % 2) { const a = n.talk.options.find((x) => x.ask); if (a) { reply(s, a.id); tally.asked = (tally.asked || 0) + 1; continue; } }
       if (heavy && i % 2) { drinkTogether(s); if (n.done) break; }
       const o = n.talk.options[i % n.talk.options.length]; if (!o) throw new Error('no options');
       reply(s, o.id); tally.turns++; continue;
@@ -59,3 +61,41 @@ for (let i = 0; i < 60; i++) {
   if (i % 2 === 0) { if (!ev.invited) throw new Error('stairs pass should invite'); doors.in++; } else { if (!ev.doorTried) throw new Error('stairs fail should bounce'); doors.stairsOut++; }
 }
 console.log('doors', JSON.stringify(doors));
+
+// The names at the premieres, the test after the talk, and your own night with a pitch.
+{
+  const { hostNight, canHost, heavyTest, sendPitch, skipPitch } = await import('../../src/systems/social/night.js');
+  const T = { heavy: 0, tests: 0, trusted: 0, alist: 0, pitches: 0, yes: 0, no: 0, setCost: 0 };
+  for (let i = 0; i < 150; i++) {
+    const s = JSON.parse(JSON.stringify(base)); ensureWorld(s);
+    s.fame = 70; s.respect = 40; s.cash = 200000; s.hasApartment = true; s.housing = 'house'; s.ap = 100; s._wentOut = 0;
+    s.production = { id: 'set1', title: 'Late River', months: 4, monthsLeft: 2, meter: 60, crew: [{ id: 'c', name: 'X', role: 'Director', bond: 50 }] }; s.productions = [s.production];
+    s.people = [{ id: 'pd', name: 'Nadia Roy', role: 'Film Director', industryWeight: 80, relationship: 55 }, { id: 'pc', name: 'Bruno Kade', role: 'Casting Director', industryWeight: 60, relationship: 40 }];
+    if (i % 2 === 0) {
+      const tier = EVENT_TIERS[i % 4 === 0 ? 2 : 3];
+      startNight(s, { id: 'h' + i, venue: 'The Atrium', host: 'the festival board' }, tier);
+      const n = s.night;
+      const h = n.guests.find((x) => x.heavy); if (!h) throw new Error('no name at a premiere');
+      T.heavy++;
+      goOver(s, h.id); startTalk(s); if (n.talk && n.talk.toast === 'ask') answerToast(s, true);
+      while (n.talk) { const o = n.talk.options.find((x) => h.taste.likes.includes(x.tone) && !x.ask) || n.talk.options[0]; reply(s, o.id); }
+      if (n.pending && n.pending.id === 'test') { T.tests++; heavyTest(s, i % 3 === 0 ? 95 : 60); if ((s.people || []).some((p) => p.name === h.name && (p.relationship || 0) >= 58)) T.trusted++; if ((s.leads || []).some((l) => l.alist)) T.alist++; }
+      nightDrink(s); nightDrink(s); nightDrink(s); nightAct(s, 'leave');
+      if (n.log.some((l) => /Late to the call/.test(l.text))) T.setCost++;
+      leaveNight(s);
+    } else {
+      if (!canHost(s).ok) throw new Error('should be able to host: ' + canHost(s).why);
+      hostNight(s);
+      const n = s.night; if (!n || n.tier !== 'yours') throw new Error('no night hosted: ' + s.lastEvent);
+      const d = n.guests.find((x) => x.decides); if (!d) throw new Error('nobody to pitch to');
+      goOver(s, d.id); startTalk(s); if (n.talk && n.talk.toast === 'ask') answerToast(s, true);
+      while (n.talk) { const o = n.talk.options.find((x) => d.taste.likes.includes(x.tone) && !x.ask) || n.talk.options[0]; reply(s, o.id); }
+      if (n.pending && n.pending.id === 'pitch') { T.pitches++; if (i % 5 === 1) skipPitch(s); else sendPitch(s, { genre: 'Drama', scale: 'feature', months: 6, title: 'The Long Room' }); }
+      nightAct(s, 'leave'); leaveNight(s);
+      for (let m = 0; m < 3; m++) { s.month += 1; if (s.month > 11) { s.month = 0; s.year += 1; } nightTick(s); }
+      if ((s.offers || []).some((o) => o.via === 'pitch')) { T.yes++; const o = s.offers.find((o) => o.via === 'pitch'); if (o.projectTitle !== 'The Long Room' || o.genre !== 'Drama' || o.months !== 6) throw new Error('pitch offer lost its shape ' + JSON.stringify(o)); }
+      else if ((s.sms || []).some((m) => m.tag === 'pitch')) T.no++;
+    }
+  }
+  console.log('names', JSON.stringify(T));
+}

@@ -32,7 +32,7 @@ import { NightRoom } from './ui/components/NightRoom.jsx';
 import { Passport } from './ui/components/Passport.jsx';
 import { CARE, CARE_ORDER, careCost, trainerCost, apparentAge, SURGEONS, SURGERY_AGE, NEEDLE_MONTHS, face as faceOf, faceBill, frozenFace, healing, needlesLately, needleCost, surgeryCost, surgeryOdds, setCare, toggleTrainer, needle, surgery } from './systems/life/face.js';
 import { TourRoom } from './ui/components/TourRoom.jsx';
-import { tierById, isInvited, attendEvent, askForInvite, sneakIntoEvent, answerDoor, stairsResult, inviteHelpers, helperOdds, hasAsked, expectedAt } from './systems/social/events.js';
+import { tierById, isInvited, attendEvent, askForInvite, sneakIntoEvent, answerDoor, stairsResult, inviteHelpers, helperOdds, hasAsked, expectedAt, energyFor, canHost, hostNight } from './systems/social/events.js';
 import { HOUSING, HOUSING_ORDER, monthlyCosts, DIET, GYM_COST, setDiet, toggleGym } from './engine/economy.js';
 import { GENRES, hotGenre } from './systems/meta/news.js';
 import { genreXP, genreBonus, genreLabel } from './systems/career/genres.js';
@@ -2305,9 +2305,19 @@ function EventsScreen({ g }) {
   const noEnergy = !canAfford(g, COST.rehearse);
   const helpers = inviteHelpers(g);
   const btn = (kind) => ({ flex: 1, border: 'none', borderRadius: 10, padding: '9px', fontSize: 12.5, fontWeight: 800, cursor: noEnergy ? 'default' : 'pointer', background: noEnergy ? 'rgba(120,110,150,.15)' : kind === 'pri' ? `linear-gradient(135deg,${theme.accent2},${theme.accent})` : 'rgba(158,116,255,.16)', color: noEnergy ? '#6b6390' : kind === 'pri' ? '#fff' : '#d9cffa' });
-  if (!events.length) return (<div style={{ fontSize: 12.5, color: theme.muted, textAlign: 'center', padding: 24, lineHeight: 1.6 }}>🎉 Nothing on the calendar right now.<br /><br />Parties and premieres come and go — live a month and check back.</div>);
+  const host = canHost(g);
+  const HostCard = () => ((g.fame || 0) >= 50 ? (<Card style={{ marginBottom: 10, borderColor: host.ok ? `${theme.gold}66` : theme.line }}>
+    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline' }}>
+      <div style={{ fontSize: 14, fontWeight: 800 }}>Your own night</div>
+      {host.ok && <div style={{ fontSize: 11, color: theme.gold, fontWeight: 800 }}>€{host.cost.toLocaleString()} · {energyFor('yours')} energy</div>}
+    </div>
+    <div style={{ fontSize: 11.5, color: theme.muted, margin: '3px 0 8px', lineHeight: 1.5 }}>{host.ok ? 'The people in your phone who decide things, the actors you know, two names who come because it is your house — and on your own sofa you can say what you want to make.' : host.why}</div>
+    {host.ok && <button onClick={() => dispatch(hostNight)} disabled={(g.cash || 0) < host.cost || !canAfford(g, energyFor('yours'))} style={{ ...btn('pri'), width: '100%' }}>Throw it</button>}
+  </Card>) : null);
+  if (!events.length) return (<div><HostCard /><div style={{ fontSize: 12.5, color: theme.muted, textAlign: 'center', padding: 24, lineHeight: 1.6 }}>🎉 Nothing on the calendar right now.<br /><br />Parties and premieres come and go — live a month and check back.</div></div>);
   return (<div>
-    <div style={{ fontSize: 11.5, color: theme.muted, padding: '2px 2px 10px', lineHeight: 1.5 }}>Rooms where careers actually move. Get in, meet people — some open doors, some are just good company.</div>
+    <div style={{ fontSize: 11.5, color: theme.muted, padding: '2px 2px 10px', lineHeight: 1.5 }}>Rooms where careers actually move. Read who is expected before you go — a night costs energy, a face, and a call sheet if you are shooting; some rooms are worth it and some are not.</div>
+    <HostCard />
     {events.map((ev) => {
       const t = tierById(ev.tier); const onList = isInvited(g, ev) || ev.invited;
       return (<Card key={ev.id} style={{ marginBottom: 10, borderColor: onList ? 'rgba(95,206,138,.35)' : theme.line }}>
@@ -2318,11 +2328,11 @@ function EventsScreen({ g }) {
         <div style={{ fontSize: 11.5, color: theme.muted, margin: '3px 0 6px' }}>{ev.venue} · hosted by {ev.host}</div>
         {/* Who is expected. The names, and a role only where you would know it — the room
             has a crowd in it and the figures do not wear name tags. */}
-        <div style={{ fontSize: 11, color: theme.muted, marginBottom: 8, lineHeight: 1.5 }}><span style={{ fontWeight: 800, color: theme.text }}>Expected:</span> {expectedAt(g, ev, t).map((x) => x.name + (x.role ? ` (${x.role})` : '')).join(' · ')} — and a room full of people who are nobody in particular.</div>
+        <div style={{ fontSize: 11, color: theme.muted, marginBottom: 8, lineHeight: 1.5 }}><span style={{ fontWeight: 800, color: theme.text }}>Expected:</span> {expectedAt(g, ev, t).map((x, i) => (<span key={i}>{i ? ' · ' : ''}{x.heavy ? <b style={{ color: theme.gold }}>★ {x.name} — {x.why}</b> : x.name + (x.role ? ` (${x.role})` : '')}</span>))} — and a room full of people who are nobody in particular. <span style={{ color: theme.gold }}>{energyFor(ev.tier)} energy.</span></div>
         {ev.note && <div style={{ fontSize: 12, color: onList ? theme.good : theme.gold, background: 'rgba(255,255,255,.05)', border: `1px solid ${theme.line}`, borderRadius: 9, padding: '7px 10px', marginBottom: 8, lineHeight: 1.45 }}>{ev.note}</div>}
         {onList ? (<>
           <div style={{ fontSize: 11, color: theme.good, marginBottom: 8 }}>✓ You're on the list</div>
-          <button onClick={() => dispatch(attendEvent, ev.id)} disabled={noEnergy} style={{ ...btn('pri'), width: '100%' }}>Go</button>
+          <button onClick={() => dispatch(attendEvent, ev.id)} disabled={!canAfford(g, energyFor(ev.tier))} style={{ ...btn('pri'), width: '100%', opacity: canAfford(g, energyFor(ev.tier)) ? 1 : .45 }}>Go · {energyFor(ev.tier)} energy{g.production ? ' · you are shooting' : ''}</button>
         </>) : ev.door && ev.door.stage === 1 ? (<div>
           {/* The second door: what somebody who belongs would know. The answers are on the wall in Legacy. */}
           <div style={{ fontSize: 11, fontWeight: 900, letterSpacing: '.06em', textTransform: 'uppercase', color: theme.gold, marginBottom: 6 }}>The door · question {ev.door.asked + 1} of {ev.door.quiz.length}</div>

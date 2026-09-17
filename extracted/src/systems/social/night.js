@@ -30,12 +30,16 @@ import { activeActors, actorById, iconNow, yourRank } from '../world/world.js';
 import { generateOffer } from '../career/offers.js';
 import { rollStability } from '../career/stability.js';
 import { newTitle } from '../world/titles.js';
-import { GENRES } from '../meta/news.js';
+import { GENRES, hotGenre } from '../meta/news.js';
+import { addSentListing } from '../career/castings.js';
+import { sendSms } from './sms.js';
+import { priceFactor } from '../life/face.js';
+import { HOUSING } from '../../engine/economy.js';
 const clamp = (v) => Math.max(0, Math.min(100, v));
 const first = (n) => String(n || '').split(' ')[0];
 const stamp = (s) => (s.year || 0) * 12 + (s.month || 0);
 
-export const HOURS = ['Arriving', 'Midnight', 'Late'];
+export const HOURS = ['Arriving', 'Eleven', 'Midnight', 'Late'];
 export const ZONES = {
   bar: { label: 'The bar', toast: true },
   booth: { label: 'The booths', toast: true },
@@ -44,7 +48,7 @@ export const ZONES = {
 };
 // What a glass costs. A house party is somebody's fridge; a club is a club; the studio's
 // nights have an open bar, which is why people drink at them.
-const DRINK_PRICE = { local: 0, mixer: 24, premiere: 0, gala: 0 };
+const DRINK_PRICE = { local: 0, mixer: 24, premiere: 0, gala: 0, yours: 0 };
 export const TONES = ['flatter', 'joke', 'honest', 'business', 'flirt', 'brag'];
 export const TONE_LABEL = { flatter: 'flattery', joke: 'a joke', honest: 'honest', business: 'business', flirt: 'flirting', brag: 'bragging' };
 
@@ -103,6 +107,24 @@ function industryGuest(s, role, tier) {
   const p = makePerson(s, role);
   return guest(s, { kind: role === 'Journalist' ? 'press' : 'industry', person: p, name: p.name, role, standing: p.industryWeight || 40, line: INDUSTRY_LINE[role] || 'Somebody', zone: place(role === 'Journalist' ? 'press' : 'industry', role, tier), tasteKey: role });
 }
+// The names. Maxi: "at premieres you can meet people from the top ten, directors from the
+// lists, people with Askers — with them it is very hard; after the talk a test opens; win
+// their trust and, very rarely, they fall for you and it is an A-list offer on the spot."
+// One of them at a premiere, one or two at a gala: an actor from the top of the list or
+// with an Asker, or a director whose picture everybody saw last year.
+function heavyGuest(s, tier) {
+  const w = s.world || {}; const yrs = w.years || {}; const last = yrs[(s.year || 0) - 1];
+  const actors = (w.actors || []).filter((a) => a.alive && !a.retired && ((a.rank || 999) <= 10 || (a.askers || 0) > 0));
+  if (actors.length && chance(tier === 'gala' ? 50 : 60)) {
+    const a = pick(actors);
+    const why = (a.rank || 999) <= 3 ? `#${a.rank} in the business` : (a.askers || 0) > 0 ? `${a.askers} Asker${a.askers === 1 ? '' : 's'}` : `#${a.rank} in the business`;
+    return guest(s, { kind: 'actor', heavy: true, why, worldId: a.id, name: a.name, standing: Math.max(88, a.fame || 0), icon: iconNow(a), rank: a.rank || 999, line: `${why}. Everybody here wants a minute; you get three`, zone: 'booth', tasteKey: 'icon' });
+  }
+  const p = makePerson(s, 'Film Director'); p.industryWeight = rint(86, 97);
+  const film = last && last.films && last.films.length ? pick(last.films.slice(0, 5)).title : null;
+  const why = film ? `directed "${film}"` : 'directs the pictures on the lists';
+  return guest(s, { kind: 'industry', heavy: true, why, person: p, name: p.name, role: 'Film Director', standing: 92, line: `${why.charAt(0).toUpperCase() + why.slice(1)}. Does not do small talk`, zone: 'booth', tasteKey: 'Film Director' });
+}
 function prospectGuest(s) {
   const p = prospect(s);
   return guest(s, { kind: 'prospect', person: p, name: p.name, role: p.job, standing: 0, line: `Not in the business — ${p.job}`, zone: place('prospect'), tasteKey: 'prospect' });
@@ -116,7 +138,9 @@ const EXTRA_LINES = ['Somebody\'s assistant. Very polite about it.', 'A plus one
 const EXTRA_NAMES = ['Kai', 'Noa', 'Remy', 'Jules', 'Sasha', 'Ari', 'Lou', 'Dana', 'Nico', 'Sam', 'Robin', 'Alex', 'Mika', 'Toni', 'Eli', 'Jo'];
 function extraGuest(s, tier) {
   const dressed = chance(30);
-  return guest(s, { kind: 'extra', name: pick(EXTRA_NAMES), line: pick(EXTRA_LINES), standing: 0, zone: pick(Object.keys(ZONES)), tasteKey: 'prospect', mask: dressed ? pick(['industry', 'actor']) : null });
+  // One in seven is somebody's assistant and can get a page to their boss.
+  const useful = chance(14);
+  return guest(s, { kind: 'extra', name: pick(EXTRA_NAMES) + ' ' + pick(['K.', 'M.', 'R.', 'S.', 'T.', 'V.']), line: useful ? 'Assistant to somebody who decides things. Very polite about it' : pick(EXTRA_LINES), standing: 0, zone: pick(Object.keys(ZONES)), tasteKey: 'prospect', mask: dressed ? pick(['industry', 'actor']) : null, useful });
 }
 export function LOOKS_AN_HOUR() { return 3; }
 function guestsFor(s, ev, tier) {
@@ -129,8 +153,10 @@ function guestsFor(s, ev, tier) {
     gala: pool.filter((a) => (a.rank || 999) <= 12 || (a.fame || 0) >= 70),
   }[tier.id] || pool;
   if (ev.hostId) { const h = actorById(s, ev.hostId); if (h && h.alive) out.push(actorGuest(s, h, tier.id, { host: true, zone: 'bar', line: 'It is their flat. On their third drink and pleased you came' })); }
+  if (tier.id === 'premiere' || tier.id === 'gala') { out.push(heavyGuest(s, tier.id)); if (tier.id === 'gala' && chance(50)) out.push(heavyGuest(s, tier.id)); }
+  if (tier.id === 'yours') return hostGuests(s, out);
   const nActors = tier.id === 'gala' ? 2 : 1;
-  const taken = new Set(out.map((g) => g.worldId));
+  const taken = new Set(out.map((g) => g.worldId && !g.heavy ? g.worldId : g.worldId));
   for (let i = 0; i < nActors && byTier.length; i++) {
     const top = tier.id === 'gala' && i === 0 ? byTier.filter((x) => (x.rank || 999) <= 12 && !taken.has(x.id)) : [];
     const a = pick(top.length ? top : byTier.filter((x) => !taken.has(x.id))); if (!a) break; taken.add(a.id); out.push(actorGuest(s, a, tier.id));
@@ -149,7 +175,48 @@ function guestsFor(s, ev, tier) {
 // Who is expected — on the card, before the night, so the room can be read in advance.
 export function expectedAt(s, ev, tier) {
   if (!ev.guestsPre) ev.guestsPre = guestsFor(s, ev, tier);
-  return ev.guestsPre.filter((g) => g.kind !== 'extra').map((g) => ({ name: g.name, role: g.kind === 'actor' ? (g.icon ? 'icon' : 'actor') : g.kind === 'contact' ? 'someone you know' : g.kind === 'prospect' ? '' : g.role }));
+  // Names, and a role only where you would know it already: the names you know, and the
+  // names everybody knows. What a stranger does you find out by asking.
+  return ev.guestsPre.filter((g) => g.kind !== 'extra').map((g) => ({ name: g.name, heavy: !!g.heavy, why: g.why || null, role: g.kind === 'contact' ? 'someone you know' : g.kind === 'actor' && (g.icon || (g.rank || 999) <= 12) ? 'a name' : '' }));
+}
+// What a night costs in energy. A house party is an evening; a gala is a day of getting
+// ready and a night of standing up.
+export function energyFor(tierId) { return { local: 15, mixer: 20, premiere: 25, gala: 30, yours: 25 }[tierId] || 20; }
+
+// ── your own night ────────────────────────────────────────────────────────────
+// Maxi: "when you are a star you can throw your own parties, invite people, and agree
+// pictures you would like to make — a director, you propose the genre, the budget, when,
+// the title; some time later an SMS: an offer, or another time." A star with a home to
+// fill can host: the people in your phone who decide things, the actors you know from the
+// world, two names who come because it is your house, and a crowd.
+export function canHost(s) {
+  if ((s.fame || 0) < 60) return { ok: false, why: 'Nobody comes to a nobody\'s party. Star, at least.' };
+  if (!s.hasApartment || !['flat', 'house', 'penthouse'].includes(s.housing)) return { ok: false, why: 'A rented room is not a place people come to. A flat, at least.' };
+  return { ok: true, cost: hostCost(s) };
+}
+export function hostCost(s) { return Math.round(({ flat: 6000, house: 14000, penthouse: 30000 }[s.housing] || 8000) * priceFactor(s)); }
+function hostGuests(s, out) {
+  const known = (s.people || []).filter((p) => !p.agent && !p.drifted && (p.relationship || 0) >= 20);
+  const decide = known.filter((p) => /Director|Producer|Casting|Manager/.test(p.role || '')).sort((a, b) => (b.industryWeight || 0) - (a.industryWeight || 0)).slice(0, 3);
+  for (const p of decide) out.push(guest(s, { kind: 'contact', personId: p.id, name: p.name, role: p.role, standing: p.industryWeight || 40, line: `You know them. Closeness ${Math.round(p.relationship || 0)}`, zone: 'booth', tasteKey: 'contact', decides: /Director|Producer/.test(p.role || '') }));
+  const stars = known.filter((p) => p.worldId).slice(0, 2);
+  for (const p of stars) { const a = actorById(s, p.worldId); if (a && a.alive) out.push(guest(s, { kind: 'contact', personId: p.id, worldId: a.id, name: a.name, role: p.role, standing: a.fame || 40, line: `You know them. Closeness ${Math.round(p.relationship || 0)}`, zone: pick(['bar', 'floor']), tasteKey: 'contact' })); }
+  // Two who came because it is your house: a director and a producer you have not met.
+  for (const role of ['Film Director', 'Studio Producer']) { const p = makePerson(s, role); p.industryWeight = rint(70, 92); out.push(guest(s, { kind: 'industry', person: p, name: p.name, role, standing: p.industryWeight, line: INDUSTRY_LINE[role], zone: 'booth', tasteKey: role, decides: true })); }
+  if (chance(60)) out.push(prospectGuest(s));
+  const n = rint(6, 9);
+  for (let i = 0; i < n; i++) out.push(extraGuest(s, 'local'));
+  return out;
+}
+export function hostNight(s) {
+  const fit = canHost(s); if (!fit.ok) { s.lastEvent = fit.why; return s; }
+  const st = stamp(s);
+  if (s._wentOut === st) { s.lastEvent = 'You have been out this month already. Next month.'; return s; }
+  if ((s.cash || 0) < fit.cost) { s.lastEvent = `A night like that costs €${fit.cost.toLocaleString()}. Not this month.`; return s; }
+  s.cash -= fit.cost; s._wentOut = st;
+  const ev = { id: uid(s, 'ev'), tier: 'yours', venue: (HOUSING[s.housing] || {}).label || 'your place', host: s.name, hostId: null };
+  addTimeline(s, `Threw a night at home — €${fit.cost.toLocaleString()}.`);
+  return startNight(s, ev, { id: 'yours', label: 'Your night', roles: ['Film Director', 'Studio Producer'] });
 }
 
 // ── the door ──────────────────────────────────────────────────────────────────
@@ -253,6 +320,7 @@ function blackout(s) {
 // ── going over to somebody ────────────────────────────────────────────────────
 // The lines. Each has a tone; three or four are drawn a turn so the pool stays a pool.
 const OPENERS = {
+  anyone: ['"Do you know anybody here? I have been talking to a lamp."', '"Is it always like this, or is tonight special?"', '"I am not going to ask what you do. Everybody asks what you do."', '"You look like you would rather be somewhere else. Same."'],
   actor: ['"You are in the thing with the snow, aren\'t you? I could not finish it."', '"Do you know anybody here? I have been talking to a lamp."', '"They keep putting me next to producers. Please be an actor."'],
   icon: ['"Don\'t tell me who you are yet. Let me guess wrong first."', '"Everybody here wants a photograph. What do you want?"'],
   industry: ['"I have seen you somewhere. Was it something I passed on?"', '"I am not working tonight. What are you in?"', '"My assistant says I should know you."'],
@@ -283,21 +351,41 @@ const REACT = {
   flat: ['They nod. Their eyes go to the door and come back.', '"Mm," they say, and look at their drink.', 'A polite smile, the kind with nothing behind it.'],
   cold: ['They look past you for somebody else.', 'They finish the drink in one go.', '"Right," they say, the way people say it before they leave.', 'A small step back. You saw it.'],
 };
+// Going over: you see a face and hear a name, and that is all. Who they are — a casting
+// director, a plus one — you find out by asking, and asking is a turn. Maxi: "you never
+// know who you are talking to; that is the quest; you ask what they do and only then
+// understand — and you do not have many turns, so the wrong person is time lost."
 export function goOver(s, guestId) {
   const n = s.night; if (!n || n.done || n.pending || n.talk) return s;
   const g = n.guests.find((x) => x.id === guestId); if (!g || g.done) return s;
-  if (g.kind === 'extra') return lookAt(s, guestId);
   n.you = g.zone; n.pos = null; g.seen = true;
-  const turns = g.came ? 4 : 3;
-  n.talk = { guestId: g.id, turn: 0, turns, rapport: g.kind === 'contact' ? 30 : 10, said: [], options: [], toast: ZONES[g.zone] && ZONES[g.zone].toast ? 'ask' : null };
-  const opener = pick(OPENERS[g.icon ? 'icon' : g.kind] || OPENERS.actor);
-  n.talk.said.push({ who: g.name, text: opener });
+  n.talk = { guestId: g.id, stage: 'meet', turn: 0, turns: g.came ? 4 : 3, rapport: g.kind === 'contact' ? 30 : 10, said: [], options: [], toast: null };
+  return s;
+}
+// Not this one. A look — three of them is an hour.
+export function moveOn(s) {
+  const n = s.night; const t = n && n.talk; if (!t || t.stage !== 'meet') return s;
+  const g = n.guests.find((x) => x.id === t.guestId);
+  n.talk = null;
+  if (g && g.kind === 'extra') g.done = true;
+  say(s, `${g ? first(g.name) : 'Somebody'}. Not tonight.`, 'note');
+  n.looks += 1;
+  if (n.looks >= LOOKS_AN_HOUR()) { n.looks = 0; say(s, 'An hour of that, and the room has moved on.', 'note'); hourPasses(s); }
+  return s;
+}
+export function startTalk(s) {
+  const n = s.night; const t = n && n.talk; if (!t || t.stage !== 'meet') return s;
+  const g = n.guests.find((x) => x.id === t.guestId); if (!g) return s;
+  t.stage = 'talk';
+  t.toast = ZONES[g.zone] && ZONES[g.zone].toast ? 'ask' : null;
+  const opener = pick(g.kind === 'contact' ? OPENERS.contact : g.revealed && g.kind !== 'extra' ? (OPENERS[g.icon ? 'icon' : g.kind] || OPENERS.actor) : OPENERS.anyone);
+  t.said.push({ who: g.name, text: opener });
   drawOptions(s);
   return s;
 }
 // The glass in your hand, before a word.
 export function answerToast(s, yes) {
-  const n = s.night; const t = n && n.talk; if (!t || t.toast !== 'ask') return s;
+  const n = s.night; const t = n && n.talk; if (!t || t.toast !== 'ask' || t.stage === 'meet') return s;
   const g = n.guests.find((x) => x.id === t.guestId);
   if (yes) {
     t.toast = 'yes'; t.rapport += 10;
@@ -317,12 +405,25 @@ function drawOptions(s) {
   }
   // Drunk, the lines come out wrong: one of them is not what you meant, and you cannot tell which.
   t.options = picked.map((r) => ({ id: uid(s, 'ln'), text: r.text, tone: r.tone }));
+  // And the question. It costs the turn, and it is the only way to know who you are with.
+  const g = n.guests.find((x) => x.id === t.guestId);
+  if (g && !g.revealed && g.kind !== 'contact') t.options.push({ id: uid(s, 'ln'), text: 'So what do you do?', tone: 'ask', ask: true });
   if (n.buzz >= 60) { const o = pick(t.options); o.text = pick(['Something about their last… you lose the thread halfway.', 'You start a sentence with "no offence".', 'A story about your agent that goes nowhere.']); o.tone = pick(TONES); o.slurred = true; }
 }
 export function reply(s, optionId) {
-  const n = s.night; const t = n && n.talk; if (!t || t.toast === 'ask') return s;
+  const n = s.night; const t = n && n.talk; if (!t || t.toast === 'ask' || t.stage === 'meet') return s;
   const g = n.guests.find((x) => x.id === t.guestId); if (!g) return s;
   let o = t.options.find((x) => x.id === optionId); if (!o) return s;
+  if (o.ask) {
+    g.revealed = true;
+    t.said.push({ who: 'you', mine: true, text: 'So what do you do?', tone: 'ask' });
+    const what = g.kind === 'extra' ? g.line : g.kind === 'actor' ? (g.icon ? 'They look at you. You know exactly who they are.' : `"I act." ${g.line}.`) : g.kind === 'press' ? `"I write." ${g.line}.` : g.kind === 'prospect' ? `"${g.role}." ${g.line}.` : `"${g.role}." ${g.line}.`;
+    t.said.push({ who: g.name, text: what, warm: 'flat' });
+    t.rapport = clamp(t.rapport + 4);
+    t.turn += 1;
+    if (t.turn >= t.turns) endTalk(s, g); else drawOptions(s);
+    return s;
+  }
   // Past eighty you sometimes say something else entirely.
   if (n.buzz >= 80 && chance(35)) o = { ...o, text: pick(['You tell them what you really think of their last film.', 'You tell them what you earn.', 'You tell them about your mother.']), tone: pick(['honest', 'brag', 'flirt']) };
   t.said.push({ who: 'you', mine: true, text: o.text, tone: o.tone });
@@ -345,7 +446,7 @@ export function reply(s, optionId) {
 }
 // One more, together — an extra turn's worth of warmth for a glass each.
 export function drinkTogether(s) {
-  const n = s.night; const t = n && n.talk; if (!t || t.toast === 'ask') return s;
+  const n = s.night; const t = n && n.talk; if (!t || t.toast === 'ask' || t.stage === 'meet') return s;
   const g = n.guests.find((x) => x.id === t.guestId); if (!g) return s;
   if (!ZONES[g.zone].toast) { say(s, 'No bar here.', 'note'); return s; }
   t.rapport = clamp(t.rapport + 8); g.drunk = clamp(g.drunk + 12);
@@ -356,11 +457,24 @@ export function drinkTogether(s) {
 function endTalk(s, g) {
   const n = s.night; const t = n.talk; n.talk = null; g.done = true;
   const r = t.rapport; g.went = r >= 65 ? 'good' : r >= 40 ? 'flat' : 'bad';
+  // A name who liked the talk gives you a test on the spot — see heavyTest.
+  if (g.heavy && r >= 55) {
+    n.pending = { id: 'test', guestId: g.id, who: g.name, rapport: r, kind: g.kind === 'industry' ? 'scene' : 'story',
+      text: g.kind === 'industry' ? `${first(g.name)} puts the glass down. "Do the monologue from my last one. Now. Here."` : `${first(g.name)} leans in. "Tell me the worst thing that happened to you on a set. Make it good."` };
+    return;
+  }
+  // At your own night, somebody who decides things and liked you will hear a picture.
+  if (n.tier === 'yours' && g.decides && r >= 55) {
+    n.pending = { id: 'pitch', guestId: g.id, who: g.name, weight: g.standing || 60, rapport: r, text: `${first(g.name)} is on your sofa with a drink and nowhere to be. "So what do you want to make?"` };
+    return;
+  }
   if (g.kind === 'actor') talkActor(s, g, r);
   else if (g.kind === 'industry') talkIndustry(s, g, r);
   else if (g.kind === 'contact') talkContact(s, g, r);
   else if (g.kind === 'press') talkPress(s, g, r);
   else if (g.kind === 'prospect') talkProspect(s, g, r);
+  else if (g.kind === 'extra') talkExtra(s, g, r);
+  g.revealed = true;
   if (g.came) { if (n.hour >= HOURS.length && !n.pending) endNight(s); return; }
   hourPasses(s);
 }
@@ -394,7 +508,13 @@ function talkIndustry(s, g, r) {
   if (r < 65) { say(s, `${g.name} (${g.role}) was polite. Nobody exchanged anything.`, 'note'); return; }
   addContact(s, { name: p.name, role: p.role, industryWeight: p.industryWeight, unlocks: p.unlocks });
   say(s, `${g.name} — ${g.role}. You talked for an hour. They are in your contacts.`, 'good');
-  const leadOdds = { 'Casting Director': 45, 'Manager': 40, 'Film Director': 35, 'Studio Producer': 35, 'Music Producer': s.dream === 'singer' ? 40 : 10 }[g.role] || 0;
+  // Each of them helps the way their job lets them: a casting director sends a read for
+  // something good; a manager or a producer's office calls; a director wants you in a room.
+  if (g.role === 'Casting Director' && chance(r >= 85 ? 70 : 45)) {
+    const c = addSentListing(s, p.name);
+    if (c) { n.gains.leads += 1; say(s, `"There is something I am casting," ${first(g.name)} says. "Come and read. I will tell them you are coming." It is on the board — ${c.title}.`, 'good'); return; }
+  }
+  const leadOdds = { 'Casting Director': 20, 'Manager': 40, 'Film Director': 35, 'Studio Producer': 35, 'Music Producer': s.dream === 'singer' ? 40 : 10 }[g.role] || 0;
   const decides = g.role === 'Film Director' || g.role === 'Studio Producer';
   if (decides && (p.industryWeight || 0) >= 70 && n.tier !== 'local' && chance(22)) {
     n.pending = { id: 'couch', who: g.name, role: g.role, weight: p.industryWeight, text: `${first(g.name)} has a part, and a car outside, and says the two things are the same conversation.` };
@@ -405,6 +525,18 @@ function talkIndustry(s, g, r) {
     n.gains.leads += 1;
     say(s, `"Call the office on Monday," ${first(g.name)} says. It sounds like they mean it.`, 'good');
   }
+}
+// A stranger. Mostly an hour gone; once in a while an assistant who can get a page to
+// somebody. Maxi: "you can get to know the extras too — you never know who it is."
+function talkExtra(s, g, r) {
+  const n = s.night;
+  if (g.useful && r >= 60) {
+    if (chance(35)) { (s.leads = s.leads || []).push({ due: stamp(s) + 1, from: g.name, role: 'Manager', weight: rint(55, 70) }); n.gains.leads += 1; say(s, `${first(g.name)} is somebody's assistant, and liked you. "Send me a page, I will put it on the desk."`, 'good'); }
+    else say(s, `${first(g.name)} is somebody's assistant. They will mention you, they say. They will not.`, 'note');
+    return;
+  }
+  if (r >= 65 && chance(40)) { (s.datingPool = s.datingPool || []).push({ ...prospect(s), name: g.name }); n.gains.numbers += 1; say(s, `${first(g.name)} — ${g.line.charAt(0).toLowerCase() + g.line.slice(1)} You got their number, for what it is worth.`, 'note'); return; }
+  say(s, r >= 40 ? `${first(g.name)} — ${g.line.charAt(0).toLowerCase() + g.line.slice(1)} An hour, and nothing came of it.` : `${first(g.name)} — ${g.line.charAt(0).toLowerCase() + g.line.slice(1)} They drifted off mid-sentence.`, r >= 40 ? 'note' : 'bad');
 }
 function talkContact(s, g, r) {
   const p = (s.people || []).find((x) => x.id === g.personId); if (!p) return;
@@ -421,6 +553,88 @@ function talkProspect(s, g, r) {
   const n = s.night;
   if (r < 45) { say(s, `${g.name} laughed at the wrong bit and went to find their friends.`, 'bad'); return; }
   n.pending = { id: 'prospect', guestId: g.id, who: g.name, text: `${first(g.name)} is still next to you at one in the morning.` };
+}
+
+// The test. A minigame the UI plays; this hears how it went. Their trust is a contact
+// that starts warm and opens doors; once in a long while they fall for you and the next
+// picture is yours — Maxi: "very hard and very rare."
+export function heavyTest(s, quality) {
+  const n = s.night; const q = n && n.pending; if (!q || q.id !== 'test') return s;
+  n.pending = null;
+  const g = n.guests.find((x) => x.id === q.guestId); if (!g) return s;
+  const known = (s.people || []).find((p) => (g.worldId && p.worldId === g.worldId) || p.name === g.name);
+  if (quality >= 75) {
+    if (known) applyBond(s, known, rint(12, 20));
+    else addContact(s, { name: g.name, worldId: g.worldId || null, role: g.kind === 'industry' ? 'Film Director' : g.icon ? 'Icon' : 'Star', industryWeight: Math.round(g.standing), relationship: rint(58, 68), unlocks: 'aaa' });
+    say(s, `You did it, and the booth went quiet, and then ${first(g.name)} laughed. "Call me." They mean it.`, 'good');
+    setRespect(s, (s.respect || 0) + 3); n.gains.respect += 3;
+    if (q.rapport >= 80 && quality >= 88 && chance(35)) {
+      (s.leads = s.leads || []).push({ due: stamp(s) + 1, from: g.name, role: g.kind === 'industry' ? 'Film Director' : 'A-list Star', weight: 96, sure: true, alist: true });
+      n.gains.leads += 1;
+      say(s, `"I want you in the next one," ${first(g.name)} says, and says it to the producer, who was listening.`, 'good');
+      addTimeline(s, `${g.name} wants you in their next picture.`);
+    }
+  } else if (quality >= 45) {
+    if (!known) addContact(s, { name: g.name, worldId: g.worldId || null, role: g.kind === 'industry' ? 'Film Director' : g.icon ? 'Icon' : 'Star', industryWeight: Math.round(g.standing), relationship: rint(36, 44), unlocks: 'aaa' });
+    say(s, `Fine. Not what they wanted, but ${first(g.name)} nods and says "not bad", which from them is a review.`, 'note');
+  } else {
+    s.mental = clamp((s.mental || 50) - 4);
+    say(s, `It falls flat in front of the one person you wanted it to land for. ${first(g.name)} is kind about it, which is worse.`, 'bad');
+  }
+  if (n.hour >= HOURS.length && !n.talk) endNight(s);
+  return s;
+}
+// The pitch. What you want to make, said to somebody who could make it. The answer
+// comes by text a month or two later — see pitchTick.
+export const PITCH_SCALES = { indie: { label: 'A small picture', fame: 0 }, feature: { label: 'A studio picture', fame: 35 }, blockbuster: { label: 'The big one', fame: 60 } };
+export function pitchOdds(s, who, weight, scale, genre) {
+  let o = 20 + (weight || 60) * 0.35;
+  const need = (PITCH_SCALES[scale] || PITCH_SCALES.indie).fame;
+  o -= Math.max(0, need - (s.fame || 0)) * 1.2;
+  if (genre === hotGenre(s)) o += 10;
+  o -= (s.scandal || 0) * 0.25;
+  o += Math.max(0, (s.respect || 0) - 20) * 0.2;
+  return Math.max(4, Math.min(80, Math.round(o)));
+}
+export function sendPitch(s, form) {
+  const n = s.night; const q = n && n.pending; if (!q || q.id !== 'pitch') return s;
+  n.pending = null;
+  const scale = PITCH_SCALES[form.scale] ? form.scale : 'indie';
+  const genre = GENRES.includes(form.genre) ? form.genre : pick(GENRES);
+  const months = Math.max(2, Math.min(12, Number(form.months) || 4));
+  const title = String(form.title || '').trim().slice(0, 40) || newTitle(s, genre);
+  const odds = pitchOdds(s, q.who, q.weight, scale, genre);
+  (s.pitches = s.pitches || []).push({ due: stamp(s) + rint(1, 2), from: q.who, weight: q.weight, genre, scale, months, title, odds });
+  say(s, `You pitched "${title}" — ${genre.toLowerCase()}, ${PITCH_SCALES[scale].label.toLowerCase()}, ${months} months. ${first(q.who)} says nothing for a while, and then: "Send me a page." They will text.`, 'good');
+  addTimeline(s, `Pitched "${title}" to ${q.who}.`);
+  if (n.hour >= HOURS.length && !n.talk) endNight(s);
+  return s;
+}
+export function skipPitch(s) {
+  const n = s.night; const q = n && n.pending; if (!q || q.id !== 'pitch') return s;
+  n.pending = null; say(s, `You talked about other things. ${first(q.who)} will not ask twice.`, 'note');
+  if (n.hour >= HOURS.length && !n.talk) endNight(s);
+  return s;
+}
+function pitchTick(s) {
+  const now = stamp(s);
+  const due = (s.pitches || []).filter((p) => p.due <= now);
+  if (!due.length) return;
+  s.pitches = (s.pitches || []).filter((p) => p.due > now);
+  for (const p of due) {
+    if (!chance(p.odds)) { sendSms(s, { from: p.from, tag: 'pitch', text: pick([`Not "${p.title}". Not now. Another time — I mean it.`, `Read the page. It is not the one. Send me the next one.`, `The money said no before I finished the sentence. Another time.`]) }); addTimeline(s, `${p.from} passed on "${p.title}".`); continue; }
+    const o = generateOffer(s);
+    const big = p.scale === 'blockbuster', feat = p.scale === 'feature';
+    Object.assign(o, { via: 'pitch', from: p.from, director: p.from, projectTitle: (big ? '⭐ ' : '') + p.title, genre: p.genre, months: p.months, role: 'Lead',
+      tier: big ? 'tentpole' : feat ? 'lead' : 'lead', scale: p.scale, type: big ? 'Blockbuster' : 'Feature Film',
+      salary: Math.round((quoteFor(s, big ? 'film_tentpole' : feat ? 'film_studio' : 'film_indie') || quoteFor(s, 'film_indie') || 40000) * (0.9 + Math.random() * 0.3)),
+      fame: big ? 9 : feat ? 5 : 3, prestigeScore: big ? rint(60, 88) : feat ? rint(45, 70) : rint(35, 65), stability: rollStability(p.scale), deadline: 3,
+      note: `Your picture. You pitched it to ${p.from} on your own sofa.` });
+    (s.offers = s.offers || []).push(o);
+    sendSms(s, { from: p.from, tag: 'pitch', text: pick([`"${p.title}". Yes. My office is sending the paper — it is in Messages.`, `I read the page twice. Let's make "${p.title}". Paper is on its way.`]) });
+    addTimeline(s, `${p.from} said yes to "${p.title}".`);
+    s.lastEvent = `${p.from} texted. "${p.title}" is happening — the paper is in Messages.`;
+  }
 }
 
 // ── the things that get asked ─────────────────────────────────────────────────
@@ -507,8 +721,17 @@ function endNight(s) {
   if (!n.blackout) s.mental = clamp((s.mental || 50) + rint(1, 3));
   if (n.buzz >= 60) {
     s.ap = Math.max(0, (s.ap || 0) - 10); s.mental = clamp((s.mental || 50) - 3);
-    if (s.drink) s.drink.level = clamp((s.drink.level || 0) + rint(1, 3));
+    s.drink = s.drink || { level: 0, months: 0, dryMonths: 0, worstLevel: 0 };
+    s.drink.level = clamp((s.drink.level || 0) + (n.blackout ? rint(3, 6) : rint(1, 3)));
+    s.looks = clamp((s.looks || 0) - 0.3);
     say(s, 'The next day is gone. Energy −10.', 'bad');
+  }
+  // A night out in the middle of a shoot is a call you are late for. Maxi: "if you have
+  // work, it affects the shoot, the energy, the face — and that is how the drinking starts."
+  const sets = (s.productions && s.productions.length ? s.productions : (s.production ? [s.production] : []));
+  if (sets.length && n.buzz >= 40) {
+    for (const p of sets) { p.meter = clamp((p.meter || 20) - rint(2, 6)); const lead = (p.crew || [])[0]; if (lead) lead.bond = clamp((lead.bond || 40) - 2); }
+    say(s, `Late to the call on "${sets[0].title}". The set noticed.`, 'bad');
   }
   const g = n.gains; const bits = [];
   if (g.contacts.length) bits.push(`met ${g.contacts.join(' and ')}`);
@@ -524,6 +747,7 @@ export function phoneGone(s) { return (s.phoneLost || 0) > stamp(s); }
 // ── Monday ────────────────────────────────────────────────────────────────────
 // A lead is a phone call that comes, or does not. From offersTick's slot in the month.
 export function nightTick(s) {
+  pitchTick(s);
   const now = stamp(s);
   const due = (s.leads || []).filter((l) => l.due <= now);
   if (!due.length) return s;
@@ -549,6 +773,7 @@ function leadOffer(s, l) {
     o.fame = big ? 9 : 5; o.prestigeScore = big ? rint(60, 90) : rint(45, 70); o.months = rint(4, 9); o.stability = rollStability(o.scale);
   }
   if (l.couch) o.note = `${first(l.from)} gave you this. The set will know it.`;
+  if (l.alist) { o.note = `${first(l.from)} asked for you by name. The whole set knows it.`; o.director = l.from; }
   o.deadline = rint(2, 3);
   return o;
 }

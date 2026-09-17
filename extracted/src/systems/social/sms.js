@@ -31,6 +31,7 @@ function push(s, m) {
   // A phone with forty unanswered texts is not a game telling you anything.
   if (s.sms.length > 10) s.sms = s.sms.slice(0, 10);
 }
+export function sendSms(s, m) { push(s, m); return s; }
 function cooling(s, tag) { return ((s._smsCool || {})[tag] || 0) > stamp(s); }
 function coolDown(s, tag, months) { (s._smsCool = s._smsCool || {})[tag] = stamp(s) + months; }
 function pending(s, tag) { return (s.sms || []).some((m) => m.tag === tag); }

@@ -244,6 +244,18 @@ export function refreshCastingPool(s, force, extra = 0) {
   delete s._openShelfOnce;
 }
 // One prestige listing on the board because you asked for it. See favours.js openShelf.
+// A casting director who liked you sends you a read for something good. On the board next
+// to everything else, with their name on it and a better chance in the room — and that is
+// the most they will do. Maxi: "a casting director can push you or send you a casting for a
+// good film, but that is the maximum; from there you are on your own."
+export function addSentListing(s, from) {
+  const before = new Set((s.castingPool || []).map((c) => c.id));
+  refreshCastingPool(s, false, 1);
+  const fresh = (s.castingPool || []).filter((c) => !before.has(c.id));
+  const c = fresh.sort((a, b) => (b.salary || 0) - (a.salary || 0))[0];
+  if (c) { c.sentBy = from; c.boost = 15; }
+  return c || null;
+}
 export function addPrestigeListing(s) {
   s._openShelfOnce = true;
   refreshCastingPool(s, false, 1);
@@ -378,7 +390,7 @@ export function auditionFor(s, id, quality = 50) {
   if (reach(s) < (c.minFame || 0)) { s.lastEvent = 'You need more fame before they will see you for this.'; return s; }
   if (!canAfford(s, COST.audition)) { s.lastEvent = tooTired(s, COST.audition); return s; }
   spend(s, COST.audition);
-  const odds = clamp(castingChance(s, c) + (quality - 50) * 0.55 + prepBonus(c));
+  const odds = clamp(castingChance(s, c) + (quality - 50) * 0.55 + prepBonus(c) + (c.boost || 0));
   // Anything with a real schedule does not answer you in the room. You did your read, you
   // went home, and somewhere between one and three months later a phone rings or it does
   // not. This is the whole rhythm of the job, and the game used to skip it: audition, book,

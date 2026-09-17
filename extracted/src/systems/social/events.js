@@ -3,8 +3,8 @@ import { inCareer } from '../../engine/stage.js';
 import { uid } from '../../engine/id.js';
 import { rint, chance, pick } from '../../engine/rng.js';
 import { addTimeline } from '../../engine/timeline.js';
-import { startNight, expectedAt } from './night.js';
-export { expectedAt };
+import { startNight, expectedAt, energyFor, canHost, hostNight } from './night.js';
+export { expectedAt, energyFor, canHost, hostNight };
 const clamp = (v) => Math.max(0, Math.min(100, v));
 
 // Tiers gate who shows up and whether you're on the guest list at all.
@@ -159,8 +159,9 @@ export function attendEvent(s, eventId) {
   if (!isInvited(s, ev) && !ev.invited) { s.lastEvent = "You're not on the list for that one."; return s; }
   const stamp = (s.year || 0) * 12 + (s.month || 0);
   if (s._wentOut === stamp) { s.lastEvent = "You've already been out this month. Two nights in a row is how people start talking."; return s; }
-  if (!canAfford(s, COST.event)) { s.lastEvent = tooTired(s, COST.event); return s; }
-  spend(s, COST.event);
+  const need = energyFor(ev.tier);
+  if (!canAfford(s, need)) { s.lastEvent = tooTired(s, need); return s; }
+  spend(s, need);
   s._wentOut = stamp;
   ev.attended = true;
   s.events = (s.events || []).filter((x) => x.id !== eventId);
