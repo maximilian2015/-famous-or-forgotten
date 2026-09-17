@@ -9,50 +9,56 @@
 *{box-sizing:border-box}
 html,body{margin:0;height:100%;background:var(--bg);color:var(--text);font:14px/1.3 system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;overflow:hidden;user-select:none;-webkit-user-select:none}
 #app{display:flex;flex-direction:column;height:100%}
-#top{display:flex;align-items:center;gap:16px;padding:8px 14px;background:var(--panel);flex-wrap:wrap}
-#top .brand{font-weight:800;letter-spacing:.5px;color:var(--accent)}
-.stat{display:flex;flex-direction:column;line-height:1.1}
-.stat small{color:var(--muted);font-size:11px}
-.stat b{font-size:16px}
+#top{display:flex;align-items:center;gap:10px;padding:6px 12px;background:var(--panel);border-bottom:1px solid #343b48}
+#top .brand{font-weight:800;letter-spacing:.5px;color:var(--accent);margin-right:6px}
+.pill{background:var(--panel2);border-radius:999px;padding:4px 12px;font-weight:700;white-space:nowrap}
+.pill small{color:var(--muted);font-weight:500;margin-right:4px}
 .spacer{flex:1}
 button{background:var(--panel2);color:var(--text);border:1px solid #3c4453;border-radius:8px;padding:6px 10px;font:inherit;cursor:pointer}
 button:hover:not(:disabled){border-color:#6b7382;background:#39414f}
 button:disabled{opacity:.45;cursor:default}
 button.on{border-color:var(--accent);color:var(--accent)}
-button.go{background:var(--accent);color:#1c2028;font-weight:800;border-color:var(--accent);padding:6px 16px}
+button.go{background:var(--accent);color:#1c2028;font-weight:800;border-color:var(--accent);padding:10px 16px;font-size:15px;flex:1}
 button.go:hover:not(:disabled){background:#ffc65c;border-color:#ffc65c}
-#stage{flex:1;position:relative;display:flex;align-items:center;justify-content:center;min-height:0;background:#111}
+#main{display:flex;flex:1;min-height:0}
+#stage{flex:1;position:relative;display:flex;align-items:center;justify-content:center;min-width:0;background:#111}
 canvas{display:block;touch-action:none}
 #toasts{position:absolute;top:10px;left:50%;transform:translateX(-50%);display:flex;flex-direction:column;gap:6px;pointer-events:none;align-items:center}
 .toast{background:rgba(20,24,32,.92);border:1px solid #4a5364;padding:8px 14px;border-radius:10px;font-weight:600;animation:fade 3.2s forwards;white-space:nowrap}
 @keyframes fade{0%{opacity:0;transform:translateY(-6px)}10%{opacity:1;transform:none}80%{opacity:1}100%{opacity:0}}
-#bottom{background:var(--panel);padding:8px 14px;display:flex;flex-direction:column;gap:8px}
-.row{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
-#tabs button{padding:4px 10px}
-#tabs button small{color:var(--muted);margin-left:6px}
-#title{font-weight:700}
-#hint{color:var(--muted);font-size:12px;min-height:14px}
-.dest{display:flex;align-items:center;gap:8px;padding:6px 12px;border-radius:10px}
-.dest .dot{width:12px;height:12px;border-radius:50%;flex:none;border:2px solid #fff}
-.dest .meta{color:var(--muted);font-size:12px}
-.dest .n{background:#fff;color:#111;border-radius:999px;padding:0 7px;font-weight:700;font-size:12px}
+#side{width:340px;flex:none;overflow-y:auto;padding:10px 12px;display:flex;flex-direction:column;gap:10px;background:var(--panel);border-left:1px solid #343b48}
+#side>*{flex-shrink:0}
+.stats{display:grid;grid-template-columns:repeat(4,1fr);gap:6px}
+.stat{background:var(--panel2);border-radius:8px;padding:6px 8px;display:flex;flex-direction:column;line-height:1.1}
+.stat small{color:var(--muted);font-size:10px;white-space:nowrap}
+.stat b{font-size:16px}
+#map{width:300px;height:210px;border-radius:10px;align-self:center;cursor:pointer}
+.lbl{color:var(--muted);font-size:11px;text-transform:uppercase;letter-spacing:.6px}
+#tabs{display:flex;gap:6px}
+#tabs button{flex:1;padding:6px 8px;text-align:left;line-height:1.15}
+#tabs button small{display:block;color:var(--muted);font-size:11px}
+#title{font-weight:700;font-size:15px}
+#dests{display:grid;grid-template-columns:1fr 1fr;gap:6px}
+.dest{display:flex;flex-direction:column;align-items:stretch;gap:2px;padding:6px 10px;text-align:left}
+.dest .tp{display:flex;align-items:center;gap:6px}
+.dest .dot{width:11px;height:11px;border-radius:50%;flex:none;border:2px solid #fff}
+.dest .n{margin-left:auto;background:#fff;color:#111;border-radius:999px;padding:0 7px;font-weight:700;font-size:12px}
 .dest .n.zero{background:#4a5364;color:#cbd2dc}
-.shop button{font-size:13px}
-.shop button b{color:var(--accent)}
-.shop .lbl{color:var(--muted);font-size:12px;margin-right:4px}
+.dest .meta{color:var(--muted);font-size:11px}
+.row{display:flex;gap:6px;align-items:center}
+#hint{color:var(--muted);font-size:12px;min-height:14px}
+#shop{display:grid;grid-template-columns:1fr 1fr;gap:6px}
+#shop button{font-size:12px;text-align:left;padding:6px 8px;line-height:1.2}
+#shop button b{color:var(--accent);display:block}
 </style>
 </head>
 <body>
 <div id="app">
  <div id="top">
   <span class="brand">УЗЛОВАЯ</span>
-  <div class="stat"><small>время</small><b id="uiTime">День 1 · 09:00 · день</b></div>
-  <div class="stat"><small>касса</small><b id="uiMoney">200 ₽</b></div>
-  <div class="stat"><small>на платформе</small><b id="uiCrowd">0</b></div>
-  <div class="stat"><small>довезли</small><b id="uiDelivered">0</b></div>
-  <div class="stat"><small>не дождались</small><b id="uiLost">0</b></div>
-  <div class="stat"><small>ехали в тесноте</small><b id="uiCramped">0</b></div>
-  <div class="stat"><small>рейтинг вокзала</small><b id="uiStars">★★★★★</b></div>
+  <span class="pill" id="uiTime">День 1 · 10:00 · день</span>
+  <span class="pill" id="uiMoney">200 ₽</span>
+  <span class="pill" id="uiStars" title="рейтинг вокзала">★★★★★</span>
   <span class="spacer"></span>
   <button id="btnPause">⏸ Пауза</button>
   <button id="btnSpeed1" class="on">1×</button>
@@ -60,23 +66,39 @@ canvas{display:block;touch-action:none}
   <button id="btnMute" title="звук">🔊</button>
   <button id="btnRestart">Заново</button>
  </div>
- <div id="stage"><canvas id="c"></canvas><div id="toasts"></div></div>
- <div id="bottom">
-  <div class="row"><div id="tabs" class="row"></div><span id="title"></span><span class="spacer"></span><button id="btnStand" title="Пускать ли стоячих, когда места кончились">🧍 стоячих пускаем</button><button id="btnGo" class="go">Отправить ▶</button></div>
-  <div id="dests" class="row"></div>
-  <div id="hint"></div>
-  <div id="shop" class="row shop"><span class="lbl">Купить:</span></div>
+ <div id="main">
+  <div id="stage"><canvas id="c"></canvas><div id="toasts"></div></div>
+  <div id="side">
+   <div class="stats">
+    <div class="stat"><small>на платформе</small><b id="uiCrowd">0</b></div>
+    <div class="stat"><small>довезли</small><b id="uiDelivered">0</b></div>
+    <div class="stat"><small>не дождались</small><b id="uiLost">0</b></div>
+    <div class="stat"><small>ехали в тесноте</small><b id="uiCramped">0</b></div>
+   </div>
+   <canvas id="map" title="Карта. По серой линии можно кликнуть, чтобы открыть её"></canvas>
+   <div id="tabs"></div>
+   <div id="title"></div>
+   <div id="dests"></div>
+   <div class="row"><button id="btnGo" class="go">Отправить ▶</button><button id="btnStand" title="Пускать ли стоячих, когда места кончились">🧍 стоячих пускаем</button></div>
+   <div id="hint"></div>
+   <div class="lbl">Купить</div>
+   <div id="shop"></div>
+  </div>
  </div>
 </div>
 <script>
 'use strict';
 const $=s=>document.querySelector(s);
-const W=960,MAP_H=230,INT_H=150,ST_Y=MAP_H+INT_H,H=ST_Y+400;   // карта / салон / вокзал
-const DAY_LEN=150,MAP_SPEED=26,SLIDE=230,DWELL=1.2,FLOW=0.2;   // FLOW — раз в сколько секунд в дверь заходит следующий
-const LOCO_W=64,CAR_W=76,GAP=4,SEATS=8,STAND=6,MAX_CARS=5,MAX_TRAINS=3;   // SEATS/STAND — на один вагон
-const TRACK_Y=[ST_Y+178,ST_Y+248,ST_Y+318];
-const DOOR_X=480,DOOR_Y=ST_Y+56;        // дверь вокзала — откуда выходят и куда уходят люди
-const CROWD_Y=[ST_Y+80,ST_Y+144];       // где стоит толпа на платформе
+// ---------- размеры сцены ----------
+const W=1000,H=640;
+const SAL_Y=30,SAL_H=220;                       // салон: шапка 0..30, вагоны 30..250
+const SCENE_Y=270,BLD_H=62,PLAT_Y=SCENE_Y+BLD_H,TRACK_Y=576;   // вокзал: здание, платформа, рельсы
+const CROWD_Y=[PLAT_Y+42,PLAT_Y+128];           // где стоит толпа
+const DOOR_X=500,DOOR_Y=PLAT_Y-2;               // дверь вокзала — откуда выходят и куда уходят люди
+const CAR_W=150,LOCO_W=110,GAP=6,SLIDE=400;     // поезд снаружи
+const MAP_W=300,MAP_H=210,MAP_SPEED=12;         // карта в боковой панели
+const DAY_LEN=150,DWELL=1.2,FLOW=0.2;           // FLOW — раз в сколько секунд в дверь заходит следующий
+const SEATS=8,STAND=6,MAX_CARS=5,MAX_TRAINS=3;  // на один вагон: мест / стоячих
 const TRAIN_COLORS=['#d9534f','#3b7dd8','#2e9e5b'];
 const SKINS=['#f1d3b3','#e0b08a','#c68e63','#8d5a3b'];
 const HOME_COLOR='#b9c6d2';
@@ -89,29 +111,30 @@ const lerp=(a,b,t)=>a+(b-a)*t;
 const dist=(a,b)=>Math.hypot(a[0]-b[0],a[1]-b[1]);
 const fmt=n=>Math.round(n).toLocaleString('ru-RU');
 
-// ---------- карта ----------
-const HUB={id:'hub',name:'Узловая',pos:[480,123]};
+// ---------- карта (координаты в пикселях карты 300×210) ----------
+const HUB={id:'hub',name:'Узловая',pos:[150,112]};
 const LINES=[
  {id:'north',name:'на Северск',open:true,cost:0,cities:[
-   {id:'berezovka',name:'Берёзовка',color:'#e8a33d',pos:[600,70],pop:1.0},
-   {id:'seversk',name:'Северск',color:'#3f8ae0',pos:[770,30],pop:0.8}]},
+   {id:'berezovka',name:'Берёзовка',color:'#e8a33d',pos:[196,72],pop:1.0},
+   {id:'seversk',name:'Северск',color:'#3f8ae0',pos:[252,32],pop:0.8}]},
  {id:'east',name:'на Каменку',open:true,cost:0,cities:[
-   {id:'ozersk',name:'Озёрск',color:'#2fb37a',pos:[690,130],pop:1.0},
-   {id:'kamenka',name:'Каменка',color:'#8b5cf6',pos:[880,158],pop:0.9}]},
+   {id:'ozersk',name:'Озёрск',color:'#2fb37a',pos:[210,118],pop:1.0},
+   {id:'kamenka',name:'Каменка',color:'#8b5cf6',pos:[278,150],pop:0.9,label:[-26,16]}]},
  {id:'south',name:'на Ясное',open:false,cost:300,cities:[
-   {id:'yasnoe',name:'Ясное',color:'#e3574f',pos:[400,200],pop:1.1,label:[46,0]}]},
- {id:'west',name:'на Заводской',open:false,cost:450,cities:[
-   {id:'prirechye',name:'Приречье',color:'#ec6fae',pos:[300,135],pop:1.0},
-   {id:'zavodskoy',name:'Заводской',color:'#64748b',pos:[130,100],pop:1.2}]},
+   {id:'yasnoe',name:'Ясное',color:'#e3574f',pos:[175,190],pop:1.1,label:[34,0]}]},
+ {id:'west',name:'на Заводской',open:false,cost:450,tag:[67,103],cities:[
+   {id:'prirechye',name:'Приречье',color:'#ec6fae',pos:[92,126],pop:1.0},
+   {id:'zavodskoy',name:'Заводской',color:'#64748b',pos:[42,80],pop:1.2,label:[0,-16]}]},
 ];
 const CITY={};
 LINES.forEach(line=>{let prev=HUB.pos,acc=0;line.cities.forEach((c,i)=>{acc+=dist(prev,c.pos);prev=c.pos;
-  c.line=line;c.idx=i;c.pathLen=acc;c.fare=Math.round(3+acc/18);c.waiting=[];c.acc=0;CITY[c.id]=c;});});
+  c.line=line;c.idx=i;c.pathLen=acc;c.fare=Math.round(3+acc/6);c.waiting=[];c.acc=0;CITY[c.id]=c;});
+  if(!line.tag){const a=HUB.pos,b=line.cities[0].pos;line.tag=[(a[0]+b[0])/2,(a[1]+b[1])/2];}});
 const openCities=()=>LINES.filter(l=>l.open).flatMap(l=>l.cities);
 const stopsTo=c=>c.line.cities.slice(0,c.idx+1);
 
 // ---------- состояние ----------
-const S={money:200,clock:9/24*DAY_LEN,speed:1,paused:false,muted:false,delivered:0,lost:0,cramped:0,outcomes:[],
+const S={money:200,clock:10/24*DAY_LEN,speed:1,paused:false,muted:false,delivered:0,lost:0,cramped:0,outcomes:[],
   lounge:false,spawnAcc:0,trains:[],crowd:[],walkers:[],popups:[],selected:0,dispatched:0,highlight:null,
   firstLossShown:false,firstCrampedShown:false,milestone:0};
 const dayNum=()=>Math.floor(S.clock/DAY_LEN)+1;
@@ -123,12 +146,12 @@ const dayMul=()=>Math.pow(1.2,dayNum()-1);   // каждый день народ
 function stars(){const o=S.outcomes;if(o.length<5)return 5;const r=o.reduce((a,b)=>a+b,0)/o.length;return r>=.95?5:r>=.85?4:r>=.7?3:r>=.5?2:1;}
 
 function makeTrain(){const n=S.trains.length+1;
-  const t={n,color:TRAIN_COLORS[n-1],cars:2,fast:false,allowStanding:true,track:n-1,state:'idle',x:0,passengers:[],boarding:[],trip:null,dest:null,stopIds:null,flow:0};
+  const t={n,color:TRAIN_COLORS[n-1],cars:2,fast:false,allowStanding:true,state:'idle',x:0,passengers:[],boarding:[],trip:null,dest:null,stopIds:null,flow:0};
   t.x=parkX(t);S.trains.push(t);return t;}
 const seatsOf=t=>t.cars*SEATS;
 const standOf=t=>t.allowStanding?t.cars*STAND:0;
 const trainLen=t=>t.cars*(CAR_W+GAP)+LOCO_W;
-const parkX=t=>Math.round((W-trainLen(t))/2);   // поезд встаёт по центру платформы — людям ближе идти
+const parkX=t=>Math.round((W-trainLen(t))/2);   // поезд встаёт по центру платформы
 const doorX=(t,i)=>t.x+i*(CAR_W+GAP)+CAR_W/2;
 const sel=()=>S.trains[S.selected];
 const inCar=(t,k)=>t.passengers.filter(p=>p.car===k);
@@ -138,13 +161,14 @@ const standing=t=>t.passengers.length-seated(t);
 // ---------- салон: кто где сидит ----------
 function carRoom(t,k){const cap=SEATS+(t.allowStanding?STAND:0);return cap-inCar(t,k).length-t.boarding.filter(p=>p.car===k).length;}
 function carWithRoom(t){let best=-1,br=0;for(let k=0;k<t.cars;k++){const r=carRoom(t,k);if(r>br){br=r;best=k;}}return best;}
-function carGeom(t,k){const cw=Math.min(200,Math.floor(940/t.cars));const x0=Math.round((W-t.cars*cw)/2);return{x:x0+k*cw,y:MAP_H+26,w:cw,h:INT_H-32};}
-function seatPos(g,s){const row=s<4?0:1,k=s%4;return[g.x+20+(k+.5)*(g.w-40)/4,row?g.y+112:g.y+52];}
-function slotPos(g,i){return[g.x+g.w/2+(i-(STAND-1)/2)*20,g.y+88+(i%2?3:-3)];}
+function carGeom(t,k){const cw=Math.min(320,Math.floor(960/t.cars));const x0=Math.round((W-t.cars*cw)/2);const pitch=(cw-56)/4;
+  return{x:x0+k*cw,y:SAL_Y,w:cw,h:SAL_H,pitch,f:clamp((pitch-4)/40,0.7,1)};}   // f — масштаб сидений и людей, когда вагонов много и они узкие
+function seatPos(g,s){const row=s<4?0:1,k=s%4;return[g.x+28+(k+.5)*g.pitch,row?g.y+214:g.y+94];}
+function slotPos(g,i){return[g.x+g.w/2+(i-(STAND-1)/2)*26*g.f,g.y+160+(i%2?4:-4)];}
 function takePlace(t,q,k){const cur=inCar(t,k);const seatsUsed=new Set(cur.map(p=>p.seat)),slotsUsed=new Set(cur.map(p=>p.slot));
   let seat=-1,slot=-1;for(let s=0;s<SEATS;s++)if(!seatsUsed.has(s)){seat=s;break;}
   if(seat<0)for(let s=0;s<STAND;s++)if(!slotsUsed.has(s)){slot=s;break;}
-  q.car=k;q.seat=seat;q.slot=slot;const g=carGeom(t,k);q.ix=g.x+12;q.iy=g.y+88;   // заходит от двери
+  q.car=k;q.seat=seat;q.slot=slot;const g=carGeom(t,k);q.ix=g.x+18;q.iy=g.y+160;   // заходит от двери
   t.passengers.push(q);}
 function reseat(t){for(let k=0;k<t.cars;k++){const cur=inCar(t,k);const used=new Set(cur.filter(p=>p.seat>=0).map(p=>p.seat));
   for(const q of cur){if(q.seat>=0)continue;let s=0;while(s<SEATS&&used.has(s))s++;if(s>=SEATS)break;q.seat=s;q.slot=-1;used.add(s);}}}
@@ -154,7 +178,7 @@ function rideQuality(t,q){   // 1 — доехал нормально, 0 — е�
 
 // ---------- люди ----------
 function pickDest(){const cs=openCities();let sum=cs.reduce((a,c)=>a+c.pop,0),r=Math.random()*sum;for(const c of cs){r-=c.pop;if(r<=0)return c;}return cs[cs.length-1];}
-function platformSpot(){return[clamp(480+(rand(-1,1)+rand(-1,1))*230,40,920),rand(CROWD_Y[0],CROWD_Y[1])];}   // кучкуются ближе к середине
+function platformSpot(){return[clamp(500+(rand(-1,1)+rand(-1,1))*240,40,960),rand(CROWD_Y[0],CROWD_Y[1])];}   // кучкуются ближе к середине
 function spawnHub(instant){const c=pickDest();const [tx,ty]=platformSpot();
   const p={dest:c.id,color:c.color,skin:pick(SKINS),x:DOOR_X,y:DOOR_Y,tx,ty,state:'walk',bob:Math.random()*6.28,train:null,car:-1};
   if(instant){p.x=p.tx;p.y=p.ty;p.state='idle';}
@@ -165,12 +189,12 @@ function waitingFor(c){let direct=0,via=0;const stops=stopsTo(c);
 function nextEligible(t){let best=null;for(const p of S.crowd){if(p.state!=='idle'&&p.state!=='walk')continue;if(!t.stopIds.has(p.dest))continue;if(!best||p.patience<best.patience)best=p;}return best;}
 
 // ---------- события ----------
-function pop(x,y,text,color){S.popups.push({x,y,text,color,life:1.4});}
+function pop(x,y,text,color,onMap){S.popups.push({x,y,text,color,life:1.4,onMap:!!onMap});}   // onMap — всплывашка на карте, а не на сцене
 function toast(msg){const t=document.createElement('div');t.className='toast';t.textContent=msg;$('#toasts').appendChild(t);setTimeout(()=>t.remove(),3300);}
-function earn(n,x,y){S.money+=n;pop(x,y,'+'+n+' ₽','#2f7a2f');}
+function earn(n,x,y,onMap){S.money+=n;pop(x,y,'+'+n+' ₽','#2f7a2f',onMap);}
 function outcome(v){S.outcomes.push(v);if(S.outcomes.length>40)S.outcomes.shift();}
-function delivered(t,list,x,y){let sum=0,bad=0;for(const q of list){sum+=CITY[q.dest==='hub'?q.from:q.dest].fare;const ok=rideQuality(t,q);outcome(ok);if(!ok)bad++;}
-  S.delivered+=list.length;if(sum)earn(sum,x,y);if(bad){pop(x,y+16,`тесно! ×${bad}`,'#b3261e');
+function delivered(t,list,x,y,onMap){let sum=0,bad=0;for(const q of list){sum+=CITY[q.dest==='hub'?q.from:q.dest].fare;const ok=rideQuality(t,q);outcome(ok);if(!ok)bad++;}
+  S.delivered+=list.length;if(sum)earn(sum,x,y,onMap);if(bad){pop(x,y+(onMap?12:20),`тесно! ×${bad}`,'#b3261e',onMap);
     if(!S.firstCrampedShown){S.firstCrampedShown=true;toast('Кто-то ехал в давке и остался недоволен. Стоячие — это риск для рейтинга.');}}
   while(S.milestone<MILESTONES.length&&S.delivered>=MILESTONES[S.milestone]){toast(`🎉 Довезли ${MILESTONES[S.milestone]} человек!`);S.milestone++;}}
 function lose(x,y){S.lost++;outcome(0);pop(x,y,'не дождался','#8a1f1f');
@@ -179,28 +203,29 @@ function lose(x,y){S.lost++;outcome(0);pop(x,y,'не дождался','#8a1f1f'
 // ---------- поезда ----------
 function dispatch(t,city){if(!t||t.state!=='idle')return;
   t.dest=city;t.stopIds=new Set(stopsTo(city).map(s=>s.id));t.state='boarding';t.flow=FLOW;t.boarding=[];
-  if(S.selected!==S.trains.indexOf(t))S.selected=S.trains.indexOf(t);refreshUI();}
+  S.selected=S.trains.indexOf(t);refreshUI();}
 function boardingTick(t,dt){t.flow+=dt;
   while(t.flow>=FLOW){t.flow-=FLOW;const k=carWithRoom(t);if(k<0)break;const p=nextEligible(t);if(!p)break;
-    p.state='board';p.train=t;p.car=k;p.tx=doorX(t,k)+rand(-6,6);p.ty=TRACK_Y[t.track]-14;t.boarding.push(p);}
+    p.state='board';p.train=t;p.car=k;p.tx=doorX(t,k)+rand(-8,8);p.ty=TRACK_Y-50;t.boarding.push(p);}
   if(carWithRoom(t)<0&&!t.boarding.length){toast(`Поезд №${t.n} набился битком — двери закрылись`);depart(t);}}
 function depart(t){if(t.state!=='boarding')return;
   for(const p of t.boarding){p.state='walk';p.train=null;p.car=-1;const [tx,ty]=platformSpot();p.tx=tx;p.ty=ty;}   // кого не впустили — обратно на перрон
-  t.boarding=[];t.state='departing';S.dispatched++;sndToot();
-  const idle=S.trains.findIndex(o=>o.state==='idle');if(idle>=0)S.selected=idle;refreshUI();}
+  t.boarding=[];t.state='departing';S.dispatched++;sndToot();refreshUI();}
 function startTrip(t){const stops=stopsTo(t.dest);
   const nodes=[HUB,...stops,...stops.slice(0,-1).reverse(),HUB];
   const lens=[];for(let i=0;i<nodes.length-1;i++)lens.push(dist(nodes[i].pos,nodes[i+1].pos));
-  t.trip={nodes,lens,seg:0,t:0,dwell:0};t.state='travel';}
+  t.trip={nodes,lens,seg:0,t:0,dwell:0};t.state='travel';
+  // камера: если этот поезд был на экране, переключаемся на тот, что стоит на платформе
+  if(sel()===t){const idle=S.trains.findIndex(o=>o.state==='idle'||o.state==='boarding');if(idle>=0)S.selected=idle;refreshUI();}}
 function stopAt(t,city){const out=t.passengers.filter(p=>p.dest===city.id);
-  if(out.length)delivered(t,out,city.pos[0],city.pos[1]-18);
+  if(out.length)delivered(t,out,city.pos[0],city.pos[1]-16,true);
   t.passengers=t.passengers.filter(p=>p.dest!==city.id);reseat(t);
   for(;;){const k=carWithRoom(t);if(k<0||!city.waiting.length)break;city.waiting.shift();takePlace(t,{dest:'hub',from:city.id,color:HOME_COLOR,skin:pick(SKINS)},k);}}
-function arriveHome(t){const ty=TRACK_Y[t.track];
-  for(const q of t.passengers)S.walkers.push({x:doorX(t,q.car),y:ty-14,tx:DOOR_X+rand(-10,10),ty:DOOR_Y,color:CITY[q.from].color,skin:q.skin,state:'exit'});
-  if(t.passengers.length)delivered(t,t.passengers,t.x+trainLen(t)-LOCO_W/2,ty-48);
+function arriveHome(t){
+  for(const q of t.passengers)S.walkers.push({x:doorX(t,q.car),y:TRACK_Y-50,tx:DOOR_X+rand(-14,14),ty:DOOR_Y,color:CITY[q.from].color,skin:q.skin,state:'exit'});
+  if(t.passengers.length)delivered(t,t.passengers,t.x+trainLen(t)-LOCO_W/2,TRACK_Y-120);
   t.passengers=[];t.dest=null;t.state='idle';sndDing();
-  if(S.trains[S.selected].state!=='idle')S.selected=S.trains.indexOf(t);refreshUI();}
+  if(sel().state==='travel')S.selected=S.trains.indexOf(t);refreshUI();}
 function updateTrain(t,dt){const sp=t.fast?1.35:1;
   switch(t.state){
     case 'boarding':boardingTick(t,dt);break;
@@ -208,14 +233,14 @@ function updateTrain(t,dt){const sp=t.fast?1.35:1;
     case 'travel':{const tr=t.trip;if(tr.dwell>0){tr.dwell-=dt;break;}
       tr.t+=MAP_SPEED*sp*dt;
       if(tr.t>=tr.lens[tr.seg]){tr.seg++;tr.t=0;const node=tr.nodes[tr.seg];
-        if(tr.seg===tr.nodes.length-1){t.trip=null;t.state='arriving';t.x=-trainLen(t)-10;}
+        if(tr.seg===tr.nodes.length-1){t.trip=null;t.state='arriving';t.x=-trainLen(t)-10;if(sel().state==='travel')S.selected=S.trains.indexOf(t);}
         else{stopAt(t,node);tr.dwell=DWELL;}}
       break;}
     case 'arriving':t.x+=SLIDE*dt;if(t.x>=parkX(t)){t.x=parkX(t);arriveHome(t);}break;
   }
   // в салоне каждый идёт к своему месту
   for(const q of t.passengers){const g=carGeom(t,q.car);const [tx,ty]=q.seat>=0?seatPos(g,q.seat):slotPos(g,q.slot);
-    const d=Math.hypot(tx-q.ix,ty-q.iy);if(d<=220*dt){q.ix=tx;q.iy=ty;}else{q.ix+=(tx-q.ix)/d*220*dt;q.iy+=(ty-q.iy)/d*220*dt;}}}
+    const d=Math.hypot(tx-q.ix,ty-q.iy);if(d<=300*dt){q.ix=tx;q.iy=ty;}else{q.ix+=(tx-q.ix)/d*300*dt;q.iy+=(ty-q.iy)/d*300*dt;}}}
 function eta(t){if(t.state!=='travel')return 0;const tr=t.trip;let rem=tr.lens[tr.seg]-tr.t;
   for(let s=tr.seg+1;s<tr.lens.length;s++)rem+=tr.lens[s];
   const stopsLeft=tr.nodes.length-2-tr.seg;
@@ -226,11 +251,9 @@ function statusText(t){switch(t.state){case 'idle':return 'на платформ
 
 // ---------- магазин ----------
 function buyTrain(){const cost=COST.train[S.trains.length-1];if(S.trains.length>=MAX_TRAINS||S.money<cost)return;
-  S.money-=cost;const t=makeTrain();t.state='arriving';t.x=-trainLen(t)-10;S.selected=S.trains.length-1;toast(`Поезд №${t.n} прибывает на ${t.n}-й путь`);sndCoin();}
+  S.money-=cost;const t=makeTrain();t.state='arriving';t.x=-trainLen(t)-10;S.selected=S.trains.length-1;toast(`Поезд №${t.n} подходит к платформе`);sndCoin();}
 function addCar(){const t=sel();if(t.cars>=MAX_CARS||S.money<COST.car)return;S.money-=COST.car;t.cars++;
-  if(t.state==='idle'||t.state==='boarding')t.x=parkX(t);
-  for(const q of t.passengers){const g=carGeom(t,q.car);q.ix=g.x+g.w/2;q.iy=g.y+88;}   // вагоны стали уже — все пересели
-  sndCoin();}
+  if(t.state==='idle'||t.state==='boarding')t.x=parkX(t);sndCoin();}
 function fastLoco(){const t=sel();if(t.fast||S.money<COST.fast)return;S.money-=COST.fast;t.fast=true;toast(`Поезд №${t.n} теперь ездит быстрее`);sndCoin();}
 function buyLounge(){if(S.lounge||S.money<COST.lounge)return;S.money-=COST.lounge;S.lounge=true;
   for(const p of S.crowd){p.patience*=1.5;p.maxP*=1.5;}toast('Зал ожидания открыт — люди ждут дольше');sndCoin();}
@@ -248,19 +271,18 @@ shopDefs.forEach(d=>{const b=document.createElement('button');b.id='shop_'+d.id;
 let destSig='';
 function refreshUI(){
   const d=dayNum(),h=hourNow(),hh=Math.floor(h),mm=Math.floor((h-hh)*60);
-  $('#uiTime').textContent=`День ${d} · ${String(hh).padStart(2,'0')}:${String(mm).padStart(2,'0')} · ${periodName(h)}`;
-  $('#uiTime').style.color=periodName(h)==='час пик'?'#ff8a80':'';
+  const tm=$('#uiTime');tm.textContent=`День ${d} · ${String(hh).padStart(2,'0')}:${String(mm).padStart(2,'0')} · ${periodName(h)}`;tm.style.color=periodName(h)==='час пик'?'#ff8a80':'';
   $('#uiMoney').textContent=fmt(S.money)+' ₽';
   $('#uiCrowd').textContent=S.crowd.filter(p=>p.state==='idle'||p.state==='walk').length;
   $('#uiDelivered').textContent=S.delivered;$('#uiLost').textContent=S.lost;$('#uiCramped').textContent=S.cramped;
-  const st=stars();$('#uiStars').textContent='★'.repeat(st)+'☆'.repeat(5-st);
+  const st=stars();$('#uiStars').textContent='★'.repeat(st)+'☆'.repeat(5-st);$('#uiStars').style.color=st>=4?'#f5b84a':st>=3?'#ffd28a':'#ff8a80';
   const tabs=$('#tabs');
   while(tabs.children.length<S.trains.length){const i=tabs.children.length;const b=document.createElement('button');b.addEventListener('click',()=>{S.selected=i;refreshUI();});tabs.appendChild(b);}
   S.trains.forEach((t,i)=>{const b=tabs.children[i];b.className=i===S.selected?'on':'';b.innerHTML=`Поезд №${t.n}<small>${statusText(t)}</small>`;b.style.borderLeft=`4px solid ${t.color}`;});
   const t=sel();
   const seatsTxt=`сидят ${seated(t)}/${seatsOf(t)}${t.allowStanding?`, стоят ${standing(t)}/${standOf(t)}`:''}`;
   $('#title').textContent=t.state==='idle'?`${seatsOf(t)} мест${t.allowStanding?` + ${standOf(t)} стоя`:''} · куда отправить?`:
-    t.state==='boarding'?`посадка на ${t.dest.name}: ${seatsTxt}`:t.state==='travel'?`едет: ${statusText(t)} · ${seatsTxt}`:'';
+    t.state==='boarding'?`посадка на ${t.dest.name}: ${seatsTxt}`:t.state==='travel'?`едет: ${statusText(t)} · ${seatsTxt}`:t.state==='arriving'?'подходит к платформе':'отправляется';
   const go=$('#btnGo');go.disabled=t.state!=='boarding';go.textContent=t.state==='boarding'?`Отправить (${t.passengers.length}) ▶`:'Отправить ▶';
   const bs=$('#btnStand');bs.textContent=t.allowStanding?'🧍 стоячих пускаем':'🪑 только сидя';bs.className=t.allowStanding?'':'on';
   const sig=LINES.map(l=>l.open?1:0).join('');
@@ -271,14 +293,14 @@ function refreshUI(){
       box.appendChild(b);}}
   for(const b of $('#dests').children){const c=CITY[b.dataset.city];const w=waitingFor(c);
     b.disabled=t.state!=='idle';
-    b.innerHTML=`<span class="dot" style="background:${c.color}"></span><b>${c.name}</b><span class="n${w.direct+w.via?'':' zero'}">${w.direct}${w.via?' +'+w.via:''}</span><span class="meta">${c.fare} ₽ · ~${Math.round(roundTrip(c,t))} с</span>`;
-    b.title=`${w.direct} чел. в ${c.name}${w.via?`, ещё ${w.via} сойдут по пути`:''}. Билет ${c.fare} ₽, туда и обратно ~${Math.round(roundTrip(c,t))} с`;}
+    b.innerHTML=`<span class="tp"><span class="dot" style="background:${c.color}"></span><b>${c.name}</b><span class="n${w.direct+w.via?'':' zero'}">${w.direct}${w.via?' +'+w.via:''}</span></span><span class="meta">${c.fare} ₽ · туда-обратно ~${Math.round(roundTrip(c,t))} с</span>`;
+    b.title=`${w.direct} чел. в ${c.name}${w.via?`, ещё ${w.via} сойдут по пути`:''}`;}
   let hint='';
   if(t.state==='boarding'){const left=nextEligible(t);
     hint=carWithRoom(t)<0?'Мест больше нет — поезд вот-вот закроет двери.':!left?'На перроне больше никого в эту сторону. Отправляй — или подожди, вдруг подойдут.':
       'Люди заходят: сначала на места, потом в проход. Жми «Отправить», когда решишь, что хватит — стоячие доедут, но могут остаться недовольны.';}
   else if(S.dispatched<2)hint='Цвет одежды — это город, куда человек едет. Нажми город: двери откроются, и люди пойдут в вагоны. Наведи на кнопку города — его пассажиры подсветятся.';
-  else if(S.trains.length===1&&S.money>=COST.train[0])hint='Денег хватает на второй поезд — он встанет на второй путь.';
+  else if(S.trains.length===1&&S.money>=COST.train[0])hint='Денег хватает на второй поезд.';
   $('#hint').textContent=hint;
   for(const dd of shopDefs){const b=dd.btn;b.style.display=dd.show()?'':'none';b.disabled=!dd.can();b.innerHTML=dd.label();}
   $('#btnPause').textContent=S.paused?'▶ Дальше':'⏸ Пауза';$('#btnPause').className=S.paused?'on':'';
@@ -316,32 +338,34 @@ function update(dt){
   while(S.spawnAcc>=1){S.spawnAcc-=1;spawnHub(false);}
   // в городах копятся те, кто хочет домой на Узловую
   for(const c of openCities()){c.acc+=0.07*c.pop*dm*hm*dt;while(c.acc>=1){c.acc-=1;c.waiting.push({patience:rand(70,100)});}
-    for(let i=c.waiting.length-1;i>=0;i--){c.waiting[i].patience-=dt;if(c.waiting[i].patience<=0){c.waiting.splice(i,1);lose(c.pos[0],c.pos[1]-18);}}}
+    for(let i=c.waiting.length-1;i>=0;i--){c.waiting[i].patience-=dt;if(c.waiting[i].patience<=0){c.waiting.splice(i,1);S.lost++;outcome(0);pop(c.pos[0],c.pos[1]-16,'ушёл','#8a1f1f',true);}}}
   // толпа на платформе
   for(let i=S.crowd.length-1;i>=0;i--){const p=S.crowd[i];
-    if(p.state==='walk'||p.state==='idle'){p.patience-=dt;if(p.patience<=0){p.state='leave';p.tx=DOOR_X+rand(-10,10);p.ty=DOOR_Y;}}
+    if(p.state==='walk'||p.state==='idle'){p.patience-=dt;if(p.patience<=0){p.state='leave';p.tx=DOOR_X+rand(-14,14);p.ty=DOOR_Y;}}
     if(p.state==='idle')continue;
-    const spd=p.state==='leave'?60:p.state==='board'?120:45;
+    const spd=p.state==='leave'?80:p.state==='board'?170:60;
     const d=Math.hypot(p.tx-p.x,p.ty-p.y);
     if(d<=spd*dt){p.x=p.tx;p.y=p.ty;
       if(p.state==='walk')p.state='idle';
-      else if(p.state==='leave'){S.crowd.splice(i,1);lose(p.x,p.y-20);}
+      else if(p.state==='leave'){S.crowd.splice(i,1);lose(p.x,p.y-30);}
       else if(p.state==='board'){S.crowd.splice(i,1);const t=p.train;t.boarding.splice(t.boarding.indexOf(p),1);
         takePlace(t,{dest:p.dest,color:p.color,skin:p.skin},p.car);}
     }else{p.x+=(p.tx-p.x)/d*spd*dt;p.y+=(p.ty-p.y)/d*spd*dt;}}
   // вышедшие из поезда идут к вокзалу
   for(let i=S.walkers.length-1;i>=0;i--){const p=S.walkers[i];const d=Math.hypot(p.tx-p.x,p.ty-p.y);
-    if(d<=55*dt){S.walkers.splice(i,1);}else{p.x+=(p.tx-p.x)/d*55*dt;p.y+=(p.ty-p.y)/d*55*dt;}}
+    if(d<=75*dt){S.walkers.splice(i,1);}else{p.x+=(p.tx-p.x)/d*75*dt;p.y+=(p.ty-p.y)/d*75*dt;}}
   for(const t of S.trains)updateTrain(t,dt);
-  for(let i=S.popups.length-1;i>=0;i--){const q=S.popups[i];q.life-=dt;q.y-=22*dt;if(q.life<=0)S.popups.splice(i,1);}
+  for(let i=S.popups.length-1;i>=0;i--){const q=S.popups[i];q.life-=dt;q.y-=26*dt;if(q.life<=0)S.popups.splice(i,1);}
 }
 
 // ---------- рисование ----------
-const canvas=$('#c'),ctx=canvas.getContext('2d');let scale=1,dpr=1;
+const canvas=$('#c'),cctx=canvas.getContext('2d');const mapCanvas=$('#map'),mctx=mapCanvas.getContext('2d');
+let ctx=cctx,scale=1,dpr=1;
 function resize(){const st=$('#stage');scale=Math.min(st.clientWidth/W,st.clientHeight/H);dpr=window.devicePixelRatio||1;
-  canvas.width=Math.round(W*scale*dpr);canvas.height=Math.round(H*scale*dpr);canvas.style.width=Math.round(W*scale)+'px';canvas.style.height=Math.round(H*scale)+'px';}
+  canvas.width=Math.round(W*scale*dpr);canvas.height=Math.round(H*scale*dpr);canvas.style.width=Math.round(W*scale)+'px';canvas.style.height=Math.round(H*scale)+'px';
+  mapCanvas.width=Math.round(MAP_W*dpr);mapCanvas.height=Math.round(MAP_H*dpr);}
 window.addEventListener('resize',resize);
-function rr(x,y,w,h,r){ctx.beginPath();ctx.moveTo(x+r,y);ctx.lineTo(x+w-r,y);ctx.quadraticCurveTo(x+w,y,x+w,y+r);ctx.lineTo(x+w,y+h-r);ctx.quadraticCurveTo(x+w,y+h,x+w-r,y+h);ctx.lineTo(x+r,y+h);ctx.quadraticCurveTo(x,y+h,x,y+h-r);ctx.lineTo(x,y+r);ctx.quadraticCurveTo(x,y,x+r,y);ctx.closePath();}
+function rr(x,y,w,h,r){r=Math.min(r,w/2,h/2);ctx.beginPath();ctx.moveTo(x+r,y);ctx.lineTo(x+w-r,y);ctx.quadraticCurveTo(x+w,y,x+w,y+r);ctx.lineTo(x+w,y+h-r);ctx.quadraticCurveTo(x+w,y+h,x+w-r,y+h);ctx.lineTo(x+r,y+h);ctx.quadraticCurveTo(x,y+h,x,y+h-r);ctx.lineTo(x,y+r);ctx.quadraticCurveTo(x,y,x+r,y);ctx.closePath();}
 function fillRR(x,y,w,h,r,c){ctx.fillStyle=c;rr(x,y,w,h,r);ctx.fill();}
 function circle(x,y,r,c){ctx.fillStyle=c;ctx.beginPath();ctx.arc(x,y,r,0,Math.PI*2);ctx.fill();}
 function text(s,x,y,c,font,align){ctx.fillStyle=c;ctx.font=font;ctx.textAlign=align||'center';ctx.textBaseline='middle';ctx.fillText(s,x,y);}
@@ -350,122 +374,119 @@ function shade(hex,amt){const n=parseInt(hex.slice(1),16);const r=clamp((n>>16)+
 function poly(pts,color,width,dash){ctx.beginPath();pts.forEach((p,i)=>i?ctx.lineTo(p[0],p[1]):ctx.moveTo(p[0],p[1]));ctx.strokeStyle=color;ctx.lineWidth=width;ctx.lineCap='round';ctx.lineJoin='round';ctx.setLineDash(dash||[]);ctx.stroke();ctx.setLineDash([]);}
 function nightAlpha(){const h=hourNow();if(h<5)return .38;if(h<7)return .38*(7-h)/2;if(h>=20)return Math.min(.38,(h-20)/2*.38);return 0;}
 
-function drawMap(time){
-  ctx.fillStyle='#e4ebd3';ctx.fillRect(0,0,W,MAP_H);
-  ctx.strokeStyle='rgba(0,0,0,0.045)';ctx.lineWidth=1;
-  for(let x=20;x<W;x+=40){ctx.beginPath();ctx.moveTo(x,0);ctx.lineTo(x,MAP_H);ctx.stroke();}
-  for(let y=18;y<MAP_H;y+=40){ctx.beginPath();ctx.moveTo(0,y);ctx.lineTo(W,y);ctx.stroke();}
+function drawMap(){ctx=mctx;ctx.setTransform(dpr,0,0,dpr,0,0);
+  ctx.fillStyle='#e4ebd3';ctx.fillRect(0,0,MAP_W,MAP_H);
+  ctx.strokeStyle='rgba(0,0,0,0.05)';ctx.lineWidth=1;
+  for(let x=15;x<MAP_W;x+=30){ctx.beginPath();ctx.moveTo(x,0);ctx.lineTo(x,MAP_H);ctx.stroke();}
+  for(let y=15;y<MAP_H;y+=30){ctx.beginPath();ctx.moveTo(0,y);ctx.lineTo(MAP_W,y);ctx.stroke();}
   for(const l of LINES){const pts=[HUB.pos,...l.cities.map(c=>c.pos)];
-    if(l.open){poly(pts,'#5b4a3a',6);poly(pts,'#e4ebd3',2,[4,8]);}
-    else{poly(pts,'rgba(0,0,0,0.22)',2,[6,6]);const a=pts[0],b=pts[1];const mx=(a[0]+b[0])/2,my=(a[1]+b[1])/2;
-      fillRR(mx-48,my-10,96,20,10,'rgba(255,255,255,0.85)');text(`открыть · ${l.cost} ₽`,mx,my+1,'#333','600 11px system-ui');}}
+    if(l.open){poly(pts,'#5b4a3a',5);poly(pts,'#e4ebd3',1.5,[3,6]);}
+    else{poly(pts,'rgba(0,0,0,0.22)',2,[5,5]);const [mx,my]=l.tag;fillRR(mx-40,my-8,80,16,8,'rgba(255,255,255,0.9)');text(`открыть · ${l.cost} ₽`,mx,my+1,'#333','600 10px system-ui');}}
   for(const l of LINES)for(const c of l.cities){const [x,y]=c.pos;
-    ctx.beginPath();ctx.arc(x,y,9,0,Math.PI*2);ctx.fillStyle=l.open?c.color:'#c4c6bd';ctx.fill();ctx.lineWidth=3;ctx.strokeStyle='#fff';ctx.stroke();
-    const lo=c.label||[0,20];outlined(c.name,x+lo[0],y+lo[1],'600 12px system-ui',l.open?'#2b2b2b':'#7a7a7a','#e4ebd3');
-    if(l.open&&c.waiting.length){const n=c.waiting.length;fillRR(x+8,y-24,22+(n>9?6:0),16,8,'#fff');circle(x+15,y-16,3,'#555');text(n,x+24+(n>9?3:0),y-15,'#222','700 11px system-ui');}}
-  {const [x,y]=HUB.pos;ctx.beginPath();ctx.arc(x,y,14,0,Math.PI*2);ctx.fillStyle='#2b2f3a';ctx.fill();ctx.lineWidth=3;ctx.strokeStyle='#fff';ctx.stroke();
-    fillRR(x-6,y-5,12,9,1,'#f5b84a');fillRR(x-8,y-7,16,3,1,'#f5b84a');outlined('Узловая',x,y+27,'800 13px system-ui','#2b2b2b','#e4ebd3');}
+    ctx.beginPath();ctx.arc(x,y,7,0,Math.PI*2);ctx.fillStyle=l.open?c.color:'#c4c6bd';ctx.fill();ctx.lineWidth=2.5;ctx.strokeStyle='#fff';ctx.stroke();
+    const lo=c.label||[0,16];outlined(c.name,x+lo[0],y+lo[1],'600 11px system-ui',l.open?'#2b2b2b':'#7a7a7a','#e4ebd3');
+    if(l.open&&c.waiting.length){const n=c.waiting.length;fillRR(x+6,y-20,20+(n>9?6:0),14,7,'#fff');circle(x+12,y-13,2.5,'#555');text(n,x+20+(n>9?3:0),y-12.5,'#222','700 10px system-ui');}}
+  {const [x,y]=HUB.pos;ctx.beginPath();ctx.arc(x,y,10,0,Math.PI*2);ctx.fillStyle='#2b2f3a';ctx.fill();ctx.lineWidth=2.5;ctx.strokeStyle='#fff';ctx.stroke();
+    fillRR(x-4,y-3,8,6,1,'#f5b84a');fillRR(x-6,y-5,12,2,1,'#f5b84a');outlined('Узловая',x,y+20,'800 11px system-ui','#2b2b2b','#e4ebd3');}
   for(const t of S.trains)if(t.state==='travel'){const tr=t.trip,a=tr.nodes[tr.seg].pos,b=tr.nodes[tr.seg+1].pos,k=tr.lens[tr.seg]?tr.t/tr.lens[tr.seg]:0;
     const x=lerp(a[0],b[0],k),y=lerp(a[1],b[1],k);
-    fillRR(x-16,y-9,32,18,5,'rgba(255,255,255,0.9)');fillRR(x-14,y-7,28,14,4,t.color);text(t.n,x,y+1,'#fff','800 11px system-ui');
-    if(t.passengers.length){fillRR(x+10,y-16,18,13,6,'#fff');text(t.passengers.length,x+19,y-9,'#222','700 10px system-ui');}}
-  ctx.fillStyle='#3a3f4a';ctx.fillRect(0,MAP_H-3,W,3);
-}
+    fillRR(x-13,y-8,26,16,4,'rgba(255,255,255,0.9)');fillRR(x-11,y-6,22,12,3,t.color);text(t.n,x,y+1,'#fff','800 10px system-ui');
+    if(t.passengers.length){fillRR(x+8,y-15,18,12,6,'#fff');text(t.passengers.length,x+17,y-8.5,'#222','700 9px system-ui');}}
+  drawPopups(true);
+  ctx=cctx;}
+
 // салон выбранного поезда: два ряда сидений вдоль стен, проход посередине — там стоят
-function drawInterior(time){const t=sel();const night=nightAlpha()>0.12;
-  ctx.fillStyle='#2f3540';ctx.fillRect(0,MAP_H,W,INT_H);
-  const where=t.state==='boarding'?`посадка на ${t.dest.name}`:t.state==='travel'?`едет ${statusText(t)}`:t.state==='arriving'?'прибывает':t.state==='departing'?'отправляется':'стоит на платформе';
-  fillRR(12,MAP_H+5,10,16,3,t.color);
-  text(`Салон поезда №${t.n} · ${where}`,28,MAP_H+13,'#eef1f5','700 13px system-ui','left');
+function drawSalon(time){ctx=cctx;const t=sel();const night=nightAlpha()>0.12;
+  ctx.fillStyle='#2f3540';ctx.fillRect(0,0,W,SCENE_Y);
+  const where=t.state==='boarding'?`посадка на ${t.dest.name}`:t.state==='travel'?`едет ${statusText(t)}`:t.state==='arriving'?'подходит к платформе':t.state==='departing'?'отправляется':'стоит на платформе';
+  fillRR(14,7,12,16,3,t.color);
+  text(`Салон поезда №${t.n} · ${where}`,34,15,'#eef1f5','700 15px system-ui','left');
   const st=standing(t),full=t.allowStanding?standOf(t):0;
-  text(`сидят ${seated(t)}/${seatsOf(t)}${t.allowStanding?` · стоят ${st}/${full}`:' · только сидя'}`,W-14,MAP_H+13,st>=full*0.8&&st>0?'#ff8a80':'#b9c2d0','600 13px system-ui','right');
-  for(let k=0;k<t.cars;k++){const g=carGeom(t,k);const cur=inCar(t,k);const stK=cur.filter(p=>p.seat<0).length;
-    fillRR(g.x+3,g.y,g.w-6,g.h,8,'#ebe5d8');ctx.strokeStyle='#a89e8c';ctx.lineWidth=2;rr(g.x+3,g.y,g.w-6,g.h,8);ctx.stroke();
-    for(let w=0;w<3;w++)fillRR(g.x+18+w*(g.w-36)/3+4,g.y+6,(g.w-36)/3-8,12,3,night?'#2b3550':'#9cc3d9');   // окна на дальней стене
-    ctx.fillStyle=stK>=STAND-1?'#e2c3b8':'#d6cfc0';ctx.fillRect(g.x+5,g.y+58,g.w-10,36);   // пол в проходе; при давке краснеет
-    fillRR(g.x+7,g.y+30,7,g.h-36,2,'#6b6156');fillRR(g.x+g.w-14,g.y+30,7,g.h-36,2,'#6b6156');   // двери
-    const seatC=shade(t.color,10),cush=shade(t.color,60);
-    const drawSeat=(sx,sy)=>{fillRR(sx-13,sy-32,26,30,4,seatC);fillRR(sx-13,sy-12,26,12,3,cush);};
-    const drawSeated=(q,sx,sy)=>{fillRR(sx-7,sy-17,14,14,3,q.color);circle(sx,sy-23,5,q.skin);};
-    const drawStanding=(q,x,y,jit)=>{const sway=t.state==='travel'?Math.sin(time*3+q.slot)*1.5:0;x+=sway+jit;
-      ctx.strokeStyle='#333';ctx.lineWidth=2.2;ctx.beginPath();ctx.moveTo(x-3,y-9);ctx.lineTo(x-3,y);ctx.moveTo(x+3,y-9);ctx.lineTo(x+3,y);ctx.stroke();
-      fillRR(x-6,y-24,12,16,3,q.color);circle(x,y-29,5.2,q.skin);};
-    for(let s=0;s<4;s++){const [sx,sy]=seatPos(g,s);drawSeat(sx,sy);}
-    for(const q of cur)if(q.seat>=0&&q.seat<4)drawSeated(q,q.ix,q.iy);
+  text(`сидят ${seated(t)}/${seatsOf(t)}${t.allowStanding?` · стоят ${st}/${full}`:' · только сидя'}`,W-16,15,st>=full*0.8&&st>0?'#ff8a80':'#b9c2d0','600 14px system-ui','right');
+  const seatC=shade(t.color,10),cush=shade(t.color,60);
+  const drawSeat=(sx,sy,f)=>{fillRR(sx-20*f,sy-48*f,40*f,48*f,6*f,seatC);fillRR(sx-20*f,sy-18*f,40*f,18*f,4*f,cush);};
+  const drawSeated=(q,sx,sy,f)=>{fillRR(sx-13*f,sy-32*f,26*f,26*f,5*f,q.color);circle(sx,sy-42*f,9*f,q.skin);};
+  const drawStanding=(q,x,y,f,dx)=>{x+=dx;ctx.strokeStyle='#333';ctx.lineWidth=3*f;ctx.beginPath();ctx.moveTo(x-4*f,y-16*f);ctx.lineTo(x-4*f,y);ctx.moveTo(x+4*f,y-16*f);ctx.lineTo(x+4*f,y);ctx.stroke();
+    fillRR(x-12*f,y-46*f,24*f,32*f,5*f,q.color);circle(x,y-55*f,9.5*f,q.skin);};
+  for(let k=0;k<t.cars;k++){const g=carGeom(t,k),f=g.f;const cur=inCar(t,k);const stK=cur.filter(p=>p.seat<0).length;const packed=stK>=STAND-1;
+    fillRR(g.x+4,g.y,g.w-8,g.h,12,'#ebe5d8');ctx.strokeStyle='#a89e8c';ctx.lineWidth=2;rr(g.x+4,g.y,g.w-8,g.h,12);ctx.stroke();
+    for(let w=0;w<3;w++)fillRR(g.x+34+w*(g.w-68)/3+4,g.y+10,(g.w-68)/3-8,26,4,night?'#2b3550':'#9cc3d9');   // окна на дальней стене
+    ctx.fillStyle=packed?'#e2c3b8':'#d6cfc0';ctx.fillRect(g.x+8,g.y+98,g.w-16,68);   // пол в проходе; при давке краснеет
+    fillRR(g.x+10,g.y+44,12,g.h-54,3,'#6b6156');fillRR(g.x+g.w-22,g.y+44,12,g.h-54,3,'#6b6156');   // двери в торцах
+    for(let s=0;s<4;s++){const [sx,sy]=seatPos(g,s);drawSeat(sx,sy,f);}
+    for(const q of cur)if(q.seat>=0&&q.seat<4)drawSeated(q,q.ix,q.iy,f);
     const stand=cur.filter(p=>p.seat<0).sort((a,b)=>a.iy-b.iy);
-    for(const q of stand){const jit=stK>=STAND-1?Math.sin(time*9+q.slot*2)*1.2:0;drawStanding(q,q.ix,q.iy,jit);}
-    for(let s=4;s<8;s++){const [sx,sy]=seatPos(g,s);drawSeat(sx,sy);}
-    for(const q of cur)if(q.seat>=4)drawSeated(q,q.ix,q.iy);
-    if(stK>=STAND-1)text(`вагон ${k+1} · тесно!`,g.x+g.w/2,g.y+g.h+8,'#ff8a80','800 10px system-ui');
-    else text(`вагон ${k+1}`,g.x+g.w/2,g.y+g.h+8,'#8a93a3','600 10px system-ui');}
-  ctx.fillStyle='#3a3f4a';ctx.fillRect(0,ST_Y-3,W,3);
+    for(const q of stand){const sway=t.state==='travel'?Math.sin(time*3+q.slot)*2:0;const jit=packed?Math.sin(time*9+q.slot*2)*1.5:0;drawStanding(q,q.ix,q.iy,f,sway+jit);}
+    for(let s=4;s<8;s++){const [sx,sy]=seatPos(g,s);drawSeat(sx,sy,f);}
+    for(const q of cur)if(q.seat>=4)drawSeated(q,q.ix,q.iy,f);
+    if(packed)text(`вагон ${k+1} · тесно!`,g.x+g.w/2,g.y+g.h+10,'#ff8a80','800 11px system-ui');
+    else text(`вагон ${k+1}`,g.x+g.w/2,g.y+g.h+10,'#8a93a3','600 11px system-ui');}
+  ctx.fillStyle='#3a3f4a';ctx.fillRect(0,SCENE_Y-3,W,3);
 }
-function drawStation(time){const y0=ST_Y,night=nightAlpha()>0.12;
-  ctx.fillStyle='#b8b09f';ctx.fillRect(0,y0,W,H-y0);
+function drawScene(time){ctx=cctx;const night=nightAlpha()>0.12;
+  ctx.fillStyle='#b8b09f';ctx.fillRect(0,SCENE_Y,W,H-SCENE_Y);
   // здание вокзала
-  ctx.fillStyle='#c98b66';ctx.fillRect(0,y0,W,58);ctx.fillStyle='#7b4b3a';ctx.fillRect(0,y0,W,8);
-  for(let x=26;x<W-30;x+=64){if(x>420&&x<540)continue;fillRR(x,y0+18,32,24,3,night?'#ffe6a3':'#a9c4d6');ctx.fillStyle='rgba(0,0,0,0.15)';ctx.fillRect(x+15,y0+18,2,24);}
-  fillRR(DOOR_X-20,y0+14,40,44,4,'#5a3a2c');fillRR(DOOR_X-16,y0+18,32,36,3,night?'#ffd98a':'#8fb0c4');
-  fillRR(DOOR_X-64,y0+8,128,18,4,'#f4f1e8');text('УЗЛОВАЯ',DOOR_X,y0+17,'#2b2b2b','800 12px system-ui');
-  {const cx=DOOR_X+90,cy=y0+30;circle(cx,cy,13,'#f4f1e8');ctx.strokeStyle='#333';ctx.lineWidth=1.5;ctx.beginPath();ctx.arc(cx,cy,13,0,Math.PI*2);ctx.stroke();
+  ctx.fillStyle='#c98b66';ctx.fillRect(0,SCENE_Y,W,BLD_H);ctx.fillStyle='#7b4b3a';ctx.fillRect(0,SCENE_Y,W,10);
+  for(let x=24;x<W-40;x+=72){if(x>400&&x<600)continue;fillRR(x,SCENE_Y+20,40,28,4,night?'#ffe6a3':'#a9c4d6');ctx.fillStyle='rgba(0,0,0,0.15)';ctx.fillRect(x+19,SCENE_Y+20,2,28);}
+  fillRR(DOOR_X-26,SCENE_Y+14,52,48,5,'#5a3a2c');fillRR(DOOR_X-21,SCENE_Y+19,42,40,4,night?'#ffd98a':'#8fb0c4');
+  fillRR(DOOR_X-80,SCENE_Y+8,160,22,5,'#f4f1e8');text('УЗЛОВАЯ',DOOR_X,SCENE_Y+19,'#2b2b2b','800 15px system-ui');
+  {const cx=DOOR_X+110,cy=SCENE_Y+36;circle(cx,cy,16,'#f4f1e8');ctx.strokeStyle='#333';ctx.lineWidth=2;ctx.beginPath();ctx.arc(cx,cy,16,0,Math.PI*2);ctx.stroke();
     const h=hourNow(),ah=(h%12)/12*Math.PI*2-Math.PI/2,am=(h%1)*Math.PI*2-Math.PI/2;
-    ctx.lineWidth=2;ctx.beginPath();ctx.moveTo(cx,cy);ctx.lineTo(cx+Math.cos(ah)*7,cy+Math.sin(ah)*7);ctx.stroke();
-    ctx.lineWidth=1.5;ctx.beginPath();ctx.moveTo(cx,cy);ctx.lineTo(cx+Math.cos(am)*10,cy+Math.sin(am)*10);ctx.stroke();}
+    ctx.lineWidth=2.5;ctx.beginPath();ctx.moveTo(cx,cy);ctx.lineTo(cx+Math.cos(ah)*9,cy+Math.sin(ah)*9);ctx.stroke();
+    ctx.lineWidth=1.5;ctx.beginPath();ctx.moveTo(cx,cy);ctx.lineTo(cx+Math.cos(am)*13,cy+Math.sin(am)*13);ctx.stroke();}
   // платформа
-  ctx.fillStyle='#d8d3c6';ctx.fillRect(0,y0+58,W,94);
-  ctx.fillStyle='rgba(0,0,0,0.05)';for(let x=0;x<W;x+=48)ctx.fillRect(x,y0+58,1,94);
-  ctx.fillStyle='#e9c94a';ctx.fillRect(0,y0+146,W,3);
-  // пути
-  TRACK_Y.forEach((ty,i)=>{ctx.fillStyle='#a49d8f';ctx.fillRect(0,ty-12,W,24);
-    ctx.fillStyle='#7d6246';for(let x=2;x<W;x+=14)ctx.fillRect(x,ty-7,7,14);
-    ctx.fillStyle='#4c4c4c';ctx.fillRect(0,ty-5,W,2);ctx.fillRect(0,ty+3,W,2);
-    if(i<2){ctx.fillStyle='#cfcabd';ctx.fillRect(0,ty+12,W,TRACK_Y[i+1]-12-(ty+12));ctx.fillStyle='#e9c94a';ctx.fillRect(0,ty+13,W,2);
-      circle(W-22,ty+35,10,'#2b2f3a');text(i+2,W-22,ty+36,'#fff','800 12px system-ui');}
-    if(i===0){circle(W-22,y0+130,10,'#2b2f3a');text('1',W-22,y0+131,'#fff','800 12px system-ui');}});
-  ctx.fillStyle='#9fb572';ctx.fillRect(0,TRACK_Y[2]+12,W,H-(TRACK_Y[2]+12));
-  ctx.fillStyle='#6f6a5c';for(let x=0;x<W;x+=24)ctx.fillRect(x,TRACK_Y[2]+22,2,14);ctx.fillRect(0,TRACK_Y[2]+26,W,2);
-  // поезда, потом люди (люди поверх — видно, как садятся)
-  for(const t of S.trains)if(t.state!=='travel')drawTrain(t);
+  ctx.fillStyle='#d8d3c6';ctx.fillRect(0,PLAT_Y,W,TRACK_Y-100-PLAT_Y+8);
+  ctx.fillStyle='rgba(0,0,0,0.05)';for(let x=0;x<W;x+=60)ctx.fillRect(x,PLAT_Y,1,TRACK_Y-100-PLAT_Y);
+  ctx.fillStyle='#e9c94a';ctx.fillRect(0,TRACK_Y-108,W,4);
+  // путь
+  ctx.fillStyle='#a49d8f';ctx.fillRect(0,TRACK_Y-16,W,32);
+  ctx.fillStyle='#7d6246';for(let x=4;x<W;x+=22)ctx.fillRect(x,TRACK_Y-10,11,20);
+  ctx.fillStyle='#4c4c4c';ctx.fillRect(0,TRACK_Y-7,W,3);ctx.fillRect(0,TRACK_Y+4,W,3);
+  ctx.fillStyle='#9fb572';ctx.fillRect(0,TRACK_Y+16,W,H-TRACK_Y-16);
+  ctx.fillStyle='#6f6a5c';for(let x=0;x<W;x+=30)ctx.fillRect(x,TRACK_Y+26,3,18);ctx.fillRect(0,TRACK_Y+31,W,3);
+  // поезд — тот, что выбран, если он у платформы
+  const t=sel();
+  if(t.state!=='travel')drawTrain(t,night);
+  else text(`Поезд №${t.n} в пути: ${statusText(t)}`,W/2,TRACK_Y-58,'rgba(0,0,0,0.35)','700 20px system-ui');
+  // люди поверх поезда — видно, как заходят
   const ppl=[...S.crowd,...S.walkers].sort((a,b)=>a.y-b.y);for(const p of ppl)drawPerson(p,time);
 }
-function drawTrain(t){const ty=TRACK_Y[t.track],x=t.x,isSel=sel()===t;
+function drawTrain(t,night){const ty=TRACK_Y,x=t.x;
   for(let i=0;i<t.cars;i++){const cx=x+i*(CAR_W+GAP);const cur=inCar(t,i);
-    [12,22,CAR_W-22,CAR_W-12].forEach(o=>circle(cx+o,ty+2,4,'#222'));
-    fillRR(cx,ty-32,CAR_W,34,5,'#ece6d8');fillRR(cx+2,ty-35,CAR_W-4,6,2,'#b9b2a3');ctx.fillStyle=t.color;ctx.fillRect(cx,ty-10,CAR_W,6);
+    [22,42,CAR_W-42,CAR_W-22].forEach(o=>circle(cx+o,ty-8,9,'#222'));
+    fillRR(cx,ty-100,CAR_W,90,8,'#ece6d8');fillRR(cx+3,ty-106,CAR_W-6,10,4,'#b9b2a3');
+    ctx.fillStyle=t.color;ctx.fillRect(cx,ty-40,CAR_W,12);
     // в окнах — кто сидит у окна; если в проходе толпа, видно и стоящих
-    const st=cur.filter(p=>p.seat<0);
-    for(let k=0;k<4;k++){const wx=cx+8+k*16,p=cur.find(q=>q.seat===k)||st[k];fillRR(wx,ty-28,12,13,2,p?p.color:'#9cc3d9');if(p)circle(wx+6,ty-23,3,p.skin);}
-    ctx.fillStyle='#8a8378';ctx.fillRect(cx+CAR_W/2-1,ty-32,2,22);
-    if(t.state==='boarding'){ctx.fillStyle='#5a5148';ctx.fillRect(cx+CAR_W/2-6,ty-32,12,22);}}   // открытая дверь
+    const st=cur.filter(p=>p.seat<0);const offs=[6,36,94,124];
+    for(let k=0;k<4;k++){const wx=cx+offs[k],p=cur.find(q=>q.seat===k)||st[k];fillRR(wx,ty-92,24,30,4,p?p.color:(night?'#2b3550':'#9cc3d9'));if(p)circle(wx+12,ty-82,6,p.skin);}
+    if(t.state==='boarding')fillRR(cx+66,ty-94,22,80,3,'#3d3630');   // дверь открыта
+    else{fillRR(cx+66,ty-94,22,80,3,'#d9d2c4');ctx.fillStyle='#8a8378';ctx.fillRect(cx+76,ty-94,2,80);fillRR(cx+69,ty-90,16,22,3,night?'#2b3550':'#9cc3d9');}}
   const lx=x+t.cars*(CAR_W+GAP);
-  [12,32,LOCO_W-12].forEach(o=>circle(lx+o,ty+2,4.5,'#222'));
-  fillRR(lx,ty-32,LOCO_W,34,7,t.color);fillRR(lx+2,ty-35,LOCO_W-4,6,3,shade(t.color,-40));
-  fillRR(lx+LOCO_W-22,ty-27,16,12,3,'#bfe0f2');fillRR(lx+6,ty-27,14,10,2,'#bfe0f2');
-  circle(lx+30,ty-14,8,'#fff');text(t.n,lx+30,ty-13,'#222','800 11px system-ui');
-  circle(lx+LOCO_W-4,ty-8,3,'#ffe9a0');
-  if(t.fast){text('⚡',lx+12,ty-11,'#ffe9a0','12px system-ui');}
-  if(isSel){ctx.strokeStyle='#fff';ctx.lineWidth=2;ctx.setLineDash([6,4]);rr(x-5,ty-40,trainLen(t)+10,50,7);ctx.stroke();ctx.setLineDash([]);}
+  [22,55,LOCO_W-22].forEach(o=>circle(lx+o,ty-8,10,'#222'));
+  fillRR(lx,ty-100,LOCO_W,90,12,t.color);fillRR(lx+3,ty-106,LOCO_W-6,10,5,shade(t.color,-40));
+  fillRR(lx+LOCO_W-40,ty-92,30,26,5,'#bfe0f2');fillRR(lx+12,ty-92,26,22,4,'#bfe0f2');
+  circle(lx+48,ty-52,14,'#fff');text(t.n,lx+48,ty-51,'#222','800 18px system-ui');
+  circle(lx+LOCO_W-7,ty-30,5,'#ffe9a0');
+  if(t.fast)text('⚡',lx+20,ty-48,'#ffe9a0','18px system-ui');
 }
 function drawPerson(p,time){const x=p.x,y=p.y;
-  const moving=p.state!=='idle';const step=moving?Math.sin(time*14+p.bob)*2:0;
+  const moving=p.state!=='idle';const step=moving?Math.sin(time*14+p.bob)*3:0;
   const dim=S.highlight&&p.state!=='exit'&&p.dest!==S.highlight&&p.state!=='board';
   ctx.globalAlpha=dim?0.28:1;
-  ctx.strokeStyle='#333';ctx.lineWidth=2.2;ctx.beginPath();ctx.moveTo(x-2.5,y-7);ctx.lineTo(x-2.5+step,y);ctx.moveTo(x+2.5,y-7);ctx.lineTo(x+2.5-step,y);ctx.stroke();
-  fillRR(x-5,y-17,10,11,2.5,p.color);circle(x,y-21,4.2,p.skin);
-  if(p.state==='idle'||p.state==='walk'){if(p.patience<0.25*p.maxP&&Math.floor(time*3)%2===0)text('!',x,y-32,'#d32f2f','900 14px system-ui');}
+  ctx.strokeStyle='#333';ctx.lineWidth=3;ctx.beginPath();ctx.moveTo(x-3.5,y-12);ctx.lineTo(x-3.5+step,y);ctx.moveTo(x+3.5,y-12);ctx.lineTo(x+3.5-step,y);ctx.stroke();
+  fillRR(x-7,y-29,14,18,4,p.color);circle(x,y-35,6.5,p.skin);
+  if(p.state==='idle'||p.state==='walk'){if(p.patience<0.25*p.maxP&&Math.floor(time*3)%2===0)text('!',x,y-50,'#d32f2f','900 18px system-ui');}
   ctx.globalAlpha=1;}
-function drawPopups(){for(const q of S.popups){ctx.globalAlpha=clamp(q.life,0,1);outlined(q.text,q.x,q.y,'800 13px system-ui',q.color,'#fff');}ctx.globalAlpha=1;}
-function draw(time){ctx.setTransform(scale*dpr,0,0,scale*dpr,0,0);drawMap(time);drawInterior(time);drawStation(time);
-  const na=nightAlpha();if(na>0){ctx.fillStyle=`rgba(12,20,55,${na})`;ctx.fillRect(0,0,W,MAP_H);ctx.fillRect(0,ST_Y,W,H-ST_Y);}
-  drawPopups();
-  if(S.paused){ctx.fillStyle='rgba(0,0,0,0.35)';ctx.fillRect(0,0,W,H);outlined('ПАУЗА',W/2,H/2,'900 40px system-ui','#fff','#000');}}
+function drawPopups(onMap){for(const q of S.popups){if(q.onMap!==onMap)continue;ctx.globalAlpha=clamp(q.life,0,1);outlined(q.text,q.x,q.y,onMap?'800 11px system-ui':'800 16px system-ui',q.color,'#fff');}ctx.globalAlpha=1;}
+function draw(time){ctx=cctx;ctx.setTransform(scale*dpr,0,0,scale*dpr,0,0);drawSalon(time);drawScene(time);
+  const na=nightAlpha();if(na>0){ctx.fillStyle=`rgba(12,20,55,${na})`;ctx.fillRect(0,SCENE_Y,W,H-SCENE_Y);}
+  drawPopups(false);
+  if(S.paused){ctx.fillStyle='rgba(0,0,0,0.35)';ctx.fillRect(0,0,W,H);outlined('ПАУЗА',W/2,H/2,'900 44px system-ui','#fff','#000');}
+  drawMap();}
 
-// клик по поезду на платформе — выбрать его; клик по серой линии — открыть
-canvas.addEventListener('pointerdown',e=>{const r=canvas.getBoundingClientRect();const x=(e.clientX-r.left)/scale,y=(e.clientY-r.top)/scale;
-  for(const t of S.trains){if(t.state==='travel')continue;const ty=TRACK_Y[t.track];
-    if(x>=t.x-5&&x<=t.x+trainLen(t)+5&&y>=ty-40&&y<=ty+10){S.selected=S.trains.indexOf(t);refreshUI();return;}}
-  for(const l of LINES){if(l.open)continue;const a=HUB.pos,b=l.cities[0].pos;const mx=(a[0]+b[0])/2,my=(a[1]+b[1])/2;
-    if(Math.abs(x-mx)<50&&Math.abs(y-my)<14){openLine(l);return;}}});
+// клик по серой линии на карте — открыть её
+mapCanvas.addEventListener('pointerdown',e=>{const r=mapCanvas.getBoundingClientRect();const x=e.clientX-r.left,y=e.clientY-r.top;
+  for(const l of LINES){if(l.open)continue;const [mx,my]=l.tag;if(Math.abs(x-mx)<42&&Math.abs(y-my)<12){openLine(l);return;}}});
 
 // ---------- старт ----------
 makeTrain();for(let i=0;i<7;i++)spawnHub(true);
