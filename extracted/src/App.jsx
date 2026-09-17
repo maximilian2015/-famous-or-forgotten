@@ -22,6 +22,7 @@ import { FAVOURS, FAVOUR_ORDER, canUse, costOf, asksLeft, ASKS_A_YEAR, canSmooth
 import { addPrestigeListing } from './systems/career/castings.js';
 import { TimingBar } from './ui/components/TimingBar.jsx';
 import { GridRisk } from './ui/components/GridRisk.jsx';
+import { StairsGame } from './ui/components/StairsGame.jsx';
 import { Reviews } from './ui/components/BigMoment.jsx';
 import { WalkOfFame } from './ui/components/WalkOfFame.jsx';
 import { Diary } from './ui/components/Diary.jsx';
@@ -31,7 +32,7 @@ import { NightRoom } from './ui/components/NightRoom.jsx';
 import { Passport } from './ui/components/Passport.jsx';
 import { CARE, CARE_ORDER, careCost, trainerCost, apparentAge, SURGEONS, SURGERY_AGE, NEEDLE_MONTHS, face as faceOf, faceBill, frozenFace, healing, needlesLately, needleCost, surgeryCost, surgeryOdds, setCare, toggleTrainer, needle, surgery } from './systems/life/face.js';
 import { TourRoom } from './ui/components/TourRoom.jsx';
-import { tierById, isInvited, attendEvent, askForInvite, sneakIntoEvent, inviteHelpers, helperOdds, hasAsked } from './systems/social/events.js';
+import { tierById, isInvited, attendEvent, askForInvite, sneakIntoEvent, answerDoor, stairsResult, inviteHelpers, helperOdds, hasAsked, expectedAt } from './systems/social/events.js';
 import { HOUSING, HOUSING_ORDER, monthlyCosts, DIET, GYM_COST, setDiet, toggleGym } from './engine/economy.js';
 import { GENRES, hotGenre } from './systems/meta/news.js';
 import { genreXP, genreBonus, genreLabel } from './systems/career/genres.js';
@@ -2314,12 +2315,26 @@ function EventsScreen({ g }) {
           <div style={{ fontSize: 14, fontWeight: 800 }}>{t.label}</div>
           <div style={{ fontSize: 11, color: theme.muted }}>{ev.monthsLeft} mo left</div>
         </div>
-        <div style={{ fontSize: 11.5, color: theme.muted, margin: '3px 0 8px' }}>{ev.venue} · hosted by {ev.host}</div>
+        <div style={{ fontSize: 11.5, color: theme.muted, margin: '3px 0 6px' }}>{ev.venue} · hosted by {ev.host}</div>
+        {/* Who is expected. The names, and a role only where you would know it — the room
+            has a crowd in it and the figures do not wear name tags. */}
+        <div style={{ fontSize: 11, color: theme.muted, marginBottom: 8, lineHeight: 1.5 }}><span style={{ fontWeight: 800, color: theme.text }}>Expected:</span> {expectedAt(g, ev, t).map((x) => x.name + (x.role ? ` (${x.role})` : '')).join(' · ')} — and a room full of people who are nobody in particular.</div>
         {ev.note && <div style={{ fontSize: 12, color: onList ? theme.good : theme.gold, background: 'rgba(255,255,255,.05)', border: `1px solid ${theme.line}`, borderRadius: 9, padding: '7px 10px', marginBottom: 8, lineHeight: 1.45 }}>{ev.note}</div>}
         {onList ? (<>
           <div style={{ fontSize: 11, color: theme.good, marginBottom: 8 }}>✓ You're on the list</div>
           <button onClick={() => dispatch(attendEvent, ev.id)} disabled={noEnergy} style={{ ...btn('pri'), width: '100%' }}>Go</button>
-        </>) : sneak && sneak.id === ev.id ? (<div>
+        </>) : ev.door && ev.door.stage === 1 ? (<div>
+          {/* The second door: what somebody who belongs would know. The answers are on the wall in Legacy. */}
+          <div style={{ fontSize: 11, fontWeight: 900, letterSpacing: '.06em', textTransform: 'uppercase', color: theme.gold, marginBottom: 6 }}>The door · question {ev.door.asked + 1} of {ev.door.quiz.length}</div>
+          <div style={{ fontSize: 13, fontWeight: 800, marginBottom: 8 }}>{ev.door.quiz[ev.door.asked].q}</div>
+          <div style={{ display: 'grid', gap: 6 }}>
+            {ev.door.quiz[ev.door.asked].options.map((o) => (<button key={o} onClick={() => dispatch(answerDoor, ev.id, o)} style={{ ...btn(''), textAlign: 'left' }}>{o}</button>))}
+          </div>
+          <div style={{ fontSize: 10.5, color: theme.muted, marginTop: 6 }}>One wrong answer and you are outside. The year's lists are under Legacy; the host is on this card.</div>
+        </div>) : ev.door && ev.door.stage === 2 ? (<div>
+          <div style={{ fontSize: 11, fontWeight: 900, letterSpacing: '.06em', textTransform: 'uppercase', color: theme.gold, marginBottom: 6 }}>The back stairs</div>
+          <StairsGame length={5} onResult={(ok) => dispatch(stairsResult, ev.id, ok)} />
+        </div>) : sneak && sneak.id === ev.id ? (<div>
           <div style={{ fontSize: 11.5, color: theme.gold, textAlign: 'center', marginBottom: 8, lineHeight: 1.45 }}>
             {sneak.game === 'timing'
               ? 'Time your walk past the door — tap dead centre of the green.'

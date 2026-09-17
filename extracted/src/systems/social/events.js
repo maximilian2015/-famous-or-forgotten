@@ -3,7 +3,8 @@ import { inCareer } from '../../engine/stage.js';
 import { uid } from '../../engine/id.js';
 import { rint, chance, pick } from '../../engine/rng.js';
 import { addTimeline } from '../../engine/timeline.js';
-import { startNight } from './night.js';
+import { startNight, expectedAt } from './night.js';
+export { expectedAt };
 const clamp = (v) => Math.max(0, Math.min(100, v));
 
 // Tiers gate who shows up and whether you're on the guest list at all.
@@ -80,26 +81,73 @@ export function askForInvite(s, eventId, personId) {
   }
   return s;
 }
+// ── the three doors ───────────────────────────────────────────────────────────
+// Without a name on the list there are three doors, and every one of them can close on
+// you. Maxi: "the first minigame at seventy-five, then a quiz — questions from the world
+// itself, so somebody who reads the lists gets through — then a new hard one." The quiz
+// asks what a person who belongs would know: who is hosting, what took the money last
+// year, who is at the top of the business. The answers are all on the wall in Legacy.
+export function doorState(ev) { return ev.door || { stage: 0 }; }
 export function sneakIntoEvent(s, eventId, quality = 0) {
   const ev = (s.events || []).find((x) => x.id === eventId); if (!ev) return s;
-  // One try. The door remembers a face it turned away.
   if (ev.doorTried) { s.lastEvent = ev.note = 'The door remembers you from last time. Not tonight.'; return s; }
   if (!canAfford(s, COST.askHelp)) { s.lastEvent = tooTired(s, COST.askHelp); return s; }
   spend(s, COST.askHelp);
-  const t = tierById(ev.tier);
-  // Steep bar: bluffing your way past a real door should mostly fail.
+  // The first door: a face that looks like it belongs. Steep on purpose.
   if (quality >= 75) {
-    ev.invited = true;
-    s.lastEvent = ev.note = `You walk in like you belong there. Nobody stops you. You are on the list at ${ev.venue} — press Go.`;
-    addTimeline(s, `Talked your way into ${t.label.toLowerCase()} at ${ev.venue}.`);
+    ev.door = { stage: 1, quiz: quizFor(s, ev), asked: 0, right: 0 };
+    s.lastEvent = ev.note = 'You walk up like you belong. The door looks at you a moment too long. "And you are here for…?"';
+  } else bounced(s, ev, quality < 30);
+  return s;
+}
+function bounced(s, ev, filmed) {
+  ev.doorTried = true; ev.door = null;
+  s.mental = clamp((s.mental || 50) - rint(2, 5));
+  if (filmed) s.scandal = clamp((s.scandal || 0) + 3);
+  s.lastEvent = ev.note = filmed
+    ? 'Security walks you out in front of everyone. Someone films it. That door is closed to you now.'
+    : "The door staff aren't buying it. You don't get in, and they will remember the face.";
+}
+// Two questions with an answer somewhere in the game. Wrong once and you are outside.
+function quizFor(s, ev) {
+  const w = s.world || {}; const yrs = w.years || {}; const last = yrs[(s.year || 0) - 1];
+  const actors = ((w.actors || []).filter((a) => a.alive && !a.retired));
+  const names = (n, not) => { const out = []; const pool = actors.map((a) => a.name).filter((x) => x !== not); while (out.length < n && pool.length) { const i = Math.floor(Math.random() * pool.length); out.push(pool.splice(i, 1)[0]); } return out; };
+  const shuffle = (arr) => arr.map((x) => [Math.random(), x]).sort((p, q) => p[0] - q[0]).map((p) => p[1]);
+  const qs = [];
+  // Who is hosting tonight — it is on the card.
+  const hosts = ['Vega Pictures', 'Nord Media', 'the Aurora Fund', 'Lyra Studios', 'the festival board', ...names(2)].filter((h) => h !== ev.host);
+  qs.push({ q: 'Whose night is this?', options: shuffle([ev.host, ...shuffle(hosts).slice(0, 3)]), answer: ev.host });
+  // What took the money last year — the year's list in Legacy.
+  if (last && last.films && last.films.length >= 4) {
+    const top = last.films[0].title;
+    qs.push({ q: `What took the most money last year?`, options: shuffle([top, ...shuffle(last.films.slice(1).map((f) => f.title)).slice(0, 3)]), answer: top });
   } else {
-    ev.doorTried = true;
-    s.mental = clamp((s.mental || 50) - rint(2, 5));
-    s.scandal = clamp((s.scandal || 0) + (quality < 30 ? 3 : 0));
-    s.lastEvent = ev.note = quality < 30
-      ? `Security walks you out in front of everyone. Someone films it. That door is closed to you now.`
-      : `The door staff aren't buying it. You don't get in, and they will remember the face.`;
+    const one = actors.slice().sort((x, y) => (x.rank || 999) - (y.rank || 999))[0];
+    if (one) qs.push({ q: 'Who is #1 in the business right now?', options: shuffle([one.name, ...names(3, one.name)]), answer: one.name });
   }
+  return qs;
+}
+export function answerDoor(s, eventId, answer) {
+  const ev = (s.events || []).find((x) => x.id === eventId); if (!ev) return s;
+  const d = ev.door; if (!d || d.stage !== 1) return s;
+  const q = d.quiz[d.asked]; if (!q) return s;
+  if (answer !== q.answer) { bounced(s, ev, false); s.lastEvent = ev.note = `"${answer}?" The door does not even smile. You are outside, and they will remember the face.`; return s; }
+  d.asked += 1; d.right += 1;
+  if (d.asked >= d.quiz.length) { d.stage = 2; s.lastEvent = ev.note = 'The door steps aside — to the back stairs. "Follow the lights, and do not get it wrong."'; }
+  else s.lastEvent = ev.note = 'A nod. One more.';
+  return s;
+}
+// The third door: the back stairs, in the dark. The UI plays the lights; this hears the result.
+export function stairsResult(s, eventId, ok) {
+  const ev = (s.events || []).find((x) => x.id === eventId); if (!ev) return s;
+  const d = ev.door; if (!d || d.stage !== 2) return s;
+  const t = tierById(ev.tier);
+  if (ok) {
+    ev.invited = true; ev.door = null;
+    s.lastEvent = ev.note = `Up the back stairs and into the room. Nobody stops you. You are inside ${ev.venue} — press Go.`;
+    addTimeline(s, `Talked your way into ${t.label.toLowerCase()} at ${ev.venue}.`);
+  } else bounced(s, ev, true);
   return s;
 }
 // A party is an evening, not a working day — charging a full action for it meant events

@@ -3,6 +3,7 @@ import { theme } from '../../ui/theme.js';
 import { smsReply, smsReadAll } from '../../systems/social/sms.js';
 import { dispatch } from '../../state/store.js';
 import { canTakeSet } from '../../engine/sets.js';
+import { phoneGone } from '../../systems/social/night.js';
 import { acceptOffer, declineOffer, runCampaign, campaignCost } from '../../systems/career/offers.js';
 import { hotGenre } from '../../systems/meta/news.js';
 import { agentLine, fireAgent } from '../../systems/career/agent.js';
@@ -10,6 +11,7 @@ import { agentDropped } from '../../systems/meta/standing.js';
 import { canWork } from '../../systems/life/strain.js';
 import { openContract } from '../../systems/career/contract.js';
 export function Messages({ g }) {
+  if (phoneGone(g)) return (<div style={{ fontSize: 13, color: theme.muted, textAlign: 'center', padding: '40px 18px', lineHeight: 1.6 }}>📵 No phone.<br />It went somewhere on a night you do not remember. A new one next month — and not every number is coming back.</div>);
   const agent = g.agent && g.agent.level > 0 ? g.agent.name : null;
   const offers = g.offers || [];
   const trend = hotGenre(g);

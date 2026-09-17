@@ -213,3 +213,52 @@ export function play(kind, delay = 0) {
   last = now;
   try { cue(c, c.currentTime + 0.005 + delay); } catch (e) { /* sound is a nicety, never a requirement */ }
 }
+
+// ── the room ──────────────────────────────────────────────────────────────────────────
+// A party has music. A loop of four bars — a kick, a hat made of noise, a bass note that
+// moves — made here like everything else, and quiet enough to talk over. Maxi: "when the
+// window opens, music should play." One loop at a time; the room stops it when it closes.
+let loop = null;
+const LOOPS = {
+  club:   { bpm: 124, bass: [55, 55, 65.4, 49], hat: 5200, gain: 0.05 },
+  house:  { bpm: 100, bass: [65.4, 73.4, 82.4, 61.7], hat: 3800, gain: 0.045 },
+  lounge: { bpm: 84,  bass: [82.4, 98, 87.3, 73.4], hat: 2600, gain: 0.04 },
+};
+export function startLoop(kind = 'club') {
+  stopLoop();
+  if (!on) return;
+  const c = ac(); if (!c) return;
+  if (c.state === 'suspended') c.resume().catch(() => {});
+  const L = LOOPS[kind] || LOOPS.club;
+  const beat = 60 / L.bpm;
+  const g = c.createGain(); g.gain.value = L.gain; g.connect(master);
+  let next = c.currentTime + 0.05, bar = 0, alive = true;
+  const schedule = () => {
+    if (!alive) return;
+    while (next < c.currentTime + 0.6) {
+      for (let i = 0; i < 4; i++) {
+        const t = next + i * beat;
+        // kick
+        const o = c.createOscillator(), og = c.createGain(); o.type = 'sine';
+        o.frequency.setValueAtTime(140, t); o.frequency.exponentialRampToValueAtTime(42, t + 0.12);
+        og.gain.setValueAtTime(0.0001, t); og.gain.exponentialRampToValueAtTime(0.9, t + 0.004); og.gain.exponentialRampToValueAtTime(0.0001, t + 0.22);
+        o.connect(og); og.connect(g); o.start(t); o.stop(t + 0.3);
+        // hat on the off-beat
+        const src = c.createBufferSource(); src.buffer = noise(c); src.loop = true;
+        const f = c.createBiquadFilter(); f.type = 'highpass'; f.frequency.value = L.hat;
+        const hg = c.createGain(); const ht = t + beat / 2;
+        hg.gain.setValueAtTime(0.0001, ht); hg.gain.exponentialRampToValueAtTime(0.25, ht + 0.003); hg.gain.exponentialRampToValueAtTime(0.0001, ht + 0.05);
+        src.connect(f); f.connect(hg); hg.connect(g); src.start(ht); src.stop(ht + 0.08);
+      }
+      // bass: one note a bar, moving
+      const b = c.createOscillator(), bg = c.createGain(); b.type = 'triangle';
+      b.frequency.setValueAtTime(L.bass[bar % L.bass.length], next);
+      bg.gain.setValueAtTime(0.0001, next); bg.gain.exponentialRampToValueAtTime(0.5, next + 0.02); bg.gain.exponentialRampToValueAtTime(0.0001, next + beat * 3.6);
+      b.connect(bg); bg.connect(g); b.start(next); b.stop(next + beat * 4);
+      next += beat * 4; bar += 1;
+    }
+  };
+  const timer = setInterval(schedule, 250); schedule();
+  loop = { stop: () => { alive = false; clearInterval(timer); g.gain.setTargetAtTime(0.0001, c.currentTime, 0.15); setTimeout(() => { try { g.disconnect(); } catch (e) {} }, 800); } };
+}
+export function stopLoop() { if (loop) { loop.stop(); loop = null; } }
