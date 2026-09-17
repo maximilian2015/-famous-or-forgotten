@@ -20,6 +20,14 @@
         "extracted/serve-dist.mjs"
       ],
       "port": 5174
+    },
+    {
+      "name": "train",
+      "runtimeExecutable": "C:\\Program Files\\nodejs\\node.exe",
+      "runtimeArgs": [
+        "train/serve.mjs"
+      ],
+      "port": 5175
     }
   ]
 }

@@ -1,0 +1,402 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Узловая — поезда между городами</title>
+<style>
+:root{--bg:#1c2028;--panel:#262c38;--panel2:#2f3644;--text:#eef1f5;--muted:#98a2b3;--accent:#f5b84a}
+*{box-sizing:border-box}
+html,body{margin:0;height:100%;background:var(--bg);color:var(--text);font:14px/1.3 system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;overflow:hidden;user-select:none;-webkit-user-select:none}
+#app{display:flex;flex-direction:column;height:100%}
+#top{display:flex;align-items:center;gap:16px;padding:8px 14px;background:var(--panel);flex-wrap:wrap}
+#top .brand{font-weight:800;letter-spacing:.5px;color:var(--accent)}
+.stat{display:flex;flex-direction:column;line-height:1.1}
+.stat small{color:var(--muted);font-size:11px}
+.stat b{font-size:16px}
+.spacer{flex:1}
+button{background:var(--panel2);color:var(--text);border:1px solid #3c4453;border-radius:8px;padding:6px 10px;font:inherit;cursor:pointer}
+button:hover:not(:disabled){border-color:#6b7382;background:#39414f}
+button:disabled{opacity:.45;cursor:default}
+button.on{border-color:var(--accent);color:var(--accent)}
+#stage{flex:1;position:relative;display:flex;align-items:center;justify-content:center;min-height:0;background:#111}
+canvas{display:block;touch-action:none}
+#toasts{position:absolute;top:10px;left:50%;transform:translateX(-50%);display:flex;flex-direction:column;gap:6px;pointer-events:none;align-items:center}
+.toast{background:rgba(20,24,32,.92);border:1px solid #4a5364;padding:8px 14px;border-radius:10px;font-weight:600;animation:fade 3.2s forwards;white-space:nowrap}
+@keyframes fade{0%{opacity:0;transform:translateY(-6px)}10%{opacity:1;transform:none}80%{opacity:1}100%{opacity:0}}
+#bottom{background:var(--panel);padding:8px 14px;display:flex;flex-direction:column;gap:8px}
+.row{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
+#tabs button{padding:4px 10px}
+#tabs button small{color:var(--muted);margin-left:6px}
+#title{font-weight:700}
+#hint{color:var(--muted);font-size:12px;min-height:14px}
+.dest{display:flex;align-items:center;gap:8px;padding:6px 12px;border-radius:10px}
+.dest .dot{width:12px;height:12px;border-radius:50%;flex:none;border:2px solid #fff}
+.dest .meta{color:var(--muted);font-size:12px}
+.dest .n{background:#fff;color:#111;border-radius:999px;padding:0 7px;font-weight:700;font-size:12px}
+.dest .n.zero{background:#4a5364;color:#cbd2dc}
+.shop button{font-size:13px}
+.shop button b{color:var(--accent)}
+.shop .lbl{color:var(--muted);font-size:12px;margin-right:4px}
+</style>
+</head>
+<body>
+<div id="app">
+ <div id="top">
+  <span class="brand">УЗЛОВАЯ</span>
+  <div class="stat"><small>время</small><b id="uiTime">День 1 · 07:00</b></div>
+  <div class="stat"><small>касса</small><b id="uiMoney">200 ₽</b></div>
+  <div class="stat"><small>на платформе</small><b id="uiCrowd">0</b></div>
+  <div class="stat"><small>довезли</small><b id="uiDelivered">0</b></div>
+  <div class="stat"><small>не дождались</small><b id="uiLost">0</b></div>
+  <div class="stat"><small>рейтинг вокзала</small><b id="uiStars">★★★★★</b></div>
+  <span class="spacer"></span>
+  <button id="btnPause">⏸ Пауза</button>
+  <button id="btnSpeed1" class="on">1×</button>
+  <button id="btnSpeed2">2×</button>
+  <button id="btnMute" title="звук">🔊</button>
+  <button id="btnRestart">Заново</button>
+ </div>
+ <div id="stage"><canvas id="c"></canvas><div id="toasts"></div></div>
+ <div id="bottom">
+  <div class="row"><div id="tabs" class="row"></div><span id="title"></span></div>
+  <div id="dests" class="row"></div>
+  <div id="hint"></div>
+  <div id="shop" class="row shop"><span class="lbl">Купить:</span></div>
+ </div>
+</div>
+<script>
+'use strict';
+const $=s=>document.querySelector(s);
+const W=960,H=700,MAP_H=300,DAY_LEN=150,MAP_SPEED=26,SLIDE=230,DWELL=1.2;
+const LOCO_W=64,CAR_W=76,GAP=4,SEATS=4,MAX_CARS=5,MAX_TRAINS=3;
+const TRACK_Y=[MAP_H+178,MAP_H+248,MAP_H+318];
+const DOOR_X=480,DOOR_Y=MAP_H+56;       // дверь вокзала — откуда выходят и куда уходят люди
+const CROWD_Y=[MAP_H+80,MAP_H+144];     // где стоит толпа на платформе
+const TRAIN_COLORS=['#d9534f','#3b7dd8','#2e9e5b'];
+const SKINS=['#f1d3b3','#e0b08a','#c68e63','#8d5a3b'];
+const HOME_COLOR='#cfd8dc';
+const COST={train:[500,900],car:200,fast:300,lounge:300};
+const MILESTONES=[25,50,100,250,500,1000,2000];
+const rand=(a,b)=>a+Math.random()*(b-a);
+const pick=a=>a[Math.floor(Math.random()*a.length)];
+const clamp=(v,a,b)=>Math.max(a,Math.min(b,v));
+const lerp=(a,b,t)=>a+(b-a)*t;
+const dist=(a,b)=>Math.hypot(a[0]-b[0],a[1]-b[1]);
+const fmt=n=>Math.round(n).toLocaleString('ru-RU');
+
+// ---------- карта ----------
+const HUB={id:'hub',name:'Узловая',pos:[480,160]};
+const LINES=[
+ {id:'north',name:'на Северск',open:true,cost:0,cities:[
+   {id:'berezovka',name:'Берёзовка',color:'#e8a33d',pos:[600,92],pop:1.0},
+   {id:'seversk',name:'Северск',color:'#3f8ae0',pos:[770,40],pop:0.8}]},
+ {id:'east',name:'на Каменку',open:true,cost:0,cities:[
+   {id:'ozersk',name:'Озёрск',color:'#2fb37a',pos:[690,168],pop:1.0},
+   {id:'kamenka',name:'Каменка',color:'#8b5cf6',pos:[880,205],pop:0.9}]},
+ {id:'south',name:'на Ясное',open:false,cost:300,cities:[
+   {id:'yasnoe',name:'Ясное',color:'#e3574f',pos:[400,262],pop:1.1,label:[46,0]}]},
+ {id:'west',name:'на Заводской',open:false,cost:450,cities:[
+   {id:'prirechye',name:'Приречье',color:'#ec6fae',pos:[300,175],pop:1.0},
+   {id:'zavodskoy',name:'Заводской',color:'#64748b',pos:[130,130],pop:1.2}]},
+];
+const CITY={};
+LINES.forEach(line=>{let prev=HUB.pos,acc=0;line.cities.forEach((c,i)=>{acc+=dist(prev,c.pos);prev=c.pos;
+  c.line=line;c.idx=i;c.pathLen=acc;c.fare=Math.round(3+acc/18);c.waiting=[];c.acc=0;CITY[c.id]=c;});});
+const openCities=()=>LINES.filter(l=>l.open).flatMap(l=>l.cities);
+const stopsTo=c=>c.line.cities.slice(0,c.idx+1);
+
+// ---------- состояние ----------
+const S={money:200,clock:7/24*DAY_LEN,speed:1,paused:false,muted:false,delivered:0,lost:0,outcomes:[],
+  lounge:false,spawnAcc:0,trains:[],crowd:[],walkers:[],popups:[],selected:0,dispatched:0,highlight:null,
+  firstLossShown:false,milestone:0};
+const dayNum=()=>Math.floor(S.clock/DAY_LEN)+1;
+const hourNow=()=>(S.clock%DAY_LEN)/DAY_LEN*24;
+function hourMul(h){if(h<5)return .35;if(h<7)return .8;if(h<9)return 1.6;if(h>=17&&h<19)return 1.6;if(h>=22)return .6;return 1;}
+const dayMul=()=>Math.pow(1.2,dayNum()-1);   // каждый день народу на 20% больше, чем вчера
+function stars(){const o=S.outcomes;if(o.length<5)return 5;const r=o.reduce((a,b)=>a+b,0)/o.length;return r>=.95?5:r>=.85?4:r>=.7?3:r>=.5?2:1;}
+
+function makeTrain(){const n=S.trains.length+1;
+  const t={n,color:TRAIN_COLORS[n-1],cars:2,fast:false,track:n-1,state:'idle',x:0,passengers:[],boarding:[],trip:null,dest:null,timer:0};
+  t.x=parkX(t);S.trains.push(t);return t;}
+const seats=t=>t.cars*SEATS;
+const trainLen=t=>t.cars*(CAR_W+GAP)+LOCO_W;
+const parkX=t=>Math.round((W-trainLen(t))/2);   // поезд встаёт по центру платформы — людям ближе идти
+const doorX=(t,i)=>t.x+i*(CAR_W+GAP)+CAR_W/2;
+const sel=()=>S.trains[S.selected];
+
+// ---------- люди ----------
+function pickDest(){const cs=openCities();let sum=cs.reduce((a,c)=>a+c.pop,0),r=Math.random()*sum;for(const c of cs){r-=c.pop;if(r<=0)return c;}return cs[cs.length-1];}
+function spawnHub(instant){const c=pickDest();
+  // люди кучкуются ближе к середине платформы (треугольное распределение), по краям — реже
+  const p={dest:c.id,color:c.color,skin:pick(SKINS),x:DOOR_X,y:DOOR_Y,tx:clamp(480+(rand(-1,1)+rand(-1,1))*230,40,920),ty:rand(CROWD_Y[0],CROWD_Y[1]),state:'walk',bob:Math.random()*6.28,train:null};
+  if(instant){p.x=p.tx;p.y=p.ty;p.state='idle';}
+  p.maxP=p.patience=rand(60,90)*(S.lounge?1.5:1);S.crowd.push(p);}
+function waitingFor(c){let direct=0,via=0;const stops=stopsTo(c);
+  for(const p of S.crowd){if(p.state!=='idle'&&p.state!=='walk')continue;if(p.dest===c.id)direct++;else if(stops.some(s=>s.id===p.dest))via++;}
+  return{direct,via};}
+
+// ---------- события ----------
+function pop(x,y,text,color){S.popups.push({x,y,text,color,life:1.4});}
+function toast(msg){const t=document.createElement('div');t.className='toast';t.textContent=msg;$('#toasts').appendChild(t);setTimeout(()=>t.remove(),3300);}
+function earn(n,x,y){S.money+=n;pop(x,y,'+'+n+' ₽','#2f7a2f');}
+function delivered(n){S.delivered+=n;for(let i=0;i<n;i++)outcome(1);
+  while(S.milestone<MILESTONES.length&&S.delivered>=MILESTONES[S.milestone]){toast(`🎉 Довезли ${MILESTONES[S.milestone]} человек!`);S.milestone++;}}
+function outcome(v){S.outcomes.push(v);if(S.outcomes.length>40)S.outcomes.shift();}
+function lose(x,y){S.lost++;outcome(0);pop(x,y,'не дождался','#8a1f1f');
+  if(!S.firstLossShown){S.firstLossShown=true;toast('Пассажир не дождался поезда и ушёл. Следи за «!» над головами.');}}
+
+// ---------- поезда ----------
+function dispatch(t,city){if(!t||t.state!=='idle')return;
+  const stops=stopsTo(city),ids=new Set(stops.map(s=>s.id));
+  const eligible=S.crowd.filter(p=>(p.state==='idle'||p.state==='walk')&&ids.has(p.dest)).sort((a,b)=>a.patience-b.patience);
+  const chosen=eligible.slice(0,seats(t));
+  chosen.forEach((p,i)=>{p.state='board';p.train=t;p.tx=doorX(t,i%t.cars)+rand(-6,6);p.ty=TRACK_Y[t.track]-14;});
+  t.boarding=chosen;t.dest=city;t.state='boarding';t.timer=0;S.dispatched++;
+  if(!chosen.length)depart(t);
+  refreshUI();}
+function depart(t){t.state='departing';t.boarding=[];sndToot();
+  // после отправки выбираем следующий свободный поезд, чтобы не кликать лишний раз
+  const idle=S.trains.findIndex(o=>o.state==='idle');if(idle>=0)S.selected=idle;}
+function startTrip(t){const stops=stopsTo(t.dest);
+  const nodes=[HUB,...stops,...stops.slice(0,-1).reverse(),HUB];
+  const lens=[];for(let i=0;i<nodes.length-1;i++)lens.push(dist(nodes[i].pos,nodes[i+1].pos));
+  t.trip={nodes,lens,seg:0,t:0,dwell:0};t.state='travel';}
+function stopAt(t,city){let n=0,sum=0;
+  t.passengers=t.passengers.filter(p=>{if(p.dest===city.id){n++;sum+=city.fare;return false;}return true;});
+  if(n){earn(sum,city.pos[0],city.pos[1]-18);delivered(n);}
+  while(t.passengers.length<seats(t)&&city.waiting.length){city.waiting.shift();t.passengers.push({dest:'hub',from:city.id,color:HOME_COLOR});}}
+function arriveHome(t){let n=0,sum=0;const ty=TRACK_Y[t.track];
+  t.passengers.forEach((p,i)=>{if(p.dest!=='hub')return;n++;sum+=CITY[p.from].fare;
+    S.walkers.push({x:doorX(t,Math.floor(i/SEATS)%t.cars),y:ty-14,tx:DOOR_X+rand(-10,10),ty:DOOR_Y,color:CITY[p.from].color,skin:pick(SKINS),state:'exit'});});
+  t.passengers=[];t.dest=null;t.state='idle';sndDing();
+  if(n){earn(sum,t.x+trainLen(t)-LOCO_W/2,ty-48);delivered(n);}
+  if(S.trains[S.selected].state!=='idle')S.selected=S.trains.indexOf(t);
+  refreshUI();}
+function updateTrain(t,dt){const sp=t.fast?1.35:1;
+  switch(t.state){
+    case 'departing':t.x+=SLIDE*dt;if(t.x>W+10)startTrip(t);break;
+    case 'travel':{const tr=t.trip;if(tr.dwell>0){tr.dwell-=dt;break;}
+      tr.t+=MAP_SPEED*sp*dt;
+      if(tr.t>=tr.lens[tr.seg]){tr.seg++;tr.t=0;const node=tr.nodes[tr.seg];
+        if(tr.seg===tr.nodes.length-1){t.trip=null;t.state='arriving';t.x=-trainLen(t)-10;}
+        else{stopAt(t,node);tr.dwell=DWELL;}}
+      break;}
+    case 'arriving':t.x+=SLIDE*dt;if(t.x>=parkX(t)){t.x=parkX(t);arriveHome(t);}break;
+  }}
+function eta(t){if(t.state!=='travel')return 0;const tr=t.trip;let rem=tr.lens[tr.seg]-tr.t;
+  for(let s=tr.seg+1;s<tr.lens.length;s++)rem+=tr.lens[s];
+  const stopsLeft=tr.nodes.length-2-tr.seg;
+  return rem/(MAP_SPEED*(t.fast?1.35:1))+Math.max(0,stopsLeft)*DWELL+tr.dwell+(W+trainLen(t))/SLIDE;}
+function roundTrip(c,t){const sp=t&&t.fast?1.35:1;return 2*c.pathLen/(MAP_SPEED*sp)+(2*c.idx+1)*DWELL+(2*W+2*trainLen(t||S.trains[0]))/SLIDE;}
+function statusText(t){switch(t.state){case 'idle':return 'на платформе';case 'boarding':return 'посадка';case 'departing':return 'отправляется';
+  case 'arriving':return 'прибывает';case 'travel':{const tr=t.trip,back=tr.seg>=stopsTo(t.dest).length;return `${back?'← домой':'→ '+t.dest.name} ~${Math.ceil(eta(t))} с`;}}return '';}
+
+// ---------- магазин ----------
+function buyTrain(){const cost=COST.train[S.trains.length-1];if(S.trains.length>=MAX_TRAINS||S.money<cost)return;
+  S.money-=cost;const t=makeTrain();t.state='arriving';t.x=-trainLen(t)-10;S.selected=S.trains.length-1;toast(`Поезд №${t.n} прибывает на ${t.n}-й путь`);sndCoin();}
+function addCar(){const t=sel();if(t.cars>=MAX_CARS||S.money<COST.car)return;S.money-=COST.car;t.cars++;
+  if(t.state==='idle'||t.state==='boarding')t.x=parkX(t);sndCoin();}
+function fastLoco(){const t=sel();if(t.fast||S.money<COST.fast)return;S.money-=COST.fast;t.fast=true;toast(`Поезд №${t.n} теперь ездит быстрее`);sndCoin();}
+function buyLounge(){if(S.lounge||S.money<COST.lounge)return;S.money-=COST.lounge;S.lounge=true;
+  for(const p of S.crowd){p.patience*=1.5;p.maxP*=1.5;}toast('Зал ожидания открыт — люди ждут дольше');sndCoin();}
+function openLine(l){if(l.open||S.money<l.cost)return;S.money-=l.cost;l.open=true;toast(`Открыта линия ${l.name}!`);sndCoin();refreshUI();}
+const shopDefs=[
+ {id:'train',label:()=>`🚆 Новый поезд <b>${COST.train[S.trains.length-1]||''} ₽</b>`,show:()=>S.trains.length<MAX_TRAINS,can:()=>S.money>=COST.train[S.trains.length-1],act:buyTrain},
+ {id:'car',label:()=>`🚃 Вагон к поезду №${sel().n} (+${SEATS} мест) <b>${COST.car} ₽</b>`,show:()=>sel().cars<MAX_CARS,can:()=>S.money>=COST.car,act:addCar},
+ {id:'fast',label:()=>`⚡ Быстрый локомотив для №${sel().n} <b>${COST.fast} ₽</b>`,show:()=>!sel().fast,can:()=>S.money>=COST.fast,act:fastLoco},
+ {id:'lounge',label:()=>`🛋 Зал ожидания (терпение +50%) <b>${COST.lounge} ₽</b>`,show:()=>!S.lounge,can:()=>S.money>=COST.lounge,act:buyLounge},
+ ...LINES.filter(l=>l.cost).map(l=>({id:'line_'+l.id,label:()=>`🛤 Открыть линию ${l.name} <b>${l.cost} ₽</b>`,show:()=>!l.open,can:()=>S.money>=l.cost,act:()=>openLine(l)})),
+];
+shopDefs.forEach(d=>{const b=document.createElement('button');b.id='shop_'+d.id;b.addEventListener('click',()=>{d.act();refreshUI();});$('#shop').appendChild(b);d.btn=b;});
+
+// ---------- UI ----------
+let destSig='';
+function refreshUI(){
+  const d=dayNum(),h=hourNow(),hh=Math.floor(h),mm=Math.floor((h-hh)*60);
+  $('#uiTime').textContent=`День ${d} · ${String(hh).padStart(2,'0')}:${String(mm).padStart(2,'0')}`;
+  $('#uiMoney').textContent=fmt(S.money)+' ₽';
+  $('#uiCrowd').textContent=S.crowd.filter(p=>p.state==='idle'||p.state==='walk').length;
+  $('#uiDelivered').textContent=S.delivered;$('#uiLost').textContent=S.lost;
+  const st=stars();$('#uiStars').textContent='★'.repeat(st)+'☆'.repeat(5-st);
+  const tabs=$('#tabs');
+  while(tabs.children.length<S.trains.length){const i=tabs.children.length;const b=document.createElement('button');b.addEventListener('click',()=>{S.selected=i;refreshUI();});tabs.appendChild(b);}
+  S.trains.forEach((t,i)=>{const b=tabs.children[i];b.className=i===S.selected?'on':'';b.innerHTML=`Поезд №${t.n}<small>${statusText(t)}</small>`;b.style.borderLeft=`4px solid ${t.color}`;});
+  const t=sel();
+  $('#title').textContent=t.state==='idle'?`${seats(t)} мест · куда отправить?`:t.state==='boarding'?`идёт посадка на ${t.dest.name}`:t.state==='travel'?`едет: ${statusText(t)}`:'';
+  const sig=LINES.map(l=>l.open?1:0).join('');
+  if(sig!==destSig){destSig=sig;const box=$('#dests');box.innerHTML='';
+    for(const c of openCities()){const b=document.createElement('button');b.className='dest';b.dataset.city=c.id;
+      b.addEventListener('click',()=>dispatch(sel(),c));
+      b.addEventListener('mouseenter',()=>{S.highlight=c.id;});b.addEventListener('mouseleave',()=>{S.highlight=null;});
+      box.appendChild(b);}}
+  for(const b of $('#dests').children){const c=CITY[b.dataset.city];const w=waitingFor(c);
+    b.disabled=t.state!=='idle';
+    b.innerHTML=`<span class="dot" style="background:${c.color}"></span><b>${c.name}</b><span class="n${w.direct+w.via?'':' zero'}">${w.direct}${w.via?' +'+w.via:''}</span><span class="meta">${c.fare} ₽ · ~${Math.round(roundTrip(c,t))} с</span>`;
+    b.title=`${w.direct} чел. в ${c.name}${w.via?`, ещё ${w.via} сойдут по пути`:''}. Билет ${c.fare} ₽, туда и обратно ~${Math.round(roundTrip(c,t))} с`;}
+  $('#hint').textContent=S.dispatched<2?'Цвет одежды — это город, куда человек едет. Наведи на кнопку города, и его пассажиры подсветятся. Поезд заберёт и тех, кому по пути.':
+    S.trains.length===1&&S.money>=COST.train[0]?'Денег хватает на второй поезд — он встанет на второй путь.':'';
+  for(const dd of shopDefs){const b=dd.btn;b.style.display=dd.show()?'':'none';b.disabled=!dd.can();b.innerHTML=dd.label();b.title=dd.title?dd.title():'';}
+  $('#btnPause').textContent=S.paused?'▶ Дальше':'⏸ Пауза';$('#btnPause').className=S.paused?'on':'';
+  $('#btnSpeed1').className=S.speed===1?'on':'';$('#btnSpeed2').className=S.speed===2?'on':'';
+  $('#btnMute').textContent=S.muted?'🔇':'🔊';
+}
+$('#btnPause').addEventListener('click',()=>{S.paused=!S.paused;refreshUI();});
+$('#btnSpeed1').addEventListener('click',()=>{S.speed=1;S.paused=false;refreshUI();});
+$('#btnSpeed2').addEventListener('click',()=>{S.speed=2;S.paused=false;refreshUI();});
+$('#btnMute').addEventListener('click',()=>{S.muted=!S.muted;refreshUI();});
+$('#btnRestart').addEventListener('click',()=>{if(confirm('Начать заново?'))location.reload();});
+document.addEventListener('keydown',e=>{if(e.target.tagName==='INPUT')return;
+  if(e.code==='Space'){e.preventDefault();S.paused=!S.paused;}else if(e.key==='1'){S.speed=1;}else if(e.key==='2'){S.speed=2;}
+  else if(e.key==='Tab'){e.preventDefault();S.selected=(S.selected+1)%S.trains.length;}refreshUI();});
+
+// ---------- звук ----------
+let AC=null;
+function beep(freq,dur,type,vol,when){if(S.muted)return;try{AC=AC||new (window.AudioContext||window.webkitAudioContext)();
+  const o=AC.createOscillator(),g=AC.createGain();o.type=type;o.frequency.value=freq;o.connect(g);g.connect(AC.destination);
+  const t0=AC.currentTime+(when||0);g.gain.setValueAtTime(vol,t0);g.gain.exponentialRampToValueAtTime(0.001,t0+dur);o.start(t0);o.stop(t0+dur);}catch(e){}}
+function sndToot(){beep(311,0.45,'square',0.04,0);beep(392,0.45,'square',0.04,0.03);}
+function sndDing(){beep(880,0.5,'sine',0.06,0);beep(1318,0.6,'sine',0.04,0.15);}
+function sndCoin(){beep(1200,0.08,'triangle',0.05,0);beep(1600,0.14,'triangle',0.05,0.08);}
+document.addEventListener('pointerdown',()=>{if(AC&&AC.state==='suspended')AC.resume();},{passive:true});
+
+// ---------- логика ----------
+function update(dt){
+  S.clock+=dt;
+  const dm=dayMul(),hm=hourMul(hourNow());
+  // новые пассажиры на вокзале: чем больше открытых городов, тем больше народу
+  S.spawnAcc+=0.38*(0.6+0.1*openCities().length)*dm*hm*dt;
+  while(S.spawnAcc>=1){S.spawnAcc-=1;spawnHub(false);}
+  // в городах копятся те, кто хочет домой на Узловую
+  for(const c of openCities()){c.acc+=0.05*c.pop*dm*hm*dt;while(c.acc>=1){c.acc-=1;c.waiting.push({patience:rand(70,100)});}
+    for(let i=c.waiting.length-1;i>=0;i--){c.waiting[i].patience-=dt;if(c.waiting[i].patience<=0){c.waiting.splice(i,1);lose(c.pos[0],c.pos[1]-18);}}}
+  // толпа на платформе
+  for(let i=S.crowd.length-1;i>=0;i--){const p=S.crowd[i];
+    if(p.state==='walk'||p.state==='idle'){p.patience-=dt;if(p.patience<=0){p.state='leave';p.tx=DOOR_X+rand(-10,10);p.ty=DOOR_Y;}}
+    if(p.state==='idle')continue;
+    const spd=p.state==='leave'?60:p.state==='board'?120:45;
+    const d=Math.hypot(p.tx-p.x,p.ty-p.y);
+    if(d<=spd*dt){p.x=p.tx;p.y=p.ty;
+      if(p.state==='walk')p.state='idle';
+      else if(p.state==='leave'){S.crowd.splice(i,1);lose(p.x,p.y-20);}
+      else if(p.state==='board'){S.crowd.splice(i,1);const t=p.train;t.passengers.push({dest:p.dest,color:p.color});
+        t.boarding.splice(t.boarding.indexOf(p),1);if(!t.boarding.length&&t.state==='boarding')depart(t);}
+    }else{p.x+=(p.tx-p.x)/d*spd*dt;p.y+=(p.ty-p.y)/d*spd*dt;}}
+  // вышедшие из поезда идут к вокзалу
+  for(let i=S.walkers.length-1;i>=0;i--){const p=S.walkers[i];const d=Math.hypot(p.tx-p.x,p.ty-p.y);
+    if(d<=55*dt){S.walkers.splice(i,1);}else{p.x+=(p.tx-p.x)/d*55*dt;p.y+=(p.ty-p.y)/d*55*dt;}}
+  for(const t of S.trains)updateTrain(t,dt);
+  for(let i=S.popups.length-1;i>=0;i--){const q=S.popups[i];q.life-=dt;q.y-=22*dt;if(q.life<=0)S.popups.splice(i,1);}
+}
+
+// ---------- рисование ----------
+const canvas=$('#c'),ctx=canvas.getContext('2d');let scale=1,dpr=1;
+function resize(){const st=$('#stage');scale=Math.min(st.clientWidth/W,st.clientHeight/H);dpr=window.devicePixelRatio||1;
+  canvas.width=Math.round(W*scale*dpr);canvas.height=Math.round(H*scale*dpr);canvas.style.width=Math.round(W*scale)+'px';canvas.style.height=Math.round(H*scale)+'px';}
+window.addEventListener('resize',resize);
+function rr(x,y,w,h,r){ctx.beginPath();ctx.moveTo(x+r,y);ctx.lineTo(x+w-r,y);ctx.quadraticCurveTo(x+w,y,x+w,y+r);ctx.lineTo(x+w,y+h-r);ctx.quadraticCurveTo(x+w,y+h,x+w-r,y+h);ctx.lineTo(x+r,y+h);ctx.quadraticCurveTo(x,y+h,x,y+h-r);ctx.lineTo(x,y+r);ctx.quadraticCurveTo(x,y,x+r,y);ctx.closePath();}
+function fillRR(x,y,w,h,r,c){ctx.fillStyle=c;rr(x,y,w,h,r);ctx.fill();}
+function circle(x,y,r,c){ctx.fillStyle=c;ctx.beginPath();ctx.arc(x,y,r,0,Math.PI*2);ctx.fill();}
+function text(s,x,y,c,font,align){ctx.fillStyle=c;ctx.font=font;ctx.textAlign=align||'center';ctx.textBaseline='middle';ctx.fillText(s,x,y);}
+function outlined(s,x,y,font,fill,stroke,align){ctx.font=font;ctx.textAlign=align||'center';ctx.textBaseline='middle';ctx.lineWidth=3;ctx.lineJoin='round';ctx.strokeStyle=stroke;ctx.strokeText(s,x,y);ctx.fillStyle=fill;ctx.fillText(s,x,y);}
+function shade(hex,amt){const n=parseInt(hex.slice(1),16);const r=clamp((n>>16)+amt,0,255),g=clamp(((n>>8)&255)+amt,0,255),b=clamp((n&255)+amt,0,255);return '#'+((r<<16)|(g<<8)|b).toString(16).padStart(6,'0');}
+function poly(pts,color,width,dash){ctx.beginPath();pts.forEach((p,i)=>i?ctx.lineTo(p[0],p[1]):ctx.moveTo(p[0],p[1]));ctx.strokeStyle=color;ctx.lineWidth=width;ctx.lineCap='round';ctx.lineJoin='round';ctx.setLineDash(dash||[]);ctx.stroke();ctx.setLineDash([]);}
+function nightAlpha(){const h=hourNow();if(h<5)return .38;if(h<7)return .38*(7-h)/2;if(h>=20)return Math.min(.38,(h-20)/2*.38);return 0;}
+
+function drawMap(time){
+  ctx.fillStyle='#e4ebd3';ctx.fillRect(0,0,W,MAP_H);
+  ctx.strokeStyle='rgba(0,0,0,0.045)';ctx.lineWidth=1;
+  for(let x=20;x<W;x+=40){ctx.beginPath();ctx.moveTo(x,0);ctx.lineTo(x,MAP_H);ctx.stroke();}
+  for(let y=18;y<MAP_H;y+=40){ctx.beginPath();ctx.moveTo(0,y);ctx.lineTo(W,y);ctx.stroke();}
+  for(const l of LINES){const pts=[HUB.pos,...l.cities.map(c=>c.pos)];
+    if(l.open){poly(pts,'#5b4a3a',6);poly(pts,'#e4ebd3',2,[4,8]);}
+    else{poly(pts,'rgba(0,0,0,0.22)',2,[6,6]);const a=pts[0],b=pts[1];const mx=(a[0]+b[0])/2,my=(a[1]+b[1])/2;
+      fillRR(mx-48,my-10,96,20,10,'rgba(255,255,255,0.85)');text(`открыть · ${l.cost} ₽`,mx,my+1,'#333','600 11px system-ui');}}
+  for(const l of LINES)for(const c of l.cities){const [x,y]=c.pos;
+    ctx.beginPath();ctx.arc(x,y,9,0,Math.PI*2);ctx.fillStyle=l.open?c.color:'#c4c6bd';ctx.fill();ctx.lineWidth=3;ctx.strokeStyle='#fff';ctx.stroke();
+    const lo=c.label||[0,20];outlined(c.name,x+lo[0],y+lo[1],'600 12px system-ui',l.open?'#2b2b2b':'#7a7a7a','#e4ebd3');
+    if(l.open&&c.waiting.length){const n=c.waiting.length;fillRR(x+8,y-24,22+(n>9?6:0),16,8,'#fff');circle(x+15,y-16,3,'#555');text(n,x+24+(n>9?3:0),y-15,'#222','700 11px system-ui');}}
+  {const [x,y]=HUB.pos;ctx.beginPath();ctx.arc(x,y,14,0,Math.PI*2);ctx.fillStyle='#2b2f3a';ctx.fill();ctx.lineWidth=3;ctx.strokeStyle='#fff';ctx.stroke();
+    fillRR(x-6,y-5,12,9,1,'#f5b84a');fillRR(x-8,y-7,16,3,1,'#f5b84a');outlined('Узловая',x,y+27,'800 13px system-ui','#2b2b2b','#e4ebd3');}
+  for(const t of S.trains)if(t.state==='travel'){const tr=t.trip,a=tr.nodes[tr.seg].pos,b=tr.nodes[tr.seg+1].pos,k=tr.lens[tr.seg]?tr.t/tr.lens[tr.seg]:0;
+    const x=lerp(a[0],b[0],k),y=lerp(a[1],b[1],k);
+    fillRR(x-16,y-9,32,18,5,'rgba(255,255,255,0.9)');fillRR(x-14,y-7,28,14,4,t.color);text(t.n,x,y+1,'#fff','800 11px system-ui');
+    if(t.passengers.length){fillRR(x+10,y-16,18,13,6,'#fff');text(t.passengers.length,x+19,y-9,'#222','700 10px system-ui');}}
+  ctx.fillStyle='#3a3f4a';ctx.fillRect(0,MAP_H-3,W,3);
+}
+function drawStation(time){const y0=MAP_H,night=nightAlpha()>0.12;
+  ctx.fillStyle='#b8b09f';ctx.fillRect(0,y0,W,H-y0);
+  // здание вокзала
+  ctx.fillStyle='#c98b66';ctx.fillRect(0,y0,W,58);ctx.fillStyle='#7b4b3a';ctx.fillRect(0,y0,W,8);
+  for(let x=26;x<W-30;x+=64){if(x>420&&x<540)continue;fillRR(x,y0+18,32,24,3,night?'#ffe6a3':'#a9c4d6');ctx.fillStyle='rgba(0,0,0,0.15)';ctx.fillRect(x+15,y0+18,2,24);}
+  fillRR(DOOR_X-20,y0+14,40,44,4,'#5a3a2c');fillRR(DOOR_X-16,y0+18,32,36,3,night?'#ffd98a':'#8fb0c4');
+  fillRR(DOOR_X-64,y0+8,128,18,4,'#f4f1e8');text('УЗЛОВАЯ',DOOR_X,y0+17,'#2b2b2b','800 12px system-ui');
+  {const cx=DOOR_X+90,cy=y0+30;circle(cx,cy,13,'#f4f1e8');ctx.strokeStyle='#333';ctx.lineWidth=1.5;ctx.beginPath();ctx.arc(cx,cy,13,0,Math.PI*2);ctx.stroke();
+    const h=hourNow(),ah=(h%12)/12*Math.PI*2-Math.PI/2,am=(h%1)*Math.PI*2-Math.PI/2;
+    ctx.lineWidth=2;ctx.beginPath();ctx.moveTo(cx,cy);ctx.lineTo(cx+Math.cos(ah)*7,cy+Math.sin(ah)*7);ctx.stroke();
+    ctx.lineWidth=1.5;ctx.beginPath();ctx.moveTo(cx,cy);ctx.lineTo(cx+Math.cos(am)*10,cy+Math.sin(am)*10);ctx.stroke();}
+  // платформа
+  ctx.fillStyle='#d8d3c6';ctx.fillRect(0,y0+58,W,94);
+  ctx.fillStyle='rgba(0,0,0,0.05)';for(let x=0;x<W;x+=48)ctx.fillRect(x,y0+58,1,94);
+  ctx.fillStyle='#e9c94a';ctx.fillRect(0,y0+146,W,3);
+  // пути
+  TRACK_Y.forEach((ty,i)=>{ctx.fillStyle='#a49d8f';ctx.fillRect(0,ty-12,W,24);
+    ctx.fillStyle='#7d6246';for(let x=2;x<W;x+=14)ctx.fillRect(x,ty-7,7,14);
+    ctx.fillStyle='#4c4c4c';ctx.fillRect(0,ty-5,W,2);ctx.fillRect(0,ty+3,W,2);
+    if(i<2){ctx.fillStyle='#cfcabd';ctx.fillRect(0,ty+12,W,TRACK_Y[i+1]-12-(ty+12));ctx.fillStyle='#e9c94a';ctx.fillRect(0,ty+13,W,2);
+      circle(W-22,ty+35,10,'#2b2f3a');text(i+2,W-22,ty+36,'#fff','800 12px system-ui');}
+    if(i===0){circle(W-22,y0+140-10,10,'#2b2f3a');text('1',W-22,y0+131,'#fff','800 12px system-ui');}});
+  ctx.fillStyle='#9fb572';ctx.fillRect(0,TRACK_Y[2]+12,W,H-(TRACK_Y[2]+12));
+  ctx.fillStyle='#6f6a5c';for(let x=0;x<W;x+=24)ctx.fillRect(x,TRACK_Y[2]+22,2,14);ctx.fillRect(0,TRACK_Y[2]+26,W,2);
+  // поезда, потом люди (люди поверх — видно, как садятся)
+  for(const t of S.trains)if(t.state!=='travel')drawTrain(t);
+  const ppl=[...S.crowd,...S.walkers].sort((a,b)=>a.y-b.y);for(const p of ppl)drawPerson(p,time);
+}
+function drawTrain(t){const ty=TRACK_Y[t.track],x=t.x,isSel=sel()===t&&(t.state==='idle'||t.state==='boarding');
+  for(let i=0;i<t.cars;i++){const cx=x+i*(CAR_W+GAP);
+    [12,22,CAR_W-22,CAR_W-12].forEach(o=>circle(cx+o,ty+2,4,'#222'));
+    fillRR(cx,ty-32,CAR_W,34,5,'#ece6d8');fillRR(cx+2,ty-35,CAR_W-4,6,2,'#b9b2a3');ctx.fillStyle=t.color;ctx.fillRect(cx,ty-10,CAR_W,6);
+    for(let k=0;k<SEATS;k++){const wx=cx+8+k*16,p=t.passengers[i*SEATS+k];fillRR(wx,ty-28,12,13,2,p?p.color:'#9cc3d9');if(p)circle(wx+6,ty-23,3,'#f1d3b3');}
+    ctx.fillStyle='#8a8378';ctx.fillRect(cx+CAR_W/2-1,ty-32,2,22);}
+  const lx=x+t.cars*(CAR_W+GAP);
+  [12,32,LOCO_W-12].forEach(o=>circle(lx+o,ty+2,4.5,'#222'));
+  fillRR(lx,ty-32,LOCO_W,34,7,t.color);fillRR(lx+2,ty-35,LOCO_W-4,6,3,shade(t.color,-40));
+  fillRR(lx+LOCO_W-22,ty-27,16,12,3,'#bfe0f2');fillRR(lx+6,ty-27,14,10,2,'#bfe0f2');
+  circle(lx+30,ty-14,8,'#fff');text(t.n,lx+30,ty-13,'#222','800 11px system-ui');
+  circle(lx+LOCO_W-4,ty-8,3,'#ffe9a0');
+  if(t.fast){text('⚡',lx+12,ty-11,'#ffe9a0','12px system-ui');}
+  if(isSel){ctx.strokeStyle='#fff';ctx.lineWidth=2;ctx.setLineDash([6,4]);rr(x-5,ty-40,trainLen(t)+10,50,7);ctx.stroke();ctx.setLineDash([]);}
+}
+function drawPerson(p,time){const x=p.x,y=p.y;
+  const moving=p.state!=='idle';const step=moving?Math.sin(time*14+p.bob)*2:0;
+  const dim=S.highlight&&p.state!=='exit'&&p.dest!==S.highlight&&p.state!=='board';
+  ctx.globalAlpha=dim?0.28:1;
+  ctx.strokeStyle='#333';ctx.lineWidth=2.2;ctx.beginPath();ctx.moveTo(x-2.5,y-7);ctx.lineTo(x-2.5+step,y);ctx.moveTo(x+2.5,y-7);ctx.lineTo(x+2.5-step,y);ctx.stroke();
+  fillRR(x-5,y-17,10,11,2.5,p.color);circle(x,y-21,4.2,p.skin);
+  if(p.state==='idle'||p.state==='walk'){if(p.patience<0.25*p.maxP&&Math.floor(time*3)%2===0)text('!',x,y-32,'#d32f2f','900 14px system-ui');}
+  ctx.globalAlpha=1;}
+function drawPopups(){for(const q of S.popups){ctx.globalAlpha=clamp(q.life,0,1);outlined(q.text,q.x,q.y,'800 13px system-ui',q.color,'#fff');}ctx.globalAlpha=1;}
+function draw(time){ctx.setTransform(scale*dpr,0,0,scale*dpr,0,0);drawMap(time);drawStation(time);
+  const na=nightAlpha();if(na>0){ctx.fillStyle=`rgba(12,20,55,${na})`;ctx.fillRect(0,0,W,H);}
+  drawPopups();
+  if(S.paused){ctx.fillStyle='rgba(0,0,0,0.35)';ctx.fillRect(0,0,W,H);outlined('ПАУЗА',W/2,H/2,'900 40px system-ui','#fff','#000');}}
+
+// клик по поезду на платформе — выбрать его; клик по серой линии — открыть
+canvas.addEventListener('pointerdown',e=>{const r=canvas.getBoundingClientRect();const x=(e.clientX-r.left)/scale,y=(e.clientY-r.top)/scale;
+  for(const t of S.trains){if(t.state==='travel')continue;const ty=TRACK_Y[t.track];
+    if(x>=t.x-5&&x<=t.x+trainLen(t)+5&&y>=ty-40&&y<=ty+10){S.selected=S.trains.indexOf(t);refreshUI();return;}}
+  for(const l of LINES){if(l.open)continue;const a=HUB.pos,b=l.cities[0].pos;const mx=(a[0]+b[0])/2,my=(a[1]+b[1])/2;
+    if(Math.abs(x-mx)<50&&Math.abs(y-my)<14){openLine(l);return;}}});
+
+// ---------- старт ----------
+makeTrain();for(let i=0;i<7;i++)spawnHub(true);
+resize();refreshUI();
+let last=performance.now(),uiAcc=0;
+function frame(now){const dt=Math.min(0.05,(now-last)/1000);last=now;
+  if(!S.paused)for(let i=0;i<S.speed;i++)update(dt);
+  uiAcc+=dt;if(uiAcc>0.15){uiAcc=0;refreshUI();}
+  draw(now/1000);requestAnimationFrame(frame);}
+requestAnimationFrame(frame);
+</script>
+</body>
+</html>

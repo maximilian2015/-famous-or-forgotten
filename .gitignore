@@ -14,3 +14,5 @@ dist-sf/
 # OS clutter
 Thumbs.db
 .DS_Store
+
+train/shots/
