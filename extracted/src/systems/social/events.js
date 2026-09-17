@@ -64,36 +64,41 @@ export function askForInvite(s, eventId, personId) {
   const ev = (s.events || []).find((x) => x.id === eventId); if (!ev) return s;
   const p = inviteHelpers(s).find((x) => x.id === personId); if (!p) return s;
   if (hasAsked(ev, personId)) { s.lastEvent = `You already asked ${p.name} about that one. Asking twice would be pushing it.`; return s; }
+  // Two favours a night is a favour. Five is a person everybody has started avoiding.
+  if ((ev.asked || []).length >= 2) { s.lastEvent = ev.note = 'You have asked around enough for this one. People talk.'; return s; }
   if (!canAfford(s, COST.askHelp)) { s.lastEvent = tooTired(s, COST.askHelp); return s; }
   spend(s, COST.askHelp);
   (ev.asked = ev.asked || []).push(personId);
   const t = tierById(ev.tier);
   if (chance(helperOdds(p))) {
     ev.invited = true;
-    s.lastEvent = `${p.name} put your name on the list for ${t.label.toLowerCase()} at ${ev.venue}.`;
+    s.lastEvent = ev.note = `${p.name} put your name on the list for ${t.label.toLowerCase()} at ${ev.venue}.`;
     addTimeline(s, `${p.name} got you into ${t.label.toLowerCase()} at ${ev.venue}.`);
   } else {
     p.relationship = clamp((p.relationship || 0) - rint(2, 6));
-    s.lastEvent = `${p.name} couldn't swing it. "It's not my room either," they say. Asking cost you a little.`;
+    s.lastEvent = ev.note = `${p.name} couldn't swing it. "It's not my room either," they say. Asking cost you a little.`;
   }
   return s;
 }
 export function sneakIntoEvent(s, eventId, quality = 0) {
   const ev = (s.events || []).find((x) => x.id === eventId); if (!ev) return s;
+  // One try. The door remembers a face it turned away.
+  if (ev.doorTried) { s.lastEvent = ev.note = 'The door remembers you from last time. Not tonight.'; return s; }
   if (!canAfford(s, COST.askHelp)) { s.lastEvent = tooTired(s, COST.askHelp); return s; }
   spend(s, COST.askHelp);
   const t = tierById(ev.tier);
   // Steep bar: bluffing your way past a real door should mostly fail.
   if (quality >= 75) {
     ev.invited = true;
-    s.lastEvent = `You walk in like you belong there. Nobody stops you. You're inside ${ev.venue}.`;
+    s.lastEvent = ev.note = `You walk in like you belong there. Nobody stops you. You are on the list at ${ev.venue} — press Go.`;
     addTimeline(s, `Talked your way into ${t.label.toLowerCase()} at ${ev.venue}.`);
   } else {
+    ev.doorTried = true;
     s.mental = clamp((s.mental || 50) - rint(2, 5));
     s.scandal = clamp((s.scandal || 0) + (quality < 30 ? 3 : 0));
-    s.lastEvent = quality < 30
-      ? `Security walks you out in front of everyone. Someone films it.`
-      : `The door staff aren't buying it. You don't get in.`;
+    s.lastEvent = ev.note = quality < 30
+      ? `Security walks you out in front of everyone. Someone films it. That door is closed to you now.`
+      : `The door staff aren't buying it. You don't get in, and they will remember the face.`;
   }
   return s;
 }

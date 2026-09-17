@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { openStoryRoom, pushTake, trendNote } from './systems/career/story.js';
 import { useGame, dispatch, newLife } from './state/store.js';
 import { advanceTime, stepIsYear } from './engine/time.js';
@@ -140,6 +140,10 @@ export default function App() {
       {/* Fame × Respect, in one line. The two ladders finally saying something together — the
           face, the actor's actor, the real thing. See systems/meta/standing.js. */}
       {inCareer(g) && comboOf(g) !== 'beginning' && screen === 'life' && <ComboStrip g={g} />}
+      {/* What just happened, said on the screen you are on. Home has its own card and the
+          Phone its own strip; everywhere else a result used to be written to a card two
+          taps away — Maxi: "I press it and nothing happens." */}
+      {screen !== 'life' && screen !== 'phone' && <ScreenToast g={g} screen={screen} />}
       {/* Keyed on the tab so switching one fades and rises instead of snapping. */}
       <div key={screen} className="fof-in">
       {screen === 'people' ? <PeopleScreen g={g} openId={openPerson} setOpenId={setOpenPerson} /> :
@@ -246,6 +250,21 @@ function BottomNav({ screen, setScreen, g }) {
         {active && <span style={{ position: 'absolute', top: 0, width: 22, height: 3, borderRadius: 2, background: theme.accent, boxShadow: `0 0 10px ${theme.accent}` }} />}
         {badge > 0 && <span style={{ position: 'absolute', top: 0, right: '26%', minWidth: 15, height: 15, borderRadius: 8, background: '#ff3b30', color: '#fff', fontSize: 9, fontWeight: 900, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>{badge}</span>}</button>); })}
   </div>);
+}
+function ScreenToast({ g, screen }) {
+  const [toast, setToast] = useState(null);
+  const seenRef = useRef(g.lastEvent);
+  useEffect(() => {
+    if (g.lastEvent && g.lastEvent !== seenRef.current) {
+      seenRef.current = g.lastEvent;
+      setToast(g.lastEvent);
+      const id = setTimeout(() => setToast(null), 8000);
+      return () => clearTimeout(id);
+    }
+  }, [g.lastEvent]);
+  useEffect(() => { seenRef.current = g.lastEvent; setToast(null); }, [screen]);
+  if (!toast) return null;
+  return (<div onClick={() => setToast(null)} className="fof-in" style={{ fontSize: 12.5, color: theme.text, padding: '9px 13px', marginBottom: 12, background: `${theme.accent}1f`, border: `1px solid ${theme.accent}44`, borderRadius: 10, lineHeight: 1.5, cursor: 'pointer', whiteSpace: 'pre-line' }}>{toast}</div>);
 }
 // What this month on set needs from you, and how the director feels about you — on the
 // home screen, where the month actually gets lived.
@@ -2293,6 +2312,7 @@ function EventsScreen({ g }) {
           <div style={{ fontSize: 11, color: theme.muted }}>{ev.monthsLeft} mo left</div>
         </div>
         <div style={{ fontSize: 11.5, color: theme.muted, margin: '3px 0 8px' }}>{ev.venue} · hosted by {ev.host}</div>
+        {ev.note && <div style={{ fontSize: 12, color: onList ? theme.good : theme.gold, background: 'rgba(255,255,255,.05)', border: `1px solid ${theme.line}`, borderRadius: 9, padding: '7px 10px', marginBottom: 8, lineHeight: 1.45 }}>{ev.note}</div>}
         {onList ? (<>
           <div style={{ fontSize: 11, color: theme.good, marginBottom: 8 }}>✓ You're on the list</div>
           <button onClick={() => dispatch(attendEvent, ev.id)} disabled={noEnergy} style={{ ...btn('pri'), width: '100%' }}>Go</button>
@@ -2319,10 +2339,10 @@ function EventsScreen({ g }) {
         </div>) : (<>
           <div style={{ fontSize: 11, color: theme.gold, marginBottom: 8 }}>🔒 Not on the list — you'd need a way in</div>
           <div style={{ display: 'flex', gap: 7 }}>
-            <button onClick={() => setAsking(ev.id)} disabled={noEnergy} style={btn('')}>Ask a contact</button>
+            <button onClick={() => setAsking(ev.id)} disabled={noEnergy || (ev.asked || []).length >= 2} style={{ ...btn(''), opacity: (ev.asked || []).length >= 2 ? .45 : 1 }}>{(ev.asked || []).length >= 2 ? 'Asked around enough' : `Ask a contact${(ev.asked || []).length ? ` · ${2 - ev.asked.length} left` : ''}`}</button>
             <button onClick={() => setSneak({ id: ev.id, game: Math.random() < 0.5 ? 'timing' : 'grid',
               cfg: { zoneStart: 12 + Math.random() * 62, zoneWidth: 9 + Math.random() * 5, speed: 2.8 + Math.random() * 1.8, bad: 4 + (Math.random() < 0.5 ? 1 : 0) } })}
-              disabled={noEnergy} style={btn('')}>Talk your way in</button>
+              disabled={noEnergy || ev.doorTried} style={{ ...btn(''), opacity: ev.doorTried ? .45 : 1 }}>{ev.doorTried ? 'The door remembers you' : 'Talk your way in · one try'}</button>
           </div>
         </>)}
       </Card>);
