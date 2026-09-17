@@ -3,6 +3,9 @@ import { theme } from '../theme.js';
 import { FONT } from '../chrome.js';
 import { dispatch } from '../../state/store.js';
 import { startLoop, stopLoop } from '../sfx.js';
+import { Avatar } from './Avatar.jsx';
+import { lookOf, lookOfPerson } from '../../systems/life/appearance.js';
+import { actorById } from '../../systems/world/world.js';
 import { HOURS, ZONES, buzzBand, drinkDose, goOver, lookAt, moveTo, answerToast, reply, drinkTogether, nightDrink, nightAct, nightChoice, leaveNight, LOOKS_AN_HOUR } from '../../systems/social/night.js';
 
 // The room. A floor plan — the bar along the top, the booths on the right, the floor in
@@ -18,24 +21,35 @@ const ZONE_BOX = {
   booth: { x: 232, y: 8, w: 120, h: 128 },
   floor: { x: 8, y: 80, w: 214, h: 92 },
   terrace: { x: 8, y: 182, w: 344, h: 52 },
-  door: { x: 232, y: 142, w: 120, h: 32 },
+  door: { x: 232, y: 142, w: 120, h: 34 },
 };
 // A seat in a zone for the i-th figure there, so figures do not sit on each other.
 function seat(zone, i) {
   const b = ZONE_BOX[zone] || ZONE_BOX.floor;
-  const cols = Math.max(1, Math.floor((b.w - 20) / 46));
+  const cols = Math.max(1, Math.floor((b.w - 16) / 40));
   const col = i % cols, row = Math.floor(i / cols);
-  return { x: b.x + 26 + col * 46, y: Math.min(b.y + b.h - 22, b.y + 30 + row * 36) };
+  return { x: b.x + 24 + col * 40, y: Math.min(b.y + b.h - 18, b.y + 38 + row * 40) };
 }
 
-function Figure({ x, y, label, icon, you, came, done, lit, extra, onClick }) {
-  const r = extra ? 10 : 13;
-  return (<g onClick={onClick} style={{ transform: `translate(${x}px, ${y}px)`, cursor: onClick ? 'pointer' : 'default', transition: 'transform .9s cubic-bezier(.4,0,.2,1), opacity .4s', opacity: done ? .3 : extra ? .75 : 1 }}>
-    {lit && <circle r="19" fill={theme.accent} opacity=".22" />}
-    <circle r={r} fill={you ? theme.accent : came ? theme.good : extra ? '#2a2536' : '#3a3350'} stroke={you ? '#fff' : lit ? theme.gold : came ? theme.good : 'rgba(255,255,255,.22)'} strokeWidth={you || lit ? 2 : 1} />
-    <text y="4.5" textAnchor="middle" fontSize={extra ? 10 : 13}>{icon}</text>
-    {label && <text y={r + 12} textAnchor="middle" fontSize="8.5" fontWeight="800" fill={you ? theme.accent : came ? theme.good : '#e6dfff'}>{label}</text>}
-  </g>);
+// A person in the room is drawn the way you are — the same figure, dressed for the night.
+// Maxi: "the people must be real, like our hero, not dots." The face is derived from
+// who they are, so the same actor looks the same at every party.
+const DRESS = { local: [['tee', 'hoodie', 'leather'], ['tee', 'skirt', 'leather']], mixer: [['leather', 'coat', 'suit'], ['dress', 'coat', 'skirt']], premiere: [['suit', 'tux'], ['dress', 'gown']], gala: [['tux'], ['gown']] };
+function lookForGuest(g, x, tier) {
+  let h = 0; for (const ch of String(x.worldId || x.id || x.name)) h = (h * 31 + ch.charCodeAt(0)) >>> 0;
+  const actor = x.worldId ? actorById(g, x.worldId) : null;
+  const gender = actor ? actor.gender : x.person && x.person.gender ? (x.person.gender === 'f' || x.person.gender === 'female' ? 'female' : 'male') : (h % 2 ? 'female' : 'male');
+  const look = lookOfPerson({ id: x.worldId || x.id, name: x.name, gender, age: x.person && x.person.age ? x.person.age : 24 + (h % 30) });
+  const fits = (DRESS[tier] || DRESS.mixer)[gender === 'female' ? 1 : 0];
+  look.outfit = fits[(h >> 3) % fits.length];
+  return look;
+}
+function Figure({ x, y, label, look, size, you, came, done, lit, extra, onClick }) {
+  return (<div onClick={onClick} style={{ position: 'absolute', left: `${(x / W) * 100}%`, top: `${(y / H) * 100}%`, transform: 'translate(-50%, -55%)', transition: 'left .9s cubic-bezier(.4,0,.2,1), top .9s cubic-bezier(.4,0,.2,1), opacity .4s',
+    opacity: done ? .3 : extra ? .8 : 1, cursor: onClick ? 'pointer' : 'default', display: 'flex', flexDirection: 'column', alignItems: 'center', filter: lit ? `drop-shadow(0 0 6px ${theme.gold})` : you ? `drop-shadow(0 0 7px ${theme.accent})` : came ? `drop-shadow(0 0 5px ${theme.good})` : 'none', zIndex: you ? 3 : extra ? 1 : 2 }}>
+    <Avatar look={look} size={size} />
+    {label && <div style={{ fontSize: 8.5, fontWeight: 800, color: you ? theme.accent : came ? theme.good : '#e6dfff', marginTop: -2, whiteSpace: 'nowrap', textShadow: '0 1px 2px #000' }}>{label}</div>}
+  </div>);
 }
 
 export function NightRoom({ g }) {
@@ -53,15 +67,15 @@ export function NightRoom({ g }) {
     // Everybody in the room stands somewhere; a stranger is a little off the grid.
     for (const x of n.guests) if (x.kind === 'extra') { let h = 0; for (const ch of x.id) h = (h * 31 + ch.charCodeAt(0)) >>> 0; out[x.id] = { x: out[x.id].x + ((h % 17) - 8), y: out[x.id].y + ((h >> 4) % 9) - 4 }; }
     const mine = byZone[n.you] ? byZone[n.you].length : 0;
-    out.you = n.pos ? n.pos : n.you === 'door' ? { x: ZONE_BOX.door.x + 100, y: ZONE_BOX.door.y + 10 } : seat(n.you, mine);
+    out.you = n.pos ? n.pos : n.you === 'door' ? { x: ZONE_BOX.door.x + 98, y: ZONE_BOX.door.y + 18 } : seat(n.you, mine);
     return out;
   }, [n.guests.map((x) => x.id + x.zone + x.done + (x.seen ? 1 : 0)).join(','), n.you, n.hour, n.pos && n.pos.x, n.pos && n.pos.y]);
   // Free walking: a tap on the floor of the room and you go there. The zone you land in
   // is the zone you are in — the bar for a drink, the booths for a toast.
   function walk(e) {
     if (busy) return;
-    const svg = e.currentTarget; const pt = svg.createSVGPoint(); pt.x = e.clientX; pt.y = e.clientY;
-    const p = pt.matrixTransform(svg.getScreenCTM().inverse());
+    const r = e.currentTarget.getBoundingClientRect();
+    const p = { x: ((e.clientX - r.left) / r.width) * W, y: ((e.clientY - r.top) / r.height) * H };
     const zone = Object.keys(ZONE_BOX).find((z) => { const b = ZONE_BOX[z]; return p.x >= b.x && p.x <= b.x + b.w && p.y >= b.y && p.y <= b.y + b.h; });
     if (!zone) return;
     if (zone === 'door') { dispatch(nightAct, 'leave'); return; }
@@ -92,17 +106,15 @@ export function NightRoom({ g }) {
       </div>
 
       {/* the room */}
-      {!n.done && <svg viewBox={`0 0 ${W} ${H}`} onClick={walk} style={{ width: '100%', display: 'block', borderRadius: 14, background: 'linear-gradient(180deg,#17131f,#100d18)', border: `1px solid ${theme.line}`, marginBottom: 10, cursor: busy ? 'default' : 'crosshair' }}>
-        {Object.entries(ZONE_BOX).map(([z, b]) => (<g key={z}>
-          <rect x={b.x} y={b.y} width={b.w} height={b.h} rx="9" fill={n.you === z ? `${theme.accent}14` : 'rgba(255,255,255,.035)'} stroke={n.you === z ? `${theme.accent}66` : 'rgba(255,255,255,.09)'} />
-          <text x={b.x + 8} y={b.y + 13} fontSize="8.5" fontWeight="900" letterSpacing=".08em" fill={theme.muted}>{(z === 'door' ? 'DOOR · LEAVE' : z === 'bar' ? 'THE BAR' : z === 'floor' ? 'THE FLOOR' : z === 'terrace' ? 'THE TERRACE' : 'THE BOOTHS')}</text>
-        </g>))}
+      {!n.done && <div onClick={walk} style={{ position: 'relative', width: '100%', aspectRatio: `${W} / ${H}`, borderRadius: 14, background: 'linear-gradient(180deg,#17131f,#100d18)', border: `1px solid ${theme.line}`, marginBottom: 10, cursor: busy ? 'default' : 'crosshair', overflow: 'hidden' }}>
+        {Object.entries(ZONE_BOX).map(([z, b]) => (<div key={z} style={{ position: 'absolute', left: `${(b.x / W) * 100}%`, top: `${(b.y / H) * 100}%`, width: `${(b.w / W) * 100}%`, height: `${(b.h / H) * 100}%`, borderRadius: 9, background: n.you === z ? `${theme.accent}14` : 'rgba(255,255,255,.035)', border: `1px solid ${n.you === z ? theme.accent + '66' : 'rgba(255,255,255,.09)'}` }}>
+          <div style={{ position: 'absolute', left: 8, top: 4, fontSize: 8.5, fontWeight: 900, letterSpacing: '.08em', color: theme.muted }}>{(z === 'door' ? 'DOOR · LEAVE' : z === 'bar' ? 'THE BAR' : z === 'floor' ? 'THE FLOOR' : z === 'terrace' ? 'THE TERRACE' : 'THE BOOTHS')}</div>
+        </div>))}
         {n.guests.map((x) => { const p = seats[x.id] || { x: 40, y: 40 }; const extra = x.kind === 'extra';
-          const icon = extra ? (x.mask === 'industry' ? '💼' : x.mask === 'actor' ? '🎭' : '👤') : x.icon ? '👑' : KIND_ICON[x.kind] || '🎭';
-          return <Figure key={x.id} x={p.x} y={p.y} label={x.seen || x.came ? x.name.split(' ')[0] : ''} icon={icon} came={x.came} done={x.done} extra={extra} lit={talk && talk.guestId === x.id}
+          return <Figure key={x.id} x={p.x} y={p.y} label={x.seen || x.came ? x.name.split(' ')[0] : ''} look={lookForGuest(g, x, n.tier)} size={extra ? 26 : 30} came={x.came} done={x.done} extra={extra} lit={talk && talk.guestId === x.id}
             onClick={!busy && !x.done ? (e) => { e.stopPropagation(); dispatch(extra ? lookAt : goOver, x.id); } : null} />; })}
-        <Figure x={seats.you.x} y={seats.you.y} label="you" icon="⭐" you />
-      </svg>}
+        <Figure x={seats.you.x} y={seats.you.y} label="you" look={lookOf(g)} size={34} you />
+      </div>}
 
       {/* what has happened */}
       <div style={{ background: theme.panel, border: `1px solid ${theme.line}`, borderRadius: 12, padding: '8px 12px', marginBottom: 10 }}>
