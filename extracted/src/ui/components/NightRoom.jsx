@@ -1,4 +1,4 @@
-import { useEffect, useMemo } from 'react';
+import { useEffect, useMemo, useState, useRef } from 'react';
 import { theme } from '../theme.js';
 import { FONT } from '../chrome.js';
 import { dispatch } from '../../state/store.js';
@@ -28,6 +28,8 @@ function seat(zone, i) {
   const b = ZONE_BOX[zone] || ZONE_BOX.floor;
   const cols = Math.max(1, Math.floor((b.w - 16) / 40));
   const col = i % cols, row = Math.floor(i / cols);
+  // At the bar people stand at the counter, not on the bottles.
+  if (zone === 'bar') return { x: b.x + 24 + col * 40, y: b.y + b.h - 14 };
   return { x: b.x + 24 + col * 40, y: Math.min(b.y + b.h - 18, b.y + 38 + row * 40) };
 }
 
@@ -44,6 +46,64 @@ function lookForGuest(g, x, tier) {
   look.outfit = fits[(h >> 3) % fits.length];
   return look;
 }
+// The room itself: a bar with bottles and stools, booths with tables, a lit floor, a
+// terrace with string lights and plants, a rope at the door. Maxi: "colours, lights,
+// tables, a bar counter — some scenery." Drawn once, under the people; the floor lights
+// breathe and the string lights flicker, which is CSS and costs nothing.
+const PALETTE = {
+  local: { wall: '#1d1626', floor: '#241b2c', accent: '#ff9f6e', light: ['#ff9f6e', '#ffd166', '#c9b6ff'], carpet: null },
+  mixer: { wall: '#120f1f', floor: '#171332', accent: '#ff4fa3', light: ['#ff4fa3', '#4fd6ff', '#b14fff'], carpet: null },
+  premiere: { wall: '#1a0f14', floor: '#1e1418', accent: '#ffd166', light: ['#ffd166', '#ff8a5c', '#fff1a8'], carpet: '#8b1e2d' },
+  gala: { wall: '#151222', floor: '#1b1730', accent: '#f2c265', light: ['#f2c265', '#fff1a8', '#c9b6ff'], carpet: '#2a1d4a' },
+};
+function Scenery({ tier }) {
+  const P = PALETTE[tier] || PALETTE.mixer;
+  const B = ZONE_BOX;
+  return (<svg viewBox={`0 0 ${W} ${H}`} style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', pointerEvents: 'none' }}>
+    <style>{`@keyframes fofPulse{0%,100%{opacity:.1}50%{opacity:.3}} @keyframes fofFlicker{0%,100%{opacity:.9}45%{opacity:.5}55%{opacity:1}} @keyframes fofSweep{0%{transform:translateX(-30px)}100%{transform:translateX(30px)}}`}</style>
+    <defs>
+      <radialGradient id="fofSpot" cx="50%" cy="50%" r="50%"><stop offset="0" stopColor="#fff" stopOpacity=".9" /><stop offset="1" stopColor="#fff" stopOpacity="0" /></radialGradient>
+      <linearGradient id="fofWood" x1="0" x2="0" y1="0" y2="1"><stop offset="0" stopColor="#7a4a2a" /><stop offset="1" stopColor="#4a2b18" /></linearGradient>
+      <linearGradient id="fofVelvet" x1="0" x2="1"><stop offset="0" stopColor="#3b1f5e" /><stop offset="1" stopColor="#2a1544" /></linearGradient>
+    </defs>
+    <rect width={W} height={H} fill={P.wall} />
+    {/* the floor */}
+    <rect x={B.floor.x} y={B.floor.y} width={B.floor.w} height={B.floor.h} rx="9" fill={P.floor} />
+    {Array.from({ length: 6 }, (_, i) => Array.from({ length: 3 }, (_, j) => (
+      <rect key={i + '-' + j} x={B.floor.x + 10 + i * 33} y={B.floor.y + 22 + j * 22} width="31" height="20" fill={(i + j) % 2 ? 'rgba(255,255,255,.03)' : 'rgba(0,0,0,.12)'} />)))}
+    {P.light.map((c, i) => (<circle key={i} cx={B.floor.x + 50 + i * 60} cy={B.floor.y + 52} r="27" fill={c} style={{ mixBlendMode: 'screen', animation: `fofPulse ${2.2 + i * 0.7}s ease-in-out infinite` }} />))}
+    {/* the bar: a counter, bottles on the wall, stools */}
+    <rect x={B.bar.x} y={B.bar.y} width={B.bar.w} height={B.bar.h} rx="9" fill="#1a1420" />
+    <rect x={B.bar.x + 6} y={B.bar.y + 16} width={B.bar.w - 12} height="9" rx="2" fill="rgba(0,0,0,.35)" />
+    {Array.from({ length: 14 }, (_, i) => (<rect key={i} x={B.bar.x + 12 + i * 14} y={B.bar.y + 6} width="4" height="12" rx="1" fill={['#5fce8a', '#ffd166', '#ff8a5c', '#c9b6ff', '#4fd6ff'][i % 5]} opacity=".85" />))}
+    <rect x={B.bar.x + 4} y={B.bar.y + B.bar.h - 16} width={B.bar.w - 8} height="12" rx="4" fill="url(#fofWood)" />
+    <rect x={B.bar.x + 4} y={B.bar.y + B.bar.h - 17} width={B.bar.w - 8} height="3" rx="1" fill="#c48a5a" opacity=".8" />
+    {Array.from({ length: 5 }, (_, i) => (<g key={i}><circle cx={B.bar.x + 30 + i * 40} cy={B.bar.y + B.bar.h - 2} r="5" fill="#2b2238" stroke="#5a4a70" /><rect x={B.bar.x + 29 + i * 40} y={B.bar.y + B.bar.h - 1} width="2" height="4" fill="#5a4a70" /></g>))}
+    {/* the booths: sofas and low tables, candles */}
+    <rect x={B.booth.x} y={B.booth.y} width={B.booth.w} height={B.booth.h} rx="9" fill="#17131f" />
+    {[0, 1, 2].map((i) => (<g key={i}>
+      <rect x={B.booth.x + 8} y={B.booth.y + 20 + i * 38} width={B.booth.w - 16} height="14" rx="6" fill="url(#fofVelvet)" stroke="#5a3d8a" strokeWidth=".8" />
+      <ellipse cx={B.booth.x + B.booth.w / 2} cy={B.booth.y + 43 + i * 38} rx="17" ry="6" fill="#2a2236" stroke="#4a3d5c" />
+      <circle cx={B.booth.x + B.booth.w / 2} cy={B.booth.y + 42 + i * 38} r="2" fill="#ffd166" style={{ animation: `fofFlicker ${1.4 + i * 0.5}s ease-in-out infinite` }} />
+    </g>))}
+    {/* the terrace: railing, plants, string lights, the sky */}
+    <rect x={B.terrace.x} y={B.terrace.y} width={B.terrace.w} height={B.terrace.h} rx="9" fill="#0d1220" />
+    <circle cx={B.terrace.x + B.terrace.w - 26} cy={B.terrace.y + 14} r="6" fill="#fff5cc" opacity=".8" />
+    {Array.from({ length: 16 }, (_, i) => (<circle key={i} cx={B.terrace.x + 12 + i * 21} cy={B.terrace.y + 8 + (i % 2) * 3} r="1.8" fill="#ffe08a" style={{ animation: `fofFlicker ${1.1 + (i % 4) * 0.4}s ease-in-out infinite` }} />))}
+    <line x1={B.terrace.x + 6} y1={B.terrace.y + B.terrace.h - 6} x2={B.terrace.x + B.terrace.w - 6} y2={B.terrace.y + B.terrace.h - 6} stroke="#5a6a80" strokeWidth="1.5" />
+    {Array.from({ length: 9 }, (_, i) => (<line key={i} x1={B.terrace.x + 10 + i * 40} y1={B.terrace.y + B.terrace.h - 14} x2={B.terrace.x + 10 + i * 40} y2={B.terrace.y + B.terrace.h - 4} stroke="#5a6a80" />))}
+    {[0, 1].map((i) => (<g key={i}><circle cx={B.terrace.x + 14 + i * (B.terrace.w - 28)} cy={B.terrace.y + 24} r="8" fill="#2f6b45" /><circle cx={B.terrace.x + 10 + i * (B.terrace.w - 28)} cy={B.terrace.y + 30} r="6" fill="#3a8455" /></g>))}
+    {/* the door: a rope, and the carpet where there is one */}
+    <rect x={B.door.x} y={B.door.y} width={B.door.w} height={B.door.h} rx="9" fill="#14101c" />
+    {P.carpet && <rect x={B.door.x + 8} y={B.door.y + 8} width={B.door.w - 16} height={B.door.h - 12} rx="3" fill={P.carpet} />}
+    <line x1={B.door.x + 12} y1={B.door.y + 8} x2={B.door.x + 12} y2={B.door.y + B.door.h - 4} stroke="#c9a24a" strokeWidth="2" />
+    <line x1={B.door.x + 60} y1={B.door.y + 8} x2={B.door.x + 60} y2={B.door.y + B.door.h - 4} stroke="#c9a24a" strokeWidth="2" />
+    <path d={`M${B.door.x + 12} ${B.door.y + 10} Q${B.door.x + 36} ${B.door.y + 22} ${B.door.x + 60} ${B.door.y + 10}`} stroke="#b0223a" strokeWidth="2.2" fill="none" />
+    <rect x={B.door.x + B.door.w - 30} y={B.door.y + 4} width="22" height={B.door.h - 8} rx="2" fill="#0a0810" stroke="#c9a24a" strokeWidth=".8" />
+    {/* a wash of the room's colour over everything */}
+    <rect width={W} height={H} fill={P.accent} opacity=".05" />
+  </svg>);
+}
 function Figure({ x, y, label, look, size, you, came, done, lit, extra, onClick }) {
   return (<div onClick={onClick} style={{ position: 'absolute', left: `${(x / W) * 100}%`, top: `${(y / H) * 100}%`, transform: 'translate(-50%, -55%)', transition: 'left .9s cubic-bezier(.4,0,.2,1), top .9s cubic-bezier(.4,0,.2,1), opacity .4s',
     opacity: done ? .3 : extra ? .8 : 1, cursor: onClick ? 'pointer' : 'default', display: 'flex', flexDirection: 'column', alignItems: 'center', filter: lit ? `drop-shadow(0 0 6px ${theme.gold})` : you ? `drop-shadow(0 0 7px ${theme.accent})` : came ? `drop-shadow(0 0 5px ${theme.good})` : 'none', zIndex: you ? 3 : extra ? 1 : 2 }}>
@@ -59,6 +119,17 @@ export function NightRoom({ g }) {
   const band = buzzBand(n.buzz);
   const talk = n.talk; const who = talk && n.guests.find((x) => x.id === talk.guestId);
   const busy = n.done || !!n.pending || !!talk;
+  // People do not stand still. Every couple of seconds everybody who is not talking to
+  // you shifts a step inside their zone — Maxi: "why don't they move by themselves?"
+  const [wander, setWander] = useState({});
+  useEffect(() => {
+    const id = setInterval(() => {
+      setWander((w) => { const next = {}; for (const x of n.guests) { if (x.done) continue; const prev = w[x.id] || { dx: 0, dy: 0 }; next[x.id] = Math.random() < 0.55 ? prev : { dx: Math.max(-14, Math.min(14, prev.dx + (Math.random() * 16 - 8))), dy: Math.max(-6, Math.min(6, prev.dy + (Math.random() * 8 - 4))) }; } return next; });
+    }, 2400);
+    return () => clearInterval(id);
+  }, [n.guests.length]);
+  const talkRef = useRef(null);
+  useEffect(() => { if ((talk || n.pending) && talkRef.current) talkRef.current.scrollIntoView({ behavior: 'smooth', block: 'nearest' }); }, [!!talk, !!n.pending, talk && talk.turn]);
   // Where everybody stands this hour.
   const seats = useMemo(() => {
     const byZone = {}; const out = {};
@@ -107,20 +178,17 @@ export function NightRoom({ g }) {
 
       {/* the room */}
       {!n.done && <div onClick={walk} style={{ position: 'relative', width: '100%', aspectRatio: `${W} / ${H}`, borderRadius: 14, background: 'linear-gradient(180deg,#17131f,#100d18)', border: `1px solid ${theme.line}`, marginBottom: 10, cursor: busy ? 'default' : 'crosshair', overflow: 'hidden' }}>
-        {Object.entries(ZONE_BOX).map(([z, b]) => (<div key={z} style={{ position: 'absolute', left: `${(b.x / W) * 100}%`, top: `${(b.y / H) * 100}%`, width: `${(b.w / W) * 100}%`, height: `${(b.h / H) * 100}%`, borderRadius: 9, background: n.you === z ? `${theme.accent}14` : 'rgba(255,255,255,.035)', border: `1px solid ${n.you === z ? theme.accent + '66' : 'rgba(255,255,255,.09)'}` }}>
+        <Scenery tier={n.tier} />
+        {Object.entries(ZONE_BOX).map(([z, b]) => (<div key={z} style={{ position: 'absolute', left: `${(b.x / W) * 100}%`, top: `${(b.y / H) * 100}%`, width: `${(b.w / W) * 100}%`, height: `${(b.h / H) * 100}%`, borderRadius: 9, background: 'transparent', border: `1px solid ${n.you === z ? theme.accent + '88' : 'rgba(255,255,255,.07)'}` }}>
           <div style={{ position: 'absolute', left: 8, top: 4, fontSize: 8.5, fontWeight: 900, letterSpacing: '.08em', color: theme.muted }}>{(z === 'door' ? 'DOOR · LEAVE' : z === 'bar' ? 'THE BAR' : z === 'floor' ? 'THE FLOOR' : z === 'terrace' ? 'THE TERRACE' : 'THE BOOTHS')}</div>
         </div>))}
-        {n.guests.map((x) => { const p = seats[x.id] || { x: 40, y: 40 }; const extra = x.kind === 'extra';
+        {n.guests.map((x) => { const s0 = seats[x.id] || { x: 40, y: 40 }; const wd = (!x.done && !(talk && talk.guestId === x.id) && wander[x.id]) || { dx: 0, dy: 0 }; const p = { x: s0.x + wd.dx, y: s0.y + wd.dy }; const extra = x.kind === 'extra';
           return <Figure key={x.id} x={p.x} y={p.y} label={x.seen || x.came ? x.name.split(' ')[0] : ''} look={lookForGuest(g, x, n.tier)} size={extra ? 26 : 30} came={x.came} done={x.done} extra={extra} lit={talk && talk.guestId === x.id}
             onClick={!busy && !x.done ? (e) => { e.stopPropagation(); dispatch(extra ? lookAt : goOver, x.id); } : null} />; })}
         <Figure x={seats.you.x} y={seats.you.y} label="you" look={lookOf(g)} size={34} you />
       </div>}
 
-      {/* what has happened */}
-      <div style={{ background: theme.panel, border: `1px solid ${theme.line}`, borderRadius: 12, padding: '8px 12px', marginBottom: 10 }}>
-        {n.log.slice(n.done ? 0 : -3).map((l, i) => (<div key={i} style={{ fontSize: 12.5, lineHeight: 1.5, color: TONE[l.tone] || theme.text, padding: '2px 0' }}>{l.text}</div>))}
-      </div>
-
+      <div ref={talkRef} />
       {n.done ? (<>
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 6, marginBottom: 12 }}>
           {[['Contacts', n.gains.contacts.length], ['Leads', n.gains.leads], ['Numbers', n.gains.numbers], ['Fame', n.gains.fame ? `+${n.gains.fame}` : '—'], ['Respect', n.gains.respect ? `+${n.gains.respect}` : '—'], ['Rumours', n.gains.scandal ? `+${n.gains.scandal}` : '—']].map(([k, v]) => (
@@ -182,8 +250,13 @@ export function NightRoom({ g }) {
           <button onClick={() => dispatch(nightAct, 'leave')} style={btn('bad')}>🚪 Leave</button>
         </div>
         {n.looks > 0 && <div style={{ fontSize: 10.5, color: theme.muted, marginBottom: 4 }}>{n.looks} of {LOOKS_AN_HOUR()} looks this hour.</div>}
-        <div style={{ fontSize: 10.5, color: theme.muted }}>{n.guests.filter((x) => x.done).map((x) => `${x.name.split(' ')[0]} ${x.went === 'good' ? '✓' : x.went === 'flat' ? '·' : '✗'}`).join(' · ')}</div>
       </>)}
+      {/* what has happened */}
+      <div style={{ background: theme.panel, border: `1px solid ${theme.line}`, borderRadius: 12, padding: '8px 12px', marginTop: 10 }}>
+        {n.log.slice(n.done ? 0 : -3).map((l, i) => (<div key={i} style={{ fontSize: 12.5, lineHeight: 1.5, color: TONE[l.tone] || theme.text, padding: '2px 0' }}>{l.text}</div>))}
+      </div>
+
+      {!n.done && n.guests.some((x) => x.done && x.went) && <div style={{ fontSize: 10.5, color: theme.muted, marginTop: 6 }}>{n.guests.filter((x) => x.done && x.went).map((x) => `${x.name.split(' ')[0]} ${x.went === 'good' ? '✓' : x.went === 'flat' ? '·' : '✗'}`).join(' · ')}</div>}
     </div>
   </div>);
 }

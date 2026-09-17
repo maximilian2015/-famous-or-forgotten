@@ -15,6 +15,9 @@ const target = +(process.argv[2] || 45);
 const s = createInitialState({ name: 'Mira Vale', city: 'Los Angeles', gender: 'female', dream: 'actor', created: true });
 beginLife(s);
 Object.assign(s, { stage: 'career', ageY: 22, year: 2048, month: 0, hasApartment: true, housing: 'room', cash: 9000, alive: true, ap: 100, apMax: 100, apMaxEff: 100, fame: 0, peakFame: 0 });
+// The jump to twenty-two skipped the family: a mother of thirty-seven with a daughter of
+// twenty-eight was this line, not the game.
+for (const p of s.family || []) p.age += 22;
 let t = s;
 for (let m = 0; m < 40 * 12 && (t.fame || 0) < target; m++) {
   t.bigMoment = null; t.pendingArc = null;
