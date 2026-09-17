@@ -16,6 +16,10 @@ import { negotiationFor, reachOf } from './negotiate.js';
 import { acceptOffer, declineOffer } from './offers.js';
 import { canTakeSet, monthsUntilFree, sets } from '../../engine/sets.js';
 import { walkOffSet } from './production.js';
+import { sendMail } from '../meta/email.js';
+import { STUDIOS } from '../world/names.js';
+// The studio on the letterhead — the same hash ContractRoom draws the stamp from.
+function studioOf(o) { let h = 0; for (const ch of String(o.id || o.projectTitle || '')) h = (h * 31 + ch.charCodeAt(0)) >>> 0; return STUDIOS[h % STUDIOS.length]; }
 // How long a production will hold a part for somebody who is on another set. A month or
 // two, usually; half a year, rarely; and a nobody asking is a nobody asking.
 const SCALE_RANK = { oneoff: 0, small: 1, episode: 1, indie: 2, recurring: 3, prestige: 4, feature: 4, blockbuster: 5 };
@@ -184,11 +188,18 @@ export function contractsTick(s) {
       s.inbox = (s.inbox || []).filter((m) => m.offerId !== o.id);
       addTimeline(s, `${title}: they stopped answering. Somebody else signed it as written.`, true);
       (s.moments = s.moments || []).push({ id: 'contract', kind: 'bad', title, lines, body: 'Three times back and forth, and on the third they simply stopped replying. Somebody else signed it as written.', walked: true });
+      sendMail(s, { from: `${studioOf(o)} · business affairs`, subj: `Re: "${title}" — withdrawn`, tag: 'contract', kind: 'contract', body: `Further to your revisions: the role has been cast elsewhere. We thank you for your interest and wish you well.\n\n${lines.join(' · ')}`, cta: [{ label: 'Delete', fx: {}, reply: 'Gone.' }] });
       continue;
     }
     (s.moments = s.moments || []).push({ id: 'contract', kind: refused ? 'bad' : 'good', title, offerId: o.id, lines,
       body: refused ? (lines.length === refused ? 'They held on everything. The paper is back on your desk as it was — sign it, push again, or walk.' : 'Some of it, not all of it. The paper is back on your desk.')
         : 'They agreed to all of it. The paper is back on your desk, ready to sign.' });
+    // And the answer in writing, from business affairs, with the paper attached. Maxi: "when I
+    // send it back they reply by email that they agree, and then the offer appears."
+    s.inbox = (s.inbox || []).filter((m) => !(m.tag === 'contract' && m.offerId === o.id));
+    sendMail(s, { from: `${studioOf(o)} · business affairs`, subj: `Re: "${title}" — your points`, tag: 'contract', kind: 'contract', offerId: o.id,
+      body: `${refused ? (lines.length === refused ? 'We are unable to move on the points raised.' : 'We can accommodate some, though not all, of the points raised.') : 'We are pleased to confirm the points raised.'} The revised agreement is attached for signature.\n\n${lines.join('\n')}`,
+      cta: [{ label: 'Open the contract', offer: 'open' }] });
   }
   return s;
 }

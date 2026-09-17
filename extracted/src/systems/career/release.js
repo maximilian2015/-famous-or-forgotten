@@ -183,8 +183,11 @@ function open(s, rel) {
   // What it will end up taking. The player does not see this number yet — it arrives a
   // few thousand at a time, week by week, which is how anybody actually experiences it.
   // The press tour, or the lack of one, is the studio's marketing working or not — see tour.js.
-  if (film) rel.finalGross = Math.round(boxOfficeFor(s, rel) * tourMultiplier(rel));
-  else rel.viewers = Math.round(viewersFor(s, rel) * tourMultiplier(rel));
+  // A sequel or a later season opens on a name people know: a tenth more, before anybody
+  // has seen it. Maxi: "the system remembers it was a good picture and gives benefits."
+  const known = ((rel.part || 1) > 1 || (rel.season || 0) > 1) ? 1.12 : 1;
+  if (film) rel.finalGross = Math.round(boxOfficeFor(s, rel) * tourMultiplier(rel) * known);
+  else rel.viewers = Math.round(viewersFor(s, rel) * tourMultiplier(rel) * known);
   rel.boxOffice = 0;
   const verdict = verdictOf({ ...rel, boxOffice: rel.finalGross || 0 });
   const score = (rel.rating / 10).toFixed(1);

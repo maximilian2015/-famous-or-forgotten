@@ -6,7 +6,7 @@ import { startLoop, stopLoop } from '../sfx.js';
 import { Avatar } from './Avatar.jsx';
 import { lookOf, lookOfPerson } from '../../systems/life/appearance.js';
 import { actorById } from '../../systems/world/world.js';
-import { HOURS, ZONES, buzzBand, drinkDose, goOver, moveOn, startTalk, excuseYourself, moveTo, answerToast, reply, drinkTogether, nightDrink, nightAct, nightChoice, leaveNight, LOOKS_AN_HOUR, heavyTest, sendPitch, skipPitch, pitchOdds, PITCH_SCALES } from '../../systems/social/night.js';
+import { HOURS, ZONES, buzzBand, drinkDose, goOver, moveOn, startTalk, excuseYourself, moveTo, answerToast, reply, drinkTogether, nightDrink, nightAct, nightChoice, leaveNight, LOOKS_AN_HOUR, heavyTest, sendPitch, skipPitch, pitchOdds, PITCH_SCALES, revivable, reviveOdds } from '../../systems/social/night.js';
 import { TimingBar } from './TimingBar.jsx';
 import { GridRisk } from './GridRisk.jsx';
 import { GENRES, hotGenre } from '../../systems/meta/news.js';
@@ -243,8 +243,15 @@ export function NightRoom({ g }) {
               <button onClick={() => setPitch({ genre: hotGenre(g), scale: 'indie', months: 4, title: '' })} style={btn('pri')}>Pitch them a picture</button>
               <button onClick={() => dispatch(skipPitch)} style={btn('')}>Talk about other things</button>
             </>)}
-            {n.pending.id === 'pitch' && pitch && (<div style={{ display: 'grid', gap: 8 }}>
-              <div style={{ fontSize: 11, fontWeight: 900, letterSpacing: '.06em', textTransform: 'uppercase', color: theme.muted }}>The picture</div>
+            {n.pending.id === 'pitch' && pitch && revivable(g).length > 0 && (<div style={{ display: 'grid', gap: 6, marginBottom: 4 }}>
+              <div style={{ fontSize: 11, fontWeight: 900, letterSpacing: '.06em', textTransform: 'uppercase', color: theme.muted }}>Or bring one of yours back</div>
+              {revivable(g).map((r) => (<button key={r.id} onClick={() => setPitch({ ...pitch, reviveId: pitch.reviveId === r.id ? null : r.id })} style={{ ...btn(pitch.reviveId === r.id ? 'pri' : ''), textAlign: 'left', fontWeight: 600, lineHeight: 1.4 }}>
+                <b>{r.isSeries ? `${r.root} · season ${r.season + 1}` : `${r.root} ${['II', 'III', 'IV', 'V', 'VI'][r.part - 1] || r.part + 1}`}</b> <span style={{ opacity: .8 }}>· {r.isSeries ? 'the show' : 'the picture'} scored {(r.rating / 10).toFixed(1)}{r.verdict ? ` · ${r.verdict}` : ''} · <span style={{ color: theme.gold }}>{reviveOdds(g, n.pending.weight, r)}%</span></span>
+              </button>))}
+            </div>)}
+            {n.pending.id === 'pitch' && pitch && pitch.reviveId && (<button onClick={() => { dispatch(sendPitch, { reviveId: pitch.reviveId }); setPitch(null); }} style={btn('pri')}>Pitch the return</button>)}
+            {n.pending.id === 'pitch' && pitch && !pitch.reviveId && (<div style={{ display: 'grid', gap: 8 }}>
+              <div style={{ fontSize: 11, fontWeight: 900, letterSpacing: '.06em', textTransform: 'uppercase', color: theme.muted }}>{revivable(g).length ? 'Or something new' : 'The picture'}</div>
               <input value={pitch.title} onChange={(e) => setPitch({ ...pitch, title: e.target.value })} placeholder="A title — or leave it and they will name it" maxLength={40}
                 style={{ background: theme.panel2, border: `1px solid ${theme.line}`, borderRadius: 9, padding: '9px 11px', color: theme.text, fontSize: 13, fontFamily: 'inherit' }} />
               <div style={{ display: 'flex', gap: 5, flexWrap: 'wrap' }}>

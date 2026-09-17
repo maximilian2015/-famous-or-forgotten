@@ -32,6 +32,7 @@ import { rollStability } from '../career/stability.js';
 import { newTitle } from '../world/titles.js';
 import { GENRES, hotGenre } from '../meta/news.js';
 import { addSentListing } from '../career/castings.js';
+import { maybeContinue, seriesRoot } from '../career/franchise.js';
 import { sendSms } from './sms.js';
 import { priceFactor } from '../life/face.js';
 import { HOUSING } from '../../engine/economy.js';
@@ -195,17 +196,41 @@ export function canHost(s) {
   return { ok: true, cost: hostCost(s) };
 }
 export function hostCost(s) { return Math.round(({ flat: 6000, house: 14000, penthouse: 30000 }[s.housing] || 8000) * priceFactor(s)); }
-function hostGuests(s, out) {
+// Who might come, and how likely. Closeness is most of it; a name is harder to get than
+// a casting director; and a house that throws a party every month is a house people
+// stop coming to. Maxi: "the heavy guests do not always come, and do not always agree;
+// a party every month does not mean people will come, or say yes."
+export function hostFatigue(s) {
+  const now = stamp(s); const last = (s._hosted || []).filter((t) => now - t < 4);
+  return last.length >= 3 ? 0.35 : last.length === 2 ? 0.55 : last.length === 1 ? 0.75 : 1;
+}
+export function invitees(s) {
   const known = (s.people || []).filter((p) => !p.agent && !p.drifted && (p.relationship || 0) >= 20);
-  const decide = known.filter((p) => /Director|Producer|Casting|Manager/.test(p.role || '')).sort((a, b) => (b.industryWeight || 0) - (a.industryWeight || 0)).slice(0, 3);
-  for (const p of decide) out.push(guest(s, { kind: 'contact', personId: p.id, name: p.name, role: p.role, standing: p.industryWeight || 40, line: `You know them. Closeness ${Math.round(p.relationship || 0)}`, zone: 'booth', tasteKey: 'contact', decides: /Director|Producer/.test(p.role || '') }));
-  const stars = known.filter((p) => p.worldId).slice(0, 2);
-  for (const p of stars) { const a = actorById(s, p.worldId); if (a && a.alive) out.push(guest(s, { kind: 'contact', personId: p.id, worldId: a.id, name: a.name, role: p.role, standing: a.fame || 40, line: `You know them. Closeness ${Math.round(p.relationship || 0)}`, zone: pick(['bar', 'floor']), tasteKey: 'contact' })); }
-  // Two who came because it is your house: a director and a producer you have not met.
-  for (const role of ['Film Director', 'Studio Producer']) { const p = makePerson(s, role); p.industryWeight = rint(70, 92); out.push(guest(s, { kind: 'industry', person: p, name: p.name, role, standing: p.industryWeight, line: INDUSTRY_LINE[role], zone: 'booth', tasteKey: role, decides: true })); }
+  const f = hostFatigue(s);
+  const list = [];
+  const decide = known.filter((p) => /Director|Producer|Casting|Manager/.test(p.role || '')).sort((a, b) => (b.industryWeight || 0) - (a.industryWeight || 0)).slice(0, 4);
+  for (const p of decide) list.push({ p, odds: Math.round(Math.min(92, (25 + (p.relationship || 0) * 0.7) * ((p.industryWeight || 0) >= 80 ? 0.7 : 1) * f)) });
+  for (const p of known.filter((p) => p.worldId).slice(0, 3)) list.push({ p, odds: Math.round(Math.min(90, (20 + (p.relationship || 0) * 0.7) * ((p.industryWeight || 0) >= 80 ? 0.6 : 1) * f)) });
+  return list;
+}
+export function inviteBand(odds) { return odds >= 65 ? 'likely' : odds >= 35 ? 'maybe' : 'unlikely'; }
+function hostGuests(s, out) {
+  const f = hostFatigue(s);
+  const came = [], noShows = [];
+  for (const { p, odds } of invitees(s)) {
+    if (!chance(odds)) { noShows.push(p.name); continue; }
+    came.push(p.name);
+    const a = p.worldId ? actorById(s, p.worldId) : null;
+    if (p.worldId && !(a && a.alive)) continue;
+    out.push(guest(s, { kind: 'contact', personId: p.id, worldId: p.worldId || null, name: p.name, role: p.role, standing: a ? (a.fame || 40) : (p.industryWeight || 40), line: `You know them. Closeness ${Math.round(p.relationship || 0)}`, zone: /Director|Producer|Casting|Manager/.test(p.role || '') ? 'booth' : pick(['bar', 'floor']), tasteKey: 'contact', decides: /Director|Producer/.test(p.role || '') }));
+  }
+  // Somebody who came because it is your house — one, and not every time, and not to a
+  // house that has one every month.
+  if (chance(70 * f)) { const role = pick(['Film Director', 'Studio Producer']); const p = makePerson(s, role); p.industryWeight = rint(68, 90); out.push(guest(s, { kind: 'industry', person: p, name: p.name, role, standing: p.industryWeight, line: INDUSTRY_LINE[role], zone: 'booth', tasteKey: role, decides: true })); }
   if (chance(60)) out.push(prospectGuest(s));
-  const n = rint(6, 9);
+  const n = rint(5, 9);
   for (let i = 0; i < n; i++) out.push(extraGuest(s, 'local'));
+  out._noShows = noShows; out._came = came;
   return out;
 }
 export function hostNight(s) {
@@ -214,9 +239,16 @@ export function hostNight(s) {
   if (s._wentOut === st) { s.lastEvent = 'You have been out this month already. Next month.'; return s; }
   if ((s.cash || 0) < fit.cost) { s.lastEvent = `A night like that costs €${fit.cost.toLocaleString()}. Not this month.`; return s; }
   s.cash -= fit.cost; s._wentOut = st;
+  (s._hosted = s._hosted || []).push(st); s._hosted = s._hosted.filter((t) => st - t < 12);
   const ev = { id: uid(s, 'ev'), tier: 'yours', venue: (HOUSING[s.housing] || {}).label || 'your place', host: s.name, hostId: null };
   addTimeline(s, `Threw a night at home — €${fit.cost.toLocaleString()}.`);
-  return startNight(s, ev, { id: 'yours', label: 'Your night', roles: ['Film Director', 'Studio Producer'] });
+  startNight(s, ev, { id: 'yours', label: 'Your night', roles: ['Film Director', 'Studio Producer'] });
+  const n = s.night; const gs = n.guests;
+  if (gs._noShows && gs._noShows.length) say(s, `${gs._noShows.join(', ')} did not come.${hostFatigue(s) < 1 ? ' You had one of these not long ago; people remember.' : ''}`, 'bad');
+  // The trades notice a house that is always open. Every night past the second in a season.
+  const lately = (s._hosted || []).filter((t) => st - t < 4).length;
+  if (lately >= 3) { setRespect(s, (s.respect || 0) - 2); s.scandal = clamp((s.scandal || 0) + 2); say(s, 'Third one this season. There is a word for people whose house is always open, and the trades used it.', 'bad'); }
+  return s;
 }
 
 // ── the door ──────────────────────────────────────────────────────────────────
@@ -608,14 +640,59 @@ export function pitchOdds(s, who, weight, scale, genre) {
   o += Math.max(0, (s.respect || 0) - 20) * 0.2;
   return Math.max(4, Math.min(80, Math.round(o)));
 }
+// Bringing one of yours back. Maxi: "on your sofa you open the filmography and show a
+// film — two, three — or a series that ended but was popular, and pitch a sequel or a
+// new season; the system remembers it was a good picture, and it helps." A hit is easier
+// to say yes to than a page, and a known name opens bigger; a flop nobody wants back.
+export function revivable(s) {
+  const shelf = s.filmography || [];
+  const out = [];
+  for (const c of shelf) {
+    if (c.running || !c.job || (c.rating || 0) < 62) continue;
+    const isSeries = !!(c.job.episodes || c.job.season);
+    const root = isSeries ? seriesRoot(c.job.seriesTitle || c.title) : String(c.title).replace(/\s+(II|III|IV|V|VI)$/, '');
+    // Only the latest of its line, and only if nothing of it is already on the way.
+    const later = shelf.some((x) => x !== c && (isSeries ? seriesRoot(x.job && (x.job.seriesTitle || x.title) || x.title) === root && (x.job && x.job.season || 0) > (c.job.season || 0) : String(x.title).replace(/\s+(II|III|IV|V|VI)$/, '') === root && (x.job && x.job.part || 1) > (c.job.part || 1)));
+    if (later) continue;
+    if ((s.offers || []).some((o) => o.seriesTitle === root || String(o.projectTitle || '').replace(/\s+(II|III|IV|V|VI)$/, '') === root)) continue;
+    if ((s.laterOffers || []).some((x) => x.offer && (x.offer.seriesTitle === root || String(x.offer.projectTitle || '').replace(/\s+(II|III|IV|V|VI)$/, '') === root))) continue;
+    if (out.some((x) => x.root === root)) continue;
+    out.push({ id: c.id, root, title: c.title, isSeries, season: c.job.season || 0, part: c.job.part || 1, rating: c.rating || 0, verdict: c.verdict || null, scale: c.job.scale || c.scale, genre: c.genre });
+  }
+  return out.sort((a, b) => b.rating - a.rating).slice(0, 4);
+}
+export function reviveOdds(s, weight, r) {
+  let o = 25 + (weight || 60) * 0.3 + ((r.rating || 0) - 60) * 0.8;
+  o += r.verdict === 'smash' ? 25 : r.verdict === 'profitable' ? 12 : r.verdict === 'bomb' ? -35 : 0;
+  if (r.isSeries) o += 8;
+  o -= (s.scandal || 0) * 0.25;
+  return Math.max(4, Math.min(85, Math.round(o)));
+}
 export function sendPitch(s, form) {
   const n = s.night; const q = n && n.pending; if (!q || q.id !== 'pitch') return s;
   n.pending = null;
+  // One of yours, back. The odds are the picture's, not the page's.
+  if (form.reviveId) {
+    const r = revivable(s).find((x) => x.id === form.reviveId);
+    if (!r) { say(s, 'That one cannot come back.', 'note'); return s; }
+    const before = (s._pitched || []).filter((x) => x.who === q.who && stamp(s) - x.at < 12).length;
+    const odds = Math.max(3, Math.round(reviveOdds(s, q.weight, r) * Math.pow(0.66, before)));
+    (s._pitched = s._pitched || []).push({ who: q.who, at: stamp(s) });
+    (s.pitches = s.pitches || []).push({ due: stamp(s) + rint(1, 2), from: q.who, weight: q.weight, reviveId: r.id, title: r.isSeries ? `${r.root} · season ${r.season + 1}` : `${r.root} ${['II', 'III', 'IV', 'V', 'VI'][r.part - 1] || r.part + 1}`, genre: r.genre, scale: r.scale, odds, revive: true });
+    say(s, `You showed ${first(q.who)} "${r.title}" — ${r.isSeries ? 'they remember the show' : r.verdict === 'smash' ? 'they remember the money' : 'they remember it'}. "${r.isSeries ? 'Another season? Send me the numbers.' : 'A sequel? Send me the numbers.'}" They will text.`, 'good');
+    addTimeline(s, `Pitched ${r.isSeries ? 'a new season of' : 'a sequel to'} "${r.title}" to ${q.who}.`);
+    if (n.hour >= HOURS.length && !n.talk) endNight(s);
+    return s;
+  }
   const scale = PITCH_SCALES[form.scale] ? form.scale : 'indie';
   const genre = GENRES.includes(form.genre) ? form.genre : pick(GENRES);
   const months = Math.max(2, Math.min(12, Number(form.months) || 4));
   const title = String(form.title || '').trim().slice(0, 40) || newTitle(s, genre);
-  const odds = pitchOdds(s, q.who, q.weight, scale, genre);
+  // Pitched them this year already? They remember. Every pitch to the same person inside a
+  // year costs a third of the odds.
+  const before = (s._pitched || []).filter((x) => x.who === q.who && stamp(s) - x.at < 12).length;
+  const odds = Math.max(3, Math.round(pitchOdds(s, q.who, q.weight, scale, genre) * Math.pow(0.66, before)));
+  (s._pitched = s._pitched || []).push({ who: q.who, at: stamp(s) }); s._pitched = s._pitched.filter((x) => stamp(s) - x.at < 24);
   (s.pitches = s.pitches || []).push({ due: stamp(s) + rint(1, 2), from: q.who, weight: q.weight, genre, scale, months, title, odds });
   say(s, `You pitched "${title}" — ${genre.toLowerCase()}, ${PITCH_SCALES[scale].label.toLowerCase()}, ${months} months. ${first(q.who)} says nothing for a while, and then: "Send me a page." They will text.`, 'good');
   addTimeline(s, `Pitched "${title}" to ${q.who}.`);
@@ -635,6 +712,22 @@ function pitchTick(s) {
   s.pitches = (s.pitches || []).filter((p) => p.due > now);
   for (const p of due) {
     if (!chance(p.odds)) { sendSms(s, { from: p.from, tag: 'pitch', text: pick([`Not "${p.title}". Not now. Another time — I mean it.`, `Read the page. It is not the one. Send me the next one.`, `The money said no before I finished the sentence. Another time.`]) }); addTimeline(s, `${p.from} passed on "${p.title}".`); continue; }
+    if (p.revive) {
+      // The sequel or the season is built the way the business builds them — franchise.js —
+      // and lands now instead of years from now, because somebody said yes on your sofa.
+      const credit = (s.filmography || []).find((c) => c.id === p.reviveId);
+      if (!credit || !credit.job) continue;
+      const wasLater = (s.laterOffers || []).length;
+      let o = maybeContinue(s, credit, credit.job, true);
+      if (!o && (s.laterOffers || []).length > wasLater) { o = s.laterOffers.pop().offer; }
+      if (!o) continue;
+      Object.assign(o, { via: 'pitch', from: p.from, director: p.from, waitsForWrap: false, deadline: 3, revived: true, note: `Yours, again. You brought it back on your own sofa, and the audience remembers.` });
+      (s.offers = s.offers || []).push(o);
+      sendSms(s, { from: p.from, tag: 'pitch', text: pick([`"${o.projectTitle}". Yes. Everybody remembers the first one. Paper is in Messages.`, `The numbers say yes. "${o.projectTitle}" — my office is sending the paper.`]) });
+      addTimeline(s, `${p.from} said yes to "${o.projectTitle}".`);
+      s.lastEvent = `${p.from} texted. "${o.projectTitle}" is happening — the paper is in Messages.`;
+      continue;
+    }
     const o = generateOffer(s);
     const big = p.scale === 'blockbuster', feat = p.scale === 'feature';
     Object.assign(o, { via: 'pitch', from: p.from, director: p.from, projectTitle: (big ? '⭐ ' : '') + p.title, genre: p.genre, months: p.months, role: 'Lead',

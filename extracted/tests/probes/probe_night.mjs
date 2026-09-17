@@ -87,7 +87,7 @@ console.log('doors', JSON.stringify(doors));
       if (!canHost(s).ok) throw new Error('should be able to host: ' + canHost(s).why);
       hostNight(s);
       const n = s.night; if (!n || n.tier !== 'yours') throw new Error('no night hosted: ' + s.lastEvent);
-      const d = n.guests.find((x) => x.decides); if (!d) throw new Error('nobody to pitch to');
+      const d = n.guests.find((x) => x.decides); if (!d) { T.nobody = (T.nobody || 0) + 1; leaveNight(s); continue; }
       goOver(s, d.id); startTalk(s); if (n.talk && n.talk.toast === 'ask') answerToast(s, true);
       while (n.talk) { const o = n.talk.options.find((x) => d.taste.likes.includes(x.tone) && !x.ask) || n.talk.options[0]; reply(s, o.id); }
       if (n.pending && n.pending.id === 'pitch') { T.pitches++; if (i % 5 === 1) skipPitch(s); else sendPitch(s, { genre: 'Drama', scale: 'feature', months: 6, title: 'The Long Room' }); }
@@ -98,4 +98,34 @@ console.log('doors', JSON.stringify(doors));
     }
   }
   console.log('names', JSON.stringify(T));
+}
+
+// Bringing one of yours back from the sofa: the sequel or the season lands as a real offer.
+{
+  const { hostNight, sendPitch, revivable } = await import('../../src/systems/social/night.js');
+  const T = { offered: 0, yes: 0, seasons: 0, sequels: 0, none: 0 };
+  for (let i = 0; i < 80; i++) {
+    const s = JSON.parse(JSON.stringify(base)); ensureWorld(s);
+    s.fame = 70; s.respect = 40; s.cash = 300000; s.hasApartment = true; s.housing = 'house'; s.ap = 100; s._wentOut = 0; s._hosted = []; s.production = null; s.productions = []; s.offers = []; s.laterOffers = [];
+    s.people = [{ id: 'pd', name: 'Nadia Roy', role: 'Film Director', industryWeight: 85, relationship: 80 }];
+    s.filmography = [
+      { id: 'f1', title: 'Glass and Glass', rating: 84, verdict: 'smash', genre: 'Thriller', scale: 'feature', job: { title: 'Glass and Glass', role: 'Lead', type: 'Feature Film', genre: 'Thriller', salary: 600000, months: 5, part: 1, tier: 'lead', scale: 'feature', stability: 90, prestigeScore: 60 } },
+      { id: 'f2', title: 'Small Hours · season 2', rating: 78, genre: 'Drama', scale: 'prestige', job: { title: 'Small Hours · season 2', seriesTitle: 'Small Hours', role: 'Lead', type: 'Prestige Series', genre: 'Drama', salary: 900000, months: 4, episodes: 8, episodeFee: 112500, season: 2, tier: 'lead', scale: 'prestige', stability: 90, prestigeScore: 70 } },
+      { id: 'f3', title: 'Bad One', rating: 30, verdict: 'bomb', genre: 'Comedy', scale: 'indie', job: { title: 'Bad One', role: 'Lead', type: 'Feature Film', genre: 'Comedy', salary: 40000, months: 3, part: 1, tier: 'lead', scale: 'indie', stability: 80, prestigeScore: 40 } },
+    ];
+    const rv = revivable(s);
+    if (rv.length !== 2) throw new Error('revivable should list the two that were any good: ' + JSON.stringify(rv.map((x) => x.title)));
+    hostNight(s); const n = s.night; if (!n) throw new Error('no night ' + s.lastEvent);
+    const d = n.guests.find((x) => x.decides); if (!d) { T.none++; leaveNight(s); continue; }
+    goOver(s, d.id); startTalk(s); if (n.talk && n.talk.toast === 'ask') answerToast(s, true);
+    while (n.talk) { const o = n.talk.options.find((x) => d.taste.likes.includes(x.tone) && !x.ask) || n.talk.options[0]; reply(s, o.id); }
+    if (!(n.pending && n.pending.id === 'pitch')) { T.none++; leaveNight(s); continue; }
+    T.offered++;
+    sendPitch(s, { reviveId: i % 2 ? 'f1' : 'f2' });
+    nightAct(s, 'leave'); leaveNight(s);
+    for (let m = 0; m < 3; m++) { s.month += 1; if (s.month > 11) { s.month = 0; s.year += 1; } nightTick(s); }
+    const o = (s.offers || []).find((x) => x.via === 'pitch');
+    if (o) { T.yes++; if (o.kind === 'renewal') { T.seasons++; if (o.season !== 3 || o.seriesTitle !== 'Small Hours') throw new Error('season wrong ' + JSON.stringify(o)); } else { T.sequels++; if (o.part !== 2 || !/Glass and Glass II/.test(o.projectTitle)) throw new Error('sequel wrong ' + JSON.stringify(o)); } if (o.waitsForWrap) throw new Error('should not wait'); }
+  }
+  console.log('revive', JSON.stringify(T));
 }

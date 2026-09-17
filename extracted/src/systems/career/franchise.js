@@ -146,7 +146,21 @@ export function sequelMaterial(prevPrestige, part, arc = 'slides') {
 }
 // And nobody shoots them back to back. Two to five years, sometimes far longer, and the
 // gap is why a franchise is a thing that happens ACROSS a career rather than instead of one.
-export function sequelGap(part) { return part === 2 ? rint(18, 40) : rint(24, 54); }
+// A smash is fast-tracked; a picture that merely made money waits for a script. Maxi: "in
+// life, if it is a good project, they sometimes offer you the sequel — I have not seen it."
+// It was there, two to three years out, said once on the timeline; now it is months, and
+// on the calendar, and on the credit.
+export function sequelGap(part, verdict = null) {
+  if (verdict === 'smash') return part === 2 ? rint(8, 16) : rint(12, 22);
+  if (verdict === 'profitable') return part === 2 ? rint(12, 24) : rint(16, 30);
+  return part === 2 ? rint(18, 36) : rint(24, 48);
+}
+// What is on its way, for the calendar and the filmography.
+export function sequelDue(s, title) {
+  const root = String(title || '').replace(/\s+(II|III|IV|V|VI)$/, '');
+  const x = (s.laterOffers || []).find((y) => y.offer && String(y.offer.projectTitle || '').replace(/\s+(II|III|IV|V|VI)$/, '') === root);
+  return x ? { due: x.due, title: x.offer.projectTitle } : null;
+}
 
 // A show does not peak in its last season. It finds itself around two or three, holds, and
 // then everybody can feel it going — which is when the network cancels it. Rating 9.4 in
@@ -167,10 +181,10 @@ export function laterOffersTick(s) {
   if (!due.length) return s;
   s.laterOffers = (s.laterOffers || []).filter((x) => x.due > now);
   for (const x of due) {
-    const o = { ...x.offer, expires: now + rint(3, 6) };
+    const o = { ...x.offer, expires: now + rint(3, 6), via: 'studio', from: 'the studio' };
     (s.offers = s.offers || []).push(o);
-    addTimeline(s, `They are finally making "${o.projectTitle}", and they want you back.`);
-    s.lastEvent = `"${o.projectTitle}" is happening. After all this time, they called.`;
+    addTimeline(s, `They are making "${o.projectTitle}", and they want you back.`);
+    s.lastEvent = `"${o.projectTitle}" is happening. They called — the paper is in Messages.`;
   }
   return s;
 }
@@ -251,8 +265,9 @@ export function maybeContinue(s, credit, p, force = false) {
   const raw = obliged ? p.salary : Math.round(first * sequelRaise(nextPart));
   const salary = Math.min(raw, ceilingFor(s, mediumOf(p)));
   // Nobody shoots them back to back. It is announced, and then it is years.
-  const gap = sequelGap(nextPart);
-  addTimeline(s, `There is talk of a sequel to "${p.title}". These things take years.`);
+  const gap = sequelGap(nextPart, credit.verdict);
+  addTimeline(s, credit.verdict === 'smash' ? `"${p.title}" printed money. A sequel is in development — they want you, and it will not be years.` : `There is talk of a sequel to "${p.title}". These things take time.`);
+  s.lastEvent = credit.verdict === 'smash' ? `The studio is developing a sequel to "${p.title}". Expect the script in about ${gap} months.` : s.lastEvent;
   (s.laterOffers = s.laterOffers || []).push({
     due: (s.year || 0) * 12 + (s.month || 0) + gap,
     offer: {

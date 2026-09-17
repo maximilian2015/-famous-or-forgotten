@@ -14,6 +14,11 @@ import { toursFor } from '../../systems/career/tour.js';
 // there for it. Maxi: "the shoot one colour, the premiere gold; only the premiere."
 const MON = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
 const clean = (t) => String(t || '').replace('⭐ ', '');
+// Every project gets a colour of its own, so two shoots in one month cannot be confused —
+// Maxi: "each project a different colour, the soap one, the film another." Drawn from the
+// title, so a project keeps its colour from the first month to the premiere.
+const HUES = ['#a78bfa', '#5fd3c9', '#ff9f6e', '#ff8dc7', '#6fb3ff', '#c5e06a', '#f2c265', '#ff7d7d'];
+export const hueOf = (title) => { let h = 0; for (const ch of String(title || '')) h = (h * 31 + ch.charCodeAt(0)) >>> 0; return HUES[h % HUES.length]; };
 // A premiere has a day, not just a month. Drawn from the title so it never moves.
 const dayOf = (title) => { let h = 0; for (const ch of String(title || '')) h = (h * 31 + ch.charCodeAt(0)) >>> 0; return 5 + (h % 23); };
 
@@ -45,10 +50,10 @@ function itemsFor(g, i, abs) {
   for (const p of sets(g)) {
     const prepLeft = p.prepLeft || 0, shootLeft = p.monthsLeft || 0;
     if (i === 0 && ((g.illness && g.illness.freezes) || (g.burnout && g.burnout.rest && g.burnout.left > 0))) it('hold', '🧊', 'On hold', p.title, 'The set waits while you recover');
-    if (i < prepLeft) it('prep', '🥊', 'Preparation', p.title, `Month ${(p.prep || 1) - prepLeft + i + 1} of ${p.prep || 1} before the first day`, { bar: ((p.prep || 1) - prepLeft + i + 1) / (p.prep || 1) });
+    if (i < prepLeft) it('prep', '🥊', 'Preparation', p.title, `Month ${(p.prep || 1) - prepLeft + i + 1} of ${p.prep || 1} before the first day`, { bar: ((p.prep || 1) - prepLeft + i + 1) / (p.prep || 1), hue: hueOf(p.title), ref: { kind: 'set', id: p.id } });
     else if (i < prepLeft + shootLeft) {
       const n = (p.months || 0) - shootLeft + (i - prepLeft) + 1;
-      it('shoot', '🎥', 'Shooting', p.title, i === prepLeft + shootLeft - 1 ? `Month ${n} of ${p.months} — wraps` : `Month ${n} of ${p.months}${p.with ? ` · with ${p.with}` : ''}`, { bar: n / (p.months || 1) });
+      it('shoot', '🎥', p.episodes ? 'Shooting · series' : 'Shooting', p.title, i === prepLeft + shootLeft - 1 ? `Month ${n} of ${p.months} — wraps` : `Month ${n} of ${p.months}${p.with ? ` · with ${p.with}` : ''}`, { bar: n / (p.months || 1), hue: hueOf(p.title), ref: { kind: 'set', id: p.id } });
     }
   }
   // A signed paper waiting for a set: it starts the month one frees up.
@@ -56,14 +61,14 @@ function itemsFor(g, i, abs) {
     if (!o.signed) continue;
     const start = Math.max((o.startAt || now + 1) - now, canTakeSet(g, o).ok ? 0 : monthsUntilFree(g, o));
     const prep = o.prep || 0, months = o.months || 1;
-    if (i >= start && i < start + prep) it('prep', '🥊', 'Preparation', clean(o.projectTitle), `Month ${i - start + 1} of ${prep} before the first day`, { bar: (i - start + 1) / prep });
-    else if (i >= start + prep && i < start + prep + months) it('signed', '✍️', 'Signed', clean(o.projectTitle), `Shooting, month ${i - start - prep + 1} of ${months}`);
+    if (i >= start && i < start + prep) it('prep', '🥊', 'Preparation', clean(o.projectTitle), `Month ${i - start + 1} of ${prep} before the first day`, { bar: (i - start + 1) / prep, hue: hueOf(clean(o.projectTitle)), ref: { kind: 'offer', id: o.id } });
+    else if (i >= start + prep && i < start + prep + months) it('signed', '✍️', 'Signed', clean(o.projectTitle), `Shooting, month ${i - start - prep + 1} of ${months}`, { hue: hueOf(clean(o.projectTitle)), ref: { kind: 'offer', id: o.id } });
   }
   for (const r of (g.releases || [])) {
     // Post-production is not on here: you are not there for it. Maxi: "only the premiere."
     // The month before: the studio's two weeks of you, if it is that kind of picture.
     if (r.due === abs + 1 && toursFor(r)) it('tour', '🎤', 'Press tour', r.title, r.tour ? `Done · buzz ${r.tour.buzz}` : r.tourSkipped ? 'Skipped' : r.tourAsked ? 'The letter is in Email' : 'Next month');
-    if (r.due === abs) it('premiere', '🎬', 'Premiere', r.title, `${dayOf(r.title)} ${MON[abs % 12]} ${Math.floor(r.due / 12)}`, { big: true });
+    if (r.due === abs) it('premiere', '🎬', 'Premiere', r.title, `${dayOf(r.title)} ${MON[abs % 12]} ${Math.floor(r.due / 12)}`, { big: true, ref: { kind: 'release', id: r.id } });
   }
   for (const c of (g.filmography || [])) {
     if (!c.running) continue;
@@ -72,6 +77,8 @@ function itemsFor(g, i, abs) {
     else if (i === 0 && left === 0) it('cinemas', '🎟️', 'In cinemas', c.title, 'The run ends');
   }
   for (const x of (g.submissions || [])) if (x.due === abs) it('answer', '📞', 'They answer', x.title, 'About the part you read for');
+  // A sequel or a season on its way: the month the script is expected.
+  for (const x of (g.laterOffers || [])) if (x.due === abs && x.offer) it('answer', '📝', x.offer.kind === 'renewal' ? 'New season' : 'The sequel', clean(x.offer.projectTitle), 'The script is expected');
   for (const o of (g.offers || [])) {
     if (o.signed) continue;
     const k = o.contract;
@@ -93,15 +100,17 @@ function itemsFor(g, i, abs) {
 // Post-production and a run in cinemas are a card this month and a blue or green line after,
 // because a picture sits in post for half a year and six cards of it is a wall.
 const CARD = new Set(['shoot', 'prep', 'signed', 'premiere', 'off', 'hold']);
-function Item({ x }) {
-  const sk = SKIN[x.kind] || SKIN.answer;
+function Item({ x, onOpen, open }) {
+  const sk0 = SKIN[x.kind] || SKIN.answer;
+  // A shoot in its own colour; everything else in the kind's.
+  const sk = x.hue ? { bg: `linear-gradient(135deg, ${x.hue}44, rgba(255,255,255,.03))`, border: `1px ${x.kind === 'shoot' ? 'solid' : 'dashed'} ${x.hue}99`, bar: x.hue } : sk0;
   if ((!CARD.has(x.kind) && !x.card) || (x.kind === 'off' && x.icon === '⏳')) {
     const color = x.kind === 'off' ? INK.off : x.kind === 'askers' ? INK.premiere : x.kind === 'love' ? INK.love : x.kind === 'post' ? INK.post : x.kind === 'cinemas' ? INK.cinemas : theme.muted;
     return (<div style={{ display: 'flex', gap: 3, alignItems: 'baseline', marginTop: 3, fontSize: 8.5, lineHeight: 1.25, color, fontWeight: 700, minWidth: 0 }}>
       <span style={{ flex: 'none' }}>{x.icon}</span><span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{x.title}</span>
     </div>);
   }
-  return (<div style={{ marginTop: 4, borderRadius: 8, padding: '4px 6px 5px', border: sk.border, background: sk.bg, boxShadow: sk.shadow || 'inset 0 0 0 1px rgba(255,255,255,.035)' }}>
+  return (<div onClick={x.ref && onOpen ? () => onOpen(x.ref) : undefined} style={{ marginTop: 4, borderRadius: 8, padding: '4px 6px 5px', border: sk.border, background: sk.bg, boxShadow: open ? `0 0 0 2px ${x.hue || INK.premiere}` : (sk.shadow || 'inset 0 0 0 1px rgba(255,255,255,.035)'), cursor: x.ref ? 'pointer' : 'default' }}>
     <div style={{ display: 'flex', gap: 4, alignItems: 'center', marginBottom: 2, minWidth: 0 }}>
       <span style={{ fontSize: 10 }}>{x.icon}</span>
       <span style={{ fontSize: 7.5, fontWeight: 1000, letterSpacing: '.08em', textTransform: 'uppercase', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', color: x.kind === 'premiere' ? INK.premiere : theme.text }}>{x.label}</span>
@@ -135,8 +144,47 @@ const PILL = {
   hold: { text: 'hold', bg: 'rgba(148,163,184,.18)', border: 'rgba(148,163,184,.5)', color: '#e2e8f0' },
 };
 
+// What a project is, when you tap it on the calendar. Maxi: "when you press a project it
+// should show what the project is, how many months of shooting, your role — everything."
+function Detail({ g, target, onClose }) {
+  const ref = target;
+  const MONF = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
+  const now = (g.year || 0) * 12 + (g.month || 0);
+  const when = (abs) => `${MONF[((abs % 12) + 12) % 12]} ${Math.floor(abs / 12)}`;
+  const row = (k, v) => v == null || v === '' ? null : (<div key={k} style={{ display: 'flex', justifyContent: 'space-between', gap: 10, fontSize: 11.5, padding: '4px 0', borderBottom: `1px solid ${theme.line}` }}><span style={{ color: theme.muted }}>{k}</span><span style={{ fontWeight: 700, textAlign: 'right' }}>{v}</span></div>);
+  let title = '', hue = INK.premiere, rows = [], head = '';
+  if (ref.kind === 'set') {
+    const p = sets(g).find((x) => x.id === ref.id); if (!p) return null;
+    title = p.title; hue = hueOf(p.title); head = p.episodes ? `${p.type || 'Series'} · season ${p.season || 1}` : (p.type || 'Film');
+    const done = (p.months || 0) - (p.monthsLeft || 0);
+    const start = now - done, wrap = now + (p.prepLeft || 0) + (p.monthsLeft || 0) - 1;
+    rows = [row('Your part', `${p.role || 'Lead'}${p.genre ? ` · ${p.genre}` : ''}`), row('Shooting', `${p.months} month${p.months === 1 ? '' : 's'}${p.episodes ? ` · ${p.episodes} episodes` : ''}`), row('On set', `${when(start)} → ${when(wrap)}`),
+      p.prepLeft > 0 ? row('Preparation', `${p.prepLeft} month${p.prepLeft === 1 ? '' : 's'} to go`) : null,
+      row('Fee', `€${Math.round(p.salary || 0).toLocaleString()} · €${Math.round((p.salary || 0) / Math.max(1, p.months || 1)).toLocaleString()} a month`),
+      row('Director', ((p.crew || [])[0] || {}).name), p.with ? row('Opposite', p.with) : null,
+      row('Shoot quality', Math.round(p.meter || 0)), p.exclusive ? row('Contract', 'Exclusive — nothing else while you shoot') : null, p.backend ? row('Back end', `${p.backend}% past break-even`) : null];
+  } else if (ref.kind === 'offer') {
+    const o = (g.offers || []).find((x) => x.id === ref.id); if (!o) return null;
+    title = clean(o.projectTitle); hue = hueOf(title); head = `${o.type || 'Film'} · signed, waiting for a set`;
+    const start = Math.max((o.startAt || now + 1), now + 1);
+    rows = [row('Your part', `${o.role || 'Lead'}${o.genre ? ` · ${o.genre}` : ''}`), row('Shooting', `${o.months} month${o.months === 1 ? '' : 's'}`), row('Starts', `${when(start)} at the earliest`), o.prep ? row('Preparation', `${o.prep} month${o.prep === 1 ? '' : 's'} first`) : null,
+      row('Fee', `€${Math.round(o.salary || 0).toLocaleString()}`), o.exclusive ? row('Contract', 'Exclusive') : null];
+  } else if (ref.kind === 'release') {
+    const r = (g.releases || []).find((x) => x.id === ref.id); if (!r) return null;
+    title = r.title; head = `${r.type || 'Film'} · premiere`;
+    rows = [row('Opens', `${dayOf(r.title)} ${when(r.due)}`), row('Your part', `${r.role || 'Lead'}${r.genre ? ` · ${r.genre}` : ''}`), row('Size', r.scale), r.with ? row('Opposite', r.with) : null, r.director ? row('Director', r.director) : null, row('In post since', when(r.due - (r.wait || 0)))];
+  }
+  return (<div style={{ background: theme.panel, border: `1px solid ${hue}88`, borderLeft: `4px solid ${hue}`, borderRadius: 10, padding: '9px 11px', marginBottom: 8 }}>
+    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', gap: 8 }}>
+      <div><div style={{ fontSize: 13.5, fontWeight: 900 }}>{title}</div><div style={{ fontSize: 10.5, color: theme.muted }}>{head}</div></div>
+      <button onClick={onClose} style={{ background: 'transparent', border: 'none', color: theme.muted, fontSize: 16, cursor: 'pointer', lineHeight: 1 }}>✕</button>
+    </div>
+    <div style={{ marginTop: 6 }}>{rows}</div>
+  </div>);
+}
 export function Diary({ g }) {
   const [two, setTwo] = useState(false);
+  const [open, setOpen] = useState(null);
   const now = (g.year || 0) * 12 + (g.month || 0);
   const cells = [];
   for (let i = 0; i < (two ? 24 : 12); i++) { const abs = now + i; cells.push({ i, abs, yr: Math.floor(abs / 12), mo: abs % 12, items: itemsFor(g, i, abs) }); }
@@ -149,6 +197,7 @@ export function Diary({ g }) {
         <button onClick={() => setTwo(!two)} style={{ background: 'transparent', border: `1px solid ${theme.line}`, color: theme.muted, borderRadius: 999, padding: '2px 7px', fontSize: 9, fontWeight: 800, cursor: 'pointer', marginLeft: 3 }}>{two ? '12 months' : '24 months'}</button>
       </div>
     </div>
+    {open && <Detail g={g} target={open} onClose={() => setOpen(null)} />}
     <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 5 }}>
       {cells.map((c) => {
         const st = stateOf(c.items);
@@ -165,7 +214,7 @@ export function Diary({ g }) {
             <span style={pillStyle(st)}>{PILL[st].text}</span>
           </div>
           {c.mo === 0 && c.i !== 0 && <span style={{ display: 'block', margin: '4px 0 0', fontSize: 8, background: `linear-gradient(135deg,${theme.accent2},${theme.accent})`, color: '#fff', borderRadius: 6, padding: '3px 5px', fontWeight: 1000, letterSpacing: '.04em' }}>✨ NEW YEAR</span>}
-          {c.items.map((x, k) => <Item key={k} x={x} />)}
+          {c.items.map((x, k) => <Item key={k} x={x} onOpen={(r) => setOpen(open && open.kind === r.kind && open.id === r.id ? null : r)} open={open && x.ref && open.kind === x.ref.kind && open.id === x.ref.id} />)}
           {!c.items.length && <p style={{ color: theme.muted, fontSize: 9, margin: '6px 0 0', opacity: .6 }}>free</p>}
         </div>);
       })}

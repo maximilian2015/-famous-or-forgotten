@@ -6,7 +6,8 @@ export function EnergyBar({ g, accent, compact }) {
   const have = Math.max(0, Math.round(g.ap || 0)), max = Math.max(1, Math.round(g.apMaxEff || g.apMax || 100));
   const col = accent || theme.accent;
   const low = have < 15;
-  return (<div style={{ display: 'flex', alignItems: 'center', gap: 6, minWidth: compact ? 92 : 140 }}>
+  const why = (g.apWhy || []).join(' · ');
+  return (<div title={why ? `This month: ${why}` : 'A full month'} style={{ display: 'flex', alignItems: 'center', gap: 6, minWidth: compact ? 92 : 140 }}>
     {!compact && <span style={{ fontSize: 10, color: theme.muted }}>Energy</span>}
     <div style={{ flex: 1, height: 7, background: 'rgba(255,255,255,.1)', borderRadius: 4, overflow: 'hidden', position: 'relative' }}>
       <div style={{ width: Math.min(100, (have / ENERGY_CAP) * 100) + '%', height: '100%', background: low ? theme.bad : col, borderRadius: 4, transition: 'width .35s' }} />

@@ -19,6 +19,7 @@ import { agentCut, agentLine, fireAgent } from './systems/career/agent.js';
 import { COST, canAfford } from './engine/energy.js';
 import { EnergyBar } from './ui/components/EnergyBar.jsx';
 import { FAVOURS, FAVOUR_ORDER, canUse, costOf, asksLeft, ASKS_A_YEAR, canSmooth, smoothOver, canPushSequel, pushSequel, vouchFor, canOpenShelf, openShelf } from './systems/career/favours.js';
+import { sequelDue } from './systems/career/franchise.js';
 import { addPrestigeListing } from './systems/career/castings.js';
 import { TimingBar } from './ui/components/TimingBar.jsx';
 import { GridRisk } from './ui/components/GridRisk.jsx';
@@ -32,7 +33,9 @@ import { NightRoom } from './ui/components/NightRoom.jsx';
 import { Passport } from './ui/components/Passport.jsx';
 import { CARE, CARE_ORDER, careCost, trainerCost, apparentAge, SURGEONS, SURGERY_AGE, NEEDLE_MONTHS, face as faceOf, faceBill, frozenFace, healing, needlesLately, needleCost, surgeryCost, surgeryOdds, setCare, toggleTrainer, needle, surgery } from './systems/life/face.js';
 import { TourRoom } from './ui/components/TourRoom.jsx';
+import { OptionPaper } from './ui/components/OptionPaper.jsx';
 import { tierById, isInvited, attendEvent, askForInvite, sneakIntoEvent, answerDoor, stairsResult, inviteHelpers, helperOdds, hasAsked, expectedAt, energyFor, canHost, hostNight, isTonight, atOf, monthName } from './systems/social/events.js';
+import { invitees, inviteBand, hostFatigue } from './systems/social/night.js';
 import { HOUSING, HOUSING_ORDER, monthlyCosts, DIET, GYM_COST, setDiet, toggleGym } from './engine/economy.js';
 import { GENRES, hotGenre } from './systems/meta/news.js';
 import { genreXP, genreBonus, genreLabel } from './systems/career/genres.js';
@@ -110,6 +113,7 @@ export default function App() {
   if (g.night) return <NightRoom g={g} />;
   if (g.tour) return <TourRoom g={g} />;
   if (g.openContract) return <ContractRoom g={g} onClose={() => dispatch(closeContract)} />;
+  if (g.openOption && (g.inbox || []).some((m) => m.id === g.openOption)) return <OptionPaper g={g} onClose={() => dispatch((s) => { s.openOption = null; return s; })} />;
   if (showRoom) return <RoomScreen g={g} onBack={() => setShowRoom(false)} />;
   if (showPassport) return <Passport g={g} onClose={() => setShowPassport(false)} onRoom={() => { setShowPassport(false); setShowRoom(true); }} />;
   if (confirmEnd) return <EndLifeModal onCancel={() => setConfirmEnd(false)} onConfirm={() => { import('./systems/meta/legacy.js').then(m => { m.enshrine(g); newLife(); setConfirmEnd(false); setOpenPerson(null); setScreen('life'); }); }} />;
@@ -194,18 +198,23 @@ export default function App() {
               that actually cools, was not shown anywhere at all. Both are here now. */}
           <OnSetNow g={g} p={p} />
         </Card>))}
-        {inCareer(g) && (g.offers || []).length > 0 && (<div style={{ marginBottom: 14 }}><div style={{ fontSize: 11, fontWeight: 900, letterSpacing: '.09em', textTransform: 'uppercase', color: theme.muted, marginBottom: 8 }}>Offers</div>{g.offers.map((o) => (<Card key={o.id} style={{ marginBottom: 8 }}><div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline' }}><div style={{ fontSize: 14, fontWeight: 800 }}>{o.projectTitle}</div><div style={{ fontSize: 13, fontWeight: 900, color: theme.gold }}>€{o.salary.toLocaleString()}</div></div><div style={{ fontSize: 11.5, color: theme.muted, margin: '3px 0 4px' }}>{o.role} · {o.type} · {o.months} mo · prestige {o.prestigeScore}</div>
-          {/* An offer can collapse mid-shoot exactly like a casting, so it has to say how
-              solid the money is before you sign, not after. */}
-          <OfferBacking o={o} />
-          {o.note && <div style={{ fontSize: 11, color: theme.accent, margin: '0 0 6px', lineHeight: 1.45 }}>{o.note}</div>}
-          <div style={{ display: 'flex', gap: 7 }}><Button kind="pri" onClick={() => dispatch(acceptOffer, o.id)}>Accept</Button><Button kind="danger" onClick={() => dispatch(declineOffer, o.id)}>Pass</Button></div></Card>))}</div>)}
+        {/* One offer, one place. Home used to list every offer with its own Accept and Pass,
+            beside the same offer in Messages and the same letter in Email — Maxi: "offers
+            are duplicated everywhere?" Home points; Messages is where the paper is. */}
+        {inCareer(g) && (g.offers || []).length > 0 && (<button onClick={() => setScreen('phone')} style={{ width: '100%', textAlign: 'left', background: theme.panel, border: `1px solid ${theme.gold}55`, borderRadius: 12, padding: '10px 13px', marginBottom: 14, cursor: 'pointer', color: theme.text }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline' }}>
+            <div style={{ fontSize: 13, fontWeight: 800 }}>📨 {g.offers.length === 1 ? 'An offer' : `${g.offers.length} offers`} waiting in Messages</div>
+            <div style={{ fontSize: 11, color: theme.gold, fontWeight: 800 }}>open ›</div>
+          </div>
+          <div style={{ fontSize: 11.5, color: theme.muted, marginTop: 3 }}>{g.offers.slice(0, 3).map((o) => String(o.projectTitle || '').replace('⭐ ', '')).join(' · ')}{g.offers.length > 3 ? ' · …' : ''}</div>
+        </button>)}
         {inCareer(g) && <AaaTracker g={g} />}
         <LifeCard g={g} />
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
           <div style={{ fontSize: 11, fontWeight: 900, letterSpacing: '.09em', textTransform: 'uppercase', color: theme.muted }}>What now</div>
           <EnergyBar g={g} />
         </div>
+        {(g.apWhy || []).some((w) => /−/.test(w)) && <div style={{ fontSize: 10.5, color: theme.muted, textAlign: 'right', margin: '-4px 0 8px' }}>This month: {(g.apWhy || []).join(' · ')}</div>}
         <div style={{ display: 'grid', gap: 8, marginBottom: 14 }}>
           <DepressionCard g={g} />
           {availableActions(g).map((a) => { const noEnergy = !canAfford(g, COST.careerAction);
@@ -2098,7 +2107,9 @@ function CreditRow({ group, g }) {
         {c.with ? <span> · with <span style={{ color: c.withIcon ? theme.gold : theme.text, fontWeight: 700 }}>{c.with}</span></span> : null}
       </div>
       {/* The studio said no. A name in the room can push — favours.js. */}
-      {canPushSequel(g, c.id) && (() => { const fit = canUse(g, 'sequel');
+      {(() => { const sq = sequelDue(g, c.title); if (!sq) return null; const MONS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+        return (<div style={{ fontSize: 11, color: theme.gold, margin: '4px 0 2px', fontWeight: 700 }}>📝 "{String(sq.title).replace('⭐ ', '')}" is in development — the script is expected around {MONS[sq.due % 12]} {Math.floor(sq.due / 12)}. They want you back.</div>); })()}
+      {false && canPushSequel(g, c.id) && (() => { const fit = canUse(g, 'sequel');
         return (<button onClick={() => dispatch(pushSequel, c.id)} disabled={!fit.ok} title={fit.ok ? FAVOURS.sequel.blurb : fit.why}
           style={{ marginTop: 6, border: `1px solid ${fit.ok ? theme.gold + '66' : 'transparent'}`, borderRadius: 9, padding: '5px 9px', fontSize: 10.5, fontWeight: 800, cursor: fit.ok ? 'pointer' : 'default', background: fit.ok ? 'rgba(255,209,102,.10)' : 'rgba(120,110,150,.12)', color: fit.ok ? theme.gold : '#6b6390' }}>
           ◆ Push for a sequel · −{costOf(g, 'sequel')} standing
@@ -2311,7 +2322,12 @@ function EventsScreen({ g }) {
       <div style={{ fontSize: 14, fontWeight: 800 }}>Your own night</div>
       {host.ok && <div style={{ fontSize: 11, color: theme.gold, fontWeight: 800 }}>€{host.cost.toLocaleString()} · {energyFor('yours')} energy</div>}
     </div>
-    <div style={{ fontSize: 11.5, color: theme.muted, margin: '3px 0 8px', lineHeight: 1.5 }}>{host.ok ? 'The people in your phone who decide things, the actors you know, two names who come because it is your house — and on your own sofa you can say what you want to make.' : host.why}</div>
+    <div style={{ fontSize: 11.5, color: theme.muted, margin: '3px 0 8px', lineHeight: 1.5 }}>{host.ok ? 'The people in your phone who decide things, the actors you know, maybe a name who comes because it is your house — and on your own sofa you can say what you want to make. Nobody has to come, and nobody has to say yes.' : host.why}</div>
+    {host.ok && (() => { const inv = invitees(g); const f = hostFatigue(g);
+      return (<div style={{ fontSize: 11, color: theme.muted, marginBottom: 8, lineHeight: 1.5 }}>
+        {inv.length ? (<><span style={{ fontWeight: 800, color: theme.text }}>Who might come:</span> {inv.map(({ p, odds }, i) => (<span key={p.id}>{i ? ' · ' : ''}{p.name} <span style={{ color: inviteBand(odds) === 'likely' ? theme.good : inviteBand(odds) === 'maybe' ? theme.gold : theme.bad }}>{inviteBand(odds)}</span></span>))}</>) : 'Nobody in your phone decides anything yet. It would be a room of strangers and a crowd.'}
+        {f < 1 && <div style={{ color: theme.bad, marginTop: 3 }}>You threw one not long ago. Fewer will come, and the trades count.</div>}
+      </div>); })()}
     {host.ok && <button onClick={() => dispatch(hostNight)} disabled={(g.cash || 0) < host.cost || !canAfford(g, energyFor('yours'))} style={{ ...btn('pri'), width: '100%' }}>Throw it</button>}
   </Card>) : null);
   if (!events.length) return (<div><HostCard /><div style={{ fontSize: 12.5, color: theme.muted, textAlign: 'center', padding: 24, lineHeight: 1.6 }}>🎉 Nothing on the calendar right now.<br /><br />Parties and premieres come and go — live a month and check back.</div></div>);

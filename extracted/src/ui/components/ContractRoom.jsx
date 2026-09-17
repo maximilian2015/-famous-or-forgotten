@@ -11,11 +11,11 @@ import { Diary } from './Diary.jsx';
 // otherwise stays dark. Every clause has a tick, or a "discuss" that opens the asks with
 // their odds; you sign, or you send it back and wait a month for the answer. Maxi: "it
 // should look like a contract."
-const P = { paper: '#fff7e7', ink: '#302d26', accent: '#8b432f', muted: '#786d5d', line: '#cabc9e', bg: '#e8dbc3', green: '#435848', shade: '#f3ead6' };
+export const P = { paper: '#fff7e7', ink: '#302d26', accent: '#8b432f', muted: '#786d5d', line: '#cabc9e', bg: '#e8dbc3', green: '#435848', shade: '#f3ead6' };
 
-function studioFor(o) { let h = 0; for (const ch of String(o.id || o.projectTitle || '')) h = (h * 31 + ch.charCodeAt(0)) >>> 0; return STUDIOS[h % STUDIOS.length]; }
+export function studioFor(o) { let h = 0; for (const ch of String(o.id || o.projectTitle || '')) h = (h * 31 + ch.charCodeAt(0)) >>> 0; return STUDIOS[h % STUDIOS.length]; }
 
-function Stamp({ studio, live }) {
+export function Stamp({ studio, live }) {
   const [a, b] = studio.split(' ');
   return (<svg viewBox="0 0 90 90" width="82" height="82" style={{ opacity: live ? 1 : .28, transform: 'rotate(-12deg)' }}>
     <circle cx="45" cy="45" r="40" fill="none" stroke={P.accent} strokeWidth="2" />
@@ -25,7 +25,7 @@ function Stamp({ studio, live }) {
     <path d="M35 27h20M39 63h12" stroke={P.accent} strokeWidth=".9" />
   </svg>);
 }
-function Signature({ name, live }) {
+export function Signature({ name, live }) {
   // A scrawl that reads as a signature without being anybody's — the same stroke every time,
   // so it is recognisably yours after the first contract.
   return (<svg viewBox="0 0 170 40" width="150" height="36" style={{ opacity: live ? 1 : .18 }}>

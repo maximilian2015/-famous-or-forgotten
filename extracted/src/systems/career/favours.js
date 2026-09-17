@@ -31,7 +31,10 @@ export const FAVOURS = {
   shelf: { id: 'shelf', label: 'A word with the studio', cost: 10, min: -30,
     blurb: 'The prestige shelf is closed to you. Ten points of what is left of your name opens it once.' },
 };
-export const FAVOUR_ORDER = ['lead', 'sequel', 'smooth', 'vouch', 'shelf'];
+// 'sequel' is no longer on the list: a sequel is something the studio offers you when the
+// picture made money, or something you pitch on your own sofa — Maxi: "the player cannot
+// push for a sequel from the filmography." The function stays for old saves and tests.
+export const FAVOUR_ORDER = ['lead', 'smooth', 'vouch', 'shelf'];
 
 // Limited, and dearer every time. Maxi: "the points have to be limited and hard to earn —
 // think about how Hollywood Animal spends popularity." A name can be leaned on three
