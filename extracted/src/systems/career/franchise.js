@@ -213,6 +213,9 @@ function mediumOf(p) {
 // Called at the end of every production. Returns an offer to push, or null.
 // `force` — a name in the room pushed for it (favours.js): the roll is skipped, the rest is the same.
 export function maybeContinue(s, credit, p, force = false) {
+  // A guest spot is somebody else's show. Two episodes of a crime series used to come back as
+  // YOUR season two, and then three, and then eight — 453 of them in 120 lives.
+  if (p.scale === 'episode') return null;
   const isSeries = !!p.episodes || !!p.season;
   const season = p.season || 1;
   const part = p.part || 1;

@@ -648,7 +648,7 @@ export function revivable(s) {
   const shelf = s.filmography || [];
   const out = [];
   for (const c of shelf) {
-    if (c.running || !c.job || (c.rating || 0) < 62) continue;
+    if (c.running || !c.job || (c.rating || 0) < 62 || c.job.scale === 'episode') continue;   // a guest spot is not yours to bring back
     const isSeries = !!(c.job.episodes || c.job.season);
     const root = isSeries ? seriesRoot(c.job.seriesTitle || c.title) : String(c.title).replace(/\s+(II|III|IV|V|VI)$/, '');
     // Only the latest of its line, and only if nothing of it is already on the way.
