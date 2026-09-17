@@ -65,7 +65,7 @@ function play(s, id, i) { s.pendingArc = { id, ...arc(id).build(s) }; return AR.
 // ── a night out costs the energy the button says ──
 {
   const s = actor({ ap: 0, fame: 40 });
-  s.events = [{ id: 'ev1', tier: 'mixer', invited: true, monthsLeft: 2, title: 'A mixer' }];
+  s.events = [{ id: 'ev1', tier: 'mixer', invited: true, monthsLeft: 1, title: 'A mixer' }];   // tonight — a party is on a date now
   EV.attendEvent(s, 'ev1');
   ok('at zero energy you cannot go', s.events.length === 1 && /No energy/.test(s.lastEvent || ''), s.lastEvent);
   s.ap = 100; EV.attendEvent(s, 'ev1');
