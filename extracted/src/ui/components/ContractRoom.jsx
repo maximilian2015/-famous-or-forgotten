@@ -46,6 +46,8 @@ export function ContractRoom({ g, onClose }) {
   const title = String(o.projectTitle || '').replace('⭐ ', '');
   const studio = o.studio || studioFor(o);
   const talks = openTalks(o);
+  // A schedule they have not answered: no set for it, and no signature until they say how.
+  const must = k.clauses.some((c) => c.must && c.result !== 'agreed' && c.stance !== 'talk');
   const withThem = !!k.sent;
   const signed = !!o.signed;
   const now = (g.year || 0) * 12 + (g.month || 0);
@@ -130,9 +132,9 @@ export function ContractRoom({ g, onClose }) {
         {withThem && <div style={{ fontSize: 12, color: P.muted, textAlign: 'center', lineHeight: 1.5, padding: '4px 6px' }}>It is with them. They answer next month; the offer does not expire while they read it.</div>}
         {signed && <div style={{ fontSize: 12, color: P.green, textAlign: 'center', lineHeight: 1.5, padding: '4px 6px', fontWeight: 700 }}>{o.waitsForWrap ? 'Signed. It starts the month a set frees up.' : 'Signed.'}</div>}
         {!withThem && !signed && <>
-          <button onClick={() => { dispatch(signContract, o.id); if (!talks.length) onClose(); }} disabled={talks.length > 0}
-            style={{ border: 'none', borderRadius: 4, padding: '13px', fontSize: 14, fontWeight: 800, cursor: talks.length ? 'default' : 'pointer', background: talks.length ? '#c9b89a' : P.accent, color: P.paper }}>
-            {talks.length ? `Sign — first settle ${talks.length} open point${talks.length === 1 ? '' : 's'}` : 'Sign it'}
+          <button onClick={() => { dispatch(signContract, o.id); if (!talks.length && !must) onClose(); }} disabled={talks.length > 0 || must}
+            style={{ border: 'none', borderRadius: 4, padding: '13px', fontSize: 14, fontWeight: 800, cursor: talks.length || must ? 'default' : 'pointer', background: talks.length || must ? '#c9b89a' : P.accent, color: P.paper }}>
+            {must ? 'Sign — first ask about the dates' : talks.length ? `Sign — first settle ${talks.length} open point${talks.length === 1 ? '' : 's'}` : 'Sign it'}
           </button>
           {talks.length > 0 && <button onClick={() => { dispatch(sendContract, o.id); }} style={{ border: 'none', borderRadius: 4, padding: '13px', fontSize: 14, fontWeight: 800, cursor: 'pointer', background: P.accent, color: P.paper }}>
             Send it back with {talks.length} point{talks.length === 1 ? '' : 's'}{k.round >= 2 ? ' — they may walk' : ''}

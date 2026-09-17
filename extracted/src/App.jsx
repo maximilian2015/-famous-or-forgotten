@@ -28,6 +28,7 @@ import { Diary } from './ui/components/Diary.jsx';
 import { FamilyTree } from './ui/components/FamilyTree.jsx';
 import { ContractRoom } from './ui/components/ContractRoom.jsx';
 import { NightRoom } from './ui/components/NightRoom.jsx';
+import { CARE, CARE_ORDER, TRAINER_COST, SURGEONS, SURGERY_AGE, NEEDLE_MONTHS, face as faceOf, faceBill, frozenFace, healing, needlesLately, needleCost, surgeryCost, surgeryOdds, setCare, toggleTrainer, needle, surgery } from './systems/life/face.js';
 import { TourRoom } from './ui/components/TourRoom.jsx';
 import { tierById, isInvited, attendEvent, askForInvite, sneakIntoEvent, inviteHelpers, helperOdds, hasAsked } from './systems/social/events.js';
 import { HOUSING, HOUSING_ORDER, monthlyCosts, DIET, GYM_COST, setDiet, toggleGym } from './engine/economy.js';
@@ -1375,7 +1376,7 @@ const STYLE_TABS = [['home', 'Home'], ['staff', 'People'], ['things', 'Things'],
 function StyleScreen({ g }) {
   const [tab, setTab] = useState('home');
   const tier = fameTier(g.fame);
-  const bill = staffBill(g) + upkeepBill(g);
+  const bill = staffBill(g) + upkeepBill(g) + faceBill(g);
   return (<div>
     <div style={{ display: 'flex', gap: 6, marginBottom: 12 }}>
       {STYLE_TABS.map(([id, label]) => (
@@ -1521,7 +1522,59 @@ function BodyTab({ g }) {
       <div style={{ fontSize: 11.5, color: theme.muted, margin: '3px 0 8px' }}>Slowly raises your looks and keeps the body in shape. Casting rooms notice.</div>
       {g.hasApartment && <Button onClick={() => dispatch(toggleGym)}>{g.gym ? 'Cancel membership' : 'Join the gym'}</Button>}
     </Card>
+    <FaceTab g={g} />
     <div style={{ fontSize: 11.5, color: theme.muted, textAlign: 'center', padding: '14px 10px', lineHeight: 1.6 }}>These are the bills that come every month whether you are working or not. Clothes and haircuts are in the Shop app; what you already own is in your room.</div>
+  </div>);
+}
+// The face: what it is, what is keeping it, and what money can do to it. See life/face.js.
+function FaceTab({ g }) {
+  const f = faceOf(g); const age = g.ageY || 0; const young = age < 27;
+  const lately = needlesLately(g); const frozen = frozenFace(g); const heal = healing(g);
+  const line = { fontSize: 11.5, color: theme.muted, marginTop: 3, lineHeight: 1.5 };
+  return (<div>
+    <div style={{ fontSize: 11, fontWeight: 900, letterSpacing: '.09em', textTransform: 'uppercase', color: theme.muted, margin: '16px 0 8px' }}>The face · looks {Math.round(g.looks || 0)}</div>
+    <div style={{ fontSize: 11.5, color: young ? theme.muted : theme.gold, lineHeight: 1.55, marginBottom: 10, padding: '0 2px' }}>
+      {young ? `At ${age} the face is what it is. From twenty-seven it starts to go — slowly in the thirties, faster after forty-five — and this is where money slows it.`
+        : `At ${age} the face is going: ${age < 35 ? 'slowly' : age < 45 ? 'a little every year' : age < 55 ? 'a few points a year' : 'fast'}. ${f.care === 'none' ? 'Nothing is slowing it.' : `${CARE[f.care].label} is slowing it.`}`}
+      {frozen && <span style={{ color: theme.bad }}> The face does not move right now — casting rooms can see it.</span>}
+      {heal && <span style={{ color: theme.bad }}> Healing: {f.recovery} more month{f.recovery === 1 ? '' : 's'} before anyone films it.</span>}
+    </div>
+    <div style={{ display: 'grid', gap: 8 }}>
+      {CARE_ORDER.map((k) => { const c = CARE[k]; const active = f.care === k;
+        return (<div key={k} style={{ background: active ? `${theme.accent}22` : theme.panel, border: `1px solid ${active ? theme.accent : theme.line}`, borderRadius: 12, padding: '11px 13px' }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline' }}>
+            <div style={{ fontSize: 13.5, fontWeight: 800 }}>{c.label}{active ? ' · now' : ''}</div>
+            <div style={{ fontSize: 12, fontWeight: 800, color: theme.gold }}>{c.cost ? `€${c.cost.toLocaleString()}/mo` : 'free'}</div>
+          </div>
+          <div style={line}>{c.blurb}{young && c.cost ? ' Wasted before twenty-seven.' : ''}</div>
+          {!active && <Button onClick={() => dispatch(setCare, k)} style={{ marginTop: 8 }}>{k === 'none' ? 'Stop it all' : 'Start'}</Button>}
+        </div>); })}
+      <Card>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline' }}>
+          <div style={{ fontSize: 13.5, fontWeight: 800 }}>A trainer{f.trainer ? ' · every morning' : ''}</div>
+          <div style={{ fontSize: 12, fontWeight: 800, color: theme.gold }}>€{TRAINER_COST.toLocaleString()}/mo</div>
+        </div>
+        <div style={line}>Six a.m., every day. Faster than the gym and further — to 86 — and the body that comes with it.</div>
+        <Button onClick={() => dispatch(toggleTrainer)} style={{ marginTop: 8 }}>{f.trainer ? 'Let them go' : 'Hire one'}</Button>
+      </Card>
+      <Card>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline' }}>
+          <div style={{ fontSize: 13.5, fontWeight: 800 }}>The needle</div>
+          <div style={{ fontSize: 12, fontWeight: 800, color: theme.gold }}>€{needleCost(g).toLocaleString()}</div>
+        </div>
+        <div style={line}>A lunch hour. Two to four points, for about {NEEDLE_MONTHS} months, then they go. {lately ? `${lately} in the last two years. ` : ''}Too often and the face stops moving, and a casting room sees that from the door.</div>
+        <Button onClick={() => dispatch(needle)} disabled={(g.cash || 0) < needleCost(g) || age < 22} style={{ marginTop: 8 }}>{age < 22 ? 'Not at ' + age : 'Book it'}</Button>
+      </Card>
+      {Object.entries(SURGEONS).map(([k, sg]) => { const o = surgeryOdds(g, k); const cost = surgeryCost(g, k); const off = (g.cash || 0) < cost || age < SURGERY_AGE || heal || !!g.production;
+        return (<Card key={k}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline' }}>
+            <div style={{ fontSize: 13.5, fontWeight: 800 }}>{sg.label}</div>
+            <div style={{ fontSize: 12, fontWeight: 800, color: theme.gold }}>€{cost.toLocaleString()}</div>
+          </div>
+          <div style={line}>{sg.blurb} Two months healing, no set. <span style={{ color: theme.good }}>{o.great}% a new face</span> · {o.fine}% a little better · <span style={{ color: theme.bad }}>{o.botched}% it goes wrong, and everybody can tell</span>.{f.ops.length >= 2 ? ' A third face is a face people talk about.' : ''}</div>
+          <Button onClick={() => dispatch(surgery, k)} disabled={off} style={{ marginTop: 8 }}>{age < SURGERY_AGE ? `Not before ${SURGERY_AGE}` : g.production ? 'Not on a set' : heal ? 'Healing' : 'Go under'}</Button>
+        </Card>); })}
+    </div>
   </div>);
 }
 function LegacyScreen({ g }) {

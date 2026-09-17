@@ -10,6 +10,7 @@ import { GENRES } from '../meta/news.js';
 import { addGenreXP, genreBonus } from './genres.js';
 import { startProduction } from './production.js';
 import { canTakeSet } from '../../engine/sets.js';
+import { facePenalty } from '../life/face.js';
 import { quoteFor, episodeRate, setFame, isForgotten } from '../meta/status.js';
 import { reachFromStanding, prestigeShut, insuranceShut, roomHasHeard, boardThinned } from '../meta/standing.js';
 import { rollStability, feeFactor, riskPrestige } from './stability.js';
@@ -251,7 +252,8 @@ export function addPrestigeListing(s) {
 export function castingChance(s, c) {
   const skill = s.dream === 'singer' ? s.singing : s.acting;
   // Scandal was purely cosmetic before — it accumulated and did nothing.
-  const base = clamp(15 + skill * 0.5 + s.charisma * 0.2 + s.looks * 0.15 + s.luck * 0.1 - (s.scandal || 0) * 0.3);
+  // And a face that does not move is a face they do not cast — see life/face.js.
+  const base = clamp(15 + skill * 0.5 + s.charisma * 0.2 + s.looks * 0.15 + s.luck * 0.1 - (s.scandal || 0) * 0.3 - facePenalty(s));
   // And at the edge of a part's age you are the second choice in the room. And nobody
   // wants to bond an actor who has walked off three sets — see systems/life/strain.js.
   const fit = c ? ageFit(s, c.role) : 1;
@@ -341,7 +343,7 @@ function answerSubmission(s, sub) {
     // Messages for life, and two of them shut the agent's pipeline for good. One extra,
     // because offersTick runs later in the same tick and takes the first month straight off.
     deadline: rint(2, 4) + 1,
-    waitsForWrap: !canTakeSet(s, c).ok,   // no set free for it: the offer waits for one
+    waitsForWrap: false,   // the contract decides how it waits, and whether they will — see contract.js
   });
   s.lastEvent = `You got "${c.title}". They want you.`;
   addTimeline(s, `Booked ${c.title}.`);

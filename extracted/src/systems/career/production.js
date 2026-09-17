@@ -173,6 +173,15 @@ export function startProduction(s, offer) {
   addTimeline(s, `Production began: ${p.title}.`);
   return s;
 }
+// Walking off a set for a bigger picture. They recast in a week, the money stops where it
+// stopped, and the business hears — the same price depression.js charges for walking off.
+export function walkOffSet(s, setId, forTitle) {
+  const p = sets(s).find((x) => x.id === setId); if (!p) return s;
+  removeSet(s, p);
+  setRespect(s, (s.respect || 0) - ((p.episodes || 0) > 0 ? 7 : 9));
+  addTimeline(s, `Walked off "${p.title}"${forTitle ? ` for "${forTitle}"` : ''}. They recast within the week. Everybody heard.`, true);
+  return s;
+}
 // A month's rehearsal is worth a lot the first time and less each time after. Six goes at
 // fifteen energy each took any shoot to a hundred inside a month — Maxi: "that's easy,
 // don't you find?" The third pass finds a little; after that you are running it into the ground.

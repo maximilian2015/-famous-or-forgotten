@@ -14,6 +14,7 @@ import { addTimeline } from '../../engine/timeline.js';
 import { patienceFor } from '../career/stability.js';
 import { depressionTick, creditTherapy, therapyProgress, THERAPY_FOR_A_SLOT, inRehab } from './depression.js';
 import { level as drinkLevel } from './drink.js';
+import { healing } from './face.js';
 
 const clamp = (v, a = 0, b = 100) => Math.max(a, Math.min(b, v));
 
@@ -113,6 +114,7 @@ export function canWork(s) {
   if (burnedOut(s)) {
     return { ok: false, why: `You are signed off. ${s.burnout.left} more month${s.burnout.left === 1 ? '' : 's'} before anyone will insure you on a set.` };
   }
+  if (healing(s)) return { ok: false, why: `You are healing. ${s.face.recovery} more month${s.face.recovery === 1 ? '' : 's'} before anyone films that face.` };
   return { ok: true, why: '' };
 }
 

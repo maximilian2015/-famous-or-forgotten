@@ -15,6 +15,11 @@ import { fameTier } from '../meta/status.js';
 import { negotiationFor, reachOf } from './negotiate.js';
 import { acceptOffer, declineOffer } from './offers.js';
 import { canTakeSet, monthsUntilFree, sets } from '../../engine/sets.js';
+import { walkOffSet } from './production.js';
+// How long a production will hold a part for somebody who is on another set. A month or
+// two, usually; half a year, rarely; and a nobody asking is a nobody asking.
+const SCALE_RANK = { oneoff: 0, small: 1, episode: 1, indie: 2, recurring: 3, prestige: 4, feature: 4, blockbuster: 5 };
+function holdOdds(wait) { return wait <= 2 ? 70 : wait <= 4 ? 45 : wait <= 6 ? 25 : 12; }
 
 const MON = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
 const money = (n) => `€${Math.round(n).toLocaleString()}`;
@@ -69,6 +74,20 @@ export function draftContract(s, o) {
     text: `${o.months || 1} month${(o.months || 1) === 1 ? '' : 's'} of shooting, from ${MON[start % 12]} ${Math.floor(start / 12)}`
       + (s.production && big ? (fit.ok ? ` — alongside "${s.production.title}"` : ` — after "${(fit.until || s.production).title}" wraps; ${fit.respect ? `a set alongside needs respect ${fit.respect}` : fit.why.replace(/\.$/, '')}`) : ''),
     options: s.production && big && fit.ok ? [{ id: 'afterWrap', label: `Start after "${s.production.title}" wraps instead (${(s.production.prepLeft || 0) + (s.production.monthsLeft || 0)} mo)`, value: { months: o.months || 1, start: now + 1 + (s.production.prepLeft || 0) + (s.production.monthsLeft || 0) }, odds: 70 }] : [] };
+  // No set for it now. They will not simply wait — Maxi: "without the respect you cannot
+  // take it and cannot ask to move it, so you choose very carefully; though when you are
+  // starting you take everything." So the choice is the paper: ask them to hold it (a
+  // roll on how long; they can say no, and then it is gone), or walk off what you are on
+  // for it, if it is the bigger picture — and everybody hears you did.
+  if (s.production && big && !fit.ok) {
+    const until = fit.until || s.production;
+    sched.text = `They need you from ${MON[(now + 1) % 12]} ${Math.floor((now + 1) / 12)}. You are on "${until.title}" until ${MON[(now + wait) % 12]}${fit.respect ? ` — a set alongside needs respect ${fit.respect}` : ''}. It does not start until they say how.`;
+    sched.value = { months: o.months || 1, start: now + 1 };
+    sched.must = true;
+    sched.options = [{ id: 'hold', label: `Ask them to hold the part until you wrap (${wait} mo)`, value: { months: o.months || 1, start: now + 1 + wait }, odds: holdOdds(wait), walkOnNo: true }];
+    const bigger = (SCALE_RANK[o.scale] || 0) > (SCALE_RANK[until.scale] || 0);
+    if (bigger) sched.options.push({ id: 'walk', label: `Walk off "${until.title}" for this — they recast in a week, and everybody hears`, value: { months: o.months || 1, start: now + 1, walkOff: until.id }, odds: 100, sure: true });
+  }
   clauses.push(sched);
   if (big) {
     // Exclusivity. The dilemma in one line.
@@ -137,14 +156,27 @@ export function contractsTick(s) {
       if (c.stance !== 'talk') continue;
       const op = c.options.find((x) => x.id === c.ask); if (!op) { c.stance = 'ok'; continue; }
       const roll = Math.random() * 100;
-      const odds = op.odds * lev;
+      // Walking off your own set needs nobody's permission; holding a part is about their
+      // schedule more than your name, so a nobody is not quite as hopeless there.
+      const odds = op.sure ? 100 : op.walkOnNo ? op.odds * Math.max(0.6, lev) : op.odds * lev;
       if (roll < odds) { c.value = op.value; c.text = textFor(c, o); c.result = 'agreed'; c.stance = 'ok'; c.ask = null; lines.push(`${c.label} — agreed`); }
       else if (c.id === 'fee' && roll < odds * 1.8) {
         // Halfway, which is what "no" usually means about money.
         c.value = Math.round((c.value + op.value) / 2); c.text = textFor(c, o); c.result = 'counter'; c.stance = 'ok'; c.ask = null; lines.push(`${c.label} — they came halfway: ${money(c.value)}`);
-      } else { c.result = 'refused'; c.stance = 'ok'; c.ask = null; refused++; lines.push(`${c.label} — no`); }
+      } else {
+        c.result = 'refused'; c.stance = 'ok'; c.ask = null; refused++; lines.push(`${c.label} — no`);
+        if (op.walkOnNo) { k.walked = true; lines[lines.length - 1] = `${c.label} — they could not hold it`; }
+      }
     }
     const title = String(o.projectTitle || 'it').replace('⭐ ', '');
+    // A part they could not hold went to somebody who was free.
+    if (k.walked) {
+      s.offers = s.offers.filter((x) => x.id !== o.id);
+      s.inbox = (s.inbox || []).filter((m) => m.offerId !== o.id);
+      addTimeline(s, `${title}: they could not hold the part. It went to somebody who was free.`, true);
+      (s.moments = s.moments || []).push({ id: 'contract', kind: 'bad', title, lines, body: 'They needed somebody in the chair on the first day, and you were on another set. The part went to somebody who was free.', walked: true });
+      continue;
+    }
     // Push three times and they may decide you are more trouble than you are worth.
     if (refused && k.round >= 3 && chance(35)) {
       k.walked = true;
@@ -175,6 +207,9 @@ export function signContract(s, id) {
   const o = (s.offers || []).find((x) => x.id === id); if (!o) return s;
   const k = draftContract(s, o);
   if (k.sent) { s.lastEvent = 'It is with them. Wait for the answer.'; return s; }
+  const sched = k.clauses.find((c) => c.id === 'schedule');
+  if (sched && sched.must && sched.result !== 'agreed') { s.lastEvent = 'They need to know when you can start. Ask them to hold it, or walk off what you are on — and send it.'; return s; }
+  if (sched && sched.value && sched.value.walkOff) walkOffSet(s, sched.value.walkOff, String(o.projectTitle || '').replace('⭐ ', ''));
   // What was agreed goes onto the offer, and then it is an offer accepted like any other.
   for (const c of k.clauses) {
     if (c.id === 'fee') { if (c.perEpisode) { o.episodeFee = c.value; o.salary = c.value * c.episodes; } else o.salary = c.value; }
