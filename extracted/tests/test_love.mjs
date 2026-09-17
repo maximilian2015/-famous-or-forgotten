@@ -5,6 +5,9 @@ const { advanceMonth } = await import(P + 'engine/time.js');
 const L = await import(P + 'systems/life/dating.js');
 const { startProduction } = await import(P + 'systems/career/production.js');
 
+// The newest moment: on screen, or last in the queue behind one still up. Moments queue now.
+const lastMoment = (s) => ((s.moments || []).length ? s.moments[s.moments.length - 1] : s.bigMoment);
+
 let fails = 0;
 const ok = (n, c, e = '') => { if (!c) { fails++; console.log('FAIL  ' + n + (e ? ' :: ' + e : '')); } else console.log('ok    ' + n); };
 
@@ -174,7 +177,7 @@ function marry(s, style = 'registry', prenup = false) {
   ok('and they actually take it', s.cash === purse - take, '€' + s.cash.toLocaleString());
   ok('they become an ex, not a ghost', (s.family || []).some((p) => p.relation === 'Ex-spouse'));
   ok('and there is no spouse any more', !L.spouseOf(s));
-  ok('and the game stops to say so', (s.bigMoment || {}).id === 'divorce', (s.bigMoment || {}).title);
+  ok('and the game stops to say so', (lastMoment(s) || {}).id === 'divorce', (lastMoment(s) || {}).title);
 }
 {
   const s = life({ cash: 4000000 });

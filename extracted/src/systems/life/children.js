@@ -8,7 +8,7 @@ import { count } from '../../engine/text.js';
 // you play next, and everything you did to them by then is what they start with.
 import { rint, chance, pick } from '../../engine/rng.js';
 import { onCooldown, markUsed } from '../../engine/cooldown.js';
-import { addTimeline } from '../../engine/timeline.js';
+import { addTimeline, showMoment } from '../../engine/timeline.js';
 import { canRaiseChild, HOUSING } from '../../engine/economy.js';
 import { applyBond } from './bonds.js';
 import { dependent } from './drink.js';
@@ -78,8 +78,8 @@ export function tryForBaby(s) {
     s.mental = clamp((s.mental || 50) + 8);
     s.lastEvent = `You had a baby. Welcome, ${kid.name.split(' ')[0]}.`;
     addTimeline(s, `Welcomed a new baby: ${kid.name}.`);
-    s.bigMoment = { id: 'baby', kind: 'good', title: kid.name.split(' ')[0],
-      body: 'You have a child. Everything you do from here happens in front of somebody who is watching to find out how it is done.' };
+    showMoment(s, { id: 'baby', kind: 'good', title: kid.name.split(' ')[0],
+      body: 'You have a child. Everything you do from here happens in front of somebody who is watching to find out how it is done.' });
   } else s.lastEvent = 'Not this time. You keep trying.';
   return s;
 }
@@ -121,9 +121,9 @@ export function adoptionTick(s) {
     s.mental = clamp((s.mental || 50) - 10);
     s.lastEvent = 'The application came back declined. There is a letter, and it is very polite.';
     addTimeline(s, 'The adoption was declined.', true);
-    s.bigMoment = { id: 'adoptno', kind: 'bad', title: 'Declined',
+    showMoment(s, { id: 'adoptno', kind: 'bad', title: 'Declined',
       body: 'Somebody in an office read everything about your life and decided against it. They do not have to '
-        + 'tell you which part it was, and the letter does not.' };
+        + 'tell you which part it was, and the letter does not.' });
     return s;
   }
   const age = rint(2, 9);
@@ -134,10 +134,10 @@ export function adoptionTick(s) {
   s.mental = clamp((s.mental || 50) + 10);
   s.lastEvent = `${kid.name.split(' ')[0]} is ${age}, and as of this morning ${kid.gender === 'm' ? 'he' : 'she'} lives with you.`;
   addTimeline(s, `Adopted ${kid.name}, age ${age}.`);
-  s.bigMoment = { id: 'adopted', kind: 'good', title: kid.name.split(' ')[0],
+  showMoment(s, { id: 'adopted', kind: 'good', title: kid.name.split(' ')[0],
     body: `${kid.name.split(' ')[0]} is ${count(age, 'year')} old and has a whole life you were not there for. `
       + 'They are polite with you, in the way children are polite with adults they are not sure about yet. '
-      + 'That is the part you get to change.' };
+      + 'That is the part you get to change.' });
   return s;
 }
 

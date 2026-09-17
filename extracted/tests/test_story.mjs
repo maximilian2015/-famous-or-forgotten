@@ -107,7 +107,7 @@ function shoot(s, over = {}) {
 }
 
 // ── what the version actually does ────────────────────────────────────────────
-function batch(takeId, n = 200) {
+function batch(takeId, n = 500) {   // 200 failed one run in fifteen on the money margin; medians of 500 hold
   const ratings = [], grosses = [];
   for (let i = 0; i < n; i++) {
     const s = actor({ respect: 100, fame: 95 });
@@ -135,7 +135,7 @@ function batch(takeId, n = 200) {
 }
 const straight = batch('straight'), bigger = batch('bigger'), about = batch('about'), strange = batch('strange');
 const M = (n) => '€' + (n / 1e6).toFixed(0) + 'm';
-console.log('\n      the same film, four ways (200 each):');
+console.log('\n      the same film, four ways (500 each):');
 for (const [l, b] of [['as written', straight], ['made bigger', bigger], ['about something', about], ['the strange one', strange]]) {
   console.log(`        ${l.padEnd(16)} ${(b.rating / 10).toFixed(1)}/10 (${(b.worst / 10).toFixed(1)}–${(b.best / 10).toFixed(1)}) · ${M(b.gross).padStart(6)} · hits ${b.hits}/${b.n}`);
 }

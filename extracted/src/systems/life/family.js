@@ -1,7 +1,7 @@
 import { an } from '../../engine/text.js';
 import { rint, chance, pick } from '../../engine/rng.js';
 import { onCooldown, markUsed } from '../../engine/cooldown.js';
-import { addTimeline } from '../../engine/timeline.js';
+import { addTimeline, showMoment } from '../../engine/timeline.js';
 import { homeBond } from '../../engine/economy.js';
 import { childYear } from './children.js';
 import { meansOf } from './dating.js';
@@ -147,7 +147,7 @@ export function familyYear(s) {
       if (left && left.note) {
         events.push(left.note);
         if (left.cash > 0 || left.home) {
-          s.bigMoment = { id: 'inheritance', kind: 'good', title: left.home ? 'They left you the house' : `${p.name} left you something`, body: left.note };
+          showMoment(s, { id: 'inheritance', kind: 'good', title: left.home ? 'They left you the house' : `${p.name} left you something`, body: left.note });
         }
       }
     }

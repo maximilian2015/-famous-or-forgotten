@@ -17,6 +17,30 @@ function Scene({ id, look, accent, moment }) {
   // The marquee serves both nights now: the one where nothing is known yet, and the one
   // weeks later where it is. On opening night the board carries the title instead of a
   // score, because there is no score — that is the entire point of the split.
+  // Television: a set on a stand, the screen lit, the theme playing somewhere. On the
+  // night it goes out the screen says the season; when the run is over it says the number.
+  if ((id === 'premiere' || id === 'verdict') && moment.tv) {
+    return (<svg viewBox="0 0 200 120" style={{ width: '100%', maxWidth: 300, display: 'block', margin: '0 auto' }}>
+      <defs>
+        <radialGradient id="tvglow" cx="50%" cy="45%" r="55%"><stop offset="0" stopColor={accent} stopOpacity=".32" /><stop offset="1" stopColor={accent} stopOpacity="0" /></radialGradient>
+        <linearGradient id="tvscreen" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stopColor="#1a2a44" /><stop offset="1" stopColor="#0b1224" /></linearGradient>
+      </defs>
+      <rect x="0" y="0" width="200" height="120" fill="url(#tvglow)" />
+      <path d="M100 24 L82 6 M100 24 L118 4" stroke={theme.edge} strokeWidth="1.6" strokeLinecap="round" />
+      <circle cx="82" cy="6" r="1.8" fill={theme.edge} /><circle cx="118" cy="4" r="1.8" fill={theme.edge} />
+      <rect x="40" y="24" width="120" height="78" rx="8" fill={theme.ink} stroke={theme.edge} strokeWidth="2" />
+      <rect x="48" y="31" width="92" height="62" rx="5" fill="url(#tvscreen)" stroke={accent} strokeWidth="1.4" />
+      <rect x="48" y="31" width="92" height="62" rx="5" fill={accent} opacity=".08" />
+      {[0, 1, 2, 3].map((i) => <rect key={i} x="48" y={34 + i * 15} width="92" height="1" fill="#fff" opacity=".05" />)}
+      <text x="94" y={moment.score != null ? 64 : 60} textAnchor="middle" fontSize={moment.score != null ? 19 : 9} fontWeight="900" fill={accent}>{moment.score != null ? moment.score : 'ON AIR'}</text>
+      <text x="94" y="76" textAnchor="middle" fontSize="6.5" fontWeight="800" fill={theme.sceneText} letterSpacing="1.6">{String(moment.verdict || 'nobody knows yet').toUpperCase()}</text>
+      <circle cx="150" cy="44" r="3.2" fill="none" stroke={theme.edge} strokeWidth="1.2" /><circle cx="150" cy="56" r="3.2" fill="none" stroke={theme.edge} strokeWidth="1.2" />
+      <rect x="146" y="66" width="8" height="18" rx="1" fill={theme.ink2} stroke={theme.edge} strokeWidth="1" />
+      <circle cx="150" cy="90" r="1.6" fill={moment.score != null ? accent : '#5fce8a'} />
+      <path d="M70 102 L66 114 M130 102 L134 114" stroke={theme.edge} strokeWidth="2" strokeLinecap="round" />
+      <path d="M60 114 L140 114" stroke={theme.edge} strokeWidth="1.2" opacity=".6" />
+    </svg>);
+  }
   if (id === 'premiere' || id === 'verdict') {
     const bulbs = [];
     for (let i = 0; i < 11; i++) bulbs.push(<circle key={i} cx={44 + i * 11.2} cy={40 + Math.abs(i - 5) * 1.4} r="2.1" fill={accent} opacity={0.45 + (i % 2) * 0.45} />);
@@ -217,7 +241,7 @@ function Scene({ id, look, accent, moment }) {
   </svg>);
 }
 
-const CTA = { premiere: 'Read the reviews', shutdown: 'Go home', nomination: 'Let it sink in', ceremony: 'Take the night', yearbook: 'Close the paper', contract: 'Read it',
+const CTA = { premiere: 'Go home', shutdown: 'Go home', nomination: 'Let it sink in', ceremony: 'Take the night', yearbook: 'Close the paper', contract: 'Read it',
   burnout: 'Sleep', depression: 'Close the curtains', lifted: 'Open them',
   checkpoint: 'Keep going', rehab: 'Walk out' };
 function headFor(m) {
@@ -226,9 +250,9 @@ function headFor(m) {
   if (m.id === 'depression') return 'Four times';
   if (m.id === 'lifted') return 'After a long time';
   if (m.id === 'burnout') return 'You could not get up';
-  if (m.id === 'premiere') return 'Opening night';
+  if (m.id === 'premiere') return m.tv ? (m.tv === 'soap' ? 'Seven o\'clock' : m.tv === 'prestige' ? 'Midnight' : 'On air') : 'Opening night';
   // The night it opens and the night everybody has decided are two different moments now.
-  if (m.id === 'verdict') return 'The run is over';
+  if (m.id === 'verdict') return m.tv ? 'The season is over' : 'The run is over';
   if (m.id === 'booked') return 'They rang back';
   if (m.id === 'shutdown') return m.frozen ? 'The shoot has stopped' : 'The project is dead';
   if (m.id === 'nomination') return 'The Askers';
@@ -244,7 +268,7 @@ export function BigMoment({ moment, look, onClose }) {
     // Opening night is cameras and a room, whatever the film turns out to be — nobody
     // knows anything yet, so it cannot be a fanfare or a flop. The verdict is where the
     // sound takes a side.
-    const cue = moment.id === 'premiere' ? 'camera'
+    const cue = moment.id === 'premiere' ? (moment.tv ? 'tv' : 'camera')
       : moment.id === 'verdict' ? (good ? 'fanfare' : 'flop')
       : moment.id === 'nomination' ? 'nominated'
       : moment.id === 'ceremony' ? (good && !moment.quiet ? 'asker' : 'applause')
@@ -257,7 +281,7 @@ export function BigMoment({ moment, look, onClose }) {
       : good ? 'good' : 'bad';
     play(cue);
     // A premiere is a carpet: the shutters keep going after the first one.
-    if (moment.id === 'premiere') { play('camera', 0.42); play('camera', 0.78); play('applause', 0.5); }
+    if (moment.id === 'premiere' && !moment.tv) { play('camera', 0.42); play('camera', 0.78); play('applause', 0.5); }
   }, [moment.id]);
   const accent = good ? theme.gold : theme.bad;
   // This renders OUTSIDE the app shell, so it has to state its own text colour and font —
@@ -279,6 +303,7 @@ export function BigMoment({ moment, look, onClose }) {
       {/* Opening night has no numbers on it any more — that is the whole point of splitting
           it from the verdict — so this must not assume they are there. It crashed the modal
           outright the first time a film opened. See systems/career/release.js. */}
+      {moment.id === 'premiere' && moment.tv && moment.episodes > 0 && (<div style={{ fontSize: 11.5, color: theme.muted, marginBottom: 10 }}>{moment.episodes} episodes · {moment.verdict}</div>)}
       {(moment.id === 'premiere' || moment.id === 'verdict') && moment.score != null && moment.money && (
         <div style={{ display: 'flex', gap: 8, margin: '0 0 12px' }}>
           <Figure label="Score" value={`${moment.score}/10`} accent={accent} />
@@ -322,7 +347,7 @@ export function BigMoment({ moment, look, onClose }) {
       <div style={{ fontSize: 13.5, color: theme.muted, lineHeight: 1.6, marginBottom: 20 }}>{moment.body}</div>
       <button onClick={onClose} style={{ width: '100%', border: 'none', borderRadius: 12, padding: '13px', fontSize: 14, fontWeight: 800, cursor: 'pointer',
         background: `linear-gradient(160deg,${theme.accent},${theme.accent2})`, color: theme.warm ? '#1a1206' : '#fff' }}>
-        {CTA[moment.id] || (good ? 'Take it in' : 'Face it')}
+        {moment.id === 'premiere' && moment.tv ? 'Switch it off' : CTA[moment.id] || (good ? 'Take it in' : 'Face it')}
       </button>
     </div>
   </div>);

@@ -10,7 +10,7 @@ import { uid } from '../../engine/id.js';
 // career in different directions, and that is the whole point of having both.
 import { rint } from '../../engine/rng.js';
 import { setQuote, setFame, setRespect } from '../meta/status.js';
-import { addTimeline } from '../../engine/timeline.js';
+import { addTimeline, showMoment } from '../../engine/timeline.js';
 import { markReleased } from '../../engine/economy.js';
 import { hotGenre } from '../meta/news.js';
 import { maybeContinue } from './franchise.js';
@@ -187,7 +187,7 @@ function open(s, rel) {
   // has seen it. Maxi: "the system remembers it was a good picture and gives benefits."
   const known = ((rel.part || 1) > 1 || (rel.season || 0) > 1) ? 1.12 : 1;
   if (film) rel.finalGross = Math.round(boxOfficeFor(s, rel) * tourMultiplier(rel) * known);
-  else rel.viewers = Math.round(viewersFor(s, rel) * tourMultiplier(rel) * known);
+  else rel.viewers = Math.max(0.1, Math.round(viewersFor(s, rel) * tourMultiplier(rel) * known * 10) / 10);   // millions, one decimal — rounding to a whole made a bad soap draw nobody
   rel.boxOffice = 0;
   const verdict = verdictOf({ ...rel, boxOffice: rel.finalGross || 0 });
   const score = (rel.rating / 10).toFixed(1);
@@ -240,16 +240,32 @@ function open(s, rel) {
   credit.id = rel.id;
   (s.running = s.running || []).push(rel.id);
 
+  // Television does not open, it goes out. A soap starts on a Tuesday at seven; a pilot
+  // airs; a prestige season drops at midnight. Maxi: "for a soap there is no premiere — a
+  // TV set, the sound of the show, a new soap starting season one on television."
+  credit.tv = !film;
+  const tvKind = rel.scale === 'recurring' ? 'soap' : rel.scale === 'prestige' ? 'prestige' : 'episode';
   s.lastEvent = film
     ? `"${rel.title}" opened tonight. Now everybody finds out what it is.`
-    : `"${rel.title}" went out tonight.`;
-  addTimeline(s, `"${rel.title}" opened.`);
-  s.bigMoment = {
+    : tvKind === 'soap' ? `"${rel.title}" went out at seven. Your mother rang before the credits.`
+    : tvKind === 'prestige' ? `"${rel.title}" dropped at midnight. Everybody you know is on episode three by morning.`
+    : `"${rel.title}" aired tonight.`;
+  addTimeline(s, film ? `"${rel.title}" opened.` : `"${rel.title}" went out.`);
+  showMoment(s, film ? {
     id: 'premiere', kind: 'good', title: rel.title, verdict: 'opening night',
     body: 'You stood on a carpet and answered the same four questions eleven times, and then '
       + 'the lights went down and you watched it with strangers. Nobody knows anything yet — '
       + 'not the reviews, not the money, not you. That comes over the next few weeks.',
-  };
+  } : {
+    id: 'premiere', kind: 'good', tv: tvKind, title: rel.title, verdict: (rel.season || 0) > 1 ? `season ${rel.season}` : 'season one',
+    episodes: rel.episodes || 0,
+    body: tvKind === 'soap'
+      ? `Seven o'clock, a Tuesday. The theme, the titles, your face for the first time in ${(rel.episodes || 25)} episodes of it. Nobody watches a soap for the reviews — they watch it every week, or they do not, and you find out over the run.`
+      : tvKind === 'prestige'
+      ? `Every episode at once, at midnight. No carpet, no room — a screen in a kitchen somewhere, and a number the network will not say out loud for a few weeks yet.`
+      : `The episode went out. You watched it on your own phone, on the sofa, and it was over in an hour. Whether anybody else did is the next few weeks' question.`,
+  });
+
   return s;
 }
 
@@ -395,6 +411,9 @@ function closeRun(s, credit, r) {
   s.lastEvent = line;
   addTimeline(s, line, r.rating < 50 || verdict === 'bomb');
 
+  // The job stays on the credit whatever happens next: a show that was not renewed, or a
+  // renewal you let go, can still be pitched back from your own sofa. See night.js revivable.
+  if (r.job) credit.job = r.job;
   // Only now does anyone know whether there is a second one.
   if (r.job) {
     const next = maybeContinue(s, credit, r.job);
@@ -416,8 +435,8 @@ function closeRun(s, credit, r) {
   // Standing next to an icon is worth something on its own: the photographs, the poster,
   // the fact that they said yes to a film you were in.
   if (r.withIcon) { setFame(s, (s.fame || 0) + 3 * headroom(s.fame)); setRespect(s, (s.respect || 0) + 2 * soft(112, s.respect)); addTimeline(s, `Your name is on a poster next to ${r.with}'s. People noticed.`); }
-  s.bigMoment = {
-    id: 'verdict', kind: r.rating >= 70 || verdict === 'smash' ? 'good' : 'bad',
+  showMoment(s, {
+    id: 'verdict', tv: film ? null : (r.scale === 'recurring' ? 'soap' : r.scale === 'prestige' ? 'prestige' : 'episode'), kind: r.rating >= 70 || verdict === 'smash' ? 'good' : 'bad',
     title: credit.title, score, money, verdict, reviews: credit.reviews,
     body: r.worldHit
       ? 'Nobody expected this. It has stopped being a film and started being an event.'
@@ -426,6 +445,6 @@ function closeRun(s, credit, r) {
       : r.rating >= 50 ? 'It came and went. Some people liked it.'
       : verdict === 'bomb' ? 'The reviews are bad and the numbers are worse. Somebody will be blamed.'
       : 'It did not land. These are the ones you leave off the reel.',
-  };
+  });
   return s;
 }

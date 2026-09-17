@@ -185,6 +185,10 @@ export const CUES = {
                       tone(c, t + 0.3, { f: 103.8, type: 'sine', gain: 0.1, dur: 3.2, attack: 0.4 });
                       tone(c, t + 0.9, { f: 55, type: 'sine', gain: 0.12, dur: 3.0, attack: 0.5 }); },
   born:   (c, t) => seq(c, t, [N.C5, N.G5, N.C6], { gap: 0.16, gain: 0.075, dur: 1.0 }),
+  // A television coming on: a breath of static, then the network's three-note sting.
+  tv:     (c, t) => { hiss(c, t, { gain: 0.05, dur: 0.3, freq: 2600, q: 0.5, attack: 0.01 });
+                      seq(c, t + 0.18, [N.E5, N.A5, N.E6], { gap: 0.13, gain: 0.07, dur: 0.55 });
+                      tone(c, t + 0.58, { f: N.A4, type: 'triangle', gain: 0.05, dur: 0.9, attack: 0.03 }); },
 };
 
 // Every button in the game makes a sound, without four hundred onClick handlers having to

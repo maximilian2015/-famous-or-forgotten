@@ -3,6 +3,9 @@ import { scheduleRelease, releaseTick, runTick, postProduction, boxOfficeFor, vi
 import { startProduction, productionTick } from '../src/systems/career/production.js';
 import { relevanceDrift } from '../src/engine/economy.js';
 
+// The newest moment: on screen, or last in the queue behind one still up. Moments queue now.
+const lastMoment = (s) => ((s.moments || []).length ? s.moments[s.moments.length - 1] : s.bigMoment);
+
 let fails = 0;
 const ok = (n, c, e = '') => { if (!c) { fails++; console.log('FAIL  ' + n + (e ? ' :: ' + e : '')); } else console.log('ok    ' + n); };
 const st = (over) => ({ version: 'x', ageY: 30, stage: 'career', dream: 'actor', cash: 0, fame: 40, respect: 40,
@@ -47,8 +50,8 @@ ok('the credit knows what it scored', c.score > 0 && c.score <= 10, String(c.sco
 ok('and how the industry read it', !!c.verdict, c.verdict);
 // Two moments now, not one: the premiere the night it opens, and the verdict when the run
 // finishes and the score and the money are finally real.
-ok('the verdict stops the game', day.bigMoment && day.bigMoment.id === 'verdict', JSON.stringify(day.bigMoment).slice(0, 90));
-ok('the modal has both numbers', /\d/.test(day.bigMoment.score) && /€|m/.test(day.bigMoment.money), `${day.bigMoment.score} · ${day.bigMoment.money}`);
+ok('the verdict stops the game', lastMoment(day) && lastMoment(day).id === 'verdict', JSON.stringify(lastMoment(day)).slice(0, 90));
+ok('the modal has both numbers', /\d/.test(lastMoment(day).score) && /€|m/.test(lastMoment(day).money), `${lastMoment(day).score} · ${lastMoment(day).money}`);
 console.log(`      a feature rated 82 opened to ${money(c.boxOffice)} — ${c.verdict}`);
 
 // ── two things in post at once, opening in order ──────────────────────────────

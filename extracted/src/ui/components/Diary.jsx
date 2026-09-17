@@ -23,7 +23,7 @@ export const hueOf = (title) => { let h = 0; for (const ch of String(title || ''
 const dayOf = (title) => { let h = 0; for (const ch of String(title || '')) h = (h * 31 + ch.charCodeAt(0)) >>> 0; return 5 + (h % 23); };
 
 // The colours, in one place: the item cards, the month cells and the legend all read these.
-export const INK = { tour: '#f2c265', shoot: '#a78bfa', prep: '#c4b5fd', signed: '#a78bfa', post: '#60a5fa', premiere: '#ffd166', cinemas: '#06d6a0', off: '#ff6b8a', hold: '#94a3b8', answer: '#e2ddf5', reply: '#e2ddf5', party: '#06d6a0', love: '#ff8d9e', askers: '#ffd166' };
+export const INK = { onair: '#7fb3ff', tour: '#f2c265', shoot: '#a78bfa', prep: '#c4b5fd', signed: '#a78bfa', post: '#60a5fa', premiere: '#ffd166', cinemas: '#06d6a0', off: '#ff6b8a', hold: '#94a3b8', answer: '#e2ddf5', reply: '#e2ddf5', party: '#06d6a0', love: '#ff8d9e', askers: '#ffd166' };
 const SKIN = {
   shoot: { bg: 'linear-gradient(135deg, rgba(139,92,246,.26), rgba(255,255,255,.03))', border: '1px solid rgba(167,139,250,.42)', bar: 'linear-gradient(90deg,#8b5cf6,#ffd166)' },
   prep: { bg: 'linear-gradient(135deg, rgba(139,92,246,.12), rgba(255,255,255,.03))', border: '1px dashed rgba(167,139,250,.5)', bar: 'rgba(167,139,250,.75)' },
@@ -31,6 +31,7 @@ const SKIN = {
   post: { bg: 'linear-gradient(135deg, rgba(96,165,250,.18), rgba(255,255,255,.025))', border: '1px solid rgba(96,165,250,.4)', bar: 'linear-gradient(90deg,#3b82f6,#93c5fd)' },
   premiere: { bg: 'linear-gradient(135deg, #3a2a08, #241a0f)', border: '1.5px solid #ffd166', shadow: '0 0 22px rgba(255,209,102,.13), inset 0 0 0 1px rgba(255,255,255,.08)' },
   cinemas: { bg: 'linear-gradient(135deg, rgba(6,214,160,.16), rgba(255,255,255,.03))', border: '1px solid rgba(6,214,160,.36)' },
+  onair: { bg: 'linear-gradient(135deg, rgba(127,179,255,.16), rgba(255,255,255,.03))', border: '1px solid rgba(127,179,255,.36)' },
   off: { bg: 'linear-gradient(135deg, rgba(255,107,138,.18), rgba(255,255,255,.03))', border: '1px solid rgba(255,107,138,.4)' },
   hold: { bg: 'linear-gradient(135deg, rgba(148,163,184,.18), rgba(255,255,255,.03))', border: '1px solid rgba(148,163,184,.36)' },
   answer: { bg: 'rgba(255,255,255,.045)', border: '1px solid rgba(255,255,255,.13)' },
@@ -68,13 +69,15 @@ function itemsFor(g, i, abs) {
     // Post-production is not on here: you are not there for it. Maxi: "only the premiere."
     // The month before: the studio's two weeks of you, if it is that kind of picture.
     if (r.due === abs + 1 && toursFor(r)) it('tour', '🎤', 'Press tour', r.title, r.tour ? `Done · buzz ${r.tour.buzz}` : r.tourSkipped ? 'Skipped' : r.tourAsked ? 'The letter is in Email' : 'Next month');
-    if (r.due === abs) it('premiere', '🎬', 'Premiere', r.title, `${dayOf(r.title)} ${MON[abs % 12]} ${Math.floor(r.due / 12)}`, { big: true, ref: { kind: 'release', id: r.id } });
+    if (r.due === abs) { const tv = !['small', 'indie', 'feature', 'blockbuster'].includes(r.scale); it('premiere', tv ? '📺' : '🎬', tv ? (r.scale === 'recurring' ? 'On air' : 'First episode') : 'Premiere', r.title, `${dayOf(r.title)} ${MON[abs % 12]} ${Math.floor(r.due / 12)}`, { big: true, ref: { kind: 'release', id: r.id } }); }
   }
   for (const c of (g.filmography || [])) {
     if (!c.running) continue;
     const weeksLeft = Math.max(0, (c.weeksTotal || 0) - (c.weeks || 0)), left = Math.ceil(weeksLeft / 4);
-    if (i < left) it('cinemas', '🎟️', 'In cinemas', c.title, i === left - 1 ? 'Last weeks of the run' : `${weeksLeft - i * 4} weeks of the run left`, { card: i === 0 });
-    else if (i === 0 && left === 0) it('cinemas', '🎟️', 'In cinemas', c.title, 'The run ends');
+    const tv = !!c.tv || !['small', 'indie', 'feature', 'blockbuster'].includes(c.scale);
+    const epLeft = tv && c.episodes ? Math.max(1, Math.round((weeksLeft - i * 4) / Math.max(1, c.weeksTotal || 1) * c.episodes)) : 0;
+    if (i < left) it(tv ? 'onair' : 'cinemas', tv ? '📺' : '🎟️', tv ? 'On air' : 'In cinemas', c.title, tv ? (i === left - 1 ? 'The last episodes' : `${epLeft} episode${epLeft === 1 ? '' : 's'} still to go out`) : (i === left - 1 ? 'Last weeks of the run' : `${weeksLeft - i * 4} weeks of the run left`), { card: i === 0 });
+    else if (i === 0 && left === 0) it(tv ? 'onair' : 'cinemas', tv ? '📺' : '🎟️', tv ? 'On air' : 'In cinemas', c.title, tv ? 'The season ends' : 'The run ends');
   }
   for (const x of (g.submissions || [])) if (x.due === abs) it('answer', '📞', 'They answer', x.title, 'About the part you read for');
   // A sequel or a season on its way: the month the script is expected.
@@ -105,7 +108,7 @@ function Item({ x, onOpen, open }) {
   // A shoot in its own colour; everything else in the kind's.
   const sk = x.hue ? { bg: `linear-gradient(135deg, ${x.hue}44, rgba(255,255,255,.03))`, border: `1px ${x.kind === 'shoot' ? 'solid' : 'dashed'} ${x.hue}99`, bar: x.hue } : sk0;
   if ((!CARD.has(x.kind) && !x.card) || (x.kind === 'off' && x.icon === '⏳')) {
-    const color = x.kind === 'off' ? INK.off : x.kind === 'askers' ? INK.premiere : x.kind === 'love' ? INK.love : x.kind === 'post' ? INK.post : x.kind === 'cinemas' ? INK.cinemas : theme.muted;
+    const color = x.kind === 'off' ? INK.off : x.kind === 'askers' ? INK.premiere : x.kind === 'love' ? INK.love : x.kind === 'post' ? INK.post : x.kind === 'cinemas' ? INK.cinemas : x.kind === 'onair' ? INK.onair : theme.muted;
     return (<div style={{ display: 'flex', gap: 3, alignItems: 'baseline', marginTop: 3, fontSize: 8.5, lineHeight: 1.25, color, fontWeight: 700, minWidth: 0 }}>
       <span style={{ flex: 'none' }}>{x.icon}</span><span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{x.title}</span>
     </div>);
@@ -193,7 +196,7 @@ export function Diary({ g }) {
     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', marginBottom: 6 }}>
       <div style={{ fontSize: 11, fontWeight: 900, letterSpacing: '.09em', textTransform: 'uppercase', color: theme.muted }}>Agenda</div>
       <div style={{ display: 'flex', gap: 5, alignItems: 'center', fontSize: 9, color: theme.muted }}>
-        {[['🎥', 'shoot'], ['🎬', 'premiere'], ['🎟️', 'cinemas']].map(([ic, t]) => <span key={t}>{ic} {t}</span>)}
+        {[['🎥', 'shoot'], ['🎬', 'premiere'], ['🎟️', 'cinemas'], ['📺', 'on air']].map(([ic, t]) => <span key={t}>{ic} {t}</span>)}
         <button onClick={() => setTwo(!two)} style={{ background: 'transparent', border: `1px solid ${theme.line}`, color: theme.muted, borderRadius: 999, padding: '2px 7px', fontSize: 9, fontWeight: 800, cursor: 'pointer', marginLeft: 3 }}>{two ? '12 months' : '24 months'}</button>
       </div>
     </div>

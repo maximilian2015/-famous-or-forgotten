@@ -5,6 +5,9 @@ import { has, monthsIn, slotsLost, onMeds, standingOf, depressionTick, answerChe
 import { seeSomebody, canWork } from '../src/systems/life/strain.js';
 import { usePills } from '../src/systems/life/health.js';
 
+// The newest moment: on screen, or last in the queue behind one still up. Moments queue now.
+const lastMoment = (s) => ((s.moments || []).length ? s.moments[s.moments.length - 1] : s.bigMoment);
+
 let fails = 0;
 const ok = (n, c, e = '') => { if (!c) { fails++; console.log('FAIL  ' + n + (e ? ' :: ' + e : '')); } else console.log('ok    ' + n); };
 const base = () => ({ since: 0, sessions: 0, checks: 0, passed: 0, windowMonths: 0, windowSessions: 0,
@@ -114,7 +117,7 @@ ok('it does end', !has(bestRun));
 const worstRun = wholeThing({}, WORST);
 ok('doing nothing gets you out too — eventually', !has(worstRun));
 ok('but it keeps two hours of every month, for good', worstRun.scarred === 2, String(worstRun.scarred));
-ok('and the game says what it took', /two hours of every|kept two|kept sixty/.test((worstRun.bigMoment || {}).body || ''),
+ok('and the game says what it took', /two hours of every|kept two|kept sixty/.test((lastMoment(worstRun) || {}).body || ''),
   ((worstRun.bigMoment || {}).body || '').slice(-80));
 
 const scars = { 0: 0, 1: 0, 2: 0 };

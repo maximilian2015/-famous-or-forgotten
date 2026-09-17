@@ -8,7 +8,7 @@
 // an arithmetic problem.
 import { rint, chance, pick } from '../../engine/rng.js';
 import { setQuote, setFame, setRespect } from '../meta/status.js';
-import { addTimeline } from '../../engine/timeline.js';
+import { addTimeline, showMoment } from '../../engine/timeline.js';
 import { actorById, maybeIcon } from '../world/world.js';
 
 const clamp = (v, a = 0, b = 100) => Math.max(a, Math.min(b, v));
@@ -266,14 +266,14 @@ export function runNominations(s) {
   setFame(s, (s.fame || 0) + 3 * headroom(118, s.fame));
   const labels = pending.map((p) => CATEGORIES.find((c) => c.id === p.category)?.label || p.category);
   addTimeline(s, `Asker nominations: ${labels.join(', ')} for "${pending[0].title}".`);
-  s.bigMoment = {
+  showMoment(s, {
     id: 'nomination', kind: 'good', title: 'Asker nominations',
     work: pending[0].title, count: pending.length,
     lines: pending.map((p) => `${CATEGORIES.find((c) => c.id === p.category)?.label} — "${p.title}"\n${buzzOf(p.yourOdds)}`),
     body: pending.length > 1
       ? `${pending.length} nominations. The phone has not stopped since six this morning.`
       : `Nominated for ${labels[0]}. Whatever else happens now, that stays after your name.`,
-  };
+  });
   return pending;
 }
 
@@ -378,7 +378,7 @@ export function ceremonyTick(s) {
 
   const first = yours[0];
   const anyGood = won.length || picture.length;
-  s.bigMoment = {
+  showMoment(s, {
     id: 'ceremony', kind: anyGood ? 'good' : 'bad',
     title: won.length ? 'You won' : picture.length ? 'Best Picture' : first.winner,
     work: won.length ? won[0].title : picture.length ? picture[0].title : first.work,
@@ -394,7 +394,7 @@ export function ceremonyTick(s) {
       : a.losses >= 4
         ? `Again. ${first.winner} for "${first.work}". You have now sat through this ${a.losses} times, and people have started counting out loud.`
         : `${first.winner} for "${first.work}". You clapped. The camera was on you the whole time.`,
-  };
+  });
   s.lastEvent = won.length ? `You won the Asker for "${won[0].title}".` : `${first.winner} won. You did not.`;
   return s;
 }

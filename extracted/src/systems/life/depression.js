@@ -15,7 +15,7 @@ import { count } from '../../engine/text.js';
 // been doing for those five months — the pills, the sessions, the resting, and whether
 // there is anybody left who is close to you.
 import { rint, chance, pick } from '../../engine/rng.js';
-import { addTimeline } from '../../engine/timeline.js';
+import { addTimeline, showMoment } from '../../engine/timeline.js';
 import { drinkingCoversSlots, level as drinkLevel, dependent, rehabMonthsFor, rehabCostFor,
   answerUltimatum } from './drink.js';
 
@@ -233,11 +233,11 @@ export function answerCheckpoint(s, answer) {
 
   if (d.checks >= CHECKPOINTS) return finish(s, choice, passed);
 
-  s.bigMoment = {
+  showMoment(s, {
     id: 'checkpoint', kind: passed ? 'good' : 'bad', title: passed ? 'Something moved' : 'It did not move',
     body: `${choice.note} ${back} ${CHECKPOINTS - d.checks} more of these to go.`,
     slots: slotsLost(s),
-  };
+  });
   s.lastEvent = choice.note;
   return s;
 }
@@ -259,7 +259,7 @@ function finish(s, choice, passed) {
     addTimeline(s, `The worst of it is over, but it took something with it — ${scar} action${scar === 1 ? '' : 's'} a month, for good.`, true);
     s.lastEvent = `The worst of it has passed. You have ${scar} fewer hour${scar === 1 ? '' : 's'} in you than you used to, and that is not coming back on its own.`;
   }
-  s.bigMoment = {
+  showMoment(s, {
     id: 'lifted', kind: scar ? 'bad' : 'good', title: scar ? 'What it left behind' : 'It lifted',
     months, slots: scar,
     body: scar === 0
@@ -270,7 +270,7 @@ function finish(s, choice, passed) {
         + 'and it is not the kind of thing that comes back by itself. A clinic would do it. So would years of talking.'
       : `${choice.note} You came out the other side without ever really fighting it, and it kept sixty of your hundred energy every `
         + 'month as the price. A year in a clinic will get them back. So will a very long time in therapy. Nothing else will.',
-  };
+  });
   return s;
 }
 
@@ -350,13 +350,13 @@ export function rehabTick(s) {
     s.drink = null;
     addTimeline(s, `${count(months, 'month')} in that place, and you have your Energy back.`);
     s.lastEvent = 'You came out with your Energy back. It cost the time and everything you had put aside.';
-    s.bigMoment = { id: 'rehab', kind: 'good', title: `${count(months, 'month')} later`, months,
+    showMoment(s, { id: 'rehab', kind: 'good', title: `${count(months, 'month')} later`, months,
       body: both
         ? `${count(months, 'month')}, no cameras, nobody watching, and two things to put down rather than one. You have your `
           + 'Energy back and your craft is where you left it — several years lower than it was. The next thing you do '
           + 'will be written about as a comeback, which is a generous word for it.'
         : `${count(months, 'month')}, no cameras, nobody watching. You have back the Energy it took, and you know exactly `
-          + 'what they cost — which is the part you will remember next time somebody offers you four films in a row.' };
+          + 'what they cost — which is the part you will remember next time somebody offers you four films in a row.' });
   }
   return s;
 }

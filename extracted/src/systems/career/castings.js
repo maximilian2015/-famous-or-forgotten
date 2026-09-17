@@ -2,7 +2,7 @@ import { COST, canAfford, spend, tooTired } from '../../engine/energy.js';
 import { count } from '../../engine/text.js';
 import { uid } from '../../engine/id.js';
 import { rint, chance, pick } from '../../engine/rng.js';
-import { addTimeline } from '../../engine/timeline.js';
+import { addTimeline, showMoment } from '../../engine/timeline.js';
 import { onCooldown, markUsed } from '../../engine/cooldown.js';
 import { markReleased } from '../../engine/economy.js';
 import { paid } from './agent.js';
@@ -363,9 +363,9 @@ function answerSubmission(s, sub) {
   sendMail(s, { from: 'Casting', subj: `Re: ${c.title} — offer`, tag: 'reply', kind: 'reply', offerId,
     body: `Good news. They would like to offer you ${c.role} on ${c.title} — €${(c.salary || 0).toLocaleString()}${c.perEpisode ? ` for ${c.episodes} episodes` : ''}, ${c.months || 1} month${(c.months || 1) === 1 ? '' : 's'}. They need an answer. The full card is in Messages.`,
     cta: [{ label: 'Open the contract', offer: 'open', reply: 'The paper.' }, { label: 'Pass', offer: 'pass', reply: 'You write back politely. Somebody else will be very happy.' }] });
-  s.bigMoment = { id: 'booked', kind: 'good', title: 'You got it',
+  showMoment(s, { id: 'booked', kind: 'good', title: 'You got it',
     body: `"${c.title}" is yours. ${c.role}${c.months ? `, ${count(c.months, 'month')} of shooting` : ''}. `
-      + 'Somebody in an office made a list and your name was at the top of it, and you will never find out why.' };
+      + 'Somebody in an office made a list and your name was at the top of it, and you will never find out why.' });
   return s;
 }
 

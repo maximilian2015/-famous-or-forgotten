@@ -43,7 +43,8 @@ function normalCareer(years, gapMonths) {
     strainTick(s);
     if (s.production) productionTick(s);
     releaseTick(s);
-    if (s.bigMoment && s.bigMoment.id === 'burnout') { collapses++; s.bigMoment = null; }
+    if ([s.bigMoment, ...(s.moments || [])].some((m) => m && m.id === 'burnout')) collapses++;
+    s.bigMoment = null; s.moments = [];   // the player dismisses what comes up; moments queue now
     peak = Math.max(peak, s.strain || 0);
     s.ap = 100;
   }

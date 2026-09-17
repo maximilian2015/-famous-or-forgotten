@@ -14,7 +14,7 @@ import { uid } from '../../engine/id.js';
 // farmed four times and being high already makes it harder. See systems/life/bonds.js.
 import { rint, chance, pick } from '../../engine/rng.js';
 import { onCooldown, markUsed } from '../../engine/cooldown.js';
-import { addTimeline } from '../../engine/timeline.js';
+import { addTimeline, showMoment } from '../../engine/timeline.js';
 import { canRaiseChild, HOUSING, hostOf } from '../../engine/economy.js';
 import { applyBond, clampRel, relBand } from './bonds.js';
 import { level as drinkLevel, dependent } from './drink.js';
@@ -342,7 +342,7 @@ export function proposeMarriage(s, style = 'proper', prenup = false) {
     ? `${partner.name} said yes, and a magazine paid for the whole thing. €${Math.abs(cost).toLocaleString()} and every photograph is theirs.`
     : `${partner.name} said yes. ${w.label}, €${cost.toLocaleString()}.`;
   addTimeline(s, `Married ${partner.name}.${prenup ? ' Signed beforehand.' : ''}`);
-  s.bigMoment = { id: 'wedding', kind: 'good', title: `You married ${partner.name}`, body: s.lastEvent };
+  showMoment(s, { id: 'wedding', kind: 'good', title: `You married ${partner.name}`, body: s.lastEvent });
   return s;
 }
 
@@ -381,9 +381,9 @@ export function divorce(s, filedByThem = false) {
     : `You filed. €${take.toLocaleString()} of it went with ${spouse.name.split(' ')[0]}.`;
   s.lastEvent = line;
   addTimeline(s, `Divorced ${spouse.name}. €${take.toLocaleString()}${theyKeep && kids.length ? `, and the children went with them` : ''}.`, true);
-  s.bigMoment = { id: 'divorce', kind: 'bad', title: `${spouse.name} is your ex-wife`.replace('wife', spouse.gender === 'm' ? 'husband' : 'wife'),
+  showMoment(s, { id: 'divorce', kind: 'bad', title: `${spouse.name} is your ex-wife`.replace('wife', spouse.gender === 'm' ? 'husband' : 'wife'),
     body: `${line}${spouse.prenup ? ' The paperwork you both hated signing did exactly what it was for.' : ' There was no paperwork, so it was half.'}`
-      + (theyKeep && kids.length ? ` ${kids.length === 1 ? 'Your child lives' : 'Your children live'} with them now. You see them when the schedule allows, which is the problem in one sentence.` : '') };
+      + (theyKeep && kids.length ? ` ${kids.length === 1 ? 'Your child lives' : 'Your children live'} with them now. You see them when the schedule allows, which is the problem in one sentence.` : '') });
   return s;
 }
 

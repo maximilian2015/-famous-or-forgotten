@@ -16,7 +16,7 @@ import { count } from '../../engine/text.js';
 // bottle is thirty-five euros and works tonight. Nobody chooses wrong because they are
 // stupid — they choose the one they can afford on the month they are actually having.
 import { rint, chance } from '../../engine/rng.js';
-import { addTimeline } from '../../engine/timeline.js';
+import { addTimeline, showMoment } from '../../engine/timeline.js';
 
 const clamp = (v, a = 0, b = 100) => Math.max(a, Math.min(b, v));
 
@@ -101,13 +101,13 @@ export function drinkThrough(s) {
   if (before < DEPENDENT_AT && s.drink.level >= DEPENDENT_AT) {
     s.drink.hooked = true;
     addTimeline(s, 'It stopped being a decision you make in the evening. You need it now to get through a month at all.', true);
-    s.bigMoment = {
+    showMoment(s, {
       id: 'dependent', kind: 'bad', title: 'You need it now',
       body: 'It gave you your months back and you took every one of them. Somewhere in the middle of that it stopped '
         + 'being the thing you reach for and started being the thing you need. A month without it now is worse than '
         + 'the months you started drinking to get through — and it is still taking your craft, a little at a time, '
         + 'every single month.',
-    };
+    });
   }
   // The whole promise is that the calendar opens TONIGHT, not next month. apMaxEff is only
   // recomputed on the month roll, so without this the Energy came back one month after the
@@ -180,11 +180,11 @@ export function drinkTick(s) {
         s.drink = null;
         addTimeline(s, `${count(d.dryMonths, 'month')} dry, without a clinic and without anybody making you.`);
         s.lastEvent = 'You did it the long way, on your own, and it took years.';
-        s.bigMoment = { id: 'dryalone', kind: 'good', title: 'You did it on your own',
+        showMoment(s, { id: 'dryalone', kind: 'good', title: 'You did it on your own',
           body: `${count(d.dryMonths, 'month')}. No clinic, no announcement, nobody driving you anywhere — just every `
             + `single month for ${years > 1 ? `${count(years, 'year')}` : 'a year'} deciding it again. Your craft is where `
             + 'you left it, which is a long way down from where it was, and none of that is coming back by itself. '
-            + 'But it is not going any further down either.' };
+            + 'But it is not going any further down either.' });
         return s;
       }
     } else {
@@ -307,9 +307,9 @@ function leave(s, who, line) {
   s.mental = clamp((s.mental || 0) - 12);
   s.lastEvent = line;
   addTimeline(s, `${who.name} is gone.`, true);
-  s.bigMoment = { id: 'theyleft', kind: 'bad', title: `${who.name} is gone`,
+  showMoment(s, { id: 'theyleft', kind: 'bad', title: `${who.name} is gone`,
     body: line + ' The flat is very quiet now, and there is nobody left who is going to ask you '
-      + 'how you are — which means there is nobody left whose asking could have helped.' };
+      + 'how you are — which means there is nobody left whose asking could have helped.' });
 }
 
 // A month you drank through is a month you were not really there for. The shoot notices.

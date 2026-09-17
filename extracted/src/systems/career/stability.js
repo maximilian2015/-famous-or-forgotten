@@ -14,7 +14,7 @@ import { uid } from '../../engine/id.js';
 // with money nobody can name is shaky, pays a premium, carries better material — and
 // swings wildly at the wrap, which is how an indie becomes the film of the year.
 import { rint, chance } from '../../engine/rng.js';
-import { addTimeline } from '../../engine/timeline.js';
+import { addTimeline, showMoment } from '../../engine/timeline.js';
 
 const clamp = (v, a = 0, b = 100) => Math.max(a, Math.min(b, v));
 
@@ -152,14 +152,14 @@ export function freezeProject(s, p) {
   s.lastEvent = `"${frozen.title}" has stopped. They say ${why}. Everyone was sent home with no date to come back.`;
   addTimeline(s, `"${frozen.title}" went into freeze — ${why}.`, true);
   s.mental = Math.max(0, (s.mental || 50) - 6);
-  s.bigMoment = {
+  showMoment(s, {
     id: 'shutdown', kind: 'bad', frozen: true, title: frozen.title,
     reason: why, months: frozen.monthsLeft, paid: frozen.paid,
     body: `The crew was sent home this morning — ${why}. It is not cancelled. It is not happening either. `
       + (frozen.paid > 0
         ? `You keep the €${Math.round(frozen.paid).toLocaleString()} you were paid, and the rest waits for money that may never come.`
         : 'You had not been paid a cent yet. All of it waits for money that may never come.'),
-  };
+  });
   return frozen;
 }
 
@@ -171,13 +171,13 @@ export function collapseProject(s, p) {
   s.lastEvent = `"${p.title}" is dead — ${why}. ${months} month${months === 1 ? '' : 's'} of your life, and no film at the end of it.`;
   addTimeline(s, `"${p.title}" collapsed — ${why}.`, true);
   s.mental = Math.max(0, (s.mental || 50) - 9);
-  s.bigMoment = {
+  showMoment(s, {
     id: 'shutdown', kind: 'bad', frozen: false, title: p.title,
     reason: why, months, paid,
     body: `It is over — ${why}. `
       + (paid > 0 ? `You keep the €${Math.round(paid).toLocaleString()} you were paid and nothing else. ` : 'You were never paid a cent. ')
       + `There is no film, so there is no premiere, and nobody outside the crew will ever know you did it.`,
-  };
+  });
   return { title: p.title, why, paid, months };
 }
 

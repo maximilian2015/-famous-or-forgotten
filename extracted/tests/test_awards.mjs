@@ -2,6 +2,9 @@ import { awardStrength, ASKER_GENRE, ASKER_SCALE, FLOOR, oddsFor, pickWinner, we
   overdueFactor, campaignFactor, standingFactor, runNominations, ceremonyTick, askerStanding, branchOf }
   from '../src/systems/career/awards.js';
 
+// The newest moment: on screen, or last in the queue behind one still up. Moments queue now.
+const lastMoment = (s) => ((s.moments || []).length ? s.moments[s.moments.length - 1] : s.bigMoment);
+
 let fails = 0;
 const ok = (n, c, e = '') => { if (!c) { fails++; console.log('FAIL  ' + n + (e ? ' :: ' + e : '')); } else console.log('ok    ' + n); };
 const st = (over) => ({ version: 'x', ageY: 34, stage: 'career', dream: 'actor', name: 'Iris Kane',
@@ -132,7 +135,7 @@ const winner = (() => { for (let i = 0; i < 400; i++) {
   const r = season({}, { rating: 95, genre: 'Drama', scale: 'indie' }); if (!r.p) continue;
   toCeremony(r.s); if ((r.s.awards.wins || []).length) return r.s; } return null; })();
 ok('a win is stamped on the credit forever', winner && winner.filmography[0].asker >= 1, String(winner && winner.filmography[0].asker));
-ok('a win stops the game', winner.bigMoment.id === 'ceremony' && winner.bigMoment.kind === 'good');
+ok('a win stops the game', lastMoment(winner).id === 'ceremony' && lastMoment(winner).kind === 'good');
 ok('a win opens doors that fame had shut', askerStanding(winner) >= 22, String(askerStanding(winner)));
 ok('and a bare nomination opens fewer', askerStanding(nom) > 0 && askerStanding(nom) < 22, String(askerStanding(nom)));
 ok('the diary records the win', /Won the Asker/.test(JSON.stringify(winner.timeline)));
@@ -143,8 +146,8 @@ const loser = (() => { for (let i = 0; i < 600; i++) {
   const r = season({}, { rating: 82, genre: 'Drama', scale: 'indie' }); if (!r.p) continue;
   toCeremony(r.s);
   if (!(r.s.awards.wins || []).length && r.s.awards.losses === 1) return r.s; } return null; })();
-ok('losing is a real ending too', loser && loser.bigMoment.kind === 'bad', loser && loser.bigMoment.title);
-ok('and it names who took it', /for "/.test(loser.bigMoment.body), loser.bigMoment.body.slice(0, 80));
+ok('losing is a real ending too', loser && lastMoment(loser).kind === 'bad', loser && lastMoment(loser).title);
+ok('and it names who took it', /for "/.test(lastMoment(loser).body), lastMoment(loser).body.slice(0, 80));
 
 // ── an Asker makes you famous, which the first version got wrong ──────────────
 // Maxi: "оскар в жизни делает тебя известней, гонорары растут, ты переходишь в А-лист."

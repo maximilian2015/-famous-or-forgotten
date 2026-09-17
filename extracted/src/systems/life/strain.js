@@ -10,7 +10,7 @@ import { uid } from '../../engine/id.js';
 // So the work accumulates in you. Strain is not a difficulty knob: a normal career of one
 // project a year never comes near it. It exists to make the grind end somewhere.
 import { rint, chance } from '../../engine/rng.js';
-import { addTimeline } from '../../engine/timeline.js';
+import { addTimeline, showMoment } from '../../engine/timeline.js';
 import { patienceFor } from '../career/stability.js';
 import { depressionTick, creditTherapy, therapyProgress, THERAPY_FOR_A_SLOT, inRehab } from './depression.js';
 import { level as drinkLevel } from './drink.js';
@@ -273,25 +273,25 @@ function collapse(s) {
       windowMonths: 0, windowSessions: 0, windowRests: 0, medMonths: 0, medsThisMonth: false, pending: null };
     s.mental = clamp((s.mental || 0) - 10);
     addTimeline(s, 'This one did not lift when the months were up. It has stopped being about the work.', true);
-    s.bigMoment = {
+    showMoment(s, {
       id: 'depression', kind: 'bad', title: 'It did not lift',
       body: 'The four months came and went and you are still not up. It is not the schedule any more and it is not '
         + 'a part you can put down — it followed you home and it has stayed. This is going to take a long time. '
         + 'It starts with medication, and then it is one hard month at a time. Nothing else works until you are on them.',
       slots: 2,
-    };
+    });
     s.lastEvent = 'The months were up and you did not get up with them.';
     return;
   }
   s.lastEvent = wasShooting
     ? `You could not do it any more. "${title}" has been shut down and you are signed off for ${months} months.`
     : `You could not do it any more. Signed off for ${months} months.`;
-  s.bigMoment = {
+  showMoment(s, {
     id: 'burnout', kind: 'bad', title: 'You stopped', months, work: title,
     body: wasShooting
       ? `It was not a decision. You did not get up, and by the afternoon "${title}" had been shut down around you. `
         + `${months} months before anyone will insure you on a set again — and the film is sitting in a freezer waiting for you.`
       : `It was not a decision. You did not get up, and you have not really got up since. `
         + `${months} months before you are cleared to work, and the phone will not remember you the whole time.`,
-  };
+  });
 }

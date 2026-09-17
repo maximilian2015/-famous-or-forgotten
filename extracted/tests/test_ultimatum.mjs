@@ -7,6 +7,9 @@ const D = await import(P + 'systems/life/depression.js');
 const { startProduction } = await import(P + 'systems/career/production.js');
 const { insurability } = await import(P + 'systems/life/strain.js');
 
+// The newest moment: on screen, or last in the queue behind one still up. Moments queue now.
+const lastMoment = (s) => ((s.moments || []).length ? s.moments[s.moments.length - 1] : s.bigMoment);
+
 let fails = 0;
 const ok = (n, c, e = '') => { if (!c) { fails++; console.log('FAIL  ' + n + (e ? ' :: ' + e : '')); } else console.log('ok    ' + n); };
 
@@ -74,7 +77,7 @@ function untilAsked(s, cap = 30) {
   // break it next month
   K.drinkThrough(s); s = advanceMonth(s);
   ok('breaking it costs you the person', !s.partner, s.partner ? s.partner.name : 'gone');
-  ok('and the game stops to say so', (s.bigMoment || {}).id === 'theyleft', (s.bigMoment || {}).title);
+  ok('and the game stops to say so', (lastMoment(s) || {}).id === 'theyleft', (lastMoment(s) || {}).title);
 }
 {
   let s = untilAsked(life());

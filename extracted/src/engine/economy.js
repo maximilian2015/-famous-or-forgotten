@@ -1,6 +1,6 @@
 import { inCareer } from './stage.js';
 import { comboOf } from './combo.js';
-import { addTimeline } from './timeline.js';
+import { addTimeline, showMoment } from './timeline.js';
 // Concrete places to live rather than an abstract "lifestyle" slider — a room and a penthouse
 // are things a player can picture, and the rent IS the lifestyle cost.
 // Priced off real Amsterdam rents so the early squeeze feels honest.
@@ -223,5 +223,5 @@ function checkInsolvency(s) {
     s.lastEvent = turnedAway ? 'You lost the flat. Your own family would not open the door.'
       : 'You lost the flat. There is nobody left to go back to.';
   }
-  s.bigMoment = { id: 'evicted', kind: 'bad', title: s.homeless ? 'Out on the street' : 'Evicted', body: s.lastEvent };
+  showMoment(s, { id: 'evicted', kind: 'bad', title: s.homeless ? 'Out on the street' : 'Evicted', body: s.lastEvent });
 }
