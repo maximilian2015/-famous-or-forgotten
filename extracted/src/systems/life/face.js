@@ -35,8 +35,41 @@ export const SURGEONS = {
 export const SURGERY_AGE = 25;
 export const RECOVERY = 2;
 
+// What it costs depends on who is paying. Maxi: "the sums should change with your status —
+// a millionaire pays a millionaire's price." A nobody's routine is a chemist's; a star's
+// is a name on a door.
+export function priceFactor(s) { return 1 + Math.min(2, (s.fame || 0) / 50); }
+export function careCost(s, k) { return Math.round((CARE[k] || CARE.none).cost * priceFactor(s)); }
+export function trainerCost(s) { return Math.round(TRAINER_COST * priceFactor(s)); }
+// How old the face reads. The number on the passport is one thing; the number the room
+// sees is looks, health and the drink — Maxi: "write how old you look."
+export function apparentAge(s) {
+  const age = s.ageY || 0;
+  if (age < 18) return age;
+  let d = (58 - (s.looks || 0)) / 6;
+  if ((s.health || 50) < 40) d += 2;
+  if (dependent(s)) d += 3;
+  if ((s.strain || 0) > 75) d += 1;
+  return Math.max(16, Math.round(age + d));
+}
+// Height and weight. Height is drawn once, at eighteen, from the name; weight drifts with
+// how you eat and whether anybody makes you run.
+export function height(s) {
+  if (!s.height) { let h = 0; for (const ch of String(s.name || '')) h = (h * 31 + ch.charCodeAt(0)) >>> 0; s.height = (s.gender === 'female' ? 158 : 168) + (h % 22); }
+  return s.height;
+}
+export function weightKg(s) { const h = height(s) / 100; return Math.round((s.bmi || 22.5) * h * h); }
+function bodyTick(s) {
+  if ((s.ageY || 0) < 18) return;
+  const f = face(s);
+  const diet = s.hasApartment ? (s.diet || 'cook') : 'cook';
+  const goal = f.trainer ? 21 : s.gym ? 21.5 : diet === 'fast' ? 29 : diet === 'fine' ? 22 : 23.5;
+  const rate = f.trainer ? 0.08 : s.gym ? 0.05 : diet === 'fast' ? 0.05 : 0.03;
+  const b = s.bmi || 22.5;
+  s.bmi = b + Math.max(-rate, Math.min(rate, goal - b));
+}
 export function face(s) { return (s.face = s.face || { care: 'none', trainer: false, needles: [], ops: [], recovery: 0, frozenUntil: 0 }); }
-export function faceBill(s) { const f = face(s); return (CARE[f.care] || CARE.none).cost + (f.trainer ? TRAINER_COST : 0); }
+export function faceBill(s) { const f = face(s); return careCost(s, f.care) + (f.trainer ? trainerCost(s) : 0); }
 export function frozenFace(s) { return (face(s).frozenUntil || 0) > stamp(s); }
 export function healing(s) { return (face(s).recovery || 0) > 0; }
 export function needlesLately(s) { const now = stamp(s); return face(s).needles.filter((n) => now - n.at <= 24).length; }
@@ -46,6 +79,7 @@ export function facePenalty(s) { return frozenFace(s) ? 6 : 0; }
 // ── monthly ───────────────────────────────────────────────────────────────────
 export function faceTick(s) {
   const f = face(s); const age = s.ageY || 0; const now = stamp(s);
+  bodyTick(s);
   // The bills. Unpaid, the routine stops.
   const bill = faceBill(s);
   if (bill) {
@@ -76,12 +110,12 @@ export function faceTick(s) {
 export function setCare(s, tier) {
   if (!CARE[tier]) return s;
   face(s).care = tier;
-  s.lastEvent = tier === 'none' ? 'You stopped. Soap and sleep.' : `${CARE[tier].label} — €${CARE[tier].cost.toLocaleString()} a month, from now.`;
+  s.lastEvent = tier === 'none' ? 'You stopped. Soap and sleep.' : `${CARE[tier].label} — €${careCost(s, tier).toLocaleString()} a month, from now.`;
   return s;
 }
 export function toggleTrainer(s) {
   const f = face(s); f.trainer = !f.trainer;
-  s.lastEvent = f.trainer ? `A trainer, every morning at six. €${TRAINER_COST.toLocaleString()} a month.` : 'You let the trainer go. The mornings are yours again.';
+  s.lastEvent = f.trainer ? `A trainer, every morning at six. €${trainerCost(s).toLocaleString()} a month.` : 'You let the trainer go. The mornings are yours again.';
   return s;
 }
 export function needleCost(s) { return Math.round(6000 * (1 + (s.fame || 0) / 100)); }

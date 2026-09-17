@@ -174,7 +174,7 @@ export function applyYearly(s) {
   if (tax > 0) { s.cash -= tax; addTimeline(s, `Wealth levy: the state taxed your idle fortune €${tax.toLocaleString()} this year. Money that sits still shrinks — put it to work.`, true); }
 }
 export function earn(s, amount, note) {
-  s.cash = (s.cash || 0) + amount; s.incomeYear = (s.incomeYear || 0) + amount;
+  s.cash = (s.cash || 0) + amount; s.incomeYear = (s.incomeYear || 0) + amount; s.earnedLife = (s.earnedLife || 0) + amount;
   if (note) addTimeline(s, `${note}: +€${Math.round(amount).toLocaleString()}.`);
 }
 // Miss the rent twice and the landlord stops being patient. Where you land depends on

@@ -28,7 +28,8 @@ import { Diary } from './ui/components/Diary.jsx';
 import { FamilyTree } from './ui/components/FamilyTree.jsx';
 import { ContractRoom } from './ui/components/ContractRoom.jsx';
 import { NightRoom } from './ui/components/NightRoom.jsx';
-import { CARE, CARE_ORDER, TRAINER_COST, SURGEONS, SURGERY_AGE, NEEDLE_MONTHS, face as faceOf, faceBill, frozenFace, healing, needlesLately, needleCost, surgeryCost, surgeryOdds, setCare, toggleTrainer, needle, surgery } from './systems/life/face.js';
+import { Passport } from './ui/components/Passport.jsx';
+import { CARE, CARE_ORDER, careCost, trainerCost, apparentAge, SURGEONS, SURGERY_AGE, NEEDLE_MONTHS, face as faceOf, faceBill, frozenFace, healing, needlesLately, needleCost, surgeryCost, surgeryOdds, setCare, toggleTrainer, needle, surgery } from './systems/life/face.js';
 import { TourRoom } from './ui/components/TourRoom.jsx';
 import { tierById, isInvited, attendEvent, askForInvite, sneakIntoEvent, inviteHelpers, helperOdds, hasAsked } from './systems/social/events.js';
 import { HOUSING, HOUSING_ORDER, monthlyCosts, DIET, GYM_COST, setDiet, toggleGym } from './engine/economy.js';
@@ -87,6 +88,7 @@ export default function App() {
   const [showRespect, setShowRespect] = useState(false);
   const [openPerson, setOpenPerson] = useState(null);
   const [showRoom, setShowRoom] = useState(false);
+  const [showPassport, setShowPassport] = useState(false);
   // theme is a live object mutated in place, so a skin change has to be turned into a
   // render by hand — nothing about it lives in game state.
   const [, bumpSkin] = useState(0);
@@ -108,12 +110,13 @@ export default function App() {
   if (g.tour) return <TourRoom g={g} />;
   if (g.openContract) return <ContractRoom g={g} onClose={() => dispatch(closeContract)} />;
   if (showRoom) return <RoomScreen g={g} onBack={() => setShowRoom(false)} />;
+  if (showPassport) return <Passport g={g} onClose={() => setShowPassport(false)} onRoom={() => { setShowPassport(false); setShowRoom(true); }} />;
   if (confirmEnd) return <EndLifeModal onCancel={() => setConfirmEnd(false)} onConfirm={() => { import('./systems/meta/legacy.js').then(m => { m.enshrine(g); newLife(); setConfirmEnd(false); setOpenPerson(null); setScreen('life'); }); }} />;
   return (
     <div style={{ maxWidth: 440, margin: '0 auto', minHeight: '100vh', background: 'transparent', color: theme.text, padding: 16, paddingBottom: 90, fontFamily: FONT }}>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 14 }}>
         <div style={{ display: 'flex', alignItems: 'flex-end', gap: 9 }}>
-          <HeaderFigures g={g} onOpen={() => setShowRoom(true)} />
+          <HeaderFigures g={g} onOpen={() => setShowPassport(true)} />
           <div>
             <div style={{ fontFamily: FONT_DISPLAY, fontSize: 25, fontWeight: 700, lineHeight: 1.05, letterSpacing: '-.01em' }}>{g.name}</div>
             {/* Keyed on the date so a month passing actually moves on screen. */}
@@ -1365,7 +1368,7 @@ function OriginCard({ g }) {
 }
 function HeaderFigures({ g, onOpen }) {
   const mate = companionOf(g);
-  return (<div onClick={onOpen} title="Your room" style={{ display: 'flex', alignItems: 'flex-end', gap: 1, cursor: 'pointer' }}>
+  return (<div onClick={onOpen} title="Who you are" style={{ display: 'flex', alignItems: 'flex-end', gap: 1, cursor: 'pointer' }}>
     <Avatar look={lookOf(g)} size={48} title={g.name} />
     {mate && <Avatar look={lookOfPerson(mate.person)} size={mate.married ? 46 : 42}
       title={`${mate.person.name} · ${mate.married ? 'spouse' : 'partner'}`}
@@ -1551,7 +1554,7 @@ function FaceTab({ g }) {
   const lately = needlesLately(g); const frozen = frozenFace(g); const heal = healing(g);
   const line = { fontSize: 11.5, color: theme.muted, marginTop: 3, lineHeight: 1.5 };
   return (<div>
-    <div style={{ fontSize: 11, fontWeight: 900, letterSpacing: '.09em', textTransform: 'uppercase', color: theme.muted, margin: '16px 0 8px' }}>The face · looks {Math.round(g.looks || 0)}</div>
+    <div style={{ fontSize: 11, fontWeight: 900, letterSpacing: '.09em', textTransform: 'uppercase', color: theme.muted, margin: '16px 0 8px' }}>The face · looks {Math.round(g.looks || 0)} · {age >= 18 ? `reads as ${apparentAge(g)}` : `${age}`}</div>
     <div style={{ fontSize: 11.5, color: young ? theme.muted : theme.gold, lineHeight: 1.55, marginBottom: 10, padding: '0 2px' }}>
       {young ? `At ${age} the face is what it is. From twenty-seven it starts to go — slowly in the thirties, faster after forty-five — and this is where money slows it.`
         : `At ${age} the face is going: ${age < 35 ? 'slowly' : age < 45 ? 'a little every year' : age < 55 ? 'a few points a year' : 'fast'}. ${f.care === 'none' ? 'Nothing is slowing it.' : `${CARE[f.care].label} is slowing it.`}`}
@@ -1563,7 +1566,7 @@ function FaceTab({ g }) {
         return (<div key={k} style={{ background: active ? `${theme.accent}22` : theme.panel, border: `1px solid ${active ? theme.accent : theme.line}`, borderRadius: 12, padding: '11px 13px' }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline' }}>
             <div style={{ fontSize: 13.5, fontWeight: 800 }}>{c.label}{active ? ' · now' : ''}</div>
-            <div style={{ fontSize: 12, fontWeight: 800, color: theme.gold }}>{c.cost ? `€${c.cost.toLocaleString()}/mo` : 'free'}</div>
+            <div style={{ fontSize: 12, fontWeight: 800, color: theme.gold }}>{c.cost ? `€${careCost(g, k).toLocaleString()}/mo` : 'free'}</div>
           </div>
           <div style={line}>{c.blurb}{young && c.cost ? ' Wasted before twenty-seven.' : ''}</div>
           {!active && <Button onClick={() => dispatch(setCare, k)} style={{ marginTop: 8 }}>{k === 'none' ? 'Stop it all' : 'Start'}</Button>}
@@ -1571,7 +1574,7 @@ function FaceTab({ g }) {
       <Card>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline' }}>
           <div style={{ fontSize: 13.5, fontWeight: 800 }}>A trainer{f.trainer ? ' · every morning' : ''}</div>
-          <div style={{ fontSize: 12, fontWeight: 800, color: theme.gold }}>€{TRAINER_COST.toLocaleString()}/mo</div>
+          <div style={{ fontSize: 12, fontWeight: 800, color: theme.gold }}>€{trainerCost(g).toLocaleString()}/mo</div>
         </div>
         <div style={line}>Six a.m., every day. Faster than the gym and further — to 86 — and the body that comes with it.</div>
         <Button onClick={() => dispatch(toggleTrainer)} style={{ marginTop: 8 }}>{f.trainer ? 'Let them go' : 'Hire one'}</Button>
