@@ -28,6 +28,7 @@ import { Diary } from './ui/components/Diary.jsx';
 import { FamilyTree } from './ui/components/FamilyTree.jsx';
 import { ContractRoom } from './ui/components/ContractRoom.jsx';
 import { NightRoom } from './ui/components/NightRoom.jsx';
+import { TourRoom } from './ui/components/TourRoom.jsx';
 import { tierById, isInvited, attendEvent, askForInvite, sneakIntoEvent, inviteHelpers, helperOdds, hasAsked } from './systems/social/events.js';
 import { HOUSING, HOUSING_ORDER, monthlyCosts, DIET, GYM_COST, setDiet, toggleGym } from './engine/economy.js';
 import { GENRES, hotGenre } from './systems/meta/news.js';
@@ -103,6 +104,7 @@ export default function App() {
   const firstDay = allSets(g).find((p) => !p.take);
   if (firstDay) return <StoryRoom g={g} p={firstDay} />;
   if (g.night) return <NightRoom g={g} />;
+  if (g.tour) return <TourRoom g={g} />;
   if (g.openContract) return <ContractRoom g={g} onClose={() => dispatch(closeContract)} />;
   if (showRoom) return <RoomScreen g={g} onBack={() => setShowRoom(false)} />;
   if (confirmEnd) return <EndLifeModal onCancel={() => setConfirmEnd(false)} onConfirm={() => { import('./systems/meta/legacy.js').then(m => { m.enshrine(g); newLife(); setConfirmEnd(false); setOpenPerson(null); setScreen('life'); }); }} />;

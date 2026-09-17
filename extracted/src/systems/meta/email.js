@@ -5,6 +5,9 @@ import { addTimeline } from '../../engine/timeline.js';
 import { HOUSING } from '../../engine/economy.js';
 import { setFame, setRespect } from './status.js';
 import { agentWantsYou, offerAgent, signAgent, declineAgent, AGENT_TIERS } from '../career/agent.js';
+import { toursFor } from '../career/tour.js';
+import { STUDIOS } from '../world/names.js';
+import { COST } from '../../engine/energy.js';
 const clamp = (v) => Math.max(0, Math.min(100, v));
 export function emUnread(s) { return (s.inbox || []).filter((m) => !m.read).length; }
 function has(s, tag) { return (s.inbox || []).some((m) => m.tag === tag); }
@@ -106,6 +109,20 @@ export function emailTick(s) {
   }
   // A letter about a picture you are no longer shooting is not a letter.
   if (has(s, 'option') && !(p && (s.inbox || []).some((m) => m.tag === 'option' && m.title === p.title))) s.inbox = (s.inbox || []).filter((m) => m.tag !== 'option');
+  // ── the press tour ──
+  // The month before a studio picture opens, publicity wants two weeks of you. Only the
+  // pictures the studio paid for, and only the name on the poster — see career/tour.js.
+  for (const r of (s.releases || [])) {
+    if (r.tourAsked || !toursFor(r) || r.due - key !== 1) continue;
+    r.tourAsked = true;
+    let h = 0; for (const ch of String(r.title || '')) h = (h * 31 + ch.charCodeAt(0)) >>> 0;
+    const big = r.scale === 'blockbuster';
+    push(s, { from: `${STUDIOS[h % STUDIOS.length]} · publicity`, subj: `Press tour — "${r.title}"`, tag: 'tour', kind: 'tour', releaseId: r.id, title: r.title,
+      body: `"${r.title}" opens next month. ${big ? 'Three cities, two weeks' : 'Two weeks'}: the junket, ${big ? 'the late show' : 'a talk show'}, a cover. It is in the contract, more or less. ${COST.tour} energy, and a fortnight you do not get back.`,
+      cta: [{ label: `Do the tour · ${COST.tour} energy`, tour: 'go' }, { label: 'Skip it', tour: 'skip' }] });
+  }
+  // A letter about a picture that has opened is not a letter.
+  s.inbox = (s.inbox || []).filter((m) => m.tag !== 'tour' || (s.releases || []).some((r) => r.id === m.releaseId));
   // ── fan mail, hate mail, spam ──
   const flopped = (s.filmography || []).some((c) => (c.rating || 0) < 45 && c.closedAt && key - c.closedAt <= 3);
   if (fame >= 15 && offer(s, 'fan', 0, flopped ? 22 : fame >= 35 ? 10 : 5)) {

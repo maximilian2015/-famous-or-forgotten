@@ -19,6 +19,7 @@ import { comebackFloor } from '../meta/standing.js';
 import { paid } from './agent.js';
 import { reviewsFor } from '../world/critics.js';
 import { actorById, applyFilmToActor } from '../world/world.js';
+import { tourMultiplier, tourFame } from './tour.js';
 
 const clamp = (v, a = 0, b = 100) => Math.max(a, Math.min(b, v));
 
@@ -181,8 +182,9 @@ function open(s, rel) {
   const film = isFilm(rel.scale);
   // What it will end up taking. The player does not see this number yet — it arrives a
   // few thousand at a time, week by week, which is how anybody actually experiences it.
-  if (film) rel.finalGross = boxOfficeFor(s, rel);
-  else rel.viewers = viewersFor(s, rel);
+  // The press tour, or the lack of one, is the studio's marketing working or not — see tour.js.
+  if (film) rel.finalGross = Math.round(boxOfficeFor(s, rel) * tourMultiplier(rel));
+  else rel.viewers = Math.round(viewersFor(s, rel) * tourMultiplier(rel));
   rel.boxOffice = 0;
   const verdict = verdictOf({ ...rel, boxOffice: rel.finalGross || 0 });
   const score = (rel.rating / 10).toFixed(1);
@@ -219,7 +221,7 @@ function open(s, rel) {
   // Opening night is worth something on its own — the carpet, the photographs, the fact
   // that it exists. The rest of what this film does to your name waits for the run.
   const headroom = (limit, cur) => Math.max(0.16, 1 - (cur || 0) / limit);
-  const opening = { tentpole: 3, lead: 2, supporting: 1 }[rel.tier] || 1;
+  const opening = ({ tentpole: 3, lead: 2, supporting: 1 }[rel.tier] || 1) + tourFame(rel);
   setFame(s, (s.fame || 0) + opening * headroom(118, s.fame));
   // The finished thing is kept ON the release so runTick can close it out properly.
   credit._rel = { rating: rel.rating, worldHit: rel.worldHit, tier: rel.tier, scale: rel.scale,

@@ -26,7 +26,7 @@ export const COST = {
   meet: 15, visit: 10, sms: 10,
   // the evenings
   dateHome: 10, dateDinner: 10, datePublic: 15, dateAway: 40,
-  party: 20, partyBig: 25, partyHuge: 30, event: 20, talkIn: 10, askHelp: 5,
+  party: 20, partyBig: 25, partyHuge: 30, event: 20, talkIn: 10, askHelp: 5, tour: 25,
   // the body
   doctor: 10, rest: 0, therapy: 10, gym: 5,
 };

@@ -4,6 +4,7 @@ import { onCooldown } from '../../engine/cooldown.js';
 import { anniversaryMonth, anniversaryYears } from '../../systems/life/dating.js';
 import { tierById } from '../../systems/social/events.js';
 import { sets, canTakeSet, monthsUntilFree } from '../../engine/sets.js';
+import { toursFor } from '../../systems/career/tour.js';
 
 // The agenda. This is the calendar from the first prototype, the one Maxi remembered when
 // none of ten new ones would do: a card a month, two across, "Jan 2052 · 1/12" with a pill
@@ -17,7 +18,7 @@ const clean = (t) => String(t || '').replace('⭐ ', '');
 const dayOf = (title) => { let h = 0; for (const ch of String(title || '')) h = (h * 31 + ch.charCodeAt(0)) >>> 0; return 5 + (h % 23); };
 
 // The colours, in one place: the item cards, the month cells and the legend all read these.
-export const INK = { shoot: '#a78bfa', prep: '#c4b5fd', signed: '#a78bfa', post: '#60a5fa', premiere: '#ffd166', cinemas: '#06d6a0', off: '#ff6b8a', hold: '#94a3b8', answer: '#e2ddf5', reply: '#e2ddf5', party: '#06d6a0', love: '#ff8d9e', askers: '#ffd166' };
+export const INK = { tour: '#f2c265', shoot: '#a78bfa', prep: '#c4b5fd', signed: '#a78bfa', post: '#60a5fa', premiere: '#ffd166', cinemas: '#06d6a0', off: '#ff6b8a', hold: '#94a3b8', answer: '#e2ddf5', reply: '#e2ddf5', party: '#06d6a0', love: '#ff8d9e', askers: '#ffd166' };
 const SKIN = {
   shoot: { bg: 'linear-gradient(135deg, rgba(139,92,246,.26), rgba(255,255,255,.03))', border: '1px solid rgba(167,139,250,.42)', bar: 'linear-gradient(90deg,#8b5cf6,#ffd166)' },
   prep: { bg: 'linear-gradient(135deg, rgba(139,92,246,.12), rgba(255,255,255,.03))', border: '1px dashed rgba(167,139,250,.5)', bar: 'rgba(167,139,250,.75)' },
@@ -60,6 +61,8 @@ function itemsFor(g, i, abs) {
   }
   for (const r of (g.releases || [])) {
     // Post-production is not on here: you are not there for it. Maxi: "only the premiere."
+    // The month before: the studio's two weeks of you, if it is that kind of picture.
+    if (r.due === abs + 1 && toursFor(r)) it('tour', '🎤', 'Press tour', r.title, r.tour ? `Done · buzz ${r.tour.buzz}` : r.tourSkipped ? 'Skipped' : r.tourAsked ? 'The letter is in Email' : 'Next month');
     if (r.due === abs) it('premiere', '🎬', 'Premiere', r.title, `${dayOf(r.title)} ${MON[abs % 12]} ${Math.floor(r.due / 12)}`, { big: true });
   }
   for (const c of (g.filmography || [])) {
