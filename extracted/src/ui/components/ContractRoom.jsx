@@ -128,7 +128,7 @@ export function ContractRoom({ g, onClose }) {
       {/* what you can do with it */}
       <div style={{ marginTop: 12, display: 'grid', gap: 7 }}>
         {withThem && <div style={{ fontSize: 12, color: P.muted, textAlign: 'center', lineHeight: 1.5, padding: '4px 6px' }}>It is with them. They answer next month; the offer does not expire while they read it.</div>}
-        {signed && <div style={{ fontSize: 12, color: P.green, textAlign: 'center', lineHeight: 1.5, padding: '4px 6px', fontWeight: 700 }}>{g.production ? 'Signed. It starts the month you wrap.' : 'Signed.'}</div>}
+        {signed && <div style={{ fontSize: 12, color: P.green, textAlign: 'center', lineHeight: 1.5, padding: '4px 6px', fontWeight: 700 }}>{o.waitsForWrap ? 'Signed. It starts the month a set frees up.' : 'Signed.'}</div>}
         {!withThem && !signed && <>
           <button onClick={() => { dispatch(signContract, o.id); if (!talks.length) onClose(); }} disabled={talks.length > 0}
             style={{ border: 'none', borderRadius: 4, padding: '13px', fontSize: 14, fontWeight: 800, cursor: talks.length ? 'default' : 'pointer', background: talks.length ? '#c9b89a' : P.accent, color: P.paper }}>

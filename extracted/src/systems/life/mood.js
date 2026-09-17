@@ -46,7 +46,8 @@ export function mentalReport(s) {
   // Saying "the shoot is costing you 1.5 a month" would have been a nice-sounding invention,
   // and a player would have planned around it.
   if (s.production) {
-    const fills = monthlyStrain(s.production, s.strain || 0);
+    const all = s.productions && s.productions.length ? s.productions : [s.production];
+    const fills = all.reduce((n, p) => n + monthlyStrain(p, s.strain || 0), 0);
     const band = strainBand(s.strain || 0);
     push(line('shoot', `Shooting ${s.production.title}`, 0,
       `Not taking your head directly — it is filling the other meter, at ${Math.round(fills * 10) / 10} a month. `

@@ -3,6 +3,7 @@ import { theme } from '../theme.js';
 import { onCooldown } from '../../engine/cooldown.js';
 import { anniversaryMonth, anniversaryYears } from '../../systems/life/dating.js';
 import { tierById } from '../../systems/social/events.js';
+import { sets, canTakeSet, monthsUntilFree } from '../../engine/sets.js';
 
 // The agenda. This is the calendar from the first prototype, the one Maxi remembered when
 // none of ten new ones would do: a card a month, two across, "Jan 2052 · 1/12" with a pill
@@ -39,19 +40,20 @@ function itemsFor(g, i, abs) {
   const now = (g.year || 0) * 12 + (g.month || 0);
   const it = (kind, icon, label, title, sub, extra) => out.push({ kind, icon, label, title, sub, ...(extra || {}) });
   if (g.burnout && i < (g.burnout.left || 0)) it('off', '🚫', 'Signed off', 'Nothing gets booked', i === (g.burnout.left || 0) - 1 ? 'Cleared next month' : `${(g.burnout.left || 0) - i} month${(g.burnout.left || 0) - i === 1 ? '' : 's'} to go`);
-  // The shoot: preparation first, then the months on set. Both take the month.
-  const p = g.production;
-  const prepLeft = p ? (p.prepLeft || 0) : 0, shootLeft = p ? (p.monthsLeft || 0) : 0;
-  if (p && i === 0 && ((g.illness && g.illness.freezes) || (g.burnout && g.burnout.rest && g.burnout.left > 0))) it('hold', '🧊', 'On hold', p.title, 'The set waits while you recover');
-  if (p && i < prepLeft) it('prep', '🥊', 'Preparation', p.title, `Month ${(p.prep || 1) - prepLeft + i + 1} of ${p.prep || 1} before the first day`, { bar: ((p.prep || 1) - prepLeft + i + 1) / (p.prep || 1) });
-  else if (p && i < prepLeft + shootLeft) {
-    const n = (p.months || 0) - shootLeft + (i - prepLeft) + 1;
-    it('shoot', '🎥', 'Shooting', p.title, i === prepLeft + shootLeft - 1 ? `Month ${n} of ${p.months} — wraps` : `Month ${n} of ${p.months}${p.with ? ` · with ${p.with}` : ''}`, { bar: n / (p.months || 1) });
+  // The shoots — up to three at once: preparation first, then the months on set.
+  for (const p of sets(g)) {
+    const prepLeft = p.prepLeft || 0, shootLeft = p.monthsLeft || 0;
+    if (i === 0 && ((g.illness && g.illness.freezes) || (g.burnout && g.burnout.rest && g.burnout.left > 0))) it('hold', '🧊', 'On hold', p.title, 'The set waits while you recover');
+    if (i < prepLeft) it('prep', '🥊', 'Preparation', p.title, `Month ${(p.prep || 1) - prepLeft + i + 1} of ${p.prep || 1} before the first day`, { bar: ((p.prep || 1) - prepLeft + i + 1) / (p.prep || 1) });
+    else if (i < prepLeft + shootLeft) {
+      const n = (p.months || 0) - shootLeft + (i - prepLeft) + 1;
+      it('shoot', '🎥', 'Shooting', p.title, i === prepLeft + shootLeft - 1 ? `Month ${n} of ${p.months} — wraps` : `Month ${n} of ${p.months}${p.with ? ` · with ${p.with}` : ''}`, { bar: n / (p.months || 1) });
+    }
   }
-  // A signed paper waiting for the set: it starts the month you are free.
+  // A signed paper waiting for a set: it starts the month one frees up.
   for (const o of (g.offers || [])) {
     if (!o.signed) continue;
-    const start = Math.max((o.startAt || now + 1) - now, prepLeft + shootLeft);
+    const start = Math.max((o.startAt || now + 1) - now, canTakeSet(g, o).ok ? 0 : monthsUntilFree(g, o));
     const prep = o.prep || 0, months = o.months || 1;
     if (i >= start && i < start + prep) it('prep', '🥊', 'Preparation', clean(o.projectTitle), `Month ${i - start + 1} of ${prep} before the first day`, { bar: (i - start + 1) / prep });
     else if (i >= start + prep && i < start + prep + months) it('signed', '✍️', 'Signed', clean(o.projectTitle), `Shooting, month ${i - start - prep + 1} of ${months}`);
@@ -71,7 +73,7 @@ function itemsFor(g, i, abs) {
     if (o.signed) continue;
     const k = o.contract;
     if (k && k.sent && (k.sent < now ? i === 0 : i === 1)) { it('reply', '📨', 'Their answer', clean(o.projectTitle), `The contract comes back${k.round > 1 ? ` — round ${k.round}` : ''}`); continue; }
-    if ((o.deadline || 0) - 1 === i && !(o.waitsForWrap && g.production)) it('off', '⏳', 'Offer runs out', clean(o.projectTitle), i === 0 ? 'Answer it this month' : `Answer by ${MON[abs % 12]}`);
+    if ((o.deadline || 0) - 1 === i && !(o.waitsForWrap && !canTakeSet(g, o).ok)) it('off', '⏳', 'Offer runs out', clean(o.projectTitle), i === 0 ? 'Answer it this month' : `Answer by ${MON[abs % 12]}`);
   }
   for (const e of (g.events || [])) if (e.monthsLeft - 1 === i && !e.attended) it('party', '🎉', 'Party', tierById(e.tier).label, 'Last month to go');
   if (i === 0) for (const m of (g.inbox || [])) if (m.kind === 'invite') it('party', '✉️', 'Invitation', m.subj, 'In Email');

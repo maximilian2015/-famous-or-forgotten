@@ -35,7 +35,7 @@ export function namesInUse(s) {
   const t = new Set([s.name]);
   for (const p of s.family || []) t.add(p.name);
   for (const p of s.people || []) t.add(p.name);
-  for (const c of (s.production && s.production.crew) || []) t.add(c.name);
+  for (const p of (s.productions && s.productions.length ? s.productions : (s.production ? [s.production] : []))) for (const c of p.crew || []) t.add(c.name);
   for (const a of (s.world && s.world.actors) || []) t.add(a.name);
   for (const c of (s.world && s.world.critics) || []) t.add(c.name);
   return t;

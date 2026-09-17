@@ -10,6 +10,7 @@ import { startProduction } from './production.js';
 import { rollStability } from './stability.js';
 import { canWork } from '../life/strain.js';
 import { newTitle } from '../world/titles.js';
+import { canTakeSet } from '../../engine/sets.js';
 const clamp = (v) => Math.max(0, Math.min(100, v));
 // Titles come from the same generator as everything else the world makes, so an agent's
 // offer cannot be called what a rival's film was called last year. See world/titles.js.
@@ -76,7 +77,7 @@ export function offersTick(s) {
     // They cast you knowing you were on a set — a part won mid-shoot, or your own show
     // asking you back — so the clock starts when you wrap. Three parts in a row used to go
     // to somebody else while you were still shooting the one before.
-    if (o.waitsForWrap && s.production) { kept.push(o); continue; }
+    if (o.waitsForWrap && !canTakeSet(s, o).ok) { kept.push(o); continue; }
     // A signed paper does not expire, and one that is with them is waiting on them, not you.
     if (o.signed || (o.contract && o.contract.sent)) { kept.push(o); continue; }
     o.deadline -= 1;
@@ -115,7 +116,8 @@ export function acceptOffer(s, id) {
   const fit = canWork(s);
   if (!fit.ok) { s.lastEvent = fit.why; return s; }
   if (o.tier !== 'supporting' || (o.months || 0) >= 2) {
-    if (s.production) { s.lastEvent = `You're already committed to "${s.production.title}" — wrap that one first.`; return s; }
+    const room = canTakeSet(s, o);
+    if (!room.ok) { s.lastEvent = room.why; return s; }
     s.offers = (s.offers || []).filter((x) => x.id !== id);
     s.inbox = (s.inbox || []).filter((m) => m.offerId !== id);
     startProduction(s, o);

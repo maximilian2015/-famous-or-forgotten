@@ -59,15 +59,26 @@ const oneoff = bookScale('oneoff');
 ok('a one-day booking still resolves at once', !oneoff.production && oneoff.filmography.length === 1, oneoff.lastEvent);
 ok('and says it was one day', /One day/.test(oneoff.lastEvent), oneoff.lastEvent);
 
-// you cannot be in two places
-const busy = st(); refreshCastingPool(busy, true);
-busy.production = { title: 'Late River', months: 4, monthsLeft: 3, salary: 12000, crew: [{ id: 'c', name: 'X', role: 'Director', bond: 50 }], meter: 40, genre: 'Drama', tier: 'lead', prestigeScore: 50 };
-// One real job at a time. A voice session or a day as an extra is an afternoon and is
-// allowed — see systems/career/castings.js — so this has to read for a scheduled part.
+// A read while you are on a set is allowed now — Maxi: "in life actors shoot three
+// pictures at once." The part you win waits for a free set when they will not let a
+// nobody split the week (respect below SET_RESPECT[1]), and starts alongside when they will.
+const busy = st({ respect: 0 }); refreshCastingPool(busy, true);
+busy.production = { id: 'set-a', title: 'Late River', months: 4, monthsLeft: 3, salary: 12000, crew: [{ id: 'c', name: 'X', role: 'Director', bond: 50 }], meter: 40, genre: 'Drama', tier: 'lead', prestigeScore: 50 };
 const realPart = busy.castingPool.find((x) => (x.months || 1) >= 2) || busy.castingPool[0];
 const beforeAp = busy.ap;
-ok('you cannot take a second real job while shooting',
-  (auditionFor(busy, realPart.id, 90), busy.ap === beforeAp && /two places/.test(busy.lastEvent)), busy.lastEvent);
+ok('you can read for a second part while shooting',
+  (auditionFor(busy, realPart.id, 90), busy.ap < beforeAp && !/two places/.test(busy.lastEvent)), busy.lastEvent);
+{
+  const { canTakeSet, MAX_SETS } = await import('../src/engine/sets.js');
+  ok('a nobody is not allowed a second set at once', !canTakeSet(busy, { months: 3 }).ok, JSON.stringify(canTakeSet(busy, { months: 3 })));
+  busy.respect = 60;
+  ok('a respected name is', canTakeSet(busy, { months: 3 }).ok);
+  busy.productions.push({ id: 'set-b', title: 'B', monthsLeft: 2 }, { id: 'set-c', title: 'C', monthsLeft: 2 });
+  ok('and three is the most', !canTakeSet(busy, { months: 3 }).ok && MAX_SETS === 3);
+  busy.productions.length = 1; busy.production.exclusive = true;
+  ok('an exclusive set blocks everything', /exclusive/.test(canTakeSet(busy, { months: 1 }).why || ''));
+  busy.production.exclusive = false;
+}
 
 // paid every month, not only at the end
 const paid = st({ cash: 0 });

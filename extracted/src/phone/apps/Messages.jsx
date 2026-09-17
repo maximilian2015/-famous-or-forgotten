@@ -2,6 +2,7 @@ import { useEffect } from 'react';
 import { theme } from '../../ui/theme.js';
 import { smsReply, smsReadAll } from '../../systems/social/sms.js';
 import { dispatch } from '../../state/store.js';
+import { canTakeSet } from '../../engine/sets.js';
 import { acceptOffer, declineOffer, runCampaign, campaignCost } from '../../systems/career/offers.js';
 import { hotGenre } from '../../systems/meta/news.js';
 import { agentLine, fireAgent } from '../../systems/career/agent.js';
@@ -16,7 +17,9 @@ export function Messages({ g }) {
   // Why Accept would do nothing. It used to do nothing silently: signed off, or mid-shoot, and
   // the button just sat there while the reason was printed on a different screen.
   const fit = canWork(g);
-  const blocked = !fit.ok ? fit.why : g.production ? `You are shooting "${g.production.title}". A real part has to wait until you wrap.` : '';
+  // A banner only when NO part could start: every set full, or an exclusive one running.
+  const room = canTakeSet(g, null);
+  const blocked = !fit.ok ? fit.why : !room.ok && offers.some((o) => o.tier !== 'supporting' || (o.months || 0) >= 2) ? room.why : '';
   const sms = g.sms || [];
   // Opening the app is reading the texts. The reply is the only thing that costs anything.
   useEffect(() => { if (sms.some((m) => !m.read)) dispatch(smsReadAll); }, [sms.length]);
@@ -65,7 +68,7 @@ export function Messages({ g }) {
         {/* A returning show or a sequel should read as the same thing coming back. */}
         {o.note && <div style={{ fontSize: 11.5, color: theme.gold, marginTop: 5, lineHeight: 1.45 }}>{o.note}</div>}
         <div style={{ fontSize: 11.5, color: theme.muted, marginTop: 5 }}>
-          {o.episodes ? `€${o.episodeFee.toLocaleString()}/ep × ${o.episodes} = €${o.salary.toLocaleString()}` : `€${o.salary.toLocaleString()}`} · {o.months} mo · {o.signed ? (g.production ? 'signed — starts when you wrap' : 'signed') : o.contract && o.contract.sent ? 'the paper is with them' : o.waitsForWrap && g.production ? 'they will wait until you wrap' : `answer within ${o.deadline} mo`}
+          {o.episodes ? `€${o.episodeFee.toLocaleString()}/ep × ${o.episodes} = €${o.salary.toLocaleString()}` : `€${o.salary.toLocaleString()}`} · {o.months} mo · {o.signed ? (o.waitsForWrap ? 'signed — starts when a set frees up' : 'signed') : o.contract && o.contract.sent ? 'the paper is with them' : o.waitsForWrap && !canTakeSet(g, o).ok ? 'they will wait for a free set' : `answer within ${o.deadline} mo`}
         </div>
         <div style={{ display: 'flex', gap: 6, marginTop: 6, flexWrap: 'wrap' }}>
           {o.kind === 'renewal' && <span style={{ fontSize: 10.5, fontWeight: 800, padding: '3px 8px', borderRadius: 20, background: 'rgba(255,209,102,.18)', color: theme.gold }}>Season {o.season}</span>}

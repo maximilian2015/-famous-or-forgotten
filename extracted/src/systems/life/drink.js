@@ -141,7 +141,7 @@ export function drinkTick(s) {
   // The shoot has to be told here, not in productionTick. The monthly order is drinkTick
   // then productionTick, so by the time the production asked whether you had been drinking
   // the flag had already been cleared — and every film shot drunk came out unpunished.
-  if (drank && s.production) s.production.drunkMonths = (s.production.drunkMonths || 0) + 1;
+  if (drank) for (const p of (s.productions && s.productions.length ? s.productions : (s.production ? [s.production] : []))) p.drunkMonths = (p.drunkMonths || 0) + 1;
 
   if (drank) {
     // What it is actually costing: the only thing you had to sell. The bottle changes how

@@ -178,7 +178,7 @@ export function worldYear(s, year) {
     // Anybody your life still points at stays: the co-star on your current shoot, the names
     // on your posters, the people in your phone. Pruning one of them left a film "with"
     // somebody the world had forgotten.
-    const keep = new Set([s.production && s.production.withId, ...(s.filmography || []).map((c) => c.withId), ...(s.people || []).map((p) => p.worldId)].filter(Boolean));
+    const keep = new Set([...((s.productions && s.productions.length ? s.productions : (s.production ? [s.production] : [])).map((p) => p.withId)), ...(s.filmography || []).map((c) => c.withId), ...(s.people || []).map((p) => p.worldId)].filter(Boolean));
     w.actors = w.actors.filter((a) => keep.has(a.id) || (a.alive && (!a.retired || year - (a.retiredIn || year) < 15))).concat(w.actors.filter((a) => !a.alive && !keep.has(a.id)).slice(-10));
   }
   return films;

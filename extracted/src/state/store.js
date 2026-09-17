@@ -40,6 +40,11 @@ function normalize(saved) {
     (merged.people = merged.people || []).unshift({ id: 'p-agent-' + Math.random().toString(36).slice(2, 7), name: merged.agent.name, role: 'Agent', agent: true,
       industryWeight: { novice: 45, solid: 60, strong: 78, legend: 92 }[merged.agent.tier] || 45, relationship: 50, met: String(merged.year), lastSeen: (merged.year || 0) * 12 + (merged.month || 0) });
   }
+  // One set became a list of them. A save with the one gets the list; a set without an
+  // id gets one, so the two copies can be told apart after a reload.
+  if (!merged.productions) merged.productions = merged.production ? [merged.production] : [];
+  for (const p of merged.productions) if (!p.id) p.id = 'set-' + Math.random().toString(36).slice(2, 8);
+  merged.production = merged.productions[0] || null;
   ensureAppearance(merged); // saves made before the avatar existed still need a face
   return merged;
 }

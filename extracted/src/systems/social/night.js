@@ -96,12 +96,26 @@ export function startNight(s, ev, tier) {
   s.night = { eventId: ev.id, tier: tier.id, label: tier.label, venue: ev.venue, host: ev.host, hour: 0, drinks: 0, done: false,
     guests: guestsFor(s, ev, tier), log: [{ text: `${tier.label} at ${ev.venue}. ${ev.host ? `Hosted by ${ev.host}. ` : ''}You are in.`, tone: 'note' }],
     gains: { contacts: [], leads: 0, numbers: 0, fame: 0, respect: 0, scandal: 0 }, pending: null, cameras: tier.id === 'premiere' || tier.id === 'gala' };
+  approach(s);
   return s;
+}
+// Somebody comes over. A face people know, or one they want to look at, does not work the
+// room — the room works them. Maxi: "with looks at a hundred, people come up to you." A
+// guest who came over is an easier talk and does not cost an hour: they found you.
+function approach(s) {
+  const n = s.night;
+  const odds = Math.max(0, Math.min(75, ((s.looks || 0) - 45) * 0.9 + (s.fame || 0) * 0.35));
+  if (!chance(odds)) return;
+  const g = pick(n.guests.filter((x) => !x.done && !x.came && !x.host));
+  if (!g) return;
+  g.came = true;
+  say(s, `${first(g.name)} came over to you.`, 'good');
 }
 function say(s, text, tone = 'note') { s.night.log.push({ text, tone }); }
 function hourPasses(s) {
   const n = s.night; n.hour += 1;
   if (n.hour === 1 && chance(30)) incident(s);
+  if (n.hour < HOURS.length) approach(s);
   if (n.hour >= HOURS.length && !n.pending) endNight(s);
 }
 
@@ -110,11 +124,11 @@ function hourPasses(s) {
 function drinkMod(n) { return n.drinks === 0 ? 0 : n.drinks <= 2 ? 8 : -18; }
 export function talkOdds(s, g) {
   const n = s.night; if (!n) return 0;
-  if (g.kind === 'prospect') return clamp(35 + (s.charisma || 0) * 0.3 + (s.looks || 0) * 0.35 - ((g.person.charm || 50) - 50) * 0.3 + drinkMod(n));
+  if (g.kind === 'prospect') return clamp(35 + (s.charisma || 0) * 0.3 + (s.looks || 0) * 0.35 - ((g.person.charm || 50) - 50) * 0.3 + (g.came ? 25 : 0) + drinkMod(n));
   if (g.kind === 'contact') return clamp(60 + (s.charisma || 0) * 0.2 + drinkMod(n));
   if (g.kind === 'press') return clamp(40 + (s.charisma || 0) * 0.4 + drinkMod(n));
   const gap = Math.max(0, (g.standing || 0) - (s.fame || 0));
-  return Math.max(5, Math.min(92, 30 + (s.charisma || 0) * 0.35 + (s.looks || 0) * 0.1 - gap * 0.5 + (g.host ? 12 : 0) + drinkMod(n)));
+  return Math.max(5, Math.min(92, 30 + (s.charisma || 0) * 0.35 + (s.looks || 0) * 0.1 - gap * 0.5 + (g.host ? 12 : 0) + (g.came ? 25 : 0) + drinkMod(n)));
 }
 export function talkTo(s, guestId) {
   const n = s.night; if (!n || n.done || n.pending) return s;
@@ -127,6 +141,7 @@ export function talkTo(s, guestId) {
   else if (g.kind === 'contact') talkContact(s, g, ok);
   else if (g.kind === 'press') talkPress(s, g, ok);
   else if (g.kind === 'prospect') talkProspect(s, g, ok);
+  if (g.came) { if (n.hour >= HOURS.length && !n.pending) endNight(s); return s; }   // they found you; the hour is still yours
   hourPasses(s);
   return s;
 }

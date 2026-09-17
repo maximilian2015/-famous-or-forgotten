@@ -14,6 +14,8 @@ import { coldStart } from '../meta/standing.js';
 import { activeActors, actorById } from '../world/world.js';
 import { fameTier } from '../meta/status.js';
 import { personName, namesInUse } from '../world/names.js';
+import { sets, addSet, removeSet, setById, canTakeSet, slotsFree, MAX_SETS, SET_RESPECT } from '../../engine/sets.js';
+export { sets, canTakeSet, slotsFree, MAX_SETS, SET_RESPECT };
 const clamp = (v) => Math.max(0, Math.min(100, v));
 // A shoot opens on 20 and 20 used to be labelled "Disaster", so the very first thing the
 // game said about every film you ever made was that it was already a catastrophe — on day
@@ -102,8 +104,8 @@ function scaleOfOffer(offer) {
     : offer.tier === 'tentpole' ? 'blockbuster' : offer.tier === 'lead' ? 'feature' : 'indie');
 }
 export function startProduction(s, offer) {
-  s.production = {
-    offerId: offer.id, title: offer.projectTitle.replace('⭐ ', ''), role: offer.role, type: offer.type,
+  const p = {
+    id: uid(s, 'set'), offerId: offer.id, title: offer.projectTitle.replace('⭐ ', ''), role: offer.role, type: offer.type,
     genre: offer.genre, salary: offer.salary, months: offer.months, monthsLeft: offer.months,
     prestigeScore: offer.prestigeScore, tier: offer.tier, campaign: !!offer.campaign,
     // What part one was paid. Every sequel raise is measured against THIS, not against
@@ -129,16 +131,19 @@ export function startProduction(s, offer) {
     // argument happens on day one and the room decides whether you are listened to.
     premise: makePremise(), take: null, takeWon: false,
   };
-  const star = s.production.crew.find((c) => c.worldId);
+  // One more set. Three at most, and the second and third only for somebody they trust
+  // to turn up — see engine/sets.js. The callers check first; this is the last door.
+  addSet(s, p);
+  const star = p.crew.find((c) => c.worldId);
   if (star) {
     const a = actorById(s, star.worldId);
-    if (a) { Object.assign(s.production, { with: a.name, withId: a.id, withFame: a.fame, withIcon: !!a.icon });
+    if (a) { Object.assign(p, { with: a.name, withId: a.id, withFame: a.fame, withIcon: !!a.icon });
       addTimeline(s, a.icon ? `${a.name} is in it. You will be on a poster with an icon.` : `${a.name} is your co-star.`); }
   }
   // Your quote is the biggest fee you have ever commanded for a picture, and it is set
   // by taking the job — not only by winning an argument about it. Television is priced
   // per episode and is a different currency, so it does not move this number.
-  if (!s.production.episodes) setQuote(s, Math.max(s.quote || 0, s.production.salary || 0));
+  if (!p.episodes) setQuote(s, Math.max(s.quote || 0, p.salary || 0));
   // Every job costs something before a single day is shot: the prep, the travel, the
   // press, the moving of your whole life onto somebody's schedule. Charging only by the
   // month meant ten two-month films were cheaper than four five-month ones, and an actor
@@ -148,21 +153,24 @@ export function startProduction(s, offer) {
   // A part you got through somebody's dinner table. The crew knows, and the director starts
   // ten points colder than they would for anyone else — you have a shoot to prove it wrong.
   if (offer.viaPartner) {
-    const lead = s.production.crew[0];
+    const lead = p.crew[0];
     lead.bond = clamp(lead.bond - 10); lead.bond0 = lead.bond;
-    s.production.viaPartner = offer.viaPartner;
+    p.viaPartner = offer.viaPartner;
     // Maxi: "and if you got into A-list pictures through a lover, your reputation can be bad."
     // The business has a word for it, and the trades have a column. Five points now; the
     // film decides the rest — see release.js closeRun.
     setRespect(s, (s.respect || 0) - 5);
     s.scandal = clamp((s.scandal || 0) + 4);
     s.media = clamp((s.media || 0) + 6);
-    addTimeline(s, `Everybody on ${s.production.title} knows how you got the part. ${lead.name} has not said anything, which is how you know. The trades have said plenty.`, true);
+    addTimeline(s, `Everybody on ${p.title} knows how you got the part. ${lead.name} has not said anything, which is how you know. The trades have said plenty.`, true);
   }
-  s.strain = Math.min(100, (s.strain || 0) + 6 + ((s.strain || 0) > 48 ? 9 : 0));
-  const dir = s.production.crew[0];
-  s.lastEvent = dir.knownId ? `Cameras roll on "${s.production.title}". ${dir.name} is directing — you two have done this before.` : `Cameras roll on "${s.production.title}". First day on set.`;
-  addTimeline(s, `Production began: ${s.production.title}.`);
+  // Walking onto a second call sheet while the first is running costs more again.
+  const others = sets(s).length - 1;
+  s.strain = Math.min(100, (s.strain || 0) + 6 + ((s.strain || 0) > 48 ? 9 : 0) + others * 5);
+  const dir = p.crew[0];
+  s.lastEvent = dir.knownId ? `Cameras roll on "${p.title}". ${dir.name} is directing — you two have done this before.` : `Cameras roll on "${p.title}". First day on set.`;
+  if (others) s.lastEvent += ` That is ${others + 1} sets at once — the month is shorter for it.`;
+  addTimeline(s, `Production began: ${p.title}.`);
   return s;
 }
 // A month's rehearsal is worth a lot the first time and less each time after. Six goes at
@@ -170,10 +178,10 @@ export function startProduction(s, offer) {
 // don't you find?" The third pass finds a little; after that you are running it into the ground.
 const REHEARSAL_GAIN = [[4, 9], [3, 6], [1, 3]];
 function monthKey(s) { return (s.year || 0) * 12 + (s.month || 0); }
-export function rehearsalsThisMonth(s) { const p = s.production; return p && p._rehearsedMonth === monthKey(s) ? (p._rehearsals || 0) : 0; }
-export function rehearse(s) {
-  const p = s.production; if (!p) return s;
-  const n = rehearsalsThisMonth(s);
+export function rehearsalsThisMonth(s, id) { const p = setById(s, id); return p && p._rehearsedMonth === monthKey(s) ? (p._rehearsals || 0) : 0; }
+export function rehearse(s, id) {
+  const p = setById(s, id); if (!p) return s;
+  const n = rehearsalsThisMonth(s, id);
   if (n >= REHEARSAL_GAIN.length) { s.lastEvent = 'You have run it into the ground. It will not get better before the cameras do — come back next month.'; return s; }
   if (!canAfford(s, COST.rehearse)) { s.lastEvent = tooTired(s, COST.rehearse); return s; }
   spend(s, COST.rehearse);
@@ -184,13 +192,13 @@ export function rehearse(s) {
   s.lastEvent = n === 0 ? `Solid rehearsal. Shoot quality +${gain}.` : n === 1 ? `Another pass. Shoot quality +${gain}.` : `You found a little more. Shoot quality +${gain} — and that is all this month has in it.`;
   return s;
 }
-export function takesThisMonth(s) { const p = s.production; return p && p._takenMonth === monthKey(s) ? (p._takes || 0) : 0; }
-export function riskyTake(s, quality = 0) {
-  const p = s.production; if (!p) return s;
-  if (takesThisMonth(s) >= 2) { s.lastEvent = 'The crew has given you two of those this month. Nobody is resetting the lights a third time.'; return s; }
+export function takesThisMonth(s, id) { const p = setById(s, id); return p && p._takenMonth === monthKey(s) ? (p._takes || 0) : 0; }
+export function riskyTake(s, quality = 0, id) {
+  const p = setById(s, id); if (!p) return s;
+  if (takesThisMonth(s, id) >= 2) { s.lastEvent = 'The crew has given you two of those this month. Nobody is resetting the lights a third time.'; return s; }
   if (!canAfford(s, COST.take)) { s.lastEvent = tooTired(s, COST.take); return s; }
   spend(s, COST.take);
-  p._workedMonth = monthKey(s); p._takenMonth = monthKey(s); p._takes = takesThisMonth(s) + 1;
+  p._workedMonth = monthKey(s); p._takenMonth = monthKey(s); p._takes = takesThisMonth(s, id) + 1;
   if (quality >= 80) {
     const gain = rint(16, 22);
     p.meter = clamp(p.meter + gain);
@@ -208,7 +216,8 @@ export function riskyTake(s, quality = 0) {
   return s;
 }
 export function bondWithCrew(s, crewId) {
-  const p = s.production; if (!p) return s;
+  // The crew member says which set: ids are unique across sets.
+  const p = sets(s).find((x) => (x.crew || []).some((c) => c.id === crewId)); if (!p) return s;
   const c = (p.crew || []).find((x) => x.id === crewId); if (!c) return s;
   if (!canAfford(s, COST.bond)) { s.lastEvent = tooTired(s, COST.bond); return s; }
   spend(s, COST.bond);
@@ -220,7 +229,10 @@ export function bondWithCrew(s, crewId) {
   return s;
 }
 export function productionTick(s) {
-  const p = s.production; if (!p) return;
+  // Every set gets its month. The list is copied because a wrap removes from it.
+  for (const p of [...sets(s)]) tickSet(s, p);
+}
+function tickSet(s, p) {
   // Preparation: the body, the accent, the stunts. Unpaid, and the set opens better for it.
   if ((p.prepLeft || 0) > 0) {
     p.prepLeft -= 1;
@@ -294,7 +306,7 @@ export function productionTick(s) {
     productionTrouble(s, p);
     return;
   }
-  wrapProduction(s);
+  wrapProduction(s, p);
 }
 // Nobody in this game got better at their job by doing their job. Acting rose from paid
 // classes, one school play and two youth events — and from nothing else, ever. Measured
@@ -339,8 +351,7 @@ function bottomOut(r) { return r >= 28 ? r : 15 + (Math.max(0, r) / 28) * 13; }
 // its own number, because that is what "a world hit" means.
 function topOut(r) { return r <= 86 ? r : 86 + 12 * (1 - Math.exp(-(r - 86) / 22)); }
 
-function wrapProduction(s) {
-  const p = s.production;
+function wrapProduction(s, p) {
   const skill = s.dream === 'singer' ? s.singing : s.acting;
   // Skill is a FLOOR, not a ceiling: a master never embarrasses themselves, but a hit has to
   // be earned on set. Before this, skill 100 alone cleared the 85 hit line on every project.
@@ -450,5 +461,5 @@ function wrapProduction(s) {
   s.lastEvent = `"${credit.title}" is in the can. Now you wait for it to open.${verdictNote}${craftNote}`;
   // Whether it carries on is decided on the numbers, so that question waits for the
   // premiere too — release.js asks it once the thing has actually been seen.
-  s.production = null;
+  removeSet(s, p);
 }

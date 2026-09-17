@@ -65,14 +65,14 @@ export function NightRoom({ g }) {
       ) : (<>
         <div style={{ fontSize: 11, fontWeight: 900, letterSpacing: '.08em', textTransform: 'uppercase', color: theme.muted, marginBottom: 6 }}>In the room</div>
         {open.map((x) => { const odds = Math.round(talkOdds(g, x));
-          return (<div key={x.id} style={{ display: 'flex', gap: 10, alignItems: 'center', background: theme.panel, border: `1px solid ${x.icon ? theme.gold + '88' : theme.line}`, borderRadius: 12, padding: '9px 11px', marginBottom: 7 }}>
+          return (<div key={x.id} style={{ display: 'flex', gap: 10, alignItems: 'center', background: theme.panel, border: `1px solid ${x.icon ? theme.gold + '88' : x.came ? theme.good + '88' : theme.line}`, borderRadius: 12, padding: '9px 11px', marginBottom: 7 }}>
             <div style={{ fontSize: 20, flex: 'none' }}>{x.icon ? '👑' : KIND_ICON[x.kind] || '🎭'}</div>
             <div style={{ flex: 1, minWidth: 0 }}>
               <div style={{ fontSize: 13, fontWeight: 800 }}>{x.name}{x.role && x.kind !== 'actor' ? <span style={{ color: theme.muted, fontWeight: 600 }}> · {x.role}</span> : null}</div>
               <div style={{ fontSize: 11, color: theme.muted, lineHeight: 1.4 }}>{x.line}</div>
             </div>
             <button onClick={() => dispatch(talkTo, x.id)} style={{ ...btn('pri'), flex: 'none', padding: '8px 10px' }}>
-              Talk <span style={{ fontWeight: 700, opacity: .85 }}>· {odds}%</span>
+              {x.came ? 'They came over' : 'Talk'} <span style={{ fontWeight: 700, opacity: .85 }}>· {odds}%{x.came ? ' · no hour' : ''}</span>
             </button>
           </div>); })}
         {!open.length && <div style={{ fontSize: 12, color: theme.muted, padding: '4px 0 10px' }}>You have talked to everybody worth talking to.</div>}

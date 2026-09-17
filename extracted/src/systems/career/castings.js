@@ -9,6 +9,7 @@ import { paid } from './agent.js';
 import { GENRES } from '../meta/news.js';
 import { addGenreXP, genreBonus } from './genres.js';
 import { startProduction } from './production.js';
+import { canTakeSet } from '../../engine/sets.js';
 import { quoteFor, episodeRate, setFame, isForgotten } from '../meta/status.js';
 import { reachFromStanding, prestigeShut, insuranceShut, roomHasHeard, boardThinned } from '../meta/standing.js';
 import { rollStability, feeFactor, riskPrestige } from './stability.js';
@@ -340,7 +341,7 @@ function answerSubmission(s, sub) {
     // Messages for life, and two of them shut the agent's pipeline for good. One extra,
     // because offersTick runs later in the same tick and takes the first month straight off.
     deadline: rint(2, 4) + 1,
-    waitsForWrap: !!s.production,   // read while shooting: the offer waits for the wrap
+    waitsForWrap: !canTakeSet(s, c).ok,   // no set free for it: the offer waits for one
   });
   s.lastEvent = `You got "${c.title}". They want you.`;
   addTimeline(s, `Booked ${c.title}.`);
@@ -362,10 +363,12 @@ export function auditionFor(s, id, quality = 50) {
   // as an extra is an afternoon, and an actor in the middle of a fourteen-month blockbuster
   // does those on a Saturday. Blocking them meant the longest shoots were also the emptiest
   // months in the game: three Energy and nothing whatsoever to spend it on.
-  if (s.production && ((c.months || 1) >= 2 || s.production.exclusive)) {
-    s.lastEvent = s.production.exclusive && (c.months || 1) < 2
-      ? `"${s.production.title}" is exclusive. You signed that — not a day, not a voice session, until you wrap.`
-      : `You are shooting "${s.production.title}". Nobody can be in two places.`;
+  // A read is a read: you go up for a part while you are on a set — Maxi: "during a shoot I
+  // cannot even do a casting; that is not real." If you win it, the part starts alongside when
+  // they will allow that (engine/sets.js) and waits for a free set when they will not. Only
+  // a day's work is blocked, and only by an exclusive contract.
+  if ((c.months || 1) < 2 && s.production && s.production.exclusive) {
+    s.lastEvent = `"${s.production.title}" is exclusive. You signed that — not a day, not a voice session, until you wrap.`;
     return s;
   }
   const fit = canWork(s);

@@ -9,6 +9,7 @@ import { negotiationFor, haggleOdds, applyHaggle } from '../../systems/career/ne
 import { stabilityBand, riskCostFor, volatility } from '../../systems/career/stability.js';
 import { ageFit, bandFor } from '../../systems/career/age.js';
 import { canWork } from '../../systems/life/strain.js';
+import { canTakeSet } from '../../engine/sets.js';
 import { askForLead, canUse, costOf, FAVOURS } from '../../systems/career/favours.js';
 import { COST, canAfford } from '../../engine/energy.js';
 import { hotGenre } from '../../systems/meta/news.js';
@@ -234,7 +235,8 @@ export function OpenCall({ g, ocTab, setOcTab, teenMode }) {
             const waits = (c.months || 1) >= 2;
             // One call sheet at a time. This used to let you pay for the sides and then refuse
             // the read — the same thing auditionFor refuses, said before the money goes.
-            const busy = !!g.production && waits;
+            const fit = canTakeSet(g, c);
+            const busy = !fit.ok && waits;
             const dead = busy || !step || !canAfford(g, COST.sides) || cost > (g.cash || 0);
             const off = !canWork(g).ok; const deadRead = busy || off || !canAfford(g, COST.audition);
             return (<div style={{ marginTop: 8 }}>
@@ -249,7 +251,7 @@ export function OpenCall({ g, ocTab, setOcTab, teenMode }) {
                   {busy ? 'On a shoot' : off ? 'Signed off' : `Audition · ${COST.audition} ⚡`}
                 </button>
               </div>
-              {busy && <div style={{ fontSize: 10.5, color: theme.muted, textAlign: 'center', marginTop: 5 }}>You are shooting "{g.production.title}". Nobody can be in two places — a day's work is fine, a part is not.</div>}
+              {busy && <div style={{ fontSize: 10.5, color: theme.muted, textAlign: 'center', marginTop: 5 }}>{fit.why} You can still read for it — the part waits for a free set.</div>}
               {waits && !deadRead && <div style={{ fontSize: 10.5, color: theme.muted, textAlign: 'center', marginTop: 5 }}>They answer in one to three months.</div>}
             </div>);
           })()}

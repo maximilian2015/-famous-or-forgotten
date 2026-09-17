@@ -13,6 +13,8 @@ import { resolveArc } from './systems/life/arcs.js';
 import { computeLegacy, getHall, heirsOf, heirOpts, enshrine } from './systems/meta/legacy.js';
 import { fameTier, setHousing, FAME_TIERS, fameCeiling, ladderBlurb, TIER_OPENS, alistKey, iconKey, scandalReport, respectReport, RESPECT_MOVES, RESPECT_TIERS, RESPECT_OPENS, respectTier, FORGOTTEN, FORGOTTEN_OPENS, isForgotten, forgottenDepth } from './systems/meta/status.js';
 import { rehearse, riskyTake, bondWithCrew, meterTier } from './systems/career/production.js';
+// Every set you are on. Three at most — see engine/sets.js; g.production is the first.
+const allSets = (g) => (g.productions && g.productions.length ? g.productions : (g.production ? [g.production] : []));
 import { agentCut, agentLine, fireAgent } from './systems/career/agent.js';
 import { COST, canAfford } from './engine/energy.js';
 import { EnergyBar } from './ui/components/EnergyBar.jsx';
@@ -98,7 +100,8 @@ export default function App() {
   if (g.bigMoment) return <BigMoment moment={g.bigMoment} look={lookOf(g)} onClose={() => dispatch(clearBigMoment)} />;
   if (g.depression?.pending) return <CheckpointModal g={g} />;
   if (g.drink?.pending) return <UltimatumModal g={g} />;
-  if (g.production && !g.production.take) return <StoryRoom g={g} />;
+  const firstDay = allSets(g).find((p) => !p.take);
+  if (firstDay) return <StoryRoom g={g} p={firstDay} />;
   if (g.night) return <NightRoom g={g} />;
   if (g.openContract) return <ContractRoom g={g} onClose={() => dispatch(closeContract)} />;
   if (showRoom) return <RoomScreen g={g} onBack={() => setShowRoom(false)} />;
@@ -168,18 +171,18 @@ export default function App() {
           </div>
           <Button kind="pri" onClick={() => setShowHealth(true)}>Deal with it ›</Button>
         </Card>)}
-        {inCareer(g) && g.production && (<Card style={{ marginBottom: 14, borderColor: 'rgba(255,209,102,.35)' }}>
+        {inCareer(g) && allSets(g).map((p, i) => (<Card key={p.id || i} style={{ marginBottom: 14, borderColor: 'rgba(255,209,102,.35)' }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline' }}>
-            <div style={{ fontSize: 11, fontWeight: 900, letterSpacing: '.08em', textTransform: 'uppercase', color: theme.gold }}>🎬 On set</div>
-            <div style={{ fontSize: 11.5, color: theme.muted }}>{meterTier(g.production.meter).label}</div>
+            <div style={{ fontSize: 11, fontWeight: 900, letterSpacing: '.08em', textTransform: 'uppercase', color: theme.gold }}>🎬 On set{allSets(g).length > 1 ? ` · ${i + 1} of ${allSets(g).length}` : ''}</div>
+            <div style={{ fontSize: 11.5, color: theme.muted }}>{meterTier(p.meter).label}</div>
           </div>
-          <div style={{ fontSize: 14, fontWeight: 800, marginTop: 3 }}>{g.production.title} · {g.production.prepLeft > 0 ? `preparing, ${g.production.prepLeft} mo` : `${g.production.monthsLeft} mo left`}</div>
+          <div style={{ fontSize: 14, fontWeight: 800, marginTop: 3 }}>{p.title} · {p.prepLeft > 0 ? `preparing, ${p.prepLeft} mo` : `${p.monthsLeft} mo left`}</div>
           {/* The card used to say "Manage it from the Career tab" and nothing else, so a player
               who pressed Live one month from here skipped the month's rehearsal without
               ever knowing there was one to skip — and the director's opinion, the thing
               that actually cools, was not shown anywhere at all. Both are here now. */}
-          <OnSetNow g={g} />
-        </Card>)}
+          <OnSetNow g={g} p={p} />
+        </Card>))}
         {inCareer(g) && (g.offers || []).length > 0 && (<div style={{ marginBottom: 14 }}><div style={{ fontSize: 11, fontWeight: 900, letterSpacing: '.09em', textTransform: 'uppercase', color: theme.muted, marginBottom: 8 }}>Offers</div>{g.offers.map((o) => (<Card key={o.id} style={{ marginBottom: 8 }}><div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline' }}><div style={{ fontSize: 14, fontWeight: 800 }}>{o.projectTitle}</div><div style={{ fontSize: 13, fontWeight: 900, color: theme.gold }}>€{o.salary.toLocaleString()}</div></div><div style={{ fontSize: 11.5, color: theme.muted, margin: '3px 0 4px' }}>{o.role} · {o.type} · {o.months} mo · prestige {o.prestigeScore}</div>
           {/* An offer can collapse mid-shoot exactly like a casting, so it has to say how
               solid the money is before you sign, not after. */}
@@ -243,8 +246,7 @@ function BottomNav({ screen, setScreen, g }) {
 }
 // What this month on set needs from you, and how the director feels about you — on the
 // home screen, where the month actually gets lived.
-function OnSetNow({ g }) {
-  const p = g.production;
+function OnSetNow({ g, p }) {
   const lead = (p.crew || [])[0];
   const stamp = (g.year || 0) * 12 + (g.month || 0);
   const worked = p._workedMonth === stamp;
@@ -257,7 +259,7 @@ function OnSetNow({ g }) {
       {b < 45 && ' A cold director is what costs you standing at wrap.'}
     </div>}
     <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
-      <Button kind={worked ? 'default' : 'pri'} sfx="slate" disabled={noEnergy || worked} onClick={() => dispatch(rehearse)} style={{ flex: 1 }}>
+      <Button kind={worked ? 'default' : 'pri'} sfx="slate" disabled={noEnergy || worked} onClick={() => dispatch(rehearse, p.id)} style={{ flex: 1 }}>
         {worked ? '✓ Rehearsed this month' : noEnergy ? 'Rehearse · not enough energy' : `Rehearse · ${COST.rehearse} energy`}</Button>
     </div>
     {!worked && !noEnergy && <div style={{ fontSize: 11, color: theme.gold, marginTop: 6, lineHeight: 1.45 }}>
@@ -952,8 +954,7 @@ const DAYS = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
 // Day one, and somebody says what they think the film is. You do not choose the plot —
 // an actor never does — you argue for a version of it, and whether anybody listens is what
 // your standing has been FOR all along. See systems/career/story.js.
-function StoryRoom({ g }) {
-  const p = g.production;
+function StoryRoom({ g, p }) {
   if (!p || p.take) return null;
   const room = openStoryRoom(g, p);
   const hot = hotGenre(g);
@@ -1136,7 +1137,7 @@ function LifeCard({ g }) {
     {row('Living', g.homeless ? 'Nowhere — on the street' : hostName(g) ? `At ${hostName(g)}'s · no rent` : g.inheritedHome ? `${HOUSING[g.housing || 'room'].label} · yours outright` : g.hasApartment ? HOUSING[g.housing || 'room'].label : "At your parents'")}
     {g.hasApartment && row('Eating', `${DIET[g.diet || 'cook'].label}${g.gym ? ' · gym' : ''}`)}
     {row('Work', g.job ? `${g.job.title} · ${g.job.employer}` : (inCareer(g) ? 'No job' : '—'), g.job ? theme.text : theme.muted)}
-    {g.production && row('Filming', `${g.production.title} · ${g.production.prepLeft > 0 ? `preparing, ${g.production.prepLeft} mo` : `${g.production.monthsLeft} mo left`}`, theme.gold)}
+    {allSets(g).map((p, i) => row(i ? '' : 'Filming', `${p.title} · ${p.prepLeft > 0 ? `preparing, ${p.prepLeft} mo` : `${p.monthsLeft} mo left`}`, theme.gold))}
     {/* The number your agent says out loud. It only means anything if you can see it. */}
     {(g.quote || 0) > 0 && row('Your quote', money(g.quote), theme.gold)}
     {/* What the work is costing you. Only shown once it is worth knowing about. */}
@@ -1166,7 +1167,7 @@ function CareerScreen({ g, teenOnly }) {
     <div style={{ display: 'flex', gap: 6, marginBottom: 14 }}>
       {CAREER_TABS.map(([id, label]) => (<button key={id} onClick={() => setTab(id)} style={{ flex: 1, border: 'none', borderRadius: 10, padding: '8px 4px', fontSize: 12, fontWeight: 800, cursor: 'pointer', background: tab === id ? `linear-gradient(135deg,${theme.accent2},${theme.accent})` : 'rgba(158,116,255,.16)', color: tab === id ? '#fff' : '#d9cffa' }}>{label}</button>))}
     </div>
-    {tab === 'calendar' && <><Diary g={g} />{g.production ? <ProductionCard g={g} /> : <div style={{ fontSize: 12.5, color: theme.muted, textAlign: 'center', padding: '18px 10px', lineHeight: 1.6 }}>🎬 Nothing shooting.<br />Land a part — read on OpenCall, or take an offer in Messages — and the shoot goes on the calendar.</div>}</>}
+    {tab === 'calendar' && <><Diary g={g} />{allSets(g).length ? allSets(g).map((p) => <ProductionCard key={p.id || p.title} g={g} p={p} />) : <div style={{ fontSize: 12.5, color: theme.muted, textAlign: 'center', padding: '18px 10px', lineHeight: 1.6 }}>🎬 Nothing shooting.<br />Land a part — read on OpenCall, or take an offer in Messages — and the shoot goes on the calendar.</div>}</>}
     {tab === 'training' && <TrainingScreen g={g} />}
     {tab === 'credits' && <CreditsList g={g} credits={credits} label={creditsLabel} />}
     {tab === 'events' && <EventsScreen g={g} />}
@@ -2059,18 +2060,18 @@ function OfferBacking({ o }) {
   </div>);
 }
 function CreditsList({ g, credits, label }) {
-  const p = g.production;
+  const shooting = allSets(g);
   return (<div>
-    {p && (<div style={{ marginBottom: 16 }}>
-      <div style={{ fontSize: 11, fontWeight: 900, letterSpacing: '.09em', textTransform: 'uppercase', color: theme.gold, marginBottom: 8 }}>In production · 1</div>
-      <div style={{ display: 'flex', gap: 11, padding: '10px 2px', borderBottom: `1px solid ${theme.line}`, opacity: .85 }}>
+    {shooting.length > 0 && (<div style={{ marginBottom: 16 }}>
+      <div style={{ fontSize: 11, fontWeight: 900, letterSpacing: '.09em', textTransform: 'uppercase', color: theme.gold, marginBottom: 8 }}>In production · {shooting.length}</div>
+      {shooting.map((p) => (<div key={p.id || p.title} style={{ display: 'flex', gap: 11, padding: '10px 2px', borderBottom: `1px solid ${theme.line}`, opacity: .85 }}>
         <Poster title={p.title} type={p.type} genre={p.genre} director={(p.crew || [])[0] && p.crew[0].name} />
         <div style={{ flex: 1, minWidth: 0 }}>
           <div style={{ fontSize: 14, fontWeight: 800 }}>{p.title}</div>
-          <div style={{ fontSize: 11.5, color: theme.gold, margin: '4px 0 3px' }}>Shooting · {p.monthsLeft} mo left</div>
+          <div style={{ fontSize: 11.5, color: theme.gold, margin: '4px 0 3px' }}>{p.prepLeft > 0 ? `Preparing · ${p.prepLeft} mo` : `Shooting · ${p.monthsLeft} mo left`}</div>
           <div style={{ fontSize: 11.5, color: theme.muted }}>{p.role}{p.genre ? ` · ${p.genre}` : ''}</div>
         </div>
-      </div>
+      </div>))}
     </div>)}
     {/* Shot, cut, not out. The wait is half the game now — it should be visible. */}
     {(g.releases || []).length > 0 && (() => {
@@ -2273,8 +2274,8 @@ function EventsScreen({ g }) {
     })}
   </div>);
 }
-function ProductionCard({ g }) {
-  const p = g.production; const tier = meterTier(p.meter); const noEnergy = !canAfford(g, COST.rehearse);
+function ProductionCard({ g, p }) {
+  const tier = meterTier(p.meter); const noEnergy = !canAfford(g, COST.rehearse);
   const [minigame, setMinigame] = useState(null);
   const actBtn = (danger) => ({ flex: 1, border: 'none', borderRadius: 10, padding: '9px', fontSize: 12.5, fontWeight: 800, cursor: noEnergy ? 'default' : 'pointer', background: noEnergy ? 'rgba(120,110,150,.15)' : danger ? 'rgba(255,209,102,.18)' : `linear-gradient(135deg,${theme.accent2},${theme.accent})`, color: noEnergy ? '#6b6390' : danger ? theme.gold : '#fff' });
   function openRiskyTake() {
@@ -2283,7 +2284,7 @@ function ProductionCard({ g }) {
       bad: 3 + (Math.random() < 0.5 ? 1 : 0) });
   }
   function onMinigameResult(quality) {
-    dispatch(riskyTake, quality);
+    dispatch(riskyTake, quality, p.id);
     setMinigame(null);
   }
   return (<Card style={{ marginBottom: 14, borderColor: 'rgba(255,209,102,.35)' }}>
@@ -2300,7 +2301,7 @@ function ProductionCard({ g }) {
         ? <TimingBar zoneStart={minigame.zoneStart} zoneWidth={minigame.zoneWidth} speed={minigame.speed} onResult={onMinigameResult} />
         : <GridRisk cols={4} rows={3} bad={minigame.bad} labelSafe="✓" labelBad="✕" onResult={onMinigameResult} />}
     </div>) : (<div style={{ display: 'flex', gap: 7, marginBottom: 12 }}>
-      <button onClick={() => dispatch(rehearse)} disabled={noEnergy} style={actBtn(false)}>Rehearse · {COST.rehearse}</button>
+      <button onClick={() => dispatch(rehearse, p.id)} disabled={noEnergy} style={actBtn(false)}>Rehearse · {COST.rehearse}</button>
       {canSmooth(g) && <button onClick={() => dispatch(smoothOver)} disabled={!canUse(g, 'smooth').ok} title={canUse(g, 'smooth').ok ? FAVOURS.smooth.blurb : canUse(g, 'smooth').why}
         style={{ ...actBtn(true), background: canUse(g, 'smooth').ok ? 'rgba(255,209,102,.18)' : 'rgba(120,110,150,.15)', color: canUse(g, 'smooth').ok ? theme.gold : '#6b6390' }}>◆ Have a word · −{costOf(g, 'smooth')}</button>}
       <button onClick={openRiskyTake} disabled={!canAfford(g, COST.take)} style={actBtn(true)}>Risky take · {COST.take}</button>

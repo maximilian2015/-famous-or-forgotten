@@ -133,7 +133,7 @@ export function resolveArc(s, i) {
       const killFee = Math.round((p.salary || 0) * 0.3);
       s.cash = (s.cash || 0) + killFee;
       addTimeline(s, `Walked away from ${p.title}. Kill fee €${killFee.toLocaleString()}.`, true);
-      s.production = null;
+      s.productions = (s.productions || []).filter((x) => x !== p && (x.id == null || x.id !== p.id)); s.production = s.productions[0] || null;
     }
   }
   s.lastEvent = `${arc.speaker}\n\n${head}${out.reply || c.label}`;

@@ -14,6 +14,7 @@ import { addTimeline } from '../../engine/timeline.js';
 import { fameTier } from '../meta/status.js';
 import { negotiationFor, reachOf } from './negotiate.js';
 import { acceptOffer, declineOffer } from './offers.js';
+import { canTakeSet, monthsUntilFree, sets } from '../../engine/sets.js';
 
 const MON = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
 const money = (n) => `€${Math.round(n).toLocaleString()}`;
@@ -56,14 +57,21 @@ export function draftContract(s, o) {
       : [{ id: 'fair', label: 'Ask for ten per cent more', value: Math.round(unit * 1.1), odds: 28 }] };
   clauses.push(fee);
   // The dates. If you are on a set, the only thing to ask is that it waits for you.
-  const start = (s.year || 0) * 12 + (s.month || 0) + 1;
+  // If you are on a set: alongside it, if they will have you split the week — a second
+  // set needs a name they trust — or after it wraps. Maxi: "castings while shooting, and
+  // with respect the option to start; the contract says how they are counted."
+  const now = (s.year || 0) * 12 + (s.month || 0);
+  const ex = big && exclusiveFor(o);   // decided here because the dates depend on it
+  const fit = canTakeSet(s, { ...o, exclusive: ex });
+  const wait = fit.ok ? 0 : monthsUntilFree(s, { ...o, exclusive: ex });
+  const start = now + 1 + (big ? wait : 0);
   const sched = { id: 'schedule', label: 'Schedule', value: { months: o.months || 1, start },
-    text: `${o.months || 1} month${(o.months || 1) === 1 ? '' : 's'} of shooting, from ${MON[start % 12]} ${Math.floor(start / 12)}`,
-    options: s.production && big ? [{ id: 'afterWrap', label: `Start after "${s.production.title}" wraps (${s.production.monthsLeft} mo)`, value: { months: o.months || 1, start: start + (s.production.monthsLeft || 0) }, odds: 70 }] : [] };
+    text: `${o.months || 1} month${(o.months || 1) === 1 ? '' : 's'} of shooting, from ${MON[start % 12]} ${Math.floor(start / 12)}`
+      + (s.production && big ? (fit.ok ? ` — alongside "${s.production.title}"` : ` — after "${(fit.until || s.production).title}" wraps; ${fit.respect ? `a set alongside needs respect ${fit.respect}` : fit.why.replace(/\.$/, '')}`) : ''),
+    options: s.production && big && fit.ok ? [{ id: 'afterWrap', label: `Start after "${s.production.title}" wraps instead (${(s.production.prepLeft || 0) + (s.production.monthsLeft || 0)} mo)`, value: { months: o.months || 1, start: now + 1 + (s.production.prepLeft || 0) + (s.production.monthsLeft || 0) }, odds: 70 }] : [] };
   clauses.push(sched);
   if (big) {
     // Exclusivity. The dilemma in one line.
-    const ex = exclusiveFor(o);
     clauses.push({ id: 'exclusive', label: 'Exclusivity', value: ex,
       text: ex ? 'Nothing else while you shoot — not a day, not a voice session' : 'A day’s work alongside is fine with them',
       options: ex ? [{ id: 'strike', label: 'Strike it — you keep your Saturdays', value: false, odds: o.scale === 'blockbuster' ? 22 : 45 }] : [] });
@@ -181,15 +189,16 @@ export function signContract(s, id) {
   const title = String(o.projectTitle || 'it').replace('⭐ ', '');
   // Signed to start later — after your current shoot. It waits in Messages, signed, and
   // starts itself the month the set is free.
-  if ((o.startAt || 0) > now + 1 || s.production) {
+  if ((o.startAt || 0) > now + 1 || !canTakeSet(s, o).ok) {
     o.waitsForWrap = true; o.deadline = 99;
-    s.lastEvent = `Signed. "${title}" starts ${s.production ? 'when you wrap' : `in ${MON[(o.startAt || now) % 12]}`}.`;
+    s.lastEvent = `Signed. "${title}" starts ${(o.startAt || 0) > now + 1 ? `in ${MON[(o.startAt || now) % 12]}` : 'when a set frees up'}.`;
     addTimeline(s, `Signed for ${title}.`);
     return s;
   }
   addTimeline(s, `Signed for ${title}.`);
   acceptOffer(s, id);
-  if (s.production && s.production.prepLeft > 0) s.lastEvent = `Signed. ${s.production.prep} month${s.production.prep === 1 ? '' : 's'} of preparation before the first day of "${title}".`;
+  const started = sets(s).find((p) => p.offerId === id);
+  if (started && started.prepLeft > 0) s.lastEvent = `Signed. ${started.prep} month${started.prep === 1 ? '' : 's'} of preparation before the first day of "${title}".`;
   return s;
 }
 export function passContract(s, id) { return declineOffer(s, id); }
@@ -197,9 +206,8 @@ export function passContract(s, id) { return declineOffer(s, id); }
 // Signed papers waiting for a free set start themselves. Called from productionTick's
 // slot in the month, after a wrap — see engine/time.js.
 export function startSigned(s) {
-  if (s.production) return s;
   const now = (s.year || 0) * 12 + (s.month || 0);
-  const o = (s.offers || []).find((x) => x.signed && (x.startAt || 0) <= now + 1);
+  const o = (s.offers || []).find((x) => x.signed && (x.startAt || 0) <= now + 1 && canTakeSet(s, x).ok);
   if (!o) return s;
   o.waitsForWrap = false;
   return acceptOffer(s, o.id);

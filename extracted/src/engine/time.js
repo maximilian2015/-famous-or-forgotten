@@ -1,5 +1,6 @@
 import { inCareer } from './stage.js';
 import { monthEnergy } from './energy-month.js';
+import { sets } from './sets.js';
 import { advanceStage } from '../systems/life/stages.js';
 import { applyMonthly, applyYearly, relevanceDrift, homeEnergy } from './economy.js';
 import { maybeGenerateOffer, offersTick } from '../systems/career/offers.js';
@@ -104,7 +105,7 @@ export function advanceMonth(state) {
   // What the month gives you: where you live, who you pay, the day job, the illness, the
   // strain. See engine/energy.js and energy-month.js.
   s.apMax = 100;
-  s.apMaxEff = monthEnergy(s, { home: homeEnergy(s), staff: staffEnergy(s), jobSlots: jobSlots(s), lostSlots: slotsLost(s) });
+  s.apMaxEff = monthEnergy(s, { home: homeEnergy(s), staff: staffEnergy(s), jobSlots: jobSlots(s), lostSlots: slotsLost(s), extraSets: Math.max(0, sets(s).length - 1) });
   s.ap = s.apMaxEff;
   showQueued(s);
   return s;
@@ -133,7 +134,7 @@ export function advanceYear(state) {
   maybeYouthEvent(s);
   pruneCooldowns(s);
   s.apMax = 100;
-  s.apMaxEff = monthEnergy(s, { home: homeEnergy(s), staff: 0, jobSlots: jobSlots(s), lostSlots: 0 });
+  s.apMaxEff = monthEnergy(s, { home: homeEnergy(s), staff: 0, jobSlots: jobSlots(s), lostSlots: 0, extraSets: Math.max(0, sets(s).length - 1) });
   s.ap = s.apMaxEff;
   showQueued(s);
   return s;

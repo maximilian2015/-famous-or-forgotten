@@ -170,8 +170,13 @@ export function strainTick(s) {
   }
 
   const before = s.strain || 0;
-  if (s.production && !(s.illness && s.illness.freezes)) {
-    let up = monthlyStrain(s.production, before);
+  const all = s.productions && s.productions.length ? s.productions : (s.production ? [s.production] : []);
+  if (all.length && !(s.illness && s.illness.freezes)) {
+    // Every set you are on wears you. The second and third at seven-tenths each — the days
+    // overlap, the tiredness does not quite — so three features at once is two and a half
+    // times the wear of one, and a burnout inside a season. Maxi: "take too many and the
+    // energy goes, then the illnesses."
+    let up = all.reduce((n, p, i) => n + monthlyStrain(p, before) * (i ? 0.7 : 1), 0);
     if ((s.mental || 50) < 35) up += 1.5;            // running down makes everything cost more
     if ((s.health || 50) < 40) up += 1.5;
     s.strain = clamp(before + up);
@@ -221,8 +226,9 @@ function collapse(s) {
   s.burnouts = (s.burnouts || 0) + 1;
   // Each one takes longer to come back from than the last.
   const months = rint(2, 5) + Math.min(4, s.burnouts - 1);
-  const wasShooting = !!s.production;
-  const title = s.production ? s.production.title : '';
+  const all = s.productions && s.productions.length ? s.productions : (s.production ? [s.production] : []);
+  const wasShooting = all.length > 0;
+  const title = all.map((p) => p.title).join('" and "');
   s.burnout = { left: months, since: (s.year || 0) * 12 + (s.month || 0) };
   s._redMonths = 0;
   // You do not do this to yourself twice in a row. People who go through it restructure
@@ -237,8 +243,7 @@ function collapse(s) {
   s.health = clamp((s.health || 0) - 4);
   // A shoot you walk off does not wait for you. It goes into the freezer with everything
   // else that stopped — see systems/career/stability.js.
-  if (wasShooting) {
-    const p = s.production;
+  for (const p of all) {
     (s.frozen = s.frozen || []).push({
       id: uid(s, 'frz'),
       title: p.title, role: p.role, type: p.type, genre: p.genre, scale: p.scale, tier: p.tier,
@@ -252,8 +257,8 @@ function collapse(s) {
       owed: Math.max(0, (p.salary || 0) - (p.paid || 0)), paid: p.paid || 0, salary: p.salary || 0,
       why: 'you could not carry on and the production shut down around you',
     });
-    s.production = null;
   }
+  s.productions = []; s.production = null;
   addTimeline(s, wasShooting
     ? `You stopped. "${title}" shut down around you and the doctor signed you off for ${months} months.`
     : `You stopped. The doctor signed you off for ${months} months.`, true);

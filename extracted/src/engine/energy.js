@@ -38,6 +38,7 @@ export const REFILL = {
   jobSlot: 30,          // a day job takes this much of the month per slot
   depressionSlot: 30,   // and so does not being able to get out of bed
   illness: 20, wornOut: 20,
+  set: 20,              // every set you are on past the first
 };
 
 export function canAfford(s, n) { return (s.ap || 0) >= (n || 0); }

@@ -301,7 +301,7 @@ export function breakContract(s) {
   if (!p) return null;
   const owed = Math.max(0, (p.salary || 0) - (p.paid || 0));
   const series = (p.episodes || 0) > 0;
-  s.production = null;
+  s.productions = (s.productions || []).filter((x) => x !== p && (x.id == null || x.id !== p.id)); s.production = s.productions[0] || null;
   setRespect(s, (s.respect || 0) - (series ? 7 : 9));
   addTimeline(s, series
     ? `Walked off "${p.title}" mid-season. They wrote the character out in two episodes.`

@@ -72,7 +72,7 @@ export function die(s, cause) {
   s.deathAge = s.ageY;
   s.deathYear = s.year;
   s.deathCause = cause || 'quietly';
-  s.production = null;
+  s.production = null; s.productions = [];
   s.pendingArc = null;
   addTimeline(s, `${s.name} died at ${s.ageY}, ${s.deathCause}.`, true);
   try { enshrine(s); } catch (e) {}

@@ -148,7 +148,7 @@ export function freezeProject(s, p) {
     paid: p.paid || 0, salary: p.salary || 0, why,
   };
   (s.frozen = s.frozen || []).push(frozen);
-  s.production = null;
+  s.productions = (s.productions || []).filter((x) => x !== p && (x.id == null || x.id !== p.id)); s.production = s.productions[0] || null;
   s.lastEvent = `"${frozen.title}" has stopped. They say ${why}. Everyone was sent home with no date to come back.`;
   addTimeline(s, `"${frozen.title}" went into freeze — ${why}.`, true);
   s.mental = Math.max(0, (s.mental || 50) - 6);
@@ -167,7 +167,7 @@ export function collapseProject(s, p) {
   const why = DEAD_REASONS[rint(0, DEAD_REASONS.length - 1)];
   const paid = p.paid || 0;
   const months = (p.months || 1) - (p.monthsLeft || 0);
-  s.production = null;
+  s.productions = (s.productions || []).filter((x) => x !== p && (x.id == null || x.id !== p.id)); s.production = s.productions[0] || null;
   s.lastEvent = `"${p.title}" is dead — ${why}. ${months} month${months === 1 ? '' : 's'} of your life, and no film at the end of it.`;
   addTimeline(s, `"${p.title}" collapsed — ${why}.`, true);
   s.mental = Math.max(0, (s.mental || 50) - 9);

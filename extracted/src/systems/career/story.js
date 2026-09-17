@@ -157,7 +157,8 @@ export function openStoryRoom(s, p) {
 // The player pushes for one. Costs the month's energy whether or not it lands, because
 // the argument happened either way.
 export function pushTake(s, takeId) {
-  const p = s.production;
+  // The set whose first day it is: the one nobody has argued about yet.
+  const p = (s.productions && s.productions.length ? s.productions : (s.production ? [s.production] : [])).find((x) => !x.take);
   if (!p || p.take) return s;
   const take = TAKES[takeId];
   if (!take || !takesFor(p).includes(takeId)) return s;

@@ -140,7 +140,8 @@ export function emailAct(s, id, i) {
   if (typeof out.pay === 'number' || typeof c.pay === 'number') s.cash = (s.cash || 0) + (out.pay || c.pay || 0);
   if (c.clear === 'rent') s.rentMissed = 0;
   if (c.sign === 'agent') signAgent(s, m.agentOffer);
-  if (c.option === 'sign' && s.production && s.production.title === m.title) { s.production.optioned = true; s.production.optionParts = 3; addTimeline(s, `Signed an option on two more ${m.title} pictures at €${(s.production.salary || 0).toLocaleString()}.`); }
+  const optioned = (s.productions && s.productions.length ? s.productions : (s.production ? [s.production] : [])).find((p) => p.title === m.title);
+  if (c.option === 'sign' && optioned) { optioned.optioned = true; optioned.optionParts = 3; addTimeline(s, `Signed an option on two more ${m.title} pictures at €${(optioned.salary || 0).toLocaleString()}.`); }
   if (c.option === 'refuse') addTimeline(s, `Refused the option on ${m.title}. Any sequel gets negotiated fresh.`);
   if (c.decline === 'agent') declineAgent(s);
   // The casting email IS the offer. Answering it here answers it in Messages too.
