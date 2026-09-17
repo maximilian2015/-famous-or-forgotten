@@ -32,7 +32,7 @@ import { NightRoom } from './ui/components/NightRoom.jsx';
 import { Passport } from './ui/components/Passport.jsx';
 import { CARE, CARE_ORDER, careCost, trainerCost, apparentAge, SURGEONS, SURGERY_AGE, NEEDLE_MONTHS, face as faceOf, faceBill, frozenFace, healing, needlesLately, needleCost, surgeryCost, surgeryOdds, setCare, toggleTrainer, needle, surgery } from './systems/life/face.js';
 import { TourRoom } from './ui/components/TourRoom.jsx';
-import { tierById, isInvited, attendEvent, askForInvite, sneakIntoEvent, answerDoor, stairsResult, inviteHelpers, helperOdds, hasAsked, expectedAt, energyFor, canHost, hostNight } from './systems/social/events.js';
+import { tierById, isInvited, attendEvent, askForInvite, sneakIntoEvent, answerDoor, stairsResult, inviteHelpers, helperOdds, hasAsked, expectedAt, energyFor, canHost, hostNight, isTonight, atOf, monthName } from './systems/social/events.js';
 import { HOUSING, HOUSING_ORDER, monthlyCosts, DIET, GYM_COST, setDiet, toggleGym } from './engine/economy.js';
 import { GENRES, hotGenre } from './systems/meta/news.js';
 import { genreXP, genreBonus, genreLabel } from './systems/career/genres.js';
@@ -2323,7 +2323,7 @@ function EventsScreen({ g }) {
       return (<Card key={ev.id} style={{ marginBottom: 10, borderColor: onList ? 'rgba(95,206,138,.35)' : theme.line }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline' }}>
           <div style={{ fontSize: 14, fontWeight: 800 }}>{t.label}</div>
-          <div style={{ fontSize: 11, color: theme.muted }}>{ev.monthsLeft} mo left</div>
+          <div style={{ fontSize: 11, color: isTonight(g, ev) ? theme.gold : theme.muted, fontWeight: isTonight(g, ev) ? 800 : 400 }}>{isTonight(g, ev) ? 'This month' : monthName(atOf(g, ev))}</div>
         </div>
         <div style={{ fontSize: 11.5, color: theme.muted, margin: '3px 0 6px' }}>{ev.venue} · hosted by {ev.host}</div>
         {/* Who is expected. The names, and a role only where you would know it — the room
@@ -2332,7 +2332,7 @@ function EventsScreen({ g }) {
         {ev.note && <div style={{ fontSize: 12, color: onList ? theme.good : theme.gold, background: 'rgba(255,255,255,.05)', border: `1px solid ${theme.line}`, borderRadius: 9, padding: '7px 10px', marginBottom: 8, lineHeight: 1.45 }}>{ev.note}</div>}
         {onList ? (<>
           <div style={{ fontSize: 11, color: theme.good, marginBottom: 8 }}>✓ You're on the list</div>
-          <button onClick={() => dispatch(attendEvent, ev.id)} disabled={!canAfford(g, energyFor(ev.tier))} style={{ ...btn('pri'), width: '100%', opacity: canAfford(g, energyFor(ev.tier)) ? 1 : .45 }}>Go · {energyFor(ev.tier)} energy{g.production ? ' · you are shooting' : ''}</button>
+          <button onClick={() => dispatch(attendEvent, ev.id)} disabled={!canAfford(g, energyFor(ev.tier)) || !isTonight(g, ev)} style={{ ...btn('pri'), width: '100%', opacity: canAfford(g, energyFor(ev.tier)) && isTonight(g, ev) ? 1 : .45 }}>{isTonight(g, ev) ? `Go · ${energyFor(ev.tier)} energy${g.production ? ' · you are shooting' : ''}` : `Not until ${monthName(atOf(g, ev))} — you are on the list`}</button>
         </>) : ev.door && ev.door.stage === 1 ? (<div>
           {/* The second door: what somebody who belongs would know. The answers are on the wall in Legacy. */}
           <div style={{ fontSize: 11, fontWeight: 900, letterSpacing: '.06em', textTransform: 'uppercase', color: theme.gold, marginBottom: 6 }}>The door · question {ev.door.asked + 1} of {ev.door.quiz.length}</div>

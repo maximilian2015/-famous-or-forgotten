@@ -78,7 +78,7 @@ function itemsFor(g, i, abs) {
     if (k && k.sent && (k.sent < now ? i === 0 : i === 1)) { it('reply', '📨', 'Their answer', clean(o.projectTitle), `The contract comes back${k.round > 1 ? ` — round ${k.round}` : ''}`); continue; }
     if ((o.deadline || 0) - 1 === i && !(o.waitsForWrap && !canTakeSet(g, o).ok)) it('off', '⏳', 'Offer runs out', clean(o.projectTitle), i === 0 ? 'Answer it this month' : `Answer by ${MON[abs % 12]}`);
   }
-  for (const e of (g.events || [])) if (e.monthsLeft - 1 === i && !e.attended) it('party', '🎉', 'Party', tierById(e.tier).label, 'Last month to go');
+  for (const e of (g.events || [])) if ((e.at != null ? e.at : now + (e.monthsLeft || 1) - 1) === abs && !e.attended) it('party', '🎉', 'Party', tierById(e.tier).label, e.invited || (g.fame || 0) >= tierById(e.tier).minFame ? 'You are on the list' : 'Not on the list yet');
   if (i === 0) for (const m of (g.inbox || [])) if (m.kind === 'invite') it('party', '✉️', 'Invitation', m.subj, 'In Email');
   if (g.partner && anniversaryMonth(g, abs)) { const y = anniversaryYears(g, abs); it('love', '💍', 'Anniversary', `${y} ${y === 1 ? 'year' : 'years'} with ${g.partner.name.split(' ')[0]}`, i === 0 ? 'Do something' : `${MON[abs % 12]}`); }
   if (i === 0 && g.partner && onCooldown(g, 'partner')) it('love', '💞', 'An evening', `With ${g.partner.name.split(' ')[0]}`, 'This month');

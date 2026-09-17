@@ -373,6 +373,18 @@ export function moveOn(s) {
   if (n.looks >= LOOKS_AN_HOUR()) { n.looks = 0; say(s, 'An hour of that, and the room has moved on.', 'note'); hourPasses(s); }
   return s;
 }
+// Excusing yourself mid-talk. Early, it is a look; after the second turn it was the hour.
+export function excuseYourself(s) {
+  const n = s.night; const t = n && n.talk; if (!t || t.stage !== 'talk') return s;
+  const g = n.guests.find((x) => x.id === t.guestId);
+  n.talk = null;
+  if (g) { g.done = true; g.went = 'flat'; g.revealed = true; }
+  say(s, `You said you had to find somebody. ${g ? first(g.name) : 'They'} did not mind.`, 'note');
+  if (t.turn >= 2) { hourPasses(s); return s; }
+  n.looks += 1;
+  if (n.looks >= LOOKS_AN_HOUR()) { n.looks = 0; say(s, 'An hour of that, and the room has moved on.', 'note'); hourPasses(s); }
+  return s;
+}
 export function startTalk(s) {
   const n = s.night; const t = n && n.talk; if (!t || t.stage !== 'meet') return s;
   const g = n.guests.find((x) => x.id === t.guestId); if (!g) return s;

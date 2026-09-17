@@ -6,7 +6,7 @@ import { startLoop, stopLoop } from '../sfx.js';
 import { Avatar } from './Avatar.jsx';
 import { lookOf, lookOfPerson } from '../../systems/life/appearance.js';
 import { actorById } from '../../systems/world/world.js';
-import { HOURS, ZONES, buzzBand, drinkDose, goOver, moveOn, startTalk, moveTo, answerToast, reply, drinkTogether, nightDrink, nightAct, nightChoice, leaveNight, LOOKS_AN_HOUR, heavyTest, sendPitch, skipPitch, pitchOdds, PITCH_SCALES } from '../../systems/social/night.js';
+import { HOURS, ZONES, buzzBand, drinkDose, goOver, moveOn, startTalk, excuseYourself, moveTo, answerToast, reply, drinkTogether, nightDrink, nightAct, nightChoice, leaveNight, LOOKS_AN_HOUR, heavyTest, sendPitch, skipPitch, pitchOdds, PITCH_SCALES } from '../../systems/social/night.js';
 import { TimingBar } from './TimingBar.jsx';
 import { GridRisk } from './GridRisk.jsx';
 import { GENRES, hotGenre } from '../../systems/meta/news.js';
@@ -297,6 +297,7 @@ export function NightRoom({ g }) {
           </div>) : (<div style={{ display: 'grid', gap: 6, marginTop: 8 }}>
             {talk.options.map((o) => (<button key={o.id} onClick={() => dispatch(reply, o.id)} style={{ ...btn(''), textAlign: 'left', fontWeight: 600, lineHeight: 1.4, color: o.slurred ? theme.muted : o.ask ? theme.gold : theme.text, fontStyle: o.slurred || o.ask ? 'italic' : 'normal', border: o.ask ? `1px dashed ${theme.gold}66` : 'none' }}>{o.ask ? '❓ ' : ''}{o.text}</button>))}
             {ZONES[who.zone] && ZONES[who.zone].toast && <button onClick={() => dispatch(drinkTogether)} style={{ ...btn(''), color: theme.gold }}>🍸 One more, together · +{drinkDose(g)}{n.price ? ` · €${n.price * 2}` : ''}</button>}
+            <button onClick={() => dispatch(excuseYourself)} style={{ ...btn(''), color: theme.muted, fontWeight: 600 }}>Excuse yourself{talk.turn >= 2 ? ' · the hour is gone anyway' : ' · a look'}</button>
           </div>)}
         </div>
       ) : (<>

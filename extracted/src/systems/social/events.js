@@ -28,11 +28,20 @@ function hostFor(s, tier) {
   if (!people.length) return { host: pick(HOST), hostId: null };
   const h = pick(people); return { host: h.name, hostId: h.id };
 }
+// A party is on a date. It is announced up to two months ahead — time to get on the list
+// — and it happens in the month it happens; the calendar and the card say the same month.
+// Maxi: "the calendar says July and I could go in June — how?"
+const MON = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+export const stampOf = (s) => (s.year || 0) * 12 + (s.month || 0);
+export function monthName(abs) { return `${MON[((abs % 12) + 12) % 12]} ${Math.floor(abs / 12)}`; }
+export function isTonight(s, ev) { return atOf(s, ev) === stampOf(s); }
+export function atOf(s, ev) { if (ev.at == null) ev.at = stampOf(s) + Math.max(0, (ev.monthsLeft || 1) - 1); return ev.at; }
 function makeEvent(s, tier) {
+  const ahead = tier.id === 'local' ? rint(0, 1) : rint(0, 2);
   return {
     id: uid(s, 'ev'),
     tier: tier.id, venue: tier.id === 'local' ? pick(['a flat in the east end', 'a house up the hill', 'a roof somewhere', 'a warehouse that is not a warehouse']) : pick(VENUE), ...hostFor(s, tier),
-    monthsLeft: rint(1, 3), attended: false,
+    at: stampOf(s) + ahead, monthsLeft: ahead + 1, attended: false,
   };
 }
 // Which tiers can realistically appear on your radar: your own level, plus one rung above
@@ -51,7 +60,8 @@ export function maybeGenerateEvent(s) {
 }
 export function eventsTick(s) {
   if (!s.events || !s.events.length) return;
-  s.events = s.events.filter((e) => { e.monthsLeft -= 1; return e.monthsLeft > 0 && !e.attended; });
+  const now = stampOf(s);
+  s.events = s.events.filter((e) => { const at = atOf(s, e); e.monthsLeft = at - now + 1; return at >= now && !e.attended; });
 }
 export function isInvited(s, ev) { return (s.fame || 0) >= tierById(ev.tier).minFame; }
 
@@ -157,6 +167,7 @@ export function stairsResult(s, eventId, ok) {
 export function attendEvent(s, eventId) {
   const ev = (s.events || []).find((x) => x.id === eventId); if (!ev) return s;
   if (!isInvited(s, ev) && !ev.invited) { s.lastEvent = "You're not on the list for that one."; return s; }
+  if (!isTonight(s, ev)) { s.lastEvent = `That is in ${monthName(atOf(s, ev))}. Tonight it is just you and the calendar.`; return s; }
   const stamp = (s.year || 0) * 12 + (s.month || 0);
   if (s._wentOut === stamp) { s.lastEvent = "You've already been out this month. Two nights in a row is how people start talking."; return s; }
   const need = energyFor(ev.tier);
