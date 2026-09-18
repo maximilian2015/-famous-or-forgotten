@@ -76,6 +76,14 @@ for (const sh of shows.slice(0, 8)) console.log(`  ${sh.max} seasons · "${sh.ti
 const byType = {};
 for (const sh of shows) { const t = byType[sh.type] = byType[sh.type] || { n: 0, max: 0, sum: 0 }; t.n++; t.sum += sh.max; t.max = Math.max(t.max, sh.max); }
 console.log('\nby type:'); for (const [t, v] of Object.entries(byType)) console.log(`  ${t.padEnd(16)} ${v.n} shows · longest ${v.max} · mean ${(v.sum / v.n).toFixed(1)} · cap ${seasonCap(t)}`);
+// Your own shows only (a guest spot is somebody else's), and how often season one led to two.
+const own = shows.filter((sh) => sh.scale !== 'episode');
+const dist2 = {}; for (const sh of own) dist2[sh.max] = (dist2[sh.max] || 0) + 1;
+console.log('\nyour own shows · seasons → shows:', Object.keys(dist2).sort((a, b) => a - b).map((k) => `${k}: ${dist2[k]}`).join(' · '));
+const bands = [[0, 4], [4, 5], [5, 6], [6, 7], [7, 8], [8, 11]];
+console.log('season one rated → got a season two:');
+for (const [lo, hi] of bands) { const b = own.filter((sh) => sh.ratings[0] >= lo && sh.ratings[0] < hi); const two = b.filter((sh) => sh.max >= 2).length; if (b.length) console.log(`  ${lo}–${hi}: ${b.length} shows · renewed ${Math.round(100 * two / b.length)}%`); }
+for (const type of ['Soap Opera', 'Network Drama', 'Prestige Series']) { const b = own.filter((sh) => sh.type === type); const two = b.filter((sh) => sh.max >= 2).length; console.log(`  ${type}: ${b.length} · season two ${Math.round(100 * two / Math.max(1, b.length))}% · mean rating S1 ${(b.reduce((n, sh) => n + sh.ratings[0], 0) / Math.max(1, b.length)).toFixed(1)}`); }
 const guests = shows.filter((sh) => sh.scale === 'episode' && sh.max > 1);
 console.log(`
 guest spots (scale episode) that came back as "your" season two or more: ${guests.length}` + (guests.length ? ` — e.g. "${guests[0].title}" ${guests[0].role} ${guests[0].max} seasons` : ''));

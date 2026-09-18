@@ -22,15 +22,46 @@ export function seasonCap(type) { return SEASON_CAP[type] || 5; }
 
 // The network decides on the numbers. A flop is gone; a hit is renewed before the
 // finale airs. Long-running shows also get tired — each season shaves the odds.
-export function renewalOdds(rating, season, type) {
-  // Anything the audience actually likes comes back — sixty is the line, and above it
-  // renewal is the default rather than a coin toss. Below fifty the network starts
-  // looking for a reason, and below forty it has one.
-  const base = rating >= 88 ? 96 : rating >= 78 ? 93 : rating >= 68 ? 90 : rating >= 60 ? 86
-    : rating >= 50 ? 55 : rating >= 40 ? 20 : 4;
-  const fatigue = Math.max(0, season - 3) * 4;                  // long runs tire slowly
+// Television is renewed on the audience, not the reviews. A soap is a habit — it comes
+// back unless it is unwatchable, and even then somebody has to decide. Network drama
+// lives on its numbers: the middle of the scale is a coin toss and a flop is gone.
+// Prestige is renewed on acclaim, which is the one place the reviews are the numbers.
+// Maxi: "so few continuations; in life it is different" — measured over six hundred
+// lives, six of ten soaps got no second season, because renewal hung on a critics'
+// score a soap does not live by.
+// What the network expects the slot to draw, in millions. This is the number the decision
+// is made against — Maxi: "how is it done in life? ratings, the viewers, the channel
+// decides?" Yes: the numbers against the slot, the trend against last season, the cost
+// of the cast; the reviews only where the reviews ARE the numbers, which is prestige.
+export const SLOT_NORM = { 'Soap Opera': 4, 'Network Drama': 2.6, 'Crime Series': 2.6, 'Drama Series': 2.6, 'Talent Series': 3, 'Music Show': 2, 'Prestige Series': 6 };
+export function slotNorm(type) { return SLOT_NORM[type] || 2.6; }
+export function renewalOdds(rating, season, type, viewers = null, prevViewers = null) {
+  const soap = type === 'Soap Opera', prestige = type === 'Prestige Series';
+  let base;
+  if (viewers == null) {
+    // No numbers to hand (an old save, a direct question): the reviews stand in.
+    base = soap ? (rating >= 45 ? 92 : rating >= 30 ? 70 : 40)
+      : prestige ? (rating >= 68 ? 92 : rating >= 55 ? 75 : rating >= 45 ? 40 : 12)
+      : (rating >= 60 ? 84 : rating >= 50 ? 62 : rating >= 40 ? 36 : 12);
+  } else {
+    const pull = viewers / slotNorm(type);
+    if (soap) base = pull >= 0.6 ? 92 : pull >= 0.4 ? 66 : 30;                     // a habit dies slowly
+    else if (prestige) base = (rating >= 68 ? 78 : rating >= 55 ? 58 : rating >= 45 ? 30 : 10) + (pull >= 1.2 ? 14 : pull >= 0.8 ? 6 : pull >= 0.5 ? -8 : -20);
+    else base = pull >= 1.3 ? 92 : pull >= 1 ? 80 : pull >= 0.75 ? 56 : pull >= 0.5 ? 30 : 10;   // the slot, and nothing else
+    // The trend. Falling numbers make a network nervous; rising ones make it patient.
+    if (prevViewers) base += viewers < prevViewers * 0.8 ? -12 : viewers > prevViewers * 1.15 ? 6 : 0;
+  }
+  const fatigue = Math.max(0, season - 3) * (soap ? 2 : 4);      // long runs tire slowly; a soap barely
   const room = season >= seasonCap(type) ? -100 : 0;            // the format runs out
   return Math.max(0, Math.min(97, base - fatigue + room));
+}
+// The network's reasons, in one line, for the night the season ends.
+export function networkLine(type, viewers, prevViewers, rating, decision) {
+  const norm = slotNorm(type);
+  const drew = viewers != null ? `You drew ${viewers}m against the ${norm}m the slot wants` : `The slot wants ${norm}m`;
+  const trend = prevViewers ? (viewers < prevViewers * 0.8 ? ', down from last season' : viewers > prevViewers * 1.15 ? ', up on last season' : ', about where it was') : '';
+  const said = decision === 'renewed' ? 'Renewed.' : decision === 'writtenOut' ? 'Renewed — without you. Your character was written out.' : decision === 'capped' ? 'The format ran its course.' : 'Cancelled.';
+  return `${drew}${trend}. ${said}`;
 }
 
 // Staying gets you a bump; being in a hit gets you a raise. A slipping show does not
@@ -69,6 +100,11 @@ export function seriesRoot(title) {
   return String(title || '').replace(/(\s*·\s*season\s+\d+)+\s*$/i, '').trim();
 }
 // What the season before this one rated, so a trend can exist at all.
+function previousViewers(s, root, season) {
+  if (season < 2) return null;
+  const prev = (s.filmography || []).find((c) => (c.season || (c.job && c.job.season)) === season - 1 && seriesRoot((c.job && c.job.seriesTitle) || c.title) === root);
+  return prev && prev.viewers > 0 ? prev.viewers : null;
+}
 function previousRating(s, title, season) {
   if (!season || season < 2) return null;
   const root = seriesRoot(title);
@@ -223,11 +259,23 @@ export function maybeContinue(s, credit, p, force = false) {
   if (isSeries) {
     // Always build from the name of the SHOW, never from last season's project title.
     const root = seriesRoot(p.seriesTitle || p.title);
-    const odds = renewalOdds(credit.rating, season, p.type);
+    const prevV = previousViewers(s, root, season);
+    const odds = renewalOdds(credit.rating, season, p.type, credit.viewers != null ? credit.viewers : null, prevV);
     if (!force && !chance(odds)) {
+      credit.renewal = season >= seasonCap(p.type) ? 'capped' : 'cancelled';
       if (season > 1) addTimeline(s, `"${root}" was not renewed after ${season} season${season === 1 ? '' : 's'}.`, true);
       return null;
     }
+    // The show goes on; whether you do is a different desk. A character the audience did
+    // not take to gets written out of a renewed soap; a lead of a flop season is recast.
+    const aud = credit.reviews && credit.reviews.audience != null ? credit.reviews.audience : null;
+    const out = !force && ((p.type === 'Soap Opera' && aud != null && aud < 4.5 && chance(30)) || (p.type !== 'Soap Opera' && credit.rating < 40 && chance(35)));
+    if (out) {
+      credit.renewal = 'writtenOut';
+      addTimeline(s, `"${root}" was renewed — without you. Your character was written out.`, true);
+      return null;
+    }
+    credit.renewal = 'renewed';
     const nextSeason = season + 1;
     // Rolled once, when the show first comes back, and it is what the show IS from then on.
     const arc = p.arc || rollArc();

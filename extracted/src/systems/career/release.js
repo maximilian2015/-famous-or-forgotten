@@ -20,6 +20,7 @@ import { paid } from './agent.js';
 import { reviewsFor } from '../world/critics.js';
 import { actorById, applyFilmToActor } from '../world/world.js';
 import { tourMultiplier, tourFame } from './tour.js';
+import { networkLine, slotNorm } from './franchise.js';
 
 const clamp = (v, a = 0, b = 100) => Math.max(a, Math.min(b, v));
 
@@ -438,6 +439,9 @@ function closeRun(s, credit, r) {
   showMoment(s, {
     id: 'verdict', tv: film ? null : (r.scale === 'recurring' ? 'soap' : r.scale === 'prestige' ? 'prestige' : 'episode'), kind: r.rating >= 70 || verdict === 'smash' ? 'good' : 'bad',
     title: credit.title, score, money, verdict, reviews: credit.reviews,
+    // Television: the network's number against yours, and what it decided.
+    network: !film && r.scale !== 'episode' && credit.renewal ? networkLine(credit.type, credit.viewers, null, r.rating, credit.renewal) : null,
+    renewal: credit.renewal || null,
     body: r.worldHit
       ? 'Nobody expected this. It has stopped being a film and started being an event.'
       : r.rating >= 85 ? 'The reviews are the kind people screenshot.'

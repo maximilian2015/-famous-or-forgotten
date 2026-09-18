@@ -13,13 +13,16 @@ const film = (over) => ({ title: 'Golden Echo', role: 'Lead', type: 'Feature Fil
   salary: 500000, months: 6, part: 1, prestigeScore: 60, tier: 'lead', ...over });
 
 // renewal odds behave like a network
-ok('a flop is cancelled', renewalOdds(30, 1, 'Soap Opera') < 10, renewalOdds(30, 1, 'Soap Opera') + '%');
-ok('a hit is renewed', renewalOdds(90, 1, 'Soap Opera') > 88, renewalOdds(90, 1, 'Soap Opera') + '%');
-// Sixty is the line: anything the audience likes comes back as a matter of course.
-ok('sixty and up is renewed as a matter of course', renewalOdds(60, 1, 'Soap Opera') >= 80, renewalOdds(60, 1, 'Soap Opera') + '%');
-ok('below fifty the network starts looking for a reason', renewalOdds(45, 1, 'Soap Opera') <= 25, renewalOdds(45, 1, 'Soap Opera') + '%');
-ok('below forty it has one', renewalOdds(35, 1, 'Soap Opera') < 10, renewalOdds(35, 1, 'Soap Opera') + '%');
-ok('fifty to sixty is the genuine coin toss', renewalOdds(55, 1, 'Soap Opera') > 40 && renewalOdds(55, 1, 'Soap Opera') < 70, renewalOdds(55, 1, 'Soap Opera') + '%');
+// Renewal is the audience, not the reviews: a soap is a habit, network drama lives on its
+// numbers, prestige on acclaim.
+ok('a network flop is cancelled', renewalOdds(30, 1, 'Network Drama') < 15, renewalOdds(30, 1, 'Network Drama') + '%');
+ok('a hit is renewed', renewalOdds(90, 1, 'Network Drama') > 80, renewalOdds(90, 1, 'Network Drama') + '%');
+ok('sixty and up comes back as a matter of course', renewalOdds(60, 1, 'Network Drama') >= 80, renewalOdds(60, 1, 'Network Drama') + '%');
+ok('fifty to sixty is the genuine coin toss', renewalOdds(55, 1, 'Network Drama') > 40 && renewalOdds(55, 1, 'Network Drama') < 75, renewalOdds(55, 1, 'Network Drama') + '%');
+ok('a soap is a habit — it comes back whatever the critics say', renewalOdds(45, 1, 'Soap Opera') >= 85, renewalOdds(45, 1, 'Soap Opera') + '%');
+ok('even a bad soap mostly comes back', renewalOdds(35, 1, 'Soap Opera') >= 60, renewalOdds(35, 1, 'Soap Opera') + '%');
+ok('nobody watching cancels what the reviews would have kept', renewalOdds(70, 1, 'Network Drama', 0.8) < renewalOdds(70, 1, 'Network Drama', 4), `${renewalOdds(70, 1, 'Network Drama', 0.8)}% vs ${renewalOdds(70, 1, 'Network Drama', 4)}%`);
+ok('prestige lives on acclaim', renewalOdds(50, 1, 'Prestige Series') < 50 && renewalOdds(75, 1, 'Prestige Series') > 85);
 ok('long shows get tired', renewalOdds(80, 6, 'Soap Opera') < renewalOdds(80, 2, 'Soap Opera'), `s2 ${renewalOdds(80, 2, 'Soap Opera')}% → s6 ${renewalOdds(80, 6, 'Soap Opera')}%`);
 ok('the format runs out at the cap', renewalOdds(95, seasonCap('Prestige Series'), 'Prestige Series') === 0);
 ok('a soap can run far longer than prestige', seasonCap('Soap Opera') > seasonCap('Prestige Series'), `${seasonCap('Soap Opera')} vs ${seasonCap('Prestige Series')}`);
@@ -65,28 +68,28 @@ for (let i = 0; i < 200 && !wasCancelled; i++) { cancelled.timeline = []; const 
 ok('a cancellation goes in the diary', /not renewed/.test(JSON.stringify(cancelled.timeline)), JSON.stringify(cancelled.timeline.slice(-1)));
 
 // a show can actually run its whole life
-function runShow(rating) {
-  let p = series(); let seasons = 1;
+function runShow(rating, type = 'Network Drama', viewers = null) {
+  let p = series({ type }); let seasons = 1;
   for (let guard = 0; guard < 30; guard++) {
     const s = st();
-    const next = maybeContinue(s, { rating, title: p.title }, p);
+    const next = maybeContinue(s, { rating, title: p.title, viewers }, p);
     if (!next) break;
     seasons = next.season;
-    p = series({ season: next.season, episodes: next.episodes, episodeFee: next.episodeFee, salary: next.salary, months: next.months });
+    p = series({ type, season: next.season, episodes: next.episodes, episodeFee: next.episodeFee, salary: next.salary, months: next.months });
   }
   return { seasons, lastFee: p.episodeFee };
 }
 let longest = 0, totalRuns = 0;
 for (let i = 0; i < 300; i++) { const r = runShow(86); longest = Math.max(longest, r.seasons); totalRuns += r.seasons; }
 ok('a good show can run for years', longest >= 5, 'longest ' + longest);
-ok('but not forever', longest <= seasonCap('Soap Opera'), 'longest ' + longest);
+ok('but not forever', longest <= seasonCap('Network Drama'), 'longest ' + longest);
 console.log(`      a show rated 86 runs ${(totalRuns / 300).toFixed(1)} seasons on average, longest ${longest}`);
 // A 52-rated show renews at 55% a season, so it CAN limp to five — the point is the
 // average, not any single run.
 let weakTotal = 0, weakLong = 0;
 for (let i = 0; i < 300; i++) { const r = runShow(52); weakTotal += r.seasons; if (r.seasons >= 5) weakLong++; }
 const weakAvg = weakTotal / 300;
-ok('a weak show usually dies early', weakAvg < 3.2, `average ${weakAvg.toFixed(1)} seasons`);
+ok('a weak show usually dies early', weakAvg < 3.4, `average ${weakAvg.toFixed(1)} seasons`);
 ok('but it can occasionally limp on', weakLong > 0 && weakLong < 90, `${weakLong}/300 reached five`);
 console.log(`      a show rated 52 runs ${weakAvg.toFixed(1)} seasons on average`);
 

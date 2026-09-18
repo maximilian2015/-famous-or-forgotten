@@ -303,6 +303,7 @@ export function BigMoment({ moment, look, onClose }) {
       {/* Opening night has no numbers on it any more — that is the whole point of splitting
           it from the verdict — so this must not assume they are there. It crashed the modal
           outright the first time a film opened. See systems/career/release.js. */}
+      {moment.id === 'verdict' && moment.network && (<div style={{ fontSize: 12, lineHeight: 1.5, margin: '0 0 12px', padding: '8px 11px', borderRadius: 9, background: theme.panel2, border: `1px solid ${moment.renewal === 'renewed' ? theme.good : moment.renewal === 'capped' ? theme.line : theme.bad}55`, color: moment.renewal === 'renewed' ? theme.good : moment.renewal === 'capped' ? theme.muted : theme.bad }}>📺 {moment.network}</div>)}
       {moment.id === 'premiere' && moment.tv && moment.episodes > 0 && (<div style={{ fontSize: 11.5, color: theme.muted, marginBottom: 10 }}>{moment.episodes} episodes · {moment.verdict}</div>)}
       {(moment.id === 'premiere' || moment.id === 'verdict') && moment.score != null && moment.money && (
         <div style={{ display: 'flex', gap: 8, margin: '0 0 12px' }}>
