@@ -17,7 +17,7 @@ for (let i = 0; i < 40; i++) {
   s.fame = i % 2 ? 30 : 62; s.respect = 30; s.production = null; s.productions = []; s.offers = []; s.releases = []; s.running = []; s.filmography = []; s.laterOffers = []; s.bigMoment = null; s.moments = []; s.ap = 100; s.cash = 50000;
   // a series part, taken straight from the board
   let listing = null;
-  for (let tries = 0; tries < 30 && !listing; tries++) { refreshCastingPool(s, true); listing = s.castingPool.find((c) => c.shelf === 'series' && (c.scale === 'recurring' || c.scale === 'prestige')); }
+  for (let tries = 0; tries < 30 && !listing; tries++) { refreshCastingPool(s, true); listing = s.castingPool.find((c) => c.shelf === 'tv' && (c.scale === 'recurring' || c.scale === 'prestige')); }
   if (!listing) { problems.push(`life ${i}: no series listing in 30 boards at fame ${s.fame}`); continue; }
   if (!listing.perEpisode || !listing.episodes || listing.salary !== listing.episodeFee * listing.episodes) problems.push(`life ${i}: listing money wrong ${JSON.stringify({ perEpisode: listing.perEpisode, episodes: listing.episodes, salary: listing.salary, fee: listing.episodeFee })}`);
   const offer = { id: 'o' + i, projectTitle: listing.title, role: listing.role, type: listing.type, genre: listing.genre, salary: listing.salary, months: listing.months, tier: listing.scale === 'prestige' ? 'lead' : 'lead', scale: listing.scale, prestigeScore: 55, stability: 92, episodes: listing.episodes, perEpisode: true, episodeFee: listing.episodeFee, deadline: 3 };

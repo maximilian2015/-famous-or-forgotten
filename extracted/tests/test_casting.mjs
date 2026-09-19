@@ -14,7 +14,7 @@ ok('the pool fills', pool.castingPool.length >= 6, String(pool.castingPool.lengt
 ok('and every shelf has something on it', new Set(pool.castingPool.map((x) => x.shelf)).size >= 3,
   JSON.stringify(pool.castingPool.reduce((m, x) => ((m[x.shelf] = (m[x.shelf] || 0) + 1), m), {})));
 ok('every listing has a real span', pool.castingPool.every((c) => c.months >= 1 && c.months <= 14));
-ok('television is quoted per episode', pool.castingPool.filter((c) => c.shelf === 'series').every((c) => c.perEpisode && c.episodes >= 1 && c.salary === c.episodeFee * c.episodes));
+ok('television is quoted per episode', pool.castingPool.filter((c) => c.shelf === 'tv').every((c) => c.perEpisode && c.episodes >= 1 && c.salary === c.episodeFee * c.episodes));
 ok('film is quoted for the picture', pool.castingPool.filter((c) => c.shelf === 'film').every((c) => !c.perEpisode && c.episodes === 0 && c.salary > 0));
 ok('every listing knows its scale', pool.castingPool.every((c) => !!scaleOf(c).tier));
 

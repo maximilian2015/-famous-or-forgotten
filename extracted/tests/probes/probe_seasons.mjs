@@ -36,7 +36,7 @@ for (let i = 0; i < N; i++) {
       if (ren) { O.acceptOffer(s, ren.id); }
       if (!PR.sets(s).length && (s.ap || 0) >= 30 && (s.castingPool || []).length) {
         const pool = s.castingPool;
-        const tv = pool.filter((x) => x.shelf === 'series');
+        const tv = pool.filter((x) => x.shelf === 'tv');
         const c = (tvFirst && tv.length ? tv : pool)[0];
         K.prepareFor(s, c.id); K.auditionFor(s, c.id, 85);
       }

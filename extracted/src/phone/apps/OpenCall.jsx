@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { theme } from '../../ui/theme.js';
 import { dispatch, getState } from '../../state/store.js';
-import { refreshCastingPool, auditionFor, castingChance, reach, SHELVES, SHELF_BLURB, rerollBoard, canReroll, prepareFor, nextPrep, prepBonus } from '../../systems/career/castings.js';
+import { refreshCastingPool, auditionFor, castingChance, reach, SHELVES, SHELF_BLURB, SHELF_EMPTY, rerollBoard, canReroll, prepareFor, nextPrep, prepBonus } from '../../systems/career/castings.js';
 import { TimingBar } from '../../ui/components/TimingBar.jsx';
 import { GridRisk } from '../../ui/components/GridRisk.jsx';
 import { useAccent } from '../../ui/appTheme.js';
@@ -148,9 +148,10 @@ export function OpenCall({ g, ocTab, setOcTab, teenMode }) {
     </div>);
   }
   // teens only see gigs (background/extra work)
-  const shelves = teenMode ? SHELVES.filter(([id]) => id === 'gigs') : SHELVES;
-  const cur = teenMode ? 'gigs' : (ocTab || (shelves.find(([id]) => pool.some((c) => c.shelf === id)) || ['series'])[0]);
-  const list = pool.filter((c) => c.shelf === cur);
+  const shelves = teenMode ? SHELVES.filter(([id]) => id === 'day') : SHELVES;
+  const cur = teenMode ? 'day' : (ocTab || (shelves.find(([id]) => pool.some((c) => c.shelf === id)) || ['tv'])[0]);
+  // A teenager sees the small paid work only — a student film, a day as an extra — not the campaigns.
+  const list = pool.filter((c) => c.shelf === cur && (!teenMode || c.medium === 'gig'));
   return (<div>
     <Waiting g={g} />
     {!teenMode && <div style={{ display: 'flex', gap: 6, marginBottom: 6 }}>{shelves.map(([id, label]) => { const n = pool.filter((c) => c.shelf === id).length;
@@ -166,7 +167,7 @@ export function OpenCall({ g, ocTab, setOcTab, teenMode }) {
       {canWork(g).why}
     </div>}
     {!list.length && <div style={{ fontSize: 12.5, color: theme.muted, textAlign: 'center', padding: 22, lineHeight: 1.5 }}>
-      {(g.ageY || 0) < 15 ? 'Casting offices do not read anyone under fifteen. The board opens at fifteen — until then it is school, the play, and lessons.' : 'Nothing on this shelf right now.'}
+      {(g.ageY || 0) < 15 ? 'Casting offices do not read anyone under fifteen. The board opens at fifteen — until then it is school, the play, and lessons.' : (SHELF_EMPTY[cur] || 'Nothing on this shelf right now.')}
     </div>}
     {/* A board, not a wall. Every listing used to arrive fully open — backing, negotiation,
         the sides, the read, eight lines apiece, five apiece per shelf — and Maxi called it
@@ -222,7 +223,7 @@ export function OpenCall({ g, ocTab, setOcTab, teenMode }) {
           </div>}
           <Backing g={g} c={c} />
           {/* Your name, spent: a supporting part becomes a lead if they agree to read you for it. */}
-          {!locked && c.shelf === 'film' && c.role !== 'Lead' && !c.askedLead && (() => { const fit = canUse(g, 'lead');
+          {!locked && (c.shelf === 'film' || c.shelf === 'indie') && c.role !== 'Lead' && !c.askedLead && (() => { const fit = canUse(g, 'lead');
             return (<button onClick={() => dispatch(askForLead, c.id)} disabled={!fit.ok} title={fit.ok ? FAVOURS.lead.blurb : fit.why}
               style={{ marginTop: 7, width: '100%', border: `1px solid ${fit.ok ? theme.gold + '66' : 'transparent'}`, borderRadius: 10, padding: '7px', fontSize: 11.5, fontWeight: 800, cursor: fit.ok ? 'pointer' : 'default', background: fit.ok ? 'rgba(255,209,102,.10)' : 'rgba(120,110,150,.12)', color: fit.ok ? theme.gold : '#6b6390' }}>
               ◆ Ask for the lead · −{costOf(g, 'lead')} standing{fit.ok ? '' : ` · ${fit.why}`}

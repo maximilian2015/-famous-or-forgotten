@@ -383,7 +383,7 @@ function Move({ m, col }) {
 // use it — every ask costs the asking, whether it works or not. See favours.js.
 function UseYourName({ g }) {
   const where = { lead: 'on a supporting film listing in OpenCall', sequel: 'on a film in your Filmography the studio passed on', smooth: 'on the set, when the director has cooled', vouch: 'on a contact in People', shelf: 'here' };
-  const now = { lead: (g.castingPool || []).some((c) => c.shelf === 'film' && c.role !== 'Lead'), sequel: (g.filmography || []).some((c) => c.pushable && !c.pushed), smooth: canSmooth(g), vouch: (g.people || []).length > 0, shelf: canOpenShelf(g) };
+  const now = { lead: (g.castingPool || []).some((c) => (c.shelf === 'film' || c.shelf === 'indie') && c.role !== 'Lead'), sequel: (g.filmography || []).some((c) => c.pushable && !c.pushed), smooth: canSmooth(g), vouch: (g.people || []).length > 0, shelf: canOpenShelf(g) };
   return (<Card style={{ marginBottom: 14, borderColor: theme.gold + '44' }}>
     <div style={{ fontSize: 11, fontWeight: 900, letterSpacing: '.08em', textTransform: 'uppercase', color: theme.gold, marginBottom: 4 }}>◆ Use your name</div>
     <div style={{ fontSize: 12, color: theme.muted, lineHeight: 1.55, marginBottom: 8 }}>

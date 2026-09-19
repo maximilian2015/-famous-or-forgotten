@@ -42,11 +42,19 @@ const clamp = (v) => Math.max(0, Math.min(100, v));
 // A `share` under 1 is a smaller part in the same medium: a guest spot on a network
 // drama is not a series-regular fee, even though the show pays network rates.
 //
-// series: [type, role, [minMo,maxMo], [minEps,maxEps], medium, scale, minFame, share]
-// film:   [type, role, [minMo,maxMo], medium, scale, minFame, share]
+// The board has four shelves now — Maxi: "OpenCall should be split: TV, films, and
+// arthouse/indie — three columns; films are hard." Television is the soaps, the series
+// and the prestige seasons (they air on television and the network renews them, however
+// much they are cast like films). Film is the studio's pictures, and the studios do not
+// send scripts to strangers. Indie is the small pictures, the horror, the character parts
+// that win things and sell nothing. And a day's work — adverts, covers, a voice session,
+// a theatre run — is its own shelf, because it fits around any set.
+//
+// tv:  [type, role, [minMo,maxMo], [minEps,maxEps], medium, scale, minFame, share]
+// film / indie / day: [type, role, [minMo,maxMo], medium, scale, minFame, share, maxFame]
 const POOLS = {
   actor: {
-    series: [
+    tv: [
       ['Soap Opera', 'Recurring', [3, 5], [22, 44], 'tv_daytime', 'recurring'],
       ['Drama Series', 'Guest role', [2, 3], [2, 4], 'tv_network', 'episode', 0, 0.45],
       ['Crime Series', 'Episode', [2, 3], [1, 3], 'tv_network', 'episode', 0, 0.55],
@@ -56,29 +64,30 @@ const POOLS = {
       ['Prestige Series', 'The matriarch', [6, 9], [6, 9], 'tv_prestige', 'prestige', 30, 0.8],
     ],
     film: [
+      ['Feature Film', 'Supporting', [5, 7], 'film_studio', 'feature', 18, 0.5],
+      ['Feature Film', 'Lead', [5, 8], 'film_studio', 'feature', 30],
+      ['Studio Blockbuster', 'Lead', [10, 14], 'film_tentpole', 'blockbuster', 70],
+      ['Feature Film', 'Elder statesman', [3, 6], 'film_studio', 'feature', 25, 0.55],
+    ],
+    indie: [
       ['Short Film', 'Lead', [1, 2], 'film_indie', 'small', 0, 0.12, 42],
       ['Horror Movie', 'Victim', [1, 2], 'film_indie', 'small', 0, 0.3, 52],
       ['Indie Film', 'Supporting', [2, 4], 'film_indie', 'indie', 0, 0.5],
       ['Indie Film', 'Lead', [3, 5], 'film_indie', 'indie', 15],
-      ['Feature Film', 'Lead', [5, 8], 'film_studio', 'feature', 30],
-      ['Studio Blockbuster', 'Lead', [10, 14], 'film_tentpole', 'blockbuster', 70],
       // The late-career shelf: the parts that win things and do not sell tickets.
       ['Prestige Drama', 'Character lead', [4, 7], 'film_indie', 'indie', 20, 1.6],
-      ['Feature Film', 'Elder statesman', [3, 6], 'film_studio', 'feature', 25, 0.55],
       ['Indie Film', 'Grandparent', [2, 4], 'film_indie', 'indie', 0, 0.7],
     ],
     // The eighth number is a CEILING. Nobody sends an A-lister a background call, and the
     // things that only start arriving once people know your face have to arrive from
     // somewhere — a star was being offered TV Extra work and no brand campaigns at all.
-    ads: [
-      ['Brand Campaign', 'Face', [1, 1], 'ad', 'oneoff'],
+    day: [
+      ['Brand Campaign', 'Face', [1, 1], 'ad', 'oneoff', 15],
       ['Commercial', 'Actor', [1, 1], 'ad', 'oneoff', 0, 0.35],
       ['Talk Show', 'Guest on the sofa', [1, 1], 'ad', 'oneoff', 35, 0.22],
       ['Magazine Cover', 'The cover', [1, 1], 'ad', 'oneoff', 40, 0.3],
       ['Awards Show', 'Presenting', [1, 1], 'ad', 'oneoff', 58, 0.45],
       ['Fashion House', 'The face of it', [1, 1], 'ad', 'oneoff', 66, 1.4],
-    ],
-    gigs: [
       ['Theatre Run', 'Stage', [2, 2], 'gig', 'small', 0, 4],
       ['Voice Session', 'Voice', [1, 1], 'gig', 'oneoff', 0, 2],
       ['TV Extra', 'Background', [1, 1], 'gig', 'oneoff', 0, 1, 38],
@@ -86,17 +95,16 @@ const POOLS = {
     ],
   },
   singer: {
-    series: [
+    tv: [
       ['Music Show', 'Guest', [1, 2], [1, 2], 'tv_network', 'episode', 0, 0.4],
       ['Talent Series', 'Judge', [4, 7], [10, 16], 'tv_network', 'recurring', 40],
     ],
     film: [
-      ['Music Video', 'Star', [1, 1], 'ad', 'oneoff', 0, 0.5],
       ['Concert Film', 'Headliner', [2, 3], 'film_indie', 'feature', 30],
       ['Stadium Tour', 'Headliner', [8, 12], 'film_tentpole', 'blockbuster', 70],
     ],
-    ads: [['Jingle', 'Voice', [1, 1], 'ad', 'oneoff', 0, 0.3], ['Brand Song', 'Artist', [1, 1], 'ad', 'oneoff']],
-    gigs: [['Open Mic', 'Performer', [1, 1], 'gig', 'oneoff', 0, 0.4], ['Festival Slot', 'Act', [1, 1], 'gig', 'oneoff', 0, 3], ['Session Work', 'Session', [1, 1], 'gig', 'oneoff', 0, 1.5]],
+    indie: [['Music Video', 'Star', [1, 1], 'ad', 'oneoff', 0, 0.5]],
+    day: [['Jingle', 'Voice', [1, 1], 'ad', 'oneoff', 0, 0.3], ['Brand Song', 'Artist', [1, 1], 'ad', 'oneoff'], ['Open Mic', 'Performer', [1, 1], 'gig', 'oneoff', 0, 0.4], ['Festival Slot', 'Act', [1, 1], 'gig', 'oneoff', 0, 3], ['Session Work', 'Session', [1, 1], 'gig', 'oneoff', 0, 1.5]],
   },
 };
 // What the shoot is worth to your name, and how the world treats the credit.
@@ -186,13 +194,16 @@ export function refreshCastingPool(s, force, extra = 0) {
   // and only what is left over goes wherever it goes.
   const shelfNames = Object.keys(shelves);
   const SHELF_FLOOR = 2;
+  // The studios do not send scripts to strangers: below Rising Star the film shelf has no
+  // floor, and the three or four things on it are things you cannot read for yet.
+  const floorOf = (id) => (id === 'film' && reach(s) < 18 ? 0 : SHELF_FLOOR);
   const countOn = (id) => s.castingPool.filter((x) => x.shelf === id).length;
   let guard = 0;
   while (s.castingPool.length < want && guard++ < 400) {
-    const short = shelfNames.filter((id) => countOn(id) < SHELF_FLOOR);
+    const short = shelfNames.filter((id) => countOn(id) < floorOf(id));
     const shelf = short.length ? pick(short) : pick(shelfNames);
     const row = pick(shelves[shelf]);
-    const perEpisode = shelf === 'series';
+    const perEpisode = shelf === 'tv';
     const [type, role, span] = row;
     // A casting office reading somebody else's age never sends you the sides at all.
     if (!seenForIt(s, role)) continue;
@@ -441,5 +452,16 @@ export function auditionFor(s, id, quality = 50) {
   s.castingPool = (s.castingPool || []).filter((x) => x.id !== id);
   return s;
 }
-export const SHELVES = [['series','Series'],['film','Film'],['ads','Ads'],['gigs','Gigs']];
-export const SHELF_BLURB = { series: 'Recurring work — slower money, but your face every week.', film: 'One shot, one release. The credits that define you.', ads: 'Brand money. Pays fast, spends a little credibility.', gigs: 'Small paid work. Keeps the lights on and the reps up.' };
+export const SHELVES = [['tv', 'TV'], ['film', 'Film'], ['indie', 'Indie'], ['day', 'Day work']];
+export const SHELF_BLURB = {
+  tv: 'Soaps, series, the prestige seasons. Paid by the episode, renewed by the network, your face every week.',
+  film: 'The studio pictures. One shot, one release, the credits that define you — and the studios do not send scripts to strangers.',
+  indie: 'Small pictures, horror, the parts that win things and sell nothing. Where a career starts, and where it goes to be taken seriously.',
+  day: 'A day\'s work — adverts, covers, a voice session, a run on stage. Fits around any set that is not exclusive.',
+};
+export const SHELF_EMPTY = {
+  tv: 'Nothing on television this month. Live a month and look again.',
+  film: 'Nothing from the studios. They send scripts to names — get one, or get an agent who has one.',
+  indie: 'Nothing small this month. It comes and goes.',
+  day: 'No day work this month.',
+};

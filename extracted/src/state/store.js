@@ -40,6 +40,13 @@ function normalize(saved) {
     (merged.people = merged.people || []).unshift({ id: 'p-agent-' + Math.random().toString(36).slice(2, 7), name: merged.agent.name, role: 'Agent', agent: true,
       industryWeight: { novice: 45, solid: 60, strong: 78, legend: 92 }[merged.agent.tier] || 45, relationship: 50, met: String(merged.year), lastSeen: (merged.year || 0) * 12 + (merged.month || 0) });
   }
+  // Four shelves in place of the old four: series is tv, ads and gigs are a day's work,
+  // and film split into the studio's pictures and the small ones.
+  for (const c of merged.castingPool || []) {
+    if (c.shelf === 'series') c.shelf = 'tv';
+    else if (c.shelf === 'ads' || c.shelf === 'gigs') c.shelf = 'day';
+    else if (c.shelf === 'film' && (c.scale === 'small' || c.scale === 'indie')) c.shelf = 'indie';
+  }
   // One set became a list of them. A save with the one gets the list; a set without an
   // id gets one, so the two copies can be told apart after a reload.
   if (!merged.productions) merged.productions = merged.production ? [merged.production] : [];
