@@ -58,8 +58,9 @@ function makeCrew(s, scale) {
   }
   return crew.map((c) => ({ ...c, bond0: c.bond }));
   function makeOne(role) {
-    const name = personName(chance(50) ? 'female' : 'male', used);
-    return { id: 'crew' + Math.random().toString(36).slice(2, 8), name, role, trait: pick(TRAITS), bond: rint(30, 55) - cold };
+    const gender = chance(50) ? 'female' : 'male';
+    const name = personName(gender, used);
+    return { id: 'crew' + Math.random().toString(36).slice(2, 8), name, gender, role, trait: pick(TRAITS), bond: rint(30, 55) - cold };
   }
 }
 // Who would be cast opposite you. The size of the picture decides how often it is a name at
@@ -79,7 +80,7 @@ function costarFor(s, scale) {
 // The people you spent the shoot with do not vanish at wrap. A director or a co-star who
 // warmed to you is in your phone now — a contact like any other, who fades if you never
 // ring, and who can come back to direct you. Their weight is the size of the picture.
-const DIRECTOR_WEIGHT = { oneoff: [45, 60], small: [50, 65], episode: [55, 70], indie: [60, 76], recurring: [62, 78], feature: [74, 88], prestige: [80, 92], blockbuster: [85, 96] };
+const DIRECTOR_WEIGHT = { oneoff: [45, 60], small: [50, 65], episode: [55, 70], indie: [60, 76], festival: [58, 76], recurring: [62, 78], feature: [74, 88], prestige: [80, 92], blockbuster: [85, 96] };
 function keepTheCrew(s, p) {
   const kept = [];
   for (const c of (p.crew || []).slice(0, 2)) {
@@ -91,6 +92,7 @@ function keepTheCrew(s, p) {
     const span = DIRECTOR_WEIGHT[p.scale] || [55, 70];
     const star = c.worldId ? actorById(s, c.worldId) : null;
     (s.people = s.people || []).push({ id: uid(s, 'p'), name: c.name, worldId: c.worldId || null,
+      gender: star ? star.gender : (c.gender || null), born: star ? star.born : (s.year || 2040) - Math.max(22, (s.ageY || 30) + rint(-6, 18)),
       role: isDirector ? (s.dream === 'singer' ? 'Music Producer' : 'Film Director') : star ? (star.icon ? 'Icon' : 'Star') : (s.dream === 'singer' ? 'Fellow Musician' : 'Fellow Actor'),
       industryWeight: isDirector ? rint(span[0], span[1]) : star ? Math.round(Math.max(40, star.fame)) : rint(Math.max(15, Math.round((s.fame || 0) * 0.5)), Math.min(90, Math.round((s.fame || 0) * 0.5) + 30)),
       relationship: c.bond, unlocks: isDirector ? 'aaa' : null, met: `${s.year}`, fromSet: p.title, lastSeen: (s.year || 0) * 12 + (s.month || 0) });
@@ -119,6 +121,9 @@ export function startProduction(s, offer) {
     // four is not built by appending to the title of season three.
     seriesTitle: offer.seriesTitle || (offer.episodes ? offer.projectTitle.replace('⭐ ', '') : ''),
     season: offer.season || (offer.episodes ? 1 : 0), part: offer.part || 1,
+    // A show you joined mid-run already has an audience; it is on the listing and the
+    // night it goes out inherits it (release.js viewersFor) instead of rolling a fresh one.
+    joined: !!offer.joined, audience: offer.audience || 0,
     optioned: !!offer.optioned, optionParts: offer.optionParts || 0,
     // The contract. Preparation is months on the calendar before the first day; an
     // exclusive shoot takes your Saturdays too; points pay out when the run closes.

@@ -18,6 +18,15 @@ export const LAST = ['Vance', 'Okonjo', 'Brandt', 'Lindqvist', 'Moreau', 'Sato',
   'Abernathy', 'Beaumont', 'Corvin', 'Dressler', 'Eckhardt', 'Falk', 'Gallo', 'Hartigan', 'Iversen', 'Jaeger',
   'Kowalczyk', 'Lombardi', 'Mbeki', 'Nakamura', 'Orlov', 'Pemberton', 'Radovan', 'Sorensen', 'Thackeray', 'Varga'];
 
+// Which list a first name came from — so a contact called Piet is drawn as a man. Maxi:
+// "Piet is a man and it drew a woman." People made before a gender was stored on them are
+// read off their name; anyone not on either list stays whatever the caller decides.
+export function genderOfName(name) {
+  const f = String(name || '').trim().split(' ')[0];
+  if (FIRST_F.includes(f)) return 'female';
+  if (FIRST_M.includes(f)) return 'male';
+  return null;
+}
 // Somebody nobody else in this life is called. `taken` is a Set of full names already in use.
 export function personName(gender, taken) {
   const first = gender === 'female' ? FIRST_F : FIRST_M;

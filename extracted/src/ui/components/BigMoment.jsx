@@ -61,7 +61,7 @@ function Scene({ id, look, accent, moment }) {
       <rect x="52" y="56" width="96" height="34" rx="3" fill={theme.bgDeep} stroke={accent} strokeWidth="1.6" />
       <text x="100" y={moment.score != null ? 76 : 78} textAnchor="middle"
         fontSize={moment.score != null ? 19 : 10} fontWeight="900" fill={accent}>
-        {moment.score != null ? moment.score : 'TONIGHT'}
+        {moment.score != null ? moment.score : moment.festival ? (moment.result === 'prize' ? 'LAURELS' : moment.result === 'sold' ? 'SOLD' : 'UNSOLD') : 'TONIGHT'}
       </text>
       <text x="100" y="86" textAnchor="middle" fontSize="7" fontWeight="800" fill={theme.sceneText} letterSpacing="1.8">
         {String(moment.verdict || 'nobody knows yet').toUpperCase()}
@@ -250,7 +250,7 @@ function headFor(m) {
   if (m.id === 'depression') return 'Four times';
   if (m.id === 'lifted') return 'After a long time';
   if (m.id === 'burnout') return 'You could not get up';
-  if (m.id === 'premiere') return m.tv ? (m.tv === 'soap' ? 'Seven o\'clock' : m.tv === 'prestige' ? 'Midnight' : 'On air') : 'Opening night';
+  if (m.id === 'premiere') return m.festival ? `In competition · ${m.festival}` : m.tv ? (m.tv === 'soap' ? 'Seven o\'clock' : m.tv === 'prestige' ? 'Midnight' : 'On air') : 'Opening night';
   // The night it opens and the night everybody has decided are two different moments now.
   if (m.id === 'verdict') return m.tv ? 'The season is over' : 'The run is over';
   if (m.id === 'booked') return 'They rang back';
@@ -268,7 +268,7 @@ export function BigMoment({ moment, look, onClose }) {
     // Opening night is cameras and a room, whatever the film turns out to be — nobody
     // knows anything yet, so it cannot be a fanfare or a flop. The verdict is where the
     // sound takes a side.
-    const cue = moment.id === 'premiere' ? (moment.tv ? 'tv' : 'camera')
+    const cue = moment.id === 'premiere' ? (moment.festival ? (moment.result === 'prize' ? 'fanfare' : moment.result === 'unsold' ? 'flop' : 'applause') : moment.tv ? 'tv' : 'camera')
       : moment.id === 'verdict' ? (good ? 'fanfare' : 'flop')
       : moment.id === 'nomination' ? 'nominated'
       : moment.id === 'ceremony' ? (good && !moment.quiet ? 'asker' : 'applause')
@@ -281,7 +281,8 @@ export function BigMoment({ moment, look, onClose }) {
       : good ? 'good' : 'bad';
     play(cue);
     // A premiere is a carpet: the shutters keep going after the first one.
-    if (moment.id === 'premiere' && !moment.tv) { play('camera', 0.42); play('camera', 0.78); play('applause', 0.5); }
+    if (moment.id === 'premiere' && !moment.tv && !moment.festival) { play('camera', 0.42); play('camera', 0.78); play('applause', 0.5); }
+    if (moment.id === 'premiere' && moment.festival && moment.result === 'prize') { play('applause', 0.6); play('camera', 1.0); }
   }, [moment.id]);
   const accent = good ? theme.gold : theme.bad;
   // This renders OUTSIDE the app shell, so it has to state its own text colour and font —
@@ -348,7 +349,7 @@ export function BigMoment({ moment, look, onClose }) {
       <div style={{ fontSize: 13.5, color: theme.muted, lineHeight: 1.6, marginBottom: 20 }}>{moment.body}</div>
       <button onClick={onClose} style={{ width: '100%', border: 'none', borderRadius: 12, padding: '13px', fontSize: 14, fontWeight: 800, cursor: 'pointer',
         background: `linear-gradient(160deg,${theme.accent},${theme.accent2})`, color: theme.warm ? '#1a1206' : '#fff' }}>
-        {moment.id === 'premiere' && moment.tv ? 'Switch it off' : CTA[moment.id] || (good ? 'Take it in' : 'Face it')}
+        {moment.id === 'premiere' && moment.tv ? 'Switch it off' : moment.id === 'premiere' && moment.festival ? (moment.result === 'unsold' ? 'Fly home' : 'Take the call') : CTA[moment.id] || (good ? 'Take it in' : 'Face it')}
       </button>
     </div>
   </div>);

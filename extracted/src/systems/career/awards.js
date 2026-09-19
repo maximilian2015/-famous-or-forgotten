@@ -23,7 +23,7 @@ export const ASKER_GENRE = {
 };
 // And what they think of the size of the thing. A tentpole has to be extraordinary.
 export const ASKER_SCALE = {
-  prestige: 1.30, indie: 1.25, small: 1.10, feature: 1.00,
+  prestige: 1.30, festival: 1.35, indie: 1.25, small: 1.10, feature: 1.00,
   recurring: 0.85, episode: 0.70, blockbuster: 0.60, oneoff: 0,
 };
 

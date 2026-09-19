@@ -207,7 +207,7 @@ export function heatOf(credits, year, wins = 0, noms = 0, age = 0) {
   return h;
 }
 function yourHeat(s, year) {
-  const credits = (s.filmography || []).filter((c) => !c.minor && ['small', 'indie', 'feature', 'blockbuster'].includes(c.scale))
+  const credits = (s.filmography || []).filter((c) => !c.minor && ['small', 'indie', 'festival', 'feature', 'blockbuster'].includes(c.scale))
     .map((c) => ({ year: c.year, rating: c.rating, gross: c._rel ? (c._rel.finalGross || 0) : (c.boxOffice || 0) }));
   const wins = ((s.awards && s.awards.wins) || []).filter((w) => year - (w.year || 0) <= 4).length;
   const noms = ((s.awards && s.awards.nominations) || []).filter((n) => year - (n.year || 0) <= 3).length;

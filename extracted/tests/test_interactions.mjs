@@ -118,8 +118,27 @@ ok('but not on twenty thousand euros', !ids(st(), 'f1').includes('setup'));
   ok('and it cannot be done twice', s.family[0].relationship === rel);
 }
 
+// A contact can become something else. Maxi: "Piet, closeness 94, and nothing — no kiss, no
+// relationship, no moving in." Single: flirt and kiss open at 60; asking out wants a kiss or 85.
+{
+  const close = ids(st({ people: [{ ...contact(), name: 'Piet Marchetti', role: 'Film Director', relationship: 94 }] }), 'c1');
+  ok('a close contact can be flirted with', close.includes('flirtContact'));
+  ok('and kissed', close.includes('kissContact'));
+  ok('and asked out at 85 without a kiss', close.includes('askOutContact'));
+  const s = st({ people: [{ ...contact(), name: 'Piet Marchetti', role: 'Film Director', relationship: 94 }], charisma: 100, looks: 100 });
+  let tries = 0; while (!s.partner && tries++ < 30) { s._cool = {}; s.ap = 100; s.people[0].rebuffedAt = null; interact(s, 'c1', 'askOutContact'); }
+  ok('asking out a contact makes them your partner', !!s.partner && s.partner.contactId === 'c1' && s.partner.name === 'Piet Marchetti', JSON.stringify(s.partner));
+  ok('the contact stays in your phone as the director', s.people.some((p) => p.id === 'c1'));
+  ok('a director on your arm can put you in a room', s.partner && s.partner.industryWeight === 70);
+  ok('and the romance moves to the partner: nothing more to ask the contact', !ids(s, 'c1').some((id) => /Contact$/.test(id)));
+  const withMum = interactionsFor(st({ family: [mum()], people: [{ ...contact(), relationship: 94 }], partner: { id: 'd9', name: 'Jonas Kade', relationship: 50 } }), 'c1');
+  ok('taken: the questions are there, greyed, with the reason', withMum.some((a) => a.id === 'kissContact' && !a.open && /Jonas/.test(a.why)));
+  ok('never at your mother', !interactionsFor(st(), 'f1').some((a) => /Contact$/.test(a.id)));
+}
+
 // every declared action is reachable by somebody
 const reach = new Set([...onMum, ...onContact, ...keen, ...married, ...onKid, ...richMum,
+  ...ids(st({ people: [{ ...contact(), relationship: 94 }] }), 'c1'),
   ...ids(st({ family: [{ ...mum(), relationship: 90 }] }), 'f1')]);
 const unreachable = INTERACTIONS.map((a) => a.id).filter((id) => !reach.has(id));
 ok('no dead entries in the menu', unreachable.length === 0, unreachable.join(','));

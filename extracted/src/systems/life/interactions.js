@@ -5,13 +5,15 @@ import { COST, canAfford, spend, tooTired } from '../../engine/energy.js';
 // Cost model follows the rest of the game: talking is free but you can only lean on the
 // same person once a month (engine/cooldown.js); anything that eats an evening costs
 // energy. Nothing here is a guaranteed win — that was the "just keep clicking" bug.
-import { rint, chance } from '../../engine/rng.js';
+import { rint, chance, pick } from '../../engine/rng.js';
+import { uid } from '../../engine/id.js';
 import { addTimeline } from '../../engine/timeline.js';
 import { onCooldown, markUsed } from '../../engine/cooldown.js';
 import { homeBond, canRaiseChild, HOUSING } from '../../engine/economy.js';
 import { askFamilyForMoney } from './family.js';
-import { proposeMarriage, tryForBaby } from './dating.js';
-import { bondGain } from './relationships.js';
+import { proposeMarriage, tryForBaby, WANTS } from './dating.js';
+import { bondGain, contactAge } from './relationships.js';
+import { genderOfName } from '../world/names.js';
 import { applyBond } from './bonds.js';
 import { canSupport, support, canBack, backChild, supportCost, backingCost } from './money.js';
 
@@ -36,6 +38,37 @@ export function findPerson(s, id) {
 }
 
 const isRomantic = (rel) => rel === 'partner' || rel === 'spouse';
+// ── a contact becomes something else ─────────────────────────────────────────
+// Maxi: "Piet, a director, closeness 94 — and there is nothing: no starting a relationship,
+// no kiss, no moving in, no marrying. I thought all of that was already there." It was, for
+// people from the Dating app. A director you spent six months with was a number and a
+// favour. Now a contact can be flirted with, kissed, and asked out; if they say yes they
+// become your partner — the same partner the Dating app makes, so moving in, the proposal
+// and the wedding all work — and they keep their place in your phone as the director they
+// are. A director or a producer on your arm is also somebody who can put you in a room
+// (dating.js connected), and every set you get that way will know it.
+const spouseOf = (s) => (s.family || []).find((x) => x.relation === 'Spouse' && x.alive);
+const taken = (s) => !!(s.partner || spouseOf(s));
+const takenWhy = (s) => { const who = s.partner || spouseOf(s); return who ? `You are with ${first(who)}.` : ''; };
+const seeing = (s, p) => !!(s.partner && s.partner.contactId === p.id);
+const abs = (s) => (s.year || 0) * 12 + (s.month || 0);
+// Not for a year after a no. The person remembers.
+const rebuffed = (s, p) => p.rebuffedAt != null && abs(s) - p.rebuffedAt < 12;
+function partnerFromContact(s, p) {
+  const weight = p.industryWeight || 30;
+  const wants = /Director|Producer|Executive|Star|Icon/.test(p.role || '') ? (chance(55) ? 'ambitious' : pick(['thelife', 'quiet', 'family'])) : pick(Object.keys(WANTS));
+  const means = weight >= 80 ? 'serious' : weight >= 60 ? 'money' : 'ordinary';
+  const age = contactAge(s, p) ?? Math.max(18, (s.ageY || 25) + rint(-5, 12));
+  const w = WANTS[wants];
+  return {
+    id: uid(s, 'date'), contactId: p.id, name: p.name, gender: p.gender || genderOfName(p.name) || 'female', age,
+    job: String(p.role || 'in the business').toLowerCase(), charm: rint(45, 90),
+    // You already know each other. This is not a first evening — it starts warm, not at zero.
+    relationship: Math.round(Math.min(70, (p.relationship || 40) * 0.72)), dates: 2, means, wants,
+    patience: rint(w.patience[0], w.patience[1]), livingTogether: false, married: false,
+    industryWeight: weight, fromContact: true, since: abs(s),
+  };
+}
 // How well something lands: partly you, partly how well they already know you.
 function lands(s, p, base) {
   return chance(clamp(base + (s.charisma || 0) * 0.35 + (p.relationship || 0) * 0.18));
@@ -132,6 +165,44 @@ export const INTERACTIONS = [
       const g = move(s, p,Math.round(rint(10, 18) * homeBond(s)));
       s.mental = clamp(s.mental + rint(4, 8));
       return `The night was yours. (+${g})`;
+    } },
+
+  // A contact. Three steps, each one a question they can say no to, and a year's silence
+  // after a no. Once they say yes, the rest of it lives on the partner (the Dating app and
+  // this same menu): the evenings, moving in, the proposal.
+  { id: 'flirtContact', group: 'romantic', label: 'Flirt', blurb: 'See if there is anything there', ap: COST.chat,
+    applies: ({ kind, s, p }) => kind === 'contact' && !seeing(s, p),
+    when: ({ s, p }) => !taken(s) && !rebuffed(s, p) && (p.relationship || 0) >= 30,
+    lockedWhy: ({ s, p }) => (taken(s) ? takenWhy(s) : rebuffed(s, p) ? `${first(p)} said no. Not for a while.` : (p.relationship || 0) < 30 ? 'You barely know each other.' : ''),
+    run: ({ s, p }) => {
+      if (lands(s, p, 24 + (s.looks || 0) * 0.15)) { p.spark = (p.spark || 0) + 1; const g = move(s, p, rint(4, 9)); s.mental = clamp(s.mental + 2); return `${first(p)} held the look a second longer than they needed to. (+${g})`; }
+      const g = move(s, p, -rint(1, 4)); return `${first(p)} laughed — kindly, and moved on. (${g})`;
+    } },
+
+  { id: 'kissContact', group: 'romantic', label: 'Kiss them', blurb: 'After the wrap party, or somewhere like it', ap: COST.chat,
+    applies: ({ kind, s, p }) => kind === 'contact' && !seeing(s, p),
+    when: ({ s, p }) => !taken(s) && !rebuffed(s, p) && (p.relationship || 0) >= 60,
+    lockedWhy: ({ s, p }) => (taken(s) ? takenWhy(s) : rebuffed(s, p) ? `${first(p)} stepped back last time. Not for a while.` : (p.relationship || 0) < 60 ? 'Not there yet. Sixty, and a flirt that landed.' : ''),
+    run: ({ s, p }) => {
+      if (lands(s, p, 8 + (p.spark || 0) * 12 + (s.looks || 0) * 0.15)) { p.kissed = true; const g = move(s, p, rint(6, 12)); s.mental = clamp(s.mental + 4); return `You kissed ${first(p)}, and ${first(p)} kissed you back. (+${g})`; }
+      p.rebuffedAt = abs(s); const g = move(s, p, -rint(6, 12)); s.mental = clamp(s.mental - 3);
+      addTimeline(s, `${p.name} stepped back. It is going to be strange on set for a while.`, true);
+      return `${first(p)} stepped back. Kindly, but back. (${g})`;
+    } },
+
+  { id: 'askOutContact', group: 'romantic', label: 'Ask them out', blurb: 'Properly. Not a drink after work', ap: COST.ask,
+    applies: ({ kind, s, p }) => kind === 'contact' && !seeing(s, p),
+    when: ({ s, p }) => !taken(s) && !rebuffed(s, p) && (p.kissed || (p.relationship || 0) >= 85),
+    lockedWhy: ({ s, p }) => (taken(s) ? takenWhy(s) : rebuffed(s, p) ? `${first(p)} said no. Not for a while.` : !(p.kissed || (p.relationship || 0) >= 85) ? 'A kiss first — or be so close it does not need one.' : ''),
+    run: ({ s, p }) => {
+      if (lands(s, p, (p.kissed ? 30 : 10) + (s.looks || 0) * 0.1)) {
+        s.partner = partnerFromContact(s, p);
+        const g = move(s, p, rint(4, 8));
+        addTimeline(s, `Started seeing ${p.name} — ${String(p.role || '').toLowerCase()}.`);
+        return `${first(p)} said yes. You are seeing each other now — and the whole business will know by Thursday. (+${g})`;
+      }
+      p.rebuffedAt = abs(s); const g = move(s, p, -rint(4, 9)); s.mental = clamp(s.mental - 4);
+      return `${first(p)} thought about it, and said it would be a mistake. (${g})`;
     } },
 
   { id: 'propose', group: 'romantic', label: 'Propose', blurb: 'The whole question, out loud', ap: COST.ask,

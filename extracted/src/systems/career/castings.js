@@ -19,6 +19,7 @@ import { ageFit, seenForIt } from './age.js';
 import { canWork, insurability, depressed } from '../life/strain.js';
 import { sendMail } from '../meta/email.js';
 import { newTitle } from '../world/titles.js';
+import { seasonCap, slotNorm } from './franchise.js';
 // What a casting office will see you for. Usually that is fame — but an Asker counts,
 // and it is the one route into work above your level that does not run through
 // blockbusters. An actor with a statuette and forty fame gets read for parts that used
@@ -56,8 +57,11 @@ const POOLS = {
   actor: {
     tv: [
       ['Soap Opera', 'Recurring', [3, 5], [22, 44], 'tv_daytime', 'recurring'],
-      ['Drama Series', 'Guest role', [2, 3], [2, 4], 'tv_network', 'episode', 0, 0.45],
-      ['Crime Series', 'Episode', [2, 3], [1, 3], 'tv_network', 'episode', 0, 0.55],
+      // A guest spot is a week's work at a guest's rate, not a season at a regular's. Maxi:
+      // "one episode, three months of shooting, €20k an episode — that does not add up."
+      // The months follow the episodes now (below), and the share is a guest's share.
+      ['Drama Series', 'Guest role', [1, 2], [2, 4], 'tv_network', 'episode', 0, 0.2, 62],
+      ['Crime Series', 'Episode', [1, 1], [1, 3], 'tv_network', 'episode', 0, 0.22, 62],
       ['Network Drama', 'Series regular', [5, 8], [10, 16], 'tv_network', 'recurring', 25],
       ['Prestige Series', 'Season lead', [7, 10], [8, 10], 'tv_prestige', 'prestige', 55],
       // Opens late. It pays in standing, and it is the shelf that replaces the one that closes.
@@ -74,6 +78,11 @@ const POOLS = {
       ['Horror Movie', 'Victim', [1, 2], 'film_indie', 'small', 0, 0.3, 52],
       ['Indie Film', 'Supporting', [2, 4], 'film_indie', 'indie', 0, 0.5],
       ['Indie Film', 'Lead', [3, 5], 'film_indie', 'indie', 15],
+      // The other way in. A festival picture pays nothing and nobody sees it — unless a jury
+      // does. Maxi: "independent films that go to festivals are the real alternative; a nobody
+      // can get in, and if it works there, you know what happens." See release.js, festivals.
+      ['Festival Film', 'Lead', [2, 3], 'film_indie', 'festival', 0, 0.3],
+      ['Festival Film', 'Supporting', [2, 3], 'film_indie', 'festival', 0, 0.18],
       // The late-career shelf: the parts that win things and do not sell tickets.
       ['Prestige Drama', 'Character lead', [4, 7], 'film_indie', 'indie', 20, 1.6],
       ['Indie Film', 'Grandparent', [2, 4], 'film_indie', 'indie', 0, 0.7],
@@ -96,7 +105,7 @@ const POOLS = {
   },
   singer: {
     tv: [
-      ['Music Show', 'Guest', [1, 2], [1, 2], 'tv_network', 'episode', 0, 0.4],
+      ['Music Show', 'Guest', [1, 1], [1, 2], 'tv_network', 'episode', 0, 0.25],
       ['Talent Series', 'Judge', [4, 7], [10, 16], 'tv_network', 'recurring', 40],
     ],
     film: [
@@ -113,12 +122,41 @@ const SCALE = {
   small:       { prestige: [15, 30], tier: 'supporting', label: 'Small' },
   episode:     { prestige: [30, 45], tier: 'supporting', label: 'Episode' },
   indie:       { prestige: [35, 55], tier: 'supporting', label: 'Indie' },
+  // The material is the point of it. Nobody makes one of these for the money.
+  festival:    { prestige: [48, 76], tier: 'supporting', label: 'Festival' },
   recurring:   { prestige: [40, 55], tier: 'lead', label: 'Recurring' },
   feature:     { prestige: [55, 72], tier: 'lead', label: 'Feature' },
   prestige:    { prestige: [70, 88], tier: 'lead', label: 'Prestige' },
   blockbuster: { prestige: [80, 96], tier: 'tentpole', label: 'Blockbuster' },
 };
 export function scaleOf(c) { return SCALE[c?.scale] || SCALE.episode; }
+// What the picture can afford. The film_indie band is priced for a twelve-million indie;
+// a horror picture made for one million and a short made for nothing cannot pay a fifth
+// of that. Maxi: "€58k for the victim in an indie horror? I don't think so." Folded into
+// the listing's share so the negotiation argues inside the same, smaller band.
+const SCALE_MONEY = { small: 0.16, festival: 0.45 };
+// Which season a television listing is for. Maxi: "a casting for a series should say which
+// season — either the first, the premiere, or a show that is already running: season 3, 8,
+// 14." Most television that is casting is television that already exists — a soap has been
+// on for years and needs a new face, a drama is replacing somebody for season four, a guest
+// spot is by definition on somebody else's running show. A new show is the rarer thing, and
+// the bigger gamble: nobody knows if anyone will watch, and if they do it is yours from the
+// pilot. An established show comes with an audience you can read off the listing.
+export function seasonFor(type, scale) {
+  const cap = seasonCap(type);
+  if (scale === 'episode') return rint(2, Math.max(2, Math.min(cap - 1, 9)));      // always somebody else's show
+  if (type === 'Soap Opera') return chance(28) ? 1 : rint(2, Math.min(cap - 2, 16));
+  if (type === 'Talent Series') return chance(35) ? 1 : rint(2, Math.min(cap - 1, 8));
+  if (scale === 'prestige') return chance(62) ? 1 : rint(2, Math.min(cap - 1, 3));
+  return chance(50) ? 1 : rint(2, Math.min(cap - 1, 4));                            // network drama
+}
+// What a running show is drawing, in millions an episode — against what its slot wants
+// (franchise.js SLOT_NORM). This is the number the network will renew on, and it is on
+// the listing so you can read it before you sign: a soap drawing 2m against a 4m slot is
+// a soap that is ending, however many seasons it has behind it.
+export function showAudience(type) {
+  return Math.round(slotNorm(type) * (0.5 + Math.random() * 0.95) * 10) / 10;
+}
 // Six words by six words is thirty-six titles, and six listings drawn out of that
 // collide constantly — the board regularly showed the same film twice on two shelves,
 // and two films of the same name collapsed into one row in the filmography.
@@ -225,10 +263,13 @@ export function refreshCastingPool(s, force, extra = 0) {
     if ((scale === 'feature' || scale === 'blockbuster') && insuranceShut(s)) continue;
     // What YOU are worth in this medium. Zero means they would not have you at any
     // price yet — the listing simply does not appear.
-    const quoted = Math.round(quoteFor(s, medium) * (share || 1));
+    const cut = (share || 1) * (/^film/.test(medium) ? (SCALE_MONEY[scale] || 1) : 1);   // a theatre run is priced as a gig already
+    const quoted = Math.round(quoteFor(s, medium) * cut);
     if (quoted <= 0) continue;
-    const months = rint(span[0], span[1]);
     const episodes = perEpisode ? rint(eps[0], eps[1]) : 0;
+    // A guest spot shoots for as long as its episodes take: one or two is a week or so
+    // inside a month, three or four is two.
+    const months = scale === 'episode' ? (episodes <= 2 ? 1 : 2) : rint(span[0], span[1]);
     // How solid the money behind this one is, and what they have to pay to make you
     // take that on. The player sees both before signing — that is the whole point.
     // A job that is over by the evening cannot fall apart, so it is never priced as if
@@ -241,12 +282,16 @@ export function refreshCastingPool(s, force, extra = 0) {
     if (rate <= 0) continue;
     const genre = pick(GENRES);
     const title = titleFor(s, genre, taken);
+    // Television: which season, and — for a show that is already on — what it is drawing.
+    const season = perEpisode ? seasonFor(type, scale) : 0;
+    const audience = season > 1 ? showAudience(type) : 0;
     s.castingPool.push({
       id: uid(s, 'cast'), title: title, type, role, shelf, scale, medium,
-      share: share || 1,   // negotiation needs it to know the top of YOUR band for this part
+      share: cut,   // negotiation needs it to know the top of YOUR band for this part
       stability, feeFactor: fee,   // negotiation argues inside the band this job actually pays in
       months, episodes, perEpisode, episodeFee: perEpisode ? rate : 0,
       salary: perEpisode ? rate * episodes : rate,        // the whole fee, paid across the shoot
+      season, audience,
       genre, minFame: minFame || 0,
       _expires: (s.year || 0) * 12 + (s.month || 0) + rint(2, 4),
     });
@@ -354,11 +399,15 @@ function answerSubmission(s, sub) {
   // A yes is an offer, not a summons. If you are shooting, it waits on the board until it
   // does not — which is the other half of the job nobody tells you about.
   const sc = scaleOf(c);
+  // A running show is "Title · season 8" on the call sheet and "Title" in the filmography —
+  // the same convention a renewal uses (franchise.js), so the seasons group under one name.
+  const season = c.perEpisode ? (c.season || 1) : 0;
   (s.offers = s.offers || []).push({
     id: uid(s, 'off'), via: 'casting',
-    projectTitle: c.title, role: c.role, type: c.type, genre: c.genre,
+    projectTitle: season > 1 ? `${c.title} · season ${season}` : c.title, role: c.role, type: c.type, genre: c.genre,
     salary: c.salary, months: c.months, tier: sc.tier, scale: c.scale,
-    episodes: c.episodes, episodeFee: c.episodeFee, season: c.perEpisode ? 1 : 0,
+    episodes: c.episodes, episodeFee: c.episodeFee, season, seriesTitle: c.perEpisode ? c.title : undefined,
+    joined: season > 1, audience: c.audience || 0,
     stability: c.stability, perEpisode: c.perEpisode, medium: c.medium,
     prestigeScore: rint(sc.prestige[0], sc.prestige[1]) + Math.round((sub.quality - 50) * 0.12) + riskPrestige(c.stability),
     // Counted down by offersTick like every other offer. This used to be an absolute month
@@ -380,6 +429,10 @@ function answerSubmission(s, sub) {
   return s;
 }
 
+// A day's work: over by the evening, answered in the room, kept under Other work. A guest
+// spot on a series is a month or less too, but it is television — it airs, it has a season,
+// it goes in the filmography — so it takes the long road like everything else that shoots.
+export function dayWork(c) { return (c.months || 1) < 2 && !c.perEpisode; }
 // quality (0-100) comes from the audition minigame: nail the read and your odds jump,
 // fumble it and the room cools on you.
 export function auditionFor(s, id, quality = 50) {
@@ -392,7 +445,7 @@ export function auditionFor(s, id, quality = 50) {
   // cannot even do a casting; that is not real." If you win it, the part starts alongside when
   // they will allow that (engine/sets.js) and waits for a free set when they will not. Only
   // a day's work is blocked, and only by an exclusive contract.
-  if ((c.months || 1) < 2 && s.production && s.production.exclusive) {
+  if (dayWork(c) && s.production && s.production.exclusive) {
     s.lastEvent = `"${s.production.title}" is exclusive. You signed that — not a day, not a voice session, until you wrap.`;
     return s;
   }
@@ -406,7 +459,7 @@ export function auditionFor(s, id, quality = 50) {
   // went home, and somewhere between one and three months later a phone rings or it does
   // not. This is the whole rhythm of the job, and the game used to skip it: audition, book,
   // shoot, audition, book — 86% of a forty-five-year career was spent on a set.
-  if ((c.months || 1) >= 2) {
+  if (!dayWork(c)) {
     const wait = rint(1, 3);
     (s.submissions = s.submissions || []).push({
       id: uid(s, 'sub'),
@@ -456,7 +509,7 @@ export const SHELVES = [['tv', 'TV'], ['film', 'Film'], ['indie', 'Indie'], ['da
 export const SHELF_BLURB = {
   tv: 'Soaps, series, the prestige seasons. Paid by the episode, renewed by the network, your face every week.',
   film: 'The studio pictures. One shot, one release, the credits that define you — and the studios do not send scripts to strangers.',
-  indie: 'Small pictures, horror, the parts that win things and sell nothing. Where a career starts, and where it goes to be taken seriously.',
+  indie: 'Small pictures, horror, the festival films. Where a career starts, where it goes to be taken seriously — and the one door a nobody can walk through, if a jury opens it.',
   day: 'A day\'s work — adverts, covers, a voice session, a run on stage. Fits around any set that is not exclusive.',
 };
 export const SHELF_EMPTY = {

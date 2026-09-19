@@ -10,11 +10,15 @@ import { quoteBand } from '../meta/status.js';
 // How long a format can plausibly run. Daytime soaps run for decades; prestige
 // streaming shows are written to end. This is the ceiling, not the expectation —
 // most shows die at the first or second renewal regardless.
+// A soap's cap is the show's, not yours: the board now casts you INTO season fourteen of a
+// soap that has been on for years (castings.js seasonFor), so the ceiling has to sit well
+// above where you can join. Twenty. The fatigue line below is what actually ends them.
 export const SEASON_CAP = {
-  'Soap Opera': 12,
+  'Soap Opera': 20,
   'Talent Series': 10,
   'Crime Series': 8,
   'Drama Series': 7,
+  'Network Drama': 6,
   'Music Show': 6,
   'Prestige Series': 5,
 };
@@ -217,10 +221,11 @@ export function laterOffersTick(s) {
   if (!due.length) return s;
   s.laterOffers = (s.laterOffers || []).filter((x) => x.due > now);
   for (const x of due) {
-    const o = { ...x.offer, expires: now + rint(3, 6), via: 'studio', from: 'the studio' };
+    const o = { ...x.offer, expires: now + rint(3, 6), via: x.offer.via || 'studio', from: 'the studio' };
     (s.offers = s.offers || []).push(o);
-    addTimeline(s, `They are making "${o.projectTitle}", and they want you back.`);
-    s.lastEvent = `"${o.projectTitle}" is happening. They called — the paper is in Messages.`;
+    // A sequel is "they want you back"; a studio that saw you at a festival is something else.
+    addTimeline(s, x.line || `They are making "${o.projectTitle}", and they want you back.`);
+    s.lastEvent = x.event || `"${o.projectTitle}" is happening. They called — the paper is in Messages.`;
   }
   return s;
 }
@@ -252,6 +257,8 @@ export function maybeContinue(s, credit, p, force = false) {
   // A guest spot is somebody else's show. Two episodes of a crime series used to come back as
   // YOUR season two, and then three, and then eight — 453 of them in 120 lives.
   if (p.scale === 'episode') return null;
+  // Nobody makes a sequel to a festival picture. What it leads to is a different film.
+  if (p.scale === 'festival') return null;
   const isSeries = !!p.episodes || !!p.season;
   const season = p.season || 1;
   const part = p.part || 1;

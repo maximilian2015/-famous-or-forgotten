@@ -49,8 +49,52 @@ function prepFor(o) {
   if ((o.scale === 'feature' || o.scale === 'prestige') && /Thriller|Sci-Fi|Horror/.test(o.genre || '')) return chance(40) ? 1 : 0;
   return 0;
 }
+// The dates. If you are on a set, the only thing to ask is that it waits for you.
+// If you are on a set: alongside it, if they will have you split the week — a second
+// set needs a name they trust — or after it wraps. Maxi: "castings while shooting, and
+// with respect the option to start; the contract says how they are counted."
+function scheduleClause(s, o, big, ex) {
+  const now = (s.year || 0) * 12 + (s.month || 0);
+  const fit = canTakeSet(s, { ...o, exclusive: ex });
+  const wait = fit.ok ? 0 : monthsUntilFree(s, { ...o, exclusive: ex });
+  const start = now + 1 + (big ? wait : 0);
+  const sched = { id: 'schedule', label: 'Schedule', value: { months: o.months || 1, start },
+    text: `${o.months || 1} month${(o.months || 1) === 1 ? '' : 's'} of shooting, from ${MON[start % 12]} ${Math.floor(start / 12)}`
+      + (s.production && big ? (fit.ok ? ` — alongside "${s.production.title}"` : ` — after "${(fit.until || s.production).title}" wraps; ${fit.respect ? `a set alongside needs respect ${fit.respect}` : fit.why.replace(/\.$/, '')}`) : ''),
+    options: s.production && big && fit.ok ? [{ id: 'afterWrap', label: `Start after "${s.production.title}" wraps instead (${(s.production.prepLeft || 0) + (s.production.monthsLeft || 0)} mo)`, value: { months: o.months || 1, start: now + 1 + (s.production.prepLeft || 0) + (s.production.monthsLeft || 0), after: s.production.title }, odds: 70 }] : [] };
+  // No set for it now. They will not simply wait — Maxi: "without the respect you cannot
+  // take it and cannot ask to move it, so you choose very carefully; though when you are
+  // starting you take everything." So the choice is the paper: ask them to hold it (a
+  // roll on how long; they can say no, and then it is gone), or walk off what you are on
+  // for it, if it is the bigger picture — and everybody hears you did.
+  if (s.production && big && !fit.ok) {
+    const until = fit.until || s.production;
+    sched.text = `They need you from ${MON[(now + 1) % 12]} ${Math.floor((now + 1) / 12)}. You are on "${until.title}" until ${MON[(now + wait) % 12]}${fit.respect ? ` — a set alongside needs respect ${fit.respect}` : ''}. It does not start until they say how.`;
+    sched.value = { months: o.months || 1, start: now + 1 };
+    sched.must = true;
+    sched.options = [{ id: 'hold', label: `Ask them to hold the part until you wrap (${wait} mo)`, value: { months: o.months || 1, start: now + 1 + wait, after: until.title }, odds: holdOdds(wait), walkOnNo: true }];
+    const bigger = (SCALE_RANK[o.scale] || 0) > (SCALE_RANK[until.scale] || 0);
+    if (bigger) sched.options.push({ id: 'walk', label: `Walk off "${until.title}" for this — they recast in a week, and everybody hears`, value: { months: o.months || 1, start: now + 1, walkOff: until.id }, odds: 100, sure: true });
+  }
+  sched.stance = 'ok'; sched.ask = null; sched.result = null;
+  return sched;
+}
 export function draftContract(s, o) {
-  if (o.contract) return o.contract;
+  if (o.contract) {
+    // The paper was drafted once and kept, and the dates on it went stale: a contract
+    // opened before you took a set still said "from July" after the set had pushed the
+    // start to December — Maxi: "the second shoot is in July on the paper and it is not
+    // on the calendar until the premiere?" The schedule stays live until something on it
+    // is agreed, or the paper is with them.
+    const k = o.contract;
+    const i = k.clauses.findIndex((c) => c.id === 'schedule');
+    if (!k.sent && !o.signed && i >= 0 && k.clauses[i].result !== 'agreed' && k.clauses[i].stance !== 'talk') {
+      const big = o.tier !== 'supporting' || (o.months || 0) >= 2;
+      const exc = k.clauses.find((c) => c.id === 'exclusive');
+      k.clauses[i] = scheduleClause(s, o, big, exc ? !!exc.value : false);
+    }
+    return k;
+  }
   const big = o.tier !== 'supporting' || (o.months || 0) >= 2;
   const clauses = [];
   const neg = negotiationFor(s, { medium: o.medium || (o.scale === 'blockbuster' ? 'film_tentpole' : o.scale === 'feature' ? 'film_studio' : o.scale === 'prestige' ? 'tv_prestige' : o.episodes ? 'tv_network' : 'film_indie'),
@@ -205,7 +249,7 @@ export function contractsTick(s) {
 }
 function textFor(c, o) {
   if (c.id === 'fee') return c.perEpisode ? `${money(c.value)} an episode, ${c.episodes} episodes — ${money(c.value * c.episodes)}` : `${money(c.value)} for the picture, paid across the shoot`;
-  if (c.id === 'schedule') return `${c.value.months} month${c.value.months === 1 ? '' : 's'} of shooting, from ${MON[c.value.start % 12]} ${Math.floor(c.value.start / 12)}`;
+  if (c.id === 'schedule') return `${c.value.months} month${c.value.months === 1 ? '' : 's'} of shooting, from ${MON[c.value.start % 12]} ${Math.floor(c.value.start / 12)}${c.value.after ? ` — after "${c.value.after}" wraps` : ''}`;
   if (c.id === 'exclusive') return c.value ? 'Nothing else while you shoot — not a day, not a voice session' : 'A day’s work alongside is fine with them';
   if (c.id === 'prep') return `${c.value} month${c.value === 1 ? '' : 's'} before the first day — the body, the accent, the stunts`;
   if (c.id === 'backend') return `${c.value}% of the gross past break-even`;
@@ -233,6 +277,15 @@ export function signContract(s, id) {
   o.signed = true;
   const now = (s.year || 0) * 12 + (s.month || 0);
   const title = String(o.projectTitle || 'it').replace('⭐ ', '');
+  // Whatever the paper said, a set that is not free is not free: the start moves to the
+  // wrap, and the paper says so — so the calendar and the contract cannot disagree.
+  if (!(sched && sched.value && sched.value.walkOff)) {
+    const fit = canTakeSet(s, o);
+    if (!fit.ok) {
+      o.startAt = Math.max(o.startAt || 0, now + 1 + monthsUntilFree(s, o));
+      if (sched) { sched.value = { ...sched.value, start: o.startAt, after: (fit.until || s.production || {}).title }; sched.text = textFor(sched, o); }
+    }
+  }
   // Signed to start later — after your current shoot. It waits in Messages, signed, and
   // starts itself the month the set is free.
   if ((o.startAt || 0) > now + 1 || !canTakeSet(s, o).ok) {

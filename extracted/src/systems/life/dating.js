@@ -402,6 +402,9 @@ export function datingYear(s) {
       addTimeline(s, `${s.partner.name} ended it. ${w.label.toLowerCase()}, and this was never going to be it.`, true);
       s.mental = clamp((s.mental || 50) - 10);
       s.lastFamilyEvent = `${s.partner.name} ended things.`;
+      // A director who ended it is still in your phone — colder, and not to be asked again
+      // for a year. See interactions.js, a contact becomes something else.
+      if (s.partner.contactId) { const c = (s.people || []).find((x) => x.id === s.partner.contactId); if (c) { c.rebuffedAt = (s.year || 0) * 12 + (s.month || 0); c.kissed = false; c.relationship = clampRel((c.relationship || 0) - 18); } }
       s.partner = null;
     }
   }

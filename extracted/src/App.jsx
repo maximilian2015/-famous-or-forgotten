@@ -1688,7 +1688,7 @@ function PersonSheet({ g, id, onClose }) {
         <Avatar look={lookOfPerson(p)} size={78} title={p.name} />
         <div style={{ flex: 1 }}>
           <div style={{ fontSize: 19, fontWeight: 900 }}>{p.name}</div>
-          <div style={{ fontSize: 12, color: theme.muted, marginTop: 2 }}>{p.relation || (rel === 'partner' ? 'Partner' : p.role)}{p.age != null ? ` · ${p.age}` : ''}{p.job ? ` · ${p.job}` : ''}</div>
+          <div style={{ fontSize: 12, color: theme.muted, marginTop: 2 }}>{p.relation || (rel === 'partner' ? 'Partner' : p.role)}{(p.born ? (g.year || 0) - p.born : p.age) != null ? ` · ${p.born ? (g.year || 0) - p.born : p.age}` : ''}{p.job ? ` · ${p.job}` : ''}{rel === 'contact' && g.partner && g.partner.contactId === p.id ? <span style={{ color: '#ff8ab5', fontWeight: 800 }}> · seeing each other</span> : null}</div>
           <BondBar value={p.relationship} height={6} />
           <div style={{ fontSize: 11, color: relBand(p.relationship || 0).tone === 'bad' ? theme.bad : theme.muted }}>
             {relBand(p.relationship || 0).label} · {Math.round(p.relationship || 0)}
@@ -2046,8 +2046,11 @@ function groupCredits(list) {
   return out.map((g) => {
     const best = g.parts.reduce((a, b) => ((b.rating || 0) > (a.rating || 0) ? b : a));
     const years = g.parts.map((p) => p.year).filter(Boolean);
+    const seasonNos = g.series ? g.parts.map((p) => p.season).filter(Boolean) : [];
     return { ...g, best,
       seasons: g.series ? g.parts.length : 0,
+      // Which seasons were yours: a show you joined in its eighth year reads "Seasons 8–10".
+      seasonFrom: seasonNos.length ? Math.min(...seasonNos) : 0, seasonTo: seasonNos.length ? Math.max(...seasonNos) : 0,
       episodes: g.series ? g.parts.reduce((n, p) => n + (p.episodes || 0), 0) : 0,
       askers: g.parts.reduce((n, p) => n + (p.asker || 0), 0),
       from: Math.min(...years), to: Math.max(...years),
@@ -2087,13 +2090,13 @@ function CreditRow({ group, g }) {
       <div style={{ fontSize: 15, fontWeight: 800, lineHeight: 1.2 }}>{group.root}</div>
       {/* line two: what it is, when, and which season — the way a listing says it */}
       <div style={{ fontSize: 12, color: theme.muted, marginTop: 3 }}>
-        {kind} ({years}){tv && group.seasons ? ` · ${group.seasons > 1 ? count(group.seasons, 'season') : 'Season 1'}` : ''}{c.part > 1 ? ` · Part ${c.part}` : ''}
+        {kind} ({years}){tv && group.seasons ? ` · ${group.seasonFrom > 1 ? (group.seasons > 1 ? `Seasons ${group.seasonFrom}–${group.seasonTo}` : `Season ${group.seasonFrom}`) : group.seasons > 1 ? count(group.seasons, 'season') : 'Season 1'}` : ''}{c.part > 1 ? ` · Part ${c.part}` : ''}
       </div>
       {/* line three: the score and the small print */}
       <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginTop: 4, flexWrap: 'wrap', fontSize: 12 }}>
         {c.running
           ? <span style={{ fontSize: 10.5, fontWeight: 900, letterSpacing: '.06em', textTransform: 'uppercase', color: theme.gold }}>
-              {(c.tv || !['small', 'indie', 'feature', 'blockbuster'].includes(c.scale)) ? `On air · episode ${Math.max(1, Math.round(((c.weeks || 0) / Math.max(1, c.weeksTotal || 1)) * (c.episodes || 1)))} of ${c.episodes || '?'}` : `In cinemas · week ${c.weeks || 0} of ${c.weeksTotal}`}</span>
+              {(c.tv || !['small', 'indie', 'festival', 'feature', 'blockbuster'].includes(c.scale)) ? `On air · episode ${Math.max(1, Math.round(((c.weeks || 0) / Math.max(1, c.weeksTotal || 1)) * (c.episodes || 1)))} of ${c.episodes || '?'}` : `In cinemas · week ${c.weeks || 0} of ${c.weeksTotal}`}</span>
           : <span style={{ fontWeight: 900, color: starCol }}>★ {stars}</span>}
         <span style={{ color: theme.muted }}>{group.to}</span>
         {eps > 0 && <span style={{ color: theme.muted }}>{eps}eps</span>}
@@ -2115,10 +2118,13 @@ function CreditRow({ group, g }) {
           ◆ Push for a sequel · −{costOf(g, 'sequel')} standing
         </button>); })()}
       {/* the marks that never come off, and what it made */}
-      {(group.worldHit || r >= 85 || group.askers > 0 || c.comeback > 0 || group.boxOffice > 0 || group.viewers > 0) && (
+      {(group.worldHit || r >= 85 || group.askers > 0 || c.comeback > 0 || group.boxOffice > 0 || group.viewers > 0 || c.festival) && (
         <div style={{ fontSize: 10.5, marginTop: 5, display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
           {group.worldHit ? <span style={{ fontWeight: 900, color: theme.gold }}>🌍 WORLD HIT</span>
             : r >= 85 ? <span style={{ fontWeight: 900, letterSpacing: '.06em', color: theme.good }}>HIT</span> : null}
+          {/* Where it screened, and what happened there. See release.js, the festival. */}
+          {c.festival && <span style={{ fontWeight: 900, letterSpacing: '.06em', color: c.festival.result === 'prize' ? theme.gold : c.festival.result === 'sold' ? theme.good : theme.muted }}>
+            🎞️ {String(c.festival.name).replace(/^the /, '').toUpperCase()} · {c.festival.result === 'prize' ? 'PRIZE' : c.festival.result === 'sold' ? 'SOLD' : 'NO BUYER'}</span>}
           {group.askers > 0 && <span style={{ fontWeight: 900, letterSpacing: '.06em', color: theme.gold }}>🏆 ASKER{group.askers > 1 ? ` ×${group.askers}` : ''}</span>}
           {c.comeback > 0 && <span style={{ fontWeight: 900, letterSpacing: '.06em', color: theme.accent }}>↩ COMEBACK · AFTER {c.comeback} YEARS</span>}
           {(group.boxOffice > 0 || group.viewers > 0) && <span style={{ color: theme.text, fontWeight: 700 }}>
@@ -2138,7 +2144,7 @@ function CreditRow({ group, g }) {
     </div>
   </div>);
 }
-const VERDICT_COL = { smash: theme.gold, profitable: theme.good, 'broke even': theme.muted, bomb: theme.bad, watched: theme.good, seen: theme.muted, ignored: theme.bad };
+const VERDICT_COL = { smash: theme.gold, profitable: theme.good, 'broke even': theme.muted, bomb: theme.bad, watched: theme.good, seen: theme.muted, ignored: theme.bad, unsold: theme.muted };
 const BACKING_COL = { locked: theme.good, solid: theme.accent, shaky: theme.gold, fragile: theme.bad };
 // The same fact the OpenCall board shows, in the one line an offer card has room for.
 function OfferBacking({ o }) {

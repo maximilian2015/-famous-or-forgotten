@@ -60,6 +60,9 @@ for (let i = 0; i < N; i++) {
   for (const show of Object.values(byRoot)) {
     show.seasons.sort((a, b) => a - b);
     show.max = show.seasons[show.seasons.length - 1];
+    // The board now casts you INTO running shows (season 8 of a soap), so the show's season
+    // number and how many seasons were yours are two different numbers.
+    show.tenure = show.seasons.length; show.joinedAt = show.seasons[0];
     const cap = seasonCap(show.type);
     if (show.max > cap) bugs.push(`life ${i}: "${show.title}" (${show.type}) ran ${show.max} seasons, cap ${cap}`);
     for (let k = 1; k < show.seasons.length; k++) if (show.seasons[k] !== show.seasons[k - 1] + 1) { bugs.push(`life ${i}: "${show.title}" seasons ${show.seasons.join(',')} — a gap or a repeat`); break; }
@@ -78,13 +81,15 @@ for (const sh of shows) { const t = byType[sh.type] = byType[sh.type] || { n: 0,
 console.log('\nby type:'); for (const [t, v] of Object.entries(byType)) console.log(`  ${t.padEnd(16)} ${v.n} shows · longest ${v.max} · mean ${(v.sum / v.n).toFixed(1)} · cap ${seasonCap(t)}`);
 // Your own shows only (a guest spot is somebody else's), and how often season one led to two.
 const own = shows.filter((sh) => sh.scale !== 'episode');
-const dist2 = {}; for (const sh of own) dist2[sh.max] = (dist2[sh.max] || 0) + 1;
-console.log('\nyour own shows · seasons → shows:', Object.keys(dist2).sort((a, b) => a - b).map((k) => `${k}: ${dist2[k]}`).join(' · '));
+const dist2 = {}; for (const sh of own) dist2[sh.tenure] = (dist2[sh.tenure] || 0) + 1;
+console.log('\nyour own shows · seasons YOU were in → shows:', Object.keys(dist2).sort((a, b) => a - b).map((k) => `${k}: ${dist2[k]}`).join(' · '));
+const joined = own.filter((sh) => sh.joinedAt > 1);
+console.log(`joined a running show: ${joined.length} of ${own.length} (${Math.round(100 * joined.length / Math.max(1, own.length))}%) · kept on for a second season ${Math.round(100 * joined.filter((sh) => sh.tenure >= 2).length / Math.max(1, joined.length))}% · new shows renewed ${Math.round(100 * own.filter((sh) => sh.joinedAt === 1 && sh.tenure >= 2).length / Math.max(1, own.length - joined.length))}%`);
 const bands = [[0, 4], [4, 5], [5, 6], [6, 7], [7, 8], [8, 11]];
 console.log('season one rated → got a season two:');
-for (const [lo, hi] of bands) { const b = own.filter((sh) => sh.ratings[0] >= lo && sh.ratings[0] < hi); const two = b.filter((sh) => sh.max >= 2).length; if (b.length) console.log(`  ${lo}–${hi}: ${b.length} shows · renewed ${Math.round(100 * two / b.length)}%`); }
-for (const type of ['Soap Opera', 'Network Drama', 'Prestige Series']) { const b = own.filter((sh) => sh.type === type); const two = b.filter((sh) => sh.max >= 2).length; console.log(`  ${type}: ${b.length} · season two ${Math.round(100 * two / Math.max(1, b.length))}% · mean rating S1 ${(b.reduce((n, sh) => n + sh.ratings[0], 0) / Math.max(1, b.length)).toFixed(1)}`); }
-const guests = shows.filter((sh) => sh.scale === 'episode' && sh.max > 1);
+for (const [lo, hi] of bands) { const b = own.filter((sh) => sh.ratings[0] >= lo && sh.ratings[0] < hi); const two = b.filter((sh) => sh.tenure >= 2).length; if (b.length) console.log(`  ${lo}–${hi}: ${b.length} shows · renewed ${Math.round(100 * two / b.length)}%`); }
+for (const type of ['Soap Opera', 'Network Drama', 'Prestige Series']) { const b = own.filter((sh) => sh.type === type); const two = b.filter((sh) => sh.tenure >= 2).length; console.log(`  ${type}: ${b.length} · season two ${Math.round(100 * two / Math.max(1, b.length))}% · mean rating S1 ${(b.reduce((n, sh) => n + sh.ratings[0], 0) / Math.max(1, b.length)).toFixed(1)}`); }
+const guests = shows.filter((sh) => sh.scale === 'episode' && sh.tenure > 1);
 console.log(`
 guest spots (scale episode) that came back as "your" season two or more: ${guests.length}` + (guests.length ? ` — e.g. "${guests[0].title}" ${guests[0].role} ${guests[0].max} seasons` : ''));
 console.log(bugs.length ? `\nBUGS (${bugs.length}):\n` + bugs.slice(0, 15).join('\n') : '\nno show ran past its cap, skipped a season or repeated one');

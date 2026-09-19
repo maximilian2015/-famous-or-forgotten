@@ -1,7 +1,8 @@
 import { useEffect, useState } from 'react';
 import { theme } from '../../ui/theme.js';
 import { dispatch, getState } from '../../state/store.js';
-import { refreshCastingPool, auditionFor, castingChance, reach, SHELVES, SHELF_BLURB, SHELF_EMPTY, rerollBoard, canReroll, prepareFor, nextPrep, prepBonus } from '../../systems/career/castings.js';
+import { refreshCastingPool, auditionFor, castingChance, reach, SHELVES, SHELF_BLURB, SHELF_EMPTY, rerollBoard, canReroll, prepareFor, nextPrep, prepBonus, dayWork } from '../../systems/career/castings.js';
+import { slotNorm } from '../../systems/career/franchise.js';
 import { TimingBar } from '../../ui/components/TimingBar.jsx';
 import { GridRisk } from '../../ui/components/GridRisk.jsx';
 import { useAccent } from '../../ui/appTheme.js';
@@ -192,9 +193,14 @@ export function OpenCall({ g, ocTab, setOcTab, teenMode }) {
           </div>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 8, marginTop: 4 }}>
             <div style={{ fontSize: 11, color: theme.muted, minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-              {c.role} · {c.type} · <span style={{ color: onTrend ? theme.good : theme.muted }}>{c.genre}{onTrend ? ' ↑' : ''}</span> · {c.months > 1 ? `${c.months} mo` : 'one day'}
+              {c.role} · {c.type} · <span style={{ color: onTrend ? theme.good : theme.muted }}>{c.genre}{onTrend ? ' ↑' : ''}</span> · {c.months > 1 ? `${c.months} mo` : c.perEpisode ? 'a few days' : 'one day'}
               {band && <span style={{ color: bandCol }}> · {band.label.toLowerCase()}</span>}
             </div>
+            {/* Television says which season it is — a new show, or one that is already on. */}
+            {c.perEpisode && <span style={{ fontSize: 10, fontWeight: 900, padding: '2px 7px', borderRadius: 20, whiteSpace: 'nowrap', letterSpacing: '.04em',
+              background: (c.season || 1) > 1 ? 'rgba(127,179,255,.16)' : 'rgba(255,209,102,.16)', color: (c.season || 1) > 1 ? '#9fc4ff' : theme.gold }}>
+              {(c.season || 1) > 1 ? `S${c.season}` : 'S1 · NEW'}
+            </span>}
             <span style={{ fontSize: 10.5, fontWeight: 800, padding: '2px 8px', borderRadius: 20, background: 'rgba(158,116,255,.18)', color: locked ? theme.muted : chipCol, whiteSpace: 'nowrap' }}>
               {locked ? `fame ${c.minFame}` : `${ch}%`}{byAsker ? ' 🏆' : ''}
             </span>
@@ -206,7 +212,19 @@ export function OpenCall({ g, ocTab, setOcTab, teenMode }) {
           </div>
         </div>}
         {isOpen && !locked && <div style={{ padding: '0 12px 11px' }}>
-          {c.perEpisode && <div style={{ fontSize: 10.5, color: theme.muted, marginBottom: 6 }}>€{c.salary.toLocaleString()} for {c.episodes} episodes</div>}
+          {c.perEpisode && <div style={{ fontSize: 10.5, color: theme.muted, marginBottom: 6 }}>€{c.salary.toLocaleString()} for {c.episodes} episode{c.episodes === 1 ? '' : 's'}</div>}
+          {/* Which season — and, for a show that is already on, the number the network renews on. */}
+          {c.perEpisode && <div style={{ fontSize: 10.5, lineHeight: 1.45, marginBottom: 6, padding: '6px 9px', borderRadius: 9,
+            background: (c.season || 1) > 1 ? 'rgba(127,179,255,.08)' : 'rgba(255,209,102,.08)', border: `1px solid ${(c.season || 1) > 1 ? 'rgba(127,179,255,.3)' : 'rgba(255,209,102,.3)'}`, color: (c.season || 1) > 1 ? '#c4dbff' : theme.gold }}>
+            {(c.season || 1) > 1
+              ? (c.scale === 'episode'
+                ? `Season ${c.season} of a show that is already on — drawing ${c.audience}m an episode. You are in it for ${c.episodes === 1 ? 'an episode' : `${c.episodes} episodes`}, and then it goes on without you.`
+                : `Season ${c.season}. The show has been on for ${c.season - 1} year${c.season === 2 ? '' : 's'} and draws ${c.audience}m an episode against the ${slotNorm(c.type)}m its slot wants — ${c.audience >= slotNorm(c.type) ? 'healthy; the network will keep it' : c.audience >= slotNorm(c.type) * 0.6 ? 'holding on; the network is watching the numbers' : 'fading; a show like this gets cancelled, and you with it'}. You would be joining an established cast and an audience that already exists.`)
+              : 'A new show — season one, the pilot, the launch. Nobody knows if anyone will watch. If they do, it is yours from the start, and it is renewed on the numbers you make.'}
+          </div>}
+          {c.scale === 'festival' && <div style={{ fontSize: 10.5, lineHeight: 1.45, marginBottom: 6, padding: '6px 9px', borderRadius: 9, background: 'rgba(158,116,255,.08)', border: `1px solid ${theme.accent}44`, color: '#d9cffa' }}>
+            A festival picture. Nobody gets paid much and nobody sees it — unless a jury does. It screens at a festival first: a prize there is the one thing that turns a stranger into a name in a week, a buyer means a small release, and no buyer means it was never seen at all.
+          </div>}
           {f < 0.98 && <div style={{ fontSize: 10.5, color: f < 0.6 ? theme.bad : theme.gold, marginBottom: 6, lineHeight: 1.4 }}>
             {lateShelf ? 'Written for someone who has lived a bit. That is you now.'
               : f < 0.6 ? (tooYoung ? 'They are picturing someone a little older. You would be a stretch.' : 'They are picturing someone younger. You would be a stretch.')
@@ -233,7 +251,7 @@ export function OpenCall({ g, ocTab, setOcTab, teenMode }) {
           {!locked && (() => {
             const step = nextPrep(c); const bonus = prepBonus(c);
             const cost = step ? Math.round(step.cost * (1 + Math.min(2, (g.fame || 0) / 60))) : 0;
-            const waits = (c.months || 1) >= 2;
+            const waits = !dayWork(c);
             // One call sheet at a time. This used to let you pay for the sides and then refuse
             // the read — the same thing auditionFor refuses, said before the money goes.
             const fit = canTakeSet(g, c);

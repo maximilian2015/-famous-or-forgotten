@@ -2,6 +2,7 @@
 // and how old it looks. The drawing itself lives in ui/components/Avatar.jsx —
 // swap a hair id here and exactly one <path> changes over there.
 import { pick } from '../../engine/rng.js';
+import { genderOfName } from '../world/names.js';
 
 export const HAIRSTYLES = {
   cropped:  { label: 'Cropped',    cost: 45, blurb: 'Short, tidy, forgettable in a good way.' },
@@ -119,11 +120,15 @@ function hashOf(str) {
 }
 export function lookOfPerson(p) {
   const h = hashOf(p?.id || p?.name || 'someone');
-  const female = p?.gender === 'f' || p?.gender === 'female';
+  // A contact made before anyone stored a gender on them is read off their first name —
+  // Maxi: "Piet is a man and it drew a woman." See world/names.js genderOfName.
+  const g = p?.gender || genderOfName(p?.name);
+  const female = g === 'f' || g === 'female';
   // No mohawks out here — a pink crest is a choice the player makes, not something a
-  // 52-year-old father turns up with by accident.
+  // 52-year-old father turns up with by accident. And no curls on the men: at this size a
+  // head of curls reads as a bob, and a director called Piet came out as a woman.
   const hairs = female ? ['long', 'bob', 'waves', 'bun', 'curly', 'ponytail', 'cropped']
-    : ['cropped', 'buzz', 'beard', 'bald', 'curly', 'cropped'];
+    : ['cropped', 'buzz', 'beard', 'bald', 'beard', 'cropped'];
   const fits = ['tee', 'hoodie', 'leather', 'tracksuit'];
   return {
     hair: hairs[h % hairs.length],

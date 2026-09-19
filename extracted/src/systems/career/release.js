@@ -8,11 +8,12 @@ import { uid } from '../../engine/id.js';
 //   · the box office, which is what people paid for it
 // A film can be adored and lose money, or panned and take a billion. They pull your
 // career in different directions, and that is the whole point of having both.
-import { rint } from '../../engine/rng.js';
-import { setQuote, setFame, setRespect } from '../meta/status.js';
+import { rint, chance, pick } from '../../engine/rng.js';
+import { setQuote, setFame, setRespect, quoteFor } from '../meta/status.js';
+import { newTitle } from '../world/titles.js';
 import { addTimeline, showMoment } from '../../engine/timeline.js';
 import { markReleased } from '../../engine/economy.js';
-import { hotGenre } from '../meta/news.js';
+import { hotGenre, GENRES } from '../meta/news.js';
 import { maybeContinue } from './franchise.js';
 import { appealShift } from './story.js';
 import { comebackFloor } from '../meta/standing.js';
@@ -26,7 +27,7 @@ const clamp = (v, a = 0, b = 100) => Math.max(a, Math.min(b, v));
 
 // How long a thing sits between the last day of shooting and opening night.
 const POST_MONTHS = {
-  oneoff: [1, 2], small: [2, 4], indie: [4, 8], episode: [2, 5],
+  oneoff: [1, 2], small: [2, 4], indie: [4, 8], festival: [3, 7], episode: [2, 5],
   recurring: [2, 4], prestige: [4, 7], feature: [5, 9], blockbuster: [7, 12],
 };
 export function postProduction(scale) {
@@ -36,7 +37,7 @@ export function postProduction(scale) {
 
 // Everything commercial is measured against the budget, because that is the only number
 // the industry compares anything to. A picture is not "big" — it is big AGAINST its cost.
-const BUDGET = { small: 1, indie: 12, feature: 90, blockbuster: 220 };   // millions
+const BUDGET = { small: 1, festival: 1.5, indie: 12, feature: 90, blockbuster: 220 };   // millions
 // What a competent, averagely-received picture of this size takes. Roughly 2.2× the
 // budget, which is about where a studio stops losing money once marketing is paid.
 const PAR = 2.25;
@@ -64,7 +65,7 @@ const APPEAL = {
 // rare rather than routine — most films land near what they deserved.
 function luck() { return 0.5 + (Math.random() + Math.random()) * 0.55; }
 
-export function isFilm(scale) { return ['small', 'indie', 'feature', 'blockbuster'].includes(scale); }
+export function isFilm(scale) { return ['small', 'indie', 'festival', 'feature', 'blockbuster'].includes(scale); }
 
 // The commercial result. Star power sells tickets — that is what a name is FOR.
 // One formula for everybody: your films and the ones the rest of the world makes in the
@@ -89,7 +90,9 @@ export function viewersFor(s, rel) {
   // meant a season rated 7.2 drew 8.9m, the next one rated 9.1 drew 3m and the one after
   // that drew 18m — the same programme, on the same night, with no explanation. An audience
   // is inherited and then it moves: a better season brings people, a worse one loses them.
-  const prev = previousAudience(s, rel);
+  // A show you joined in its eighth year had an audience before you arrived — the number on
+  // the listing (castings.js showAudience). Your season moves it, the same as any other.
+  const prev = previousAudience(s, rel) ?? (rel.audience > 0 ? rel.audience : null);
   if (prev != null) {
     const move = rel.rating >= 85 ? 1.16 + Math.random() * 0.2
       : rel.rating >= 72 ? 1.02 + Math.random() * 0.12
@@ -140,6 +143,7 @@ export function scheduleRelease(s, credit, p) {
     with: p.with || null, withId: p.withId || null, withFame: p.withFame || 0, withIcon: !!p.withIcon,
     // What the version you shot does to the box office, and the line it was pitched on.
     appealMod: appealShift(p), premise: p.premise || credit.premise || null, take: credit.take || null,
+    joined: !!p.joined, audience: p.audience || 0,
     due: (s.year || 0) * 12 + (s.month || 0) + wait, wait,
     // Whether the thing gets a second season or a sequel is decided on the numbers, so
     // the shoot has to keep enough of itself alive to be asked that question later.
@@ -168,7 +172,7 @@ export function releaseTick(s) {
 // How long the thing is in front of people before anybody knows what it was. A film runs
 // for weeks and the number climbs every one of them; a season goes out and the audience
 // finds it. Opening night is not the verdict — it is the start of finding out.
-const RUN_WEEKS = { small: 3, indie: 6, feature: 11, blockbuster: 15, oneoff: 2,
+const RUN_WEEKS = { small: 3, indie: 6, festival: 5, feature: 11, blockbuster: 15, oneoff: 2,
   episode: 6, recurring: 12, prestige: 10 };
 // Legs. A picture people love stays up half again as long; one nobody wants is pulled in
 // a fortnight to make room. Maxi: "if it is a success it is in cinemas longer, right?"
@@ -179,15 +183,65 @@ function runWeeks(rel, verdict) {
   return Math.max(2, Math.round(base * legs));
 }
 
+// ── the festival ──────────────────────────────────────────────────────────────
+// A festival picture does not open. It screens, twice, in a town full of buyers, and one of
+// three things happens: a jury gives it something and the trades use the word "discovery";
+// a distributor buys it on the Sunday and it gets a small release; or nobody buys it and it
+// is never seen again. Maxi: "independent films that go to festivals are the real
+// alternative — a nobody can get into one, and if it works there, you know what happens."
+// The first two go on to a run like any film, with the laurels on the poster. The third is
+// over the night it screens.
+const FESTIVALS = ['Park City', 'the Lido', 'the Croisette', 'Locarno', 'Toronto', 'Berlin'];
+// Measured before this was tuned: a nobody's festival film rates in the fifties, and at the
+// first numbers 111 of 117 went home unsold — a road nobody would take. Most still do go
+// home with nothing; a good one has a real chance, and a very good one is a coin toss.
+export function festivalOdds(rating) {
+  const prize = rating >= 84 ? 48 : rating >= 76 ? 32 : rating >= 68 ? 18 : rating >= 60 ? 8 : 2;
+  const sold = rating >= 76 ? 62 : rating >= 66 ? 48 : rating >= 56 ? 32 : rating >= 46 ? 16 : 5;
+  return { prize, sold };
+}
+function festivalResult(rating) {
+  const o = festivalOdds(rating);
+  if (chance(o.prize)) return 'prize';
+  return chance(o.sold) ? 'sold' : 'unsold';
+}
+// The studios rang. A prize at a festival is the one thing that gets a stranger a studio
+// script — one lead, a real fee, a month or two after the trades used the word.
+function studioCall(s, credit, festival) {
+  const genre = pick(GENRES);
+  const quote = quoteFor(s, 'film_studio') || Math.round((quoteFor(s, 'film_indie') || 40000) * 3.5);
+  (s.laterOffers = s.laterOffers || []).push({
+    due: (s.year || 0) * 12 + (s.month || 0) + rint(1, 2),
+    line: `A studio saw "${credit.title}" at ${festival}. They have sent a script.`,
+    event: `The studio that saw "${credit.title}" at ${festival} sent a script. The paper is in Messages — a lead, at studio money.`,
+    offer: {
+      id: uid(s, 'fest'), via: 'festival', kind: 'festival',
+      projectTitle: newTitle(s, genre), role: 'Lead', type: 'Feature Film', genre,
+      salary: Math.round(quote * (0.8 + Math.random() * 0.3)), months: rint(4, 7), fame: 5,
+      prestigeScore: rint(48, 72), tier: 'lead', scale: 'feature', stability: rint(78, 92), deadline: rint(2, 3),
+      note: `They saw "${credit.title}" at ${festival}. Nobody at the studio has said the word "discovery" out loud, but it is in the email.`,
+    },
+  });
+}
+
 function open(s, rel) {
   const film = isFilm(rel.scale);
+  // A festival picture is decided in the room, before anybody else sees it: a prize sells
+  // it, a buyer sells it a little, and no buyer means there is nothing to open.
+  let fest = null;
+  if (rel.scale === 'festival') {
+    fest = { name: pick(FESTIVALS), result: festivalResult(rel.rating) };
+    if (fest.result === 'prize') { rel.appealMod = (rel.appealMod ?? 1) * 2.2; rel.rating = clamp(rel.rating + 3, 0, 96); }
+    else if (fest.result === 'sold') rel.appealMod = (rel.appealMod ?? 1) * 1.3;
+  }
   // What it will end up taking. The player does not see this number yet — it arrives a
   // few thousand at a time, week by week, which is how anybody actually experiences it.
   // The press tour, or the lack of one, is the studio's marketing working or not — see tour.js.
   // A sequel or a later season opens on a name people know: a tenth more, before anybody
   // has seen it. Maxi: "the system remembers it was a good picture and gives benefits."
   const known = ((rel.part || 1) > 1 || (rel.season || 0) > 1) ? 1.12 : 1;
-  if (film) rel.finalGross = Math.round(boxOfficeFor(s, rel) * tourMultiplier(rel) * known);
+  if (fest && fest.result === 'unsold') rel.finalGross = 0;
+  else if (film) rel.finalGross = Math.round(boxOfficeFor(s, rel) * tourMultiplier(rel) * known);
   else rel.viewers = Math.max(0.1, Math.round(viewersFor(s, rel) * tourMultiplier(rel) * known * 10) / 10);   // millions, one decimal — rounding to a whole made a bad soap draw nobody
   rel.boxOffice = 0;
   const verdict = verdictOf({ ...rel, boxOffice: rel.finalGross || 0 });
@@ -207,6 +261,7 @@ function open(s, rel) {
     premise: rel.premise || null, take: rel.take || null,
     campaignShare: rel.campaign ? 0.65 : 0,
     with: rel.with || null, withId: rel.withId || null, withIcon: !!rel.withIcon,
+    festival: fest,
   };
   const bucket = s.dream === 'singer' ? 'discography' : 'filmography';
   // Two years without anything coming out and the trades will call the next one a
@@ -215,6 +270,27 @@ function open(s, rel) {
   if (last && (s.year || 0) - (last.year || 0) >= 3) credit.comeback = (s.year || 0) - last.year;
   (s[bucket] = s[bucket] || []).unshift(credit);
   markReleased(s);
+  // Nobody bought it. Two screenings, a bar, a flight home — and the credit closes tonight,
+  // with no run and no numbers. Not a flop: nobody saw it, so nobody can hold it against
+  // you. If it was good, the few who did see it remember, and that is worth a little.
+  if (fest && fest.result === 'unsold') {
+    credit.id = rel.id; credit.running = false; credit.weeksTotal = 0; credit.verdict = 'unsold';
+    credit.score = Number((rel.rating / 10).toFixed(1)); credit.boxOffice = 0;
+    const soft = (limit, cur) => Math.max(0.16, 1 - (cur || 0) / limit);
+    setFame(s, (s.fame || 0) + 1 * soft(118, s.fame));
+    if (rel.rating >= 74) setRespect(s, (s.respect || 0) + 3 * soft(112, s.respect));
+    credit.reviews = reviewsFor(s, { title: credit.title, rating: rel.rating, genre: credit.genre, verdict: 'seen', director: credit.director,
+      actorName: s.name, meter: rel.meter, fellApart: rel.fellApart, viaPartner: rel.viaPartner, take: credit.take, costar: rel.with, costarIcon: rel.withIcon });
+    s.lastEvent = `"${rel.title}" screened twice at ${fest.name}. Nobody bought it.`;
+    addTimeline(s, `"${rel.title}" screened at ${fest.name}. No distributor.`, rel.rating < 60);
+    showMoment(s, {
+      id: 'premiere', kind: rel.rating >= 74 ? 'good' : 'bad', festival: fest.name, result: 'unsold', title: rel.title, verdict: 'no buyer',
+      body: rel.rating >= 74
+        ? `Two screenings in a room that was half full, and the half that came stood up at the end. The buyers did not. Nobody could say what shelf it belonged on, so it stays on none — but the people who saw it will remember who was in it.`
+        : `Two screenings, a bar afterwards where everybody said kind things, and a flight home. No distributor rang. It will exist on a hard drive somewhere, and nowhere else.`,
+    });
+    return s;
+  }
   // A film you made together is on both careers. It goes on theirs tonight, at the money
   // it will take, so the year's lists count it for them as well.
   if (film && rel.withId) {
@@ -225,8 +301,10 @@ function open(s, rel) {
   // Opening night is worth something on its own — the carpet, the photographs, the fact
   // that it exists. The rest of what this film does to your name waits for the run.
   const headroom = (limit, cur) => Math.max(0.16, 1 - (cur || 0) / limit);
-  const opening = ({ tentpole: 3, lead: 2, supporting: 1 }[rel.tier] || 1) + tourFame(rel);
+  // A prize is a photograph in the trades with your name under it, tonight.
+  const opening = ({ tentpole: 3, lead: 2, supporting: 1 }[rel.tier] || 1) + tourFame(rel) + (fest && fest.result === 'prize' ? 4 : 0);
   setFame(s, (s.fame || 0) + opening * headroom(118, s.fame));
+  if (fest && fest.result === 'prize') setRespect(s, (s.respect || 0) + 4 * Math.max(0.16, 1 - (s.respect || 0) / 112));
   // The finished thing is kept ON the release so runTick can close it out properly.
   credit._rel = { rating: rel.rating, worldHit: rel.worldHit, tier: rel.tier, scale: rel.scale,
     salary: rel.salary, finalGross: rel.finalGross || 0, job: rel.job, film,
@@ -246,13 +324,21 @@ function open(s, rel) {
   // TV set, the sound of the show, a new soap starting season one on television."
   credit.tv = !film;
   const tvKind = rel.scale === 'recurring' ? 'soap' : rel.scale === 'prestige' ? 'prestige' : 'episode';
-  s.lastEvent = film
+  s.lastEvent = fest
+    ? (fest.result === 'prize' ? `"${rel.title}" took the prize at ${fest.name}. Your phone has not stopped.` : `"${rel.title}" was bought at ${fest.name}. A small release, but a release.`)
+    : film
     ? `"${rel.title}" opened tonight. Now everybody finds out what it is.`
     : tvKind === 'soap' ? `"${rel.title}" went out at seven. Your mother rang before the credits.`
     : tvKind === 'prestige' ? `"${rel.title}" dropped at midnight. Everybody you know is on episode three by morning.`
     : `"${rel.title}" aired tonight.`;
-  addTimeline(s, film ? `"${rel.title}" opened.` : `"${rel.title}" went out.`);
-  showMoment(s, film ? {
+  addTimeline(s, fest ? (fest.result === 'prize' ? `"${rel.title}" won at ${fest.name}.` : `"${rel.title}" sold at ${fest.name}.`) : film ? `"${rel.title}" opened.` : `"${rel.title}" went out.`);
+  showMoment(s, fest ? {
+    id: 'premiere', kind: 'good', festival: fest.name, result: fest.result, title: rel.title,
+    verdict: fest.result === 'prize' ? 'the jury prize' : 'sold on the Sunday',
+    body: fest.result === 'prize'
+      ? `A cinema at nine in the morning, a jury in the front row, and at the end of the week your title read out in a room of people who buy films for a living. Three distributors by Sunday. The trades used the word "discovery", and they used your name.`
+      : `Two screenings, a good one and a quiet one, and on the Sunday a distributor who liked the quiet one. A small release, a few cities, a poster with the laurels on it. It exists now. What it does is the next few weeks.`,
+  } : film ? {
     id: 'premiere', kind: 'good', title: rel.title, verdict: 'opening night',
     body: 'You stood on a carpet and answered the same four questions eleven times, and then '
       + 'the lights went down and you watched it with strangers. Nobody knows anything yet — '
@@ -412,6 +498,16 @@ function closeRun(s, credit, r) {
   s.lastEvent = line;
   addTimeline(s, line, r.rating < 50 || verdict === 'bomb');
 
+  // A prize at a festival is the one thing that turns a stranger into a name in a week: the
+  // trades use the word "discovery", the standing comes with it, and a studio sends a script.
+  if (credit.festival && credit.festival.result === 'prize') {
+    setFame(s, (s.fame || 0) + 8 * headroom(s.fame));
+    setRespect(s, (s.respect || 0) + 6 * soft(112, s.respect));
+    addTimeline(s, `The trades are calling you the discovery of ${credit.festival.name}.`);
+    if ((s.fame || 0) < 60) studioCall(s, credit, credit.festival.name);
+  } else if (credit.festival && credit.festival.result === 'sold' && r.rating >= 70) {
+    setRespect(s, (s.respect || 0) + 2 * soft(112, s.respect));
+  }
   // The job stays on the credit whatever happens next: a show that was not renewed, or a
   // renewal you let go, can still be pitched back from your own sofa. See night.js revivable.
   if (r.job) credit.job = r.job;

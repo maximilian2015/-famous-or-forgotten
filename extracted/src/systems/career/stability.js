@@ -29,6 +29,7 @@ const BACKING = {
   episode:     [72, 90],
   small:       [40, 78],
   indie:       [32, 74],   // the shakiest money in the business
+  festival:    [28, 66],   // and this is made for less than that
 };
 export function rollStability(scale) {
   const span = BACKING[scale] || [65, 88];

@@ -2,9 +2,15 @@ import { COST, canAfford, spend, tooTired } from '../../engine/energy.js';
 import { uid } from '../../engine/id.js';
 import { rint, chance, pick } from '../../engine/rng.js';
 import { addTimeline } from '../../engine/timeline.js';
+import { personName, namesInUse } from '../world/names.js';
 const clamp = (v) => Math.max(0, Math.min(100, v));
-const FIRST = ['Rita','Dorian','Mila','Ksen','Bruno','Ava','Theo','Nadia','Vic','Sol','Emre','Lena'];
-const LAST = ['Vale','Kade','Roy','Mercer','Onyx','Frost','Dune','Salt','Wren','Cole'];
+// How old a contact is. Newer ones carry the year they were born; older saves carry nothing,
+// and a contact with no age is simply somebody whose age you never asked.
+export function contactAge(s, p) {
+  if (!p) return null;
+  if (p.born) return (s.year || 0) - p.born;
+  return p.age != null ? p.age : null;
+}
 const ROLES = [
   { role: 'Casting Director', weight: [55, 75], unlocks: 'castingBoost' },
   { role: 'Film Director', weight: [70, 95], unlocks: 'aaa' },
@@ -17,7 +23,10 @@ const ROLES = [
 ];
 export function makePerson(s, forceRole) {
   const spec = forceRole ? ROLES.find((r) => r.role === forceRole) : pick(ROLES);
-  return { id: uid(s, 'p'), name: `${pick(FIRST)} ${pick(LAST)}`,
+  // A name from the world's lists, with the gender it came from kept on the person, so the
+  // face drawn for them is the face the name says. Maxi: "Piet is a man and it drew a woman."
+  const gender = chance(50) ? 'female' : 'male';
+  return { id: uid(s, 'p'), name: personName(gender, namesInUse(s)), gender, born: (s.year || 2040) - Math.max(22, (s.ageY || 30) + rint(-6, 20)),
     role: spec.role, industryWeight: rint(spec.weight[0], spec.weight[1]), relationship: rint(20, 40), unlocks: spec.unlocks, met: `${s.year}` };
 }
 export function meetPerson(s) {

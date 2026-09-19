@@ -23,7 +23,25 @@ const seen = {};
 for (let i = 0; i < 300; i++) { const s = st(); refreshCastingPool(s, true); for (const c of s.castingPool) { (seen[c.scale] = seen[c.scale] || []).push(c.months); } }
 const range = (k) => seen[k] ? [Math.min(...seen[k]), Math.max(...seen[k])] : null;
 ok('one-off work is one month', range('oneoff')[1] === 1, JSON.stringify(range('oneoff')));
-ok('an episode is a couple of months', range('episode')[0] >= 2 && range('episode')[1] <= 3, JSON.stringify(range('episode')));
+// Maxi: "one episode, three months of shooting, twenty thousand an episode — that does not
+// add up." A guest spot is a week or two inside a month; three or four episodes is two.
+{
+  for (let i = 0; i < 60; i++) { const s = st({ fame: 40 }); refreshCastingPool(s, true); for (const c of s.castingPool) if (c.scale === 'episode') (seen.episode = seen.episode || []).push(c.months); }
+  ok('a guest spot is a month or two, never three', range('episode') && range('episode')[0] >= 1 && range('episode')[1] <= 2, JSON.stringify(range('episode')));
+  const s = st({ fame: 40 }); const guests = []; for (let i = 0; i < 40; i++) { refreshCastingPool(s, true); guests.push(...s.castingPool.filter((c) => c.scale === 'episode')); }
+  ok('a guest spot is always on somebody else\'s running show', guests.length > 0 && guests.every((c) => c.season >= 2 && c.audience > 0), guests.slice(0, 3).map((c) => `${c.title} S${c.season}`).join(', '));
+  ok('a one-episode spot shoots inside a month', guests.filter((c) => c.episodes <= 2).every((c) => c.months === 1));
+  ok('and pays like a guest, not a regular', guests.every((c) => c.episodeFee < 60000), JSON.stringify(guests.map((c) => c.episodeFee).sort((a, b) => b - a).slice(0, 3)));
+  const nobody = st({ fame: 4 }); const cheap = []; for (let i = 0; i < 30; i++) { refreshCastingPool(nobody, true); cheap.push(...nobody.castingPool.filter((c) => c.scale === 'episode')); }
+  ok("a nobody's guest spot is a few hundred an episode", cheap.length > 0 && cheap.every((c) => c.episodeFee < 5000), JSON.stringify(cheap.map((c) => c.episodeFee).sort((a, b) => b - a).slice(0, 3)));
+  ok('and nobody sends an A-lister a guest spot', !guests.some((c) => c.minFame > 62) && (() => { const a = st({ fame: 80 }); let n = 0; for (let i = 0; i < 20; i++) { refreshCastingPool(a, true); n += a.castingPool.filter((c) => c.scale === 'episode').length; } return n === 0; })());
+  const tv = []; for (let i = 0; i < 40; i++) { refreshCastingPool(s, true); tv.push(...s.castingPool.filter((c) => c.shelf === 'tv' && c.scale !== 'episode')); }
+  ok('a series says which season it is', tv.every((c) => c.season >= 1));
+  ok('some series are new and some are already on', tv.some((c) => c.season === 1) && tv.some((c) => c.season > 1), `S1 ${tv.filter((c) => c.season === 1).length} · running ${tv.filter((c) => c.season > 1).length}`);
+  ok('a running show tells you what it draws', tv.filter((c) => c.season > 1).every((c) => c.audience > 0));
+  const small = []; for (let i = 0; i < 30; i++) { refreshCastingPool(s, true); small.push(...s.castingPool.filter((c) => c.scale === 'small' && c.shelf === 'indie')); }
+  ok('a horror victim is not paid like an indie lead', small.every((c) => c.salary < 40000), JSON.stringify(small.map((c) => c.salary).sort((a, b) => b - a).slice(0, 3)));
+}
 ok('a feature is half a year', range('feature')[0] >= 5 && range('feature')[1] <= 8, JSON.stringify(range('feature')));
 ok('a blockbuster can eat a year', range('blockbuster')[1] >= 12, JSON.stringify(range('blockbuster')));
 ok('lengths inside one scale vary', new Set(seen.feature).size > 1, [...new Set(seen.feature)].join(','));
