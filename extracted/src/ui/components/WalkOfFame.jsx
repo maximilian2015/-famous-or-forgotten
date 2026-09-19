@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { theme } from '../theme.js';
 import { Card } from './Card.jsx';
 import { yearsOf, moneyOf } from '../../systems/world/yearbook.js';
-import { icons, legends as legendsOf, alist as alistOf, ageOf, SEATS } from '../../systems/world/world.js';
+import { legends as legendsOf, alist as alistOf, ageOf, SEATS } from '../../systems/world/world.js';
 
 // The wall. Who is an icon right now, who was one, and every year the business has kept
 // lists for — the ten films that took the money, the five actors whose year it was, the
@@ -54,7 +54,9 @@ export function WalkOfFame({ g }) {
   const [showAll, setShowAll] = useState(false);
   const years = yearsOf(g);
   if (!g.world || !years.length) return null;
-  const now = icons(g).sort((a, b) => (a.rank || 99) - (b.rank || 99));
+  // The three chairs, whoever is in them. A name at #2 on 87 fame is in the chair without
+  // the word yet — it used to vanish from the page entirely: "#1, #3" and nothing between.
+  const now = ((g.world && g.world.actors) || []).filter((a) => a.alive && !a.retired && (a.rank || 999) <= SEATS.icon).sort((a, b) => (a.rank || 99) - (b.rank || 99));
   const alist = alistOf(g);
   const legends = legendsOf(g).filter((a) => a.retired || !a.alive).slice(-6).reverse();
   const you = g.world && g.world.rank;
@@ -65,8 +67,8 @@ export function WalkOfFame({ g }) {
       <div style={sub}>Icons</div>
       {now.length === 0 && <div style={{ fontSize: 12, color: theme.muted, padding: '4px 8px' }}>Nobody, right now. The business is between them.</div>}
       {now.map((a) => (<div key={a.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', gap: 8, padding: '5px 8px', fontSize: 12.5 }}>
-        <span style={{ fontWeight: 800, color: theme.gold }}>#{a.rank} {a.name}</span>
-        <span style={{ fontSize: 11, color: theme.muted, whiteSpace: 'nowrap' }}>{ageOf(g, a)} · icon since {a.iconSince}{a.askers ? ` · 🏆 ${a.askers}` : ''}</span>
+        <span style={{ fontWeight: 800, color: a.icon ? theme.gold : theme.text }}>#{a.rank} {a.name}</span>
+        <span style={{ fontSize: 11, color: theme.muted, whiteSpace: 'nowrap' }}>{ageOf(g, a)} · {a.icon ? `icon since ${a.iconSince}` : 'in the chair, not yet the name'}{a.askers ? ` · 🏆 ${a.askers}` : ''}</span>
       </div>))}
       {/* The nine chairs under them — the room you are trying to get into, with your own place under it. */}
       <div style={sub}>The A-list</div>

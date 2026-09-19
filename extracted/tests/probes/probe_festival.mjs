@@ -66,7 +66,7 @@ console.log('festival:', JSON.stringify(tally), '· mean rating', (ratings.reduc
 //    calendar must agree on when it starts.
 {
   let s = fresh({ fame: 20, respect: 5, year: 2056, month: 5 });
-  const o = { id: 'orbit', via: 'casting', projectTitle: 'Orbit 65', role: 'Lead', type: 'Indie Film', genre: 'Drama', salary: 26000, months: 2, tier: 'lead', scale: 'indie', prestigeScore: 50, stability: 80, deadline: 6, medium: 'film_indie' };
+  const o = { id: 'orbit', via: 'casting', projectTitle: 'Orbit 65', role: 'Lead', type: 'Indie Film', genre: 'Drama', salary: 26000, months: 4, tier: 'lead', scale: 'indie', prestigeScore: 50, stability: 80, deadline: 6, medium: 'film_indie' };
   s.offers.push(o);
   const k1 = draftContract(s, o);
   const before = k1.clauses.find((c) => c.id === 'schedule').value.start;
@@ -79,7 +79,7 @@ console.log('festival:', JSON.stringify(tally), '· mean rating', (ratings.reduc
   signContract(s, 'orbit');
   if (o.signed) problems.push('signed while on a set without a hold or a walk — the quest was skipped');
   // even if the paper was drafted free and is stale: force the old shape and try again
-  o.contract.clauses[o.contract.clauses.findIndex((c) => c.id === 'schedule')] = { id: 'schedule', label: 'Schedule', value: { months: 2, start: s.year * 12 + s.month + 1 }, text: 'stale', options: [], stance: 'ok', ask: null, result: null };
+  o.contract.clauses[o.contract.clauses.findIndex((c) => c.id === 'schedule')] = { id: 'schedule', label: 'Schedule', value: { months: 4, start: s.year * 12 + s.month + 1 }, text: 'stale', options: [], stance: 'ok', ask: null, result: null };
   o.contract.sent = s.year * 12 + s.month - 1;   // "with them", the way it slipped through
   o.contract.sent = null;
   signContract(s, 'orbit');
@@ -95,6 +95,15 @@ console.log('festival:', JSON.stringify(tally), '· mean rating', (ratings.reduc
   const paper = o.contract.clauses.find((c) => c.id === 'schedule').value.start - now;
   console.log(`stale contract: drafted for +${before - now} · after the set: must=${sched.must} · unsigned without a hold · held: paper says +${paper} · calendar says +${cal}`);
   if (paper !== cal) problems.push(`paper +${paper} vs calendar +${cal}`);
+  // 4. And a held part is not held forever: the set runs over, and two months past the date
+  //    on the paper they recast.
+  s.production.monthsLeft += 5; s.production.take = 'straight';
+  let gone = false;
+  for (let m = 0; m < 12 && !gone; m++) { s.bigMoment = null; s.moments = []; s.pendingArc = null; s.night = null; s = advanceMonth(s); if (!(s.offers || []).some((x) => x.id === 'orbit')) gone = true; }
+  const mail = (s.inbox || []).find((x) => /cast elsewhere/.test(x.body || ''));
+  if (!gone) problems.push('a held part waited forever while the set ran over');
+  if (!mail) problems.push('no letter when they recast the held part');
+  console.log(`held part, set ran over: ${gone ? 'recast' : 'still held'} · letter ${mail ? 'yes' : 'no'}`);
 }
 if (problems.length) { console.log('PROBLEMS:\n' + problems.join('\n')); process.exit(1); }
 console.log('festival · seasons · contract dates: clean');

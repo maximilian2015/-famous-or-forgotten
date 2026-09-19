@@ -23,7 +23,16 @@ function studioOf(o) { let h = 0; for (const ch of String(o.id || o.projectTitle
 // How long a production will hold a part for somebody who is on another set. A month or
 // two, usually; half a year, rarely; and a nobody asking is a nobody asking.
 const SCALE_RANK = { oneoff: 0, small: 1, episode: 1, indie: 2, recurring: 3, prestige: 4, feature: 4, blockbuster: 5 };
-function holdOdds(wait) { return wait <= 2 ? 70 : wait <= 4 ? 45 : wait <= 6 ? 25 : 12; }
+// Whether they will hold a part until you are free. For a nobody it is the wait that decides;
+// a studio waits for a name — a star's odds are half again, and an A-lister is waited for,
+// full stop, because the picture is being made around them.
+function holdOdds(wait, s) {
+  const base = wait <= 2 ? 70 : wait <= 4 ? 45 : wait <= 6 ? 25 : 12;
+  const t = s ? tierIdx(s) : 0;
+  if (t >= 4) return 100;
+  if (t === 3) return Math.min(95, Math.round(base * 1.5));
+  return base;
+}
 
 const MON = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
 const money = (n) => `€${Math.round(n).toLocaleString()}`;
@@ -72,7 +81,9 @@ function scheduleClause(s, o, big, ex) {
     sched.text = `They need you from ${MON[(now + 1) % 12]} ${Math.floor((now + 1) / 12)}. You are on "${until.title}" until ${MON[(now + wait) % 12]}${fit.respect ? ` — a set alongside needs respect ${fit.respect}` : ''}. It does not start until they say how.`;
     sched.value = { months: o.months || 1, start: now + 1 };
     sched.must = true;
-    sched.options = [{ id: 'hold', label: `Ask them to hold the part until you wrap (${wait} mo)`, value: { months: o.months || 1, start: now + 1 + wait, after: until.title }, odds: holdOdds(wait), walkOnNo: true }];
+    // Your own show's next season is written around you: the network schedules, it does not ask.
+    const own = o.kind === 'renewal';
+    sched.options = [{ id: 'hold', label: own ? `They schedule the season around you — it starts when you wrap (${wait} mo)` : `Ask them to hold the part until you wrap (${wait} mo)`, value: { months: o.months || 1, start: now + 1 + wait, after: until.title }, odds: own ? 100 : holdOdds(wait, s), walkOnNo: !own, sure: own || holdOdds(wait, s) >= 100 }];
     const bigger = (SCALE_RANK[o.scale] || 0) > (SCALE_RANK[until.scale] || 0);
     if (bigger) sched.options.push({ id: 'walk', label: `Walk off "${until.title}" for this — they recast in a week, and everybody hears`, value: { months: o.months || 1, start: now + 1, walkOff: until.id }, odds: 100, sure: true });
   }
@@ -110,33 +121,9 @@ export function draftContract(s, o) {
         value: Math.round(Math.min(a.amount, unit * (a.id === 'fair' ? 1.2 : a.id === 'push' ? 1.5 : 2.2))) })).filter((a) => a.value > unit)
       : [{ id: 'fair', label: 'Ask for ten per cent more', value: Math.round(unit * 1.1), odds: 28 }] };
   clauses.push(fee);
-  // The dates. If you are on a set, the only thing to ask is that it waits for you.
-  // If you are on a set: alongside it, if they will have you split the week — a second
-  // set needs a name they trust — or after it wraps. Maxi: "castings while shooting, and
-  // with respect the option to start; the contract says how they are counted."
-  const now = (s.year || 0) * 12 + (s.month || 0);
-  const ex = big && exclusiveFor(o);   // decided here because the dates depend on it
-  const fit = canTakeSet(s, { ...o, exclusive: ex });
-  const wait = fit.ok ? 0 : monthsUntilFree(s, { ...o, exclusive: ex });
-  const start = now + 1 + (big ? wait : 0);
-  const sched = { id: 'schedule', label: 'Schedule', value: { months: o.months || 1, start },
-    text: `${o.months || 1} month${(o.months || 1) === 1 ? '' : 's'} of shooting, from ${MON[start % 12]} ${Math.floor(start / 12)}`
-      + (s.production && big ? (fit.ok ? ` — alongside "${s.production.title}"` : ` — after "${(fit.until || s.production).title}" wraps; ${fit.respect ? `a set alongside needs respect ${fit.respect}` : fit.why.replace(/\.$/, '')}`) : ''),
-    options: s.production && big && fit.ok ? [{ id: 'afterWrap', label: `Start after "${s.production.title}" wraps instead (${(s.production.prepLeft || 0) + (s.production.monthsLeft || 0)} mo)`, value: { months: o.months || 1, start: now + 1 + (s.production.prepLeft || 0) + (s.production.monthsLeft || 0) }, odds: 70 }] : [] };
-  // No set for it now. They will not simply wait — Maxi: "without the respect you cannot
-  // take it and cannot ask to move it, so you choose very carefully; though when you are
-  // starting you take everything." So the choice is the paper: ask them to hold it (a
-  // roll on how long; they can say no, and then it is gone), or walk off what you are on
-  // for it, if it is the bigger picture — and everybody hears you did.
-  if (s.production && big && !fit.ok) {
-    const until = fit.until || s.production;
-    sched.text = `They need you from ${MON[(now + 1) % 12]} ${Math.floor((now + 1) / 12)}. You are on "${until.title}" until ${MON[(now + wait) % 12]}${fit.respect ? ` — a set alongside needs respect ${fit.respect}` : ''}. It does not start until they say how.`;
-    sched.value = { months: o.months || 1, start: now + 1 };
-    sched.must = true;
-    sched.options = [{ id: 'hold', label: `Ask them to hold the part until you wrap (${wait} mo)`, value: { months: o.months || 1, start: now + 1 + wait }, odds: holdOdds(wait), walkOnNo: true }];
-    const bigger = (SCALE_RANK[o.scale] || 0) > (SCALE_RANK[until.scale] || 0);
-    if (bigger) sched.options.push({ id: 'walk', label: `Walk off "${until.title}" for this — they recast in a week, and everybody hears`, value: { months: o.months || 1, start: now + 1, walkOff: until.id }, odds: 100, sure: true });
-  }
+  // The dates — scheduleClause above. The exclusivity is rolled here because the dates depend on it.
+  const ex = big && exclusiveFor(o);
+  const sched = scheduleClause(s, o, big, ex);
   clauses.push(sched);
   if (big) {
     // Exclusivity. The dilemma in one line.
@@ -196,6 +183,21 @@ export function sendContract(s, id) {
 // Monthly, from offersTick. Every paper out with them comes back with an answer.
 export function contractsTick(s) {
   const now = (s.year || 0) * 12 + (s.month || 0);
+  // A held part is held until the date on the paper, and a little past it. If the set you
+  // were on ran over — a shutdown, a freeze, a month you could not get up — and you are
+  // still not free two months after they expected you, they stop waiting and recast. The
+  // shaky picture you stayed on is what cost you the one they were holding.
+  for (const o of [...(s.offers || [])]) {
+    if (!o.signed || !o.waitsForWrap || (o.startAt || 0) + 2 > now || canTakeSet(s, o).ok) continue;
+    const title = String(o.projectTitle || 'it').replace('⭐ ', '');
+    s.offers = s.offers.filter((x) => x.id !== o.id);
+    s.inbox = (s.inbox || []).filter((m) => m.offerId !== o.id);
+    addTimeline(s, `${title}: they held it as long as they could. You were still on another set, and they recast.`, true);
+    sendMail(s, { from: `${studioOf(o)} · business affairs`, subj: `Re: "${title}"`, tag: 'contract', kind: 'contract',
+      body: `We held ${title} for you until ${MON[(o.startAt || now) % 12]} and two months beyond. With no release date from your current production we have had to cast elsewhere. We regret it.`,
+      cta: [{ label: 'Delete', fx: {}, reply: 'They waited. Not forever.' }] });
+    (s.moments = s.moments || []).push({ id: 'contract', kind: 'bad', title, lines: ['Schedule — they could not wait any longer'], body: `They held the part past the date on the paper. Your other set ran over, and a production cannot wait for a release date nobody will give. It went to somebody who was free.`, walked: true });
+  }
   for (const o of (s.offers || [])) {
     const k = o.contract; if (!k || !k.sent || k.sent >= now) continue;
     k.sent = null;

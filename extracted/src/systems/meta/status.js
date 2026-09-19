@@ -361,8 +361,10 @@ export const RESPECT_OPENS = {
   unproven: [
     'Nobody has formed an opinion. That is not the same as a good one',
     'At the table you are nearly five points harder to move than somebody at forty',
+    'One long shoot at a time until 25 — a guest spot or a two-month picture fits alongside; a part won mid-shoot is held for you, or not',
   ],
   reliable: [
+    'From 25, a studio lets you split the week: two long shoots at once, a contract that says "alongside" — for twenty energy a month',
     'Brands start putting your name on a list',
     'Directors take the meeting',
     'The shadow: a film under 45 now costs you about three points. Nobody expected anything of you before — from here they do',
@@ -370,6 +372,7 @@ export const RESPECT_OPENS = {
   ],
   serious: [
     'The break-even at the table — every point above forty makes them likelier to meet your number',
+    'From 50, three sets at once — the most anyone can do, and sixty energy a month to live on',
     'Your standing starts to weigh more than your fame in whether they shoot your version',
     'The shadow: at forty a bad film is news, and costs the full four',
   ],

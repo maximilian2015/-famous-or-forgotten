@@ -140,7 +140,7 @@ export default function App() {
             {inCareer(g) ? (isForgotten(g) ? 'Forgotten' : fameTier(g.fame).label) : STAGE_LABEL[g.stage]}</div>
           <div style={{ fontSize: 12, color: g.homeless ? theme.bad : theme.muted }}>
             {/* It said "Own apartment" to somebody living in a canal house. */}
-            {g.homeless ? 'On the street' : hostName(g) ? `At ${hostName(g)}'s` : g.livingWith === 'parents' ? 'Living with parents' : g.inheritedHome ? 'The family house' : (HOUSING[g.housing || 'room'] || {}).label || 'Own apartment'}
+            {g.homeless ? 'On the street' : hostName(g) ? `At ${hostName(g)}'s` : g.livingWith === 'parents' && !g.hasApartment ? 'Living with parents' : g.inheritedHome ? 'The family house' : (HOUSING[g.housing || 'room'] || {}).label || 'Own apartment'}
           </div>
         </div>
       </div>

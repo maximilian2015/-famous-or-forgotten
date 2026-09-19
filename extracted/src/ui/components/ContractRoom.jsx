@@ -92,7 +92,7 @@ export function ContractRoom({ g, onClose }) {
                   {res && <span style={{ fontSize: 9.5, fontWeight: 800, letterSpacing: '.06em', textTransform: 'uppercase', color: c.result === 'refused' ? P.accent : P.green }}>{res}</span>}
                 </div>
                 <div style={{ fontSize: 12, lineHeight: 1.5, marginTop: 3 }}>{c.text}</div>
-                {c.stance === 'talk' && chosen && <div style={{ fontSize: 11, color: P.accent, marginTop: 4, fontWeight: 700 }}>→ {chosen.label} · about {chosen.odds}% they agree</div>}
+                {c.stance === 'talk' && chosen && <div style={{ fontSize: 11, color: P.accent, marginTop: 4, fontWeight: 700 }}>→ {chosen.label} · {chosen.sure ? 'they will agree' : `about ${chosen.odds}% they agree`}</div>}
                 {/* the marks: a tick, or discuss */}
                 {!signed && !withThem && <div style={{ display: 'flex', gap: 6, marginTop: 7, flexWrap: 'wrap' }}>
                   <button onClick={() => { dispatch(markClause, o.id, c.id, null); setOpen(null); }}
@@ -108,7 +108,7 @@ export function ContractRoom({ g, onClose }) {
                 {isOpen && !signed && !withThem && <div style={{ marginTop: 7, background: P.shade, borderRadius: 6, padding: '6px 8px' }}>
                   {c.options.map((op) => (<button key={op.id} onClick={() => { dispatch(markClause, o.id, c.id, op.id); setOpen(null); }}
                     style={{ display: 'flex', justifyContent: 'space-between', gap: 8, width: '100%', textAlign: 'left', background: 'none', border: 'none', borderBottom: `1px solid ${P.line}`, padding: '6px 2px', cursor: 'pointer', color: P.ink, fontSize: 11.5 }}>
-                    <span>{op.label}</span><span style={{ color: op.odds >= 50 ? P.green : op.odds >= 25 ? P.muted : P.accent, fontWeight: 800, whiteSpace: 'nowrap' }}>~{op.odds}%</span>
+                    <span>{op.label}</span><span style={{ color: op.odds >= 50 ? P.green : op.odds >= 25 ? P.muted : P.accent, fontWeight: 800, whiteSpace: 'nowrap' }}>{op.sure ? 'they will' : `~${op.odds}%`}</span>
                   </button>))}
                 </div>}
               </div>
