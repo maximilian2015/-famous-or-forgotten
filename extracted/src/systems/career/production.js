@@ -492,7 +492,12 @@ function wrapProduction(s, p) {
   // set below zero became forty years at the floor: measured, the ordinary player went
   // from lowest −14 to lowest −40 the moment crews started cold, because a cold start
   // alone was enough to trip the verdict on every film.
-  else if (lead.bond <= 25 && lead.bond < (lead.bond0 ?? 100)) { setRespect(s, (s.respect || 0) - 3); verdictNote = ` ${lead.name} has quietly started telling a different story about you.`; }
+  // And "made it worse" has to mean it: a crew that started at 30 and ended at 25 was cold
+  // and stayed cold. Measured again with the point-by-point drop: an ordinary player — half
+  // the months rehearsed, nothing walked off — still ended thirty years at −27 and spent
+  // most of a life as the liability, three points a wrap, because every set below the
+  // line tripped this. Twelve points colder than they started, on a set that went badly.
+  else if (lead.bond <= 25 && lead.bond <= (lead.bond0 ?? 100) - 12 && (p.meter || 0) < 45) { setRespect(s, (s.respect || 0) - 3); verdictNote = ` ${lead.name} has quietly started telling a different story about you.`; }
   if (worldHit) s.worldHits = (s.worldHits || 0) + 1;
   keepTheCrew(s, p);
   // What the months on set left in you. Computed AFTER the rating, so this shoot is judged

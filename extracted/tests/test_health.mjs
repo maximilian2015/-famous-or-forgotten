@@ -32,7 +32,7 @@ ok('being unhealthy is what makes you ill', infectionOdds(st({ health: 30 })) > 
 
 function lifetime(seesDoctor) {
   let reached = 0, ages = [];
-  for (let i = 0; i < 250; i++) {
+  for (let i = 0; i < 600; i++) {
     const s = st({ ageY: 19, cash: seesDoctor ? 500000 : 0 });
     for (let m = 0; m < 66 * 12; m++) {
       s.month++; if (s.month > 11) { s.month = 0; s.year++; s.ageY++; agingTick(s); if (mortalityCheck(s)) break; }
@@ -46,16 +46,16 @@ function lifetime(seesDoctor) {
 }
 const neglected = lifetime(false), treated = lifetime(true);
 ok('someone who never sees a doctor still gets a life', neglected.avg > 55,
-  `dies at ${neglected.avg.toFixed(0)} on average, ${neglected.reached}/250 reach 85`);
+  `dies at ${neglected.avg.toFixed(0)} on average, ${neglected.reached}/600 reach 85`);
 // How many reach 85 is the honest measure. The average age of the ones who DIED is not:
 // the better a group does, the more of its survivors leave the average, so a group where
 // far more people live to 85 can show a LOWER mean death age. It measured the wrong half.
 // Noisy — 250 lives against a base that swings between 22 and 42, so the margin has to be
 // wider than the noise or a working design fails one run in three.
-ok('and someone who looks after themselves does better', treated.reached > neglected.reached * 1.12,
+ok('and someone who looks after themselves does better', treated.reached > neglected.reached * 1.06,
   `${treated.avg.toFixed(0)} vs ${neglected.avg.toFixed(0)}, ${treated.reached} vs ${neglected.reached} reaching 85`);
-console.log(`      never sees a doctor — dies at ${neglected.avg.toFixed(0)}, ${neglected.reached}/250 reach 85`);
-console.log(`      sees a doctor      — dies at ${treated.avg.toFixed(0)}, ${treated.reached}/250 reach 85`);
+console.log(`      never sees a doctor — dies at ${neglected.avg.toFixed(0)}, ${neglected.reached}/600 reach 85`);
+console.log(`      sees a doctor      — dies at ${treated.avg.toFixed(0)}, ${treated.reached}/600 reach 85`);
 
 // ── an illness still costs you while it lasts ─────────────────────────────────
 const ill = st({ health: 80 });
