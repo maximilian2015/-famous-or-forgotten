@@ -2,7 +2,8 @@ import { rint, chance, pick } from '../../engine/rng.js';
 import { COST, canAfford, spend, tooTired } from '../../engine/energy.js';
 import { uid } from '../../engine/id.js';
 import { setQuote, setRespect } from '../meta/status.js';
-import { addTimeline } from '../../engine/timeline.js';
+import { addTimeline, showMoment } from '../../engine/timeline.js';
+import { inCareer } from '../../engine/stage.js';
 import { paid } from './agent.js';
 import { hotGenre } from '../meta/news.js';
 import { addGenreXP, genreBonus } from './genres.js';
@@ -240,6 +241,35 @@ export function bondWithCrew(s, crewId) {
   c.bond = clamp(c.bond + gain);
   s.mental = clamp((s.mental || 50) + 1);
   s.lastEvent = `You and ${c.name} (${c.role}) got closer. Bond +${gain}.`;
+  return s;
+}
+// How many sets they will let you be on at once, by standing — engine/sets.js SET_RESPECT.
+export function setsAllowed(s) {
+  const r = s.respect || 0;
+  return 1 + (r >= SET_RESPECT[1] ? 1 : 0) + (r >= SET_RESPECT[2] ? 1 : 0);
+}
+// The month a second set, and a third, opens to you — said out loud, once, when it
+// happens. Maxi: "when the sets appear there must be a pop-up." Standing crosses 25 and
+// a studio will let you split the week; 50 and three. And when standing falls back
+// through the line, a quiet note that they will not any more.
+export function setsTick(s) {
+  if (!inCareer(s)) return s;
+  const allowed = setsAllowed(s);
+  const known = s.setsKnown || 1;
+  if (allowed > known) {
+    const second = allowed === 2;
+    showMoment(s, {
+      id: 'sets', kind: 'good', sets: allowed, title: second ? 'A second set' : 'A third set',
+      body: second
+        ? `Standing ${SET_RESPECT[1]}. A studio will now let you split the week — two sets at once, a contract that says "alongside" instead of "after". It costs twenty energy a month and every director gets a little less of you, and it is how a working actor makes three pictures a year.`
+        : `Standing ${SET_RESPECT[2]}. Three sets at once — the most anyone can do. Sixty energy a month to live on, three directors who each think they are the only one, and the calendar of somebody the business cannot get enough of.`,
+    });
+    addTimeline(s, second ? 'They will let you work two sets at once now.' : 'Three sets at once — they trust you to turn up.');
+  } else if (allowed < known) {
+    addTimeline(s, allowed === 1 ? 'Below standing 25 again. One set at a time, like anybody.' : 'Below standing 50. Two sets at most until it comes back.', true);
+    s.lastEvent = allowed === 1 ? 'Your standing fell under 25. Nobody will let you split the week any more — one set at a time.' : 'Your standing fell under 50. Two sets at once, not three, until it comes back.';
+  }
+  s.setsKnown = allowed;
   return s;
 }
 export function productionTick(s) {

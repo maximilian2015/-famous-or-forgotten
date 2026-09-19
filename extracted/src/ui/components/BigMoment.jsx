@@ -41,6 +41,23 @@ function Scene({ id, look, accent, moment }) {
       <path d="M60 114 L140 114" stroke={theme.edge} strokeWidth="1.2" opacity=".6" />
     </svg>);
   }
+  // The sets open to you: three clapperboards, the ones you may now be on lit.
+  if (id === 'sets') {
+    const n = moment.sets || 2;
+    return (<svg viewBox="0 0 200 120" style={{ width: '100%', maxWidth: 300, display: 'block', margin: '0 auto' }}>
+      <defs><radialGradient id="setglow" cx="50%" cy="50%" r="55%"><stop offset="0" stopColor={accent} stopOpacity=".26" /><stop offset="1" stopColor={accent} stopOpacity="0" /></radialGradient></defs>
+      <rect x="0" y="0" width="200" height="120" fill="url(#setglow)" />
+      {[0, 1, 2].map((i) => { const on = i < n; const x = 28 + i * 56; return (<g key={i} transform={`translate(${x} 34)`} opacity={on ? 1 : 0.28}>
+        <rect x="0" y="14" width="44" height="40" rx="3" fill={theme.ink} stroke={on ? accent : theme.edge} strokeWidth="1.8" />
+        <g transform={on ? 'rotate(-14 2 14)' : ''}>
+          <rect x="0" y="4" width="44" height="10" rx="2" fill={theme.ink2} stroke={on ? accent : theme.edge} strokeWidth="1.6" />
+          {[0, 1, 2, 3].map((k) => <rect key={k} x={3 + k * 11} y="5" width="5" height="8" fill={on ? accent : theme.edge} opacity=".8" />)}
+        </g>
+        <path d="M6 28h32M6 36h22M6 44h28" stroke={theme.edge} strokeWidth="1.4" opacity=".7" />
+        <text x="22" y="70" textAnchor="middle" fontSize="8" fontWeight="900" fill={on ? accent : theme.edge} letterSpacing="1.4">{on ? 'SET ' + (i + 1) : 'RESPECT ' + [0, 25, 50][i]}</text>
+      </g>); })}
+    </svg>);
+  }
   if (id === 'premiere' || id === 'verdict') {
     const bulbs = [];
     for (let i = 0; i < 11; i++) bulbs.push(<circle key={i} cx={44 + i * 11.2} cy={40 + Math.abs(i - 5) * 1.4} r="2.1" fill={accent} opacity={0.45 + (i % 2) * 0.45} />);
@@ -242,7 +259,7 @@ function Scene({ id, look, accent, moment }) {
 }
 
 const CTA = { premiere: 'Go home', shutdown: 'Go home', nomination: 'Let it sink in', ceremony: 'Take the night', yearbook: 'Close the paper', contract: 'Read it',
-  burnout: 'Sleep', depression: 'Close the curtains', lifted: 'Open them',
+  burnout: 'Sleep', depression: 'Close the curtains', lifted: 'Open them', sets: 'Good to know',
   checkpoint: 'Keep going', rehab: 'Walk out' };
 function headFor(m) {
   if (m.id === 'checkpoint') return m.kind === 'good' ? 'A better month' : 'The same as before';
@@ -254,6 +271,7 @@ function headFor(m) {
   // The night it opens and the night everybody has decided are two different moments now.
   if (m.id === 'verdict') return m.tv ? 'The season is over' : 'The run is over';
   if (m.id === 'booked') return 'They rang back';
+  if (m.id === 'sets') return 'They trust you to turn up';
   if (m.id === 'shutdown') return m.frozen ? 'The shoot has stopped' : 'The project is dead';
   if (m.id === 'nomination') return 'The Askers';
   if (m.id === 'yearbook') return 'The year in film';
@@ -277,7 +295,7 @@ export function BigMoment({ moment, look, onClose }) {
       : moment.id === 'booked' ? 'offer'
       : moment.id === 'shutdown' ? 'flop'
       : moment.id === 'burnout' || moment.id === 'depression' ? 'ill'
-      : moment.id === 'lifted' || moment.id === 'rehab' ? 'levelup'
+      : moment.id === 'lifted' || moment.id === 'rehab' || moment.id === 'sets' ? 'levelup'
       : good ? 'good' : 'bad';
     play(cue);
     // A premiere is a carpet: the shutters keep going after the first one.

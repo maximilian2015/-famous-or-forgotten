@@ -17,7 +17,7 @@ import { bondsTick } from '../systems/life/bonds.js';
 import { datingYear } from '../systems/life/dating.js';
 import { childhoodTick, adoptionTick } from '../systems/life/children.js';
 import { spotlightYear } from '../systems/social/spotlight.js';
-import { productionTick } from '../systems/career/production.js';
+import { productionTick, setsTick } from '../systems/career/production.js';
 import { releaseTick, runTick } from '../systems/career/release.js';
 import { frozenTick } from '../systems/career/stability.js';
 import { laterOffersTick } from '../systems/career/franchise.js';
@@ -95,6 +95,7 @@ export function advanceMonth(state) {
   maybeGenerateOffer(s);
   agentTick(s);      // the agent leaves the liability, or moves you up a desk
   standingTick(s);   // and the trades find a word for what you are now
+  setsTick(s);       // and the month a second set, or a third, opens to you
   emailTick(s);
   smsTick(s);        // and the people in your life text about what just happened
   maybeStartArc(s);

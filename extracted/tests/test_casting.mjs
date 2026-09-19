@@ -97,6 +97,24 @@ ok('you can read for a second part while shooting',
   ok('an exclusive set blocks everything', /exclusive/.test(canTakeSet(busy, { months: 1 }).why || ''));
   busy.production.exclusive = false;
 }
+// Maxi: "when the sets appear there must be a pop-up." The month standing crosses the line.
+{
+  const { setsTick, setsAllowed } = await import('../src/systems/career/production.js');
+  const lastMoment = (s) => ((s.moments || []).length ? s.moments[s.moments.length - 1] : s.bigMoment);
+  const s = st({ respect: 10, moments: [], bigMoment: null });
+  setsTick(s);
+  ok('a nobody is told nothing', !lastMoment(s) && s.setsKnown === 1);
+  s.respect = 25; setsTick(s);
+  ok('the second set announces itself the month standing reaches 25', lastMoment(s) && lastMoment(s).id === 'sets' && lastMoment(s).sets === 2, JSON.stringify(lastMoment(s)).slice(0, 80));
+  s.moments = []; s.bigMoment = null; setsTick(s);
+  ok('and only once', !lastMoment(s));
+  s.respect = 50; setsTick(s);
+  ok('the third at 50', lastMoment(s) && lastMoment(s).sets === 3 && setsAllowed(s) === 3);
+  s.moments = []; s.bigMoment = null; s.respect = 30; setsTick(s);
+  ok('falling back is a line, not a pop-up', !lastMoment(s) && /Two sets/.test(s.lastEvent), s.lastEvent);
+  s.respect = 50; setsTick(s);
+  ok('and coming back is announced again', lastMoment(s) && lastMoment(s).sets === 3);
+}
 
 // paid every month, not only at the end
 const paid = st({ cash: 0 });

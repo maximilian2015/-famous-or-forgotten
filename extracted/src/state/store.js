@@ -52,6 +52,9 @@ function normalize(saved) {
   if (!merged.productions) merged.productions = merged.production ? [merged.production] : [];
   for (const p of merged.productions) if (!p.id) p.id = 'set-' + Math.random().toString(36).slice(2, 8);
   merged.production = merged.productions[0] || null;
+  // A save from before the sets announced themselves: whatever standing already allows is
+  // already known, so an old star does not get told about a third set they have had for years.
+  if (merged.setsKnown == null) { const r = merged.respect || 0; merged.setsKnown = 1 + (r >= 25 ? 1 : 0) + (r >= 50 ? 1 : 0); }
   ensureAppearance(merged); // saves made before the avatar existed still need a face
   return merged;
 }
