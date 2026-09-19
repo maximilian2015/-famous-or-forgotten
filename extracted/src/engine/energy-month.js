@@ -2,13 +2,14 @@
 // that file stays import-free; this one may read state shapes but still imports nothing.
 import { ENERGY, ENERGY_CAP, REFILL } from './energy.js';
 // The same sum, said out loud — Maxi: "I did not drink and the energy is still fifty."
-export function energyWhy(s, { home = 0, staff = 0, jobSlots = 0, lostSlots = 0, extraSets = 0 } = {}) {
+export function energyWhy(s, { home = 0, staff = 0, jobSlots = 0, lostSlots = 0, extraSets = 0, setCount = 0 } = {}) {
   const out = [];
   if (home) out.push(`home +${home}`);
   if (staff) out.push(`staff +${staff}`);
   if (jobSlots) out.push(`the day job −${jobSlots * REFILL.jobSlot}`);
   if (lostSlots) out.push(`not getting up −${lostSlots * REFILL.depressionSlot}`);
-  if (extraSets) out.push(`${extraSets + 1} sets at once −${extraSets * REFILL.set}`);
+  // extraSets is a load, not a count: a short set on the side is half a set (engine/sets.js setLoad).
+  if (extraSets) out.push(`${setCount || Math.round(extraSets) + 1} sets at once −${Math.round(extraSets * REFILL.set)}`);
   if (s.illness) out.push(`ill −${REFILL.illness}`);
   if ((s.strain || 0) > 60) out.push(`worn out −${REFILL.wornOut}`);
   if (s.burnout && s.burnout.left > 0) out.push('signed off: 30 at most');

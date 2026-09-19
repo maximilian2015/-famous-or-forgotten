@@ -252,12 +252,13 @@ export function OpenCall({ g, ocTab, setOcTab, teenMode }) {
             const step = nextPrep(c); const bonus = prepBonus(c);
             const cost = step ? Math.round(step.cost * (1 + Math.min(2, (g.fame || 0) / 60))) : 0;
             const waits = !dayWork(c);
-            // One call sheet at a time. This used to let you pay for the sides and then refuse
-            // the read — the same thing auditionFor refuses, said before the money goes.
+            // A read is a read: you go up for it while you are on a set (auditionFor allows it),
+            // and if you get it the paper decides — they hold it, or you walk. The button used
+            // to be dead while the note under it said "you can still read for it".
             const fit = canTakeSet(g, c);
             const busy = !fit.ok && waits;
-            const dead = busy || !step || !canAfford(g, COST.sides) || cost > (g.cash || 0);
-            const off = !canWork(g).ok; const deadRead = busy || off || !canAfford(g, COST.audition);
+            const dead = !step || !canAfford(g, COST.sides) || cost > (g.cash || 0);
+            const off = !canWork(g).ok; const deadRead = off || !canAfford(g, COST.audition);
             return (<div style={{ marginTop: 8 }}>
               {bonus > 0 && <div style={{ fontSize: 10.5, fontWeight: 800, color: theme.good, marginBottom: 5 }}>Prepared · +{bonus} to your chances</div>}
               <div style={{ display: 'flex', gap: 7 }}>
@@ -267,10 +268,10 @@ export function OpenCall({ g, ocTab, setOcTab, teenMode }) {
                   {step.label}{cost ? ` · €${cost.toLocaleString()}` : ''} · {COST.sides} ⚡
                 </button>}
                 <button onClick={() => openAudition(c)} disabled={deadRead} style={{ flex: 1, border: 'none', borderRadius: 10, padding: '9px 6px', fontSize: 12.5, fontWeight: 800, cursor: deadRead ? 'default' : 'pointer', background: deadRead ? 'rgba(120,110,150,.15)' : `linear-gradient(135deg,${theme.accent2},${theme.accent})`, color: deadRead ? '#6b6390' : '#fff' }}>
-                  {busy ? 'On a shoot' : off ? 'Signed off' : `Audition · ${COST.audition} ⚡`}
+                  {off ? 'Signed off' : `Audition · ${COST.audition} ⚡`}
                 </button>
               </div>
-              {busy && <div style={{ fontSize: 10.5, color: theme.muted, textAlign: 'center', marginTop: 5 }}>{fit.why} You can still read for it — the part waits for a free set.</div>}
+              {busy && <div style={{ fontSize: 10.5, color: theme.gold, textAlign: 'center', marginTop: 5, lineHeight: 1.45 }}>{fit.why.replace(/ They will wait until you wrap\.$/, '')} You can still read for it — if you get it, the contract decides: they hold it for you, or you walk off what you are on.</div>}
               {waits && !deadRead && <div style={{ fontSize: 10.5, color: theme.muted, textAlign: 'center', marginTop: 5 }}>They answer in one to three months.</div>}
             </div>);
           })()}

@@ -96,6 +96,18 @@ ok('you can read for a second part while shooting',
   busy.productions.length = 1; busy.production.exclusive = true;
   ok('an exclusive set blocks everything', /exclusive/.test(canTakeSet(busy, { months: 1 }).why || ''));
   busy.production.exclusive = false;
+  // Maxi: "a guest role or a one- or two-month shoot can be taken alongside one set, can't it?"
+  const { setLoad } = await import('../src/engine/sets.js');
+  busy.respect = 0;
+  ok('a nobody can take a guest spot alongside a set', canTakeSet(busy, { months: 1, episodes: 2 }).ok);
+  ok('and a two-month short', canTakeSet(busy, { months: 2 }).ok);
+  ok('but not a long shoot', !canTakeSet(busy, { months: 3 }).ok);
+  busy.productions.push({ id: 'set-s', title: 'Short', months: 2, monthsLeft: 2 });
+  ok('a short on the side does not count against standing for the next long one', canTakeSet({ ...busy, respect: 25 }, { months: 5 }).ok && !canTakeSet(busy, { months: 5 }).ok);
+  ok('and costs half a set in energy', setLoad(busy) === 0.5, String(setLoad(busy)));
+  busy.productions.push({ id: 'set-t', title: 'T', months: 1, monthsLeft: 1 });
+  ok('three is still the most, short or long', !canTakeSet(busy, { months: 1 }).ok);
+  busy.productions.length = 1;
 }
 // Maxi: "when the sets appear there must be a pop-up." The month standing crosses the line.
 {

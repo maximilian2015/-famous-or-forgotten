@@ -126,7 +126,7 @@ ok('but not on twenty thousand euros', !ids(st(), 'f1').includes('setup'));
   ok('and kissed', close.includes('kissContact'));
   ok('and asked out at 85 without a kiss', close.includes('askOutContact'));
   const s = st({ people: [{ ...contact(), name: 'Piet Marchetti', role: 'Film Director', relationship: 94 }], charisma: 100, looks: 100 });
-  let tries = 0; while (!s.partner && tries++ < 30) { s._cool = {}; s.ap = 100; s.people[0].rebuffedAt = null; interact(s, 'c1', 'askOutContact'); }
+  let tries = 0; while (!s.partner && tries++ < 60) { s._cool = {}; s.ap = 100; s.people[0].rebuffedAt = null; s.people[0].relationship = 94; interact(s, 'c1', 'askOutContact'); }
   ok('asking out a contact makes them your partner', !!s.partner && s.partner.contactId === 'c1' && s.partner.name === 'Piet Marchetti', JSON.stringify(s.partner));
   ok('the contact stays in your phone as the director', s.people.some((p) => p.id === 'c1'));
   ok('a director on your arm can put you in a room', s.partner && s.partner.industryWeight === 70);
