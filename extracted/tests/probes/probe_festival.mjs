@@ -75,13 +75,25 @@ console.log('festival:', JSON.stringify(tally), '· mean rating', (ratings.reduc
   const k2 = draftContract(s, o);
   const sched = k2.clauses.find((c) => c.id === 'schedule');
   if (!sched.must) problems.push('after taking a set the paper still thinks you are free');
-  // ask them to hold it, and pretend they agreed
-  sched.stance = 'talk'; sched.ask = 'hold'; sched.result = 'agreed'; sched.value = sched.options[0].value;
+  // and the deal: no signing round it. Maxi: "a newcomer negotiates to hold it, or turns it down."
   signContract(s, 'orbit');
+  if (o.signed) problems.push('signed while on a set without a hold or a walk — the quest was skipped');
+  // even if the paper was drafted free and is stale: force the old shape and try again
+  o.contract.clauses[o.contract.clauses.findIndex((c) => c.id === 'schedule')] = { id: 'schedule', label: 'Schedule', value: { months: 2, start: s.year * 12 + s.month + 1 }, text: 'stale', options: [], stance: 'ok', ask: null, result: null };
+  o.contract.sent = s.year * 12 + s.month - 1;   // "with them", the way it slipped through
+  o.contract.sent = null;
+  signContract(s, 'orbit');
+  if (o.signed) problems.push('a stale free paper signed while on a set');
+  if (!o.contract.clauses.find((c) => c.id === 'schedule').must) problems.push('the stale paper was not rebuilt as a must');
+  // ask them to hold it, and pretend they agreed — the one way a part waits
+  const live = o.contract.clauses.find((c) => c.id === 'schedule');
+  live.stance = 'talk'; live.ask = 'hold'; live.result = 'agreed'; live.value = live.options[0].value;
+  signContract(s, 'orbit');
+  if (!o.signed || !o.waitsForWrap) problems.push(`a held part did not sign and wait: ${s.lastEvent}`);
   const now = s.year * 12 + s.month;
   const cal = Math.max((o.startAt || now + 1) - now, canTakeSet(s, o).ok ? 0 : monthsUntilFree(s, o));
   const paper = o.contract.clauses.find((c) => c.id === 'schedule').value.start - now;
-  console.log(`stale contract: drafted for +${before - now} · after the set: must=${sched.must} · paper says +${paper} · calendar says +${cal}`);
+  console.log(`stale contract: drafted for +${before - now} · after the set: must=${sched.must} · unsigned without a hold · held: paper says +${paper} · calendar says +${cal}`);
   if (paper !== cal) problems.push(`paper +${paper} vs calendar +${cal}`);
 }
 if (problems.length) { console.log('PROBLEMS:\n' + problems.join('\n')); process.exit(1); }

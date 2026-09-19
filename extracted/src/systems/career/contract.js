@@ -85,10 +85,11 @@ export function draftContract(s, o) {
     // opened before you took a set still said "from July" after the set had pushed the
     // start to December — Maxi: "the second shoot is in July on the paper and it is not
     // on the calendar until the premiere?" The schedule stays live until something on it
-    // is agreed, or the paper is with them.
+    // is asked or agreed — even while the rest of the paper is with them, because the
+    // rule it enforces (a nobody shoots one thing at a time; hold it or walk) is the deal.
     const k = o.contract;
     const i = k.clauses.findIndex((c) => c.id === 'schedule');
-    if (!k.sent && !o.signed && i >= 0 && k.clauses[i].result !== 'agreed' && k.clauses[i].stance !== 'talk') {
+    if (!o.signed && i >= 0 && k.clauses[i].result !== 'agreed' && k.clauses[i].stance !== 'talk') {
       const big = o.tier !== 'supporting' || (o.months || 0) >= 2;
       const exc = k.clauses.find((c) => c.id === 'exclusive');
       k.clauses[i] = scheduleClause(s, o, big, exc ? !!exc.value : false);
@@ -264,6 +265,21 @@ export function signContract(s, id) {
   if (k.sent) { s.lastEvent = 'It is with them. Wait for the answer.'; return s; }
   const sched = k.clauses.find((c) => c.id === 'schedule');
   if (sched && sched.must && sched.result !== 'agreed') { s.lastEvent = 'They need to know when you can start. Ask them to hold it, or walk off what you are on — and send it.'; return s; }
+  // The deal, and there is no way round it: a nobody shoots one thing at a time, and a
+  // part won while you are on a set is held — because they agreed to hold it, on a roll
+  // they could have lost — or it is taken by walking off. A signed paper never simply
+  // waits for a set on its own. Maxi: "a newcomer cannot take a second part; the quest is
+  // that he negotiates to hold the shoot, or turns it down." The paper drafted before the
+  // set was taken used to slip through here and wait quietly until the wrap.
+  const held = !!(sched && sched.value && (sched.value.after || sched.value.walkOff));
+  if (!held && !canTakeSet(s, o).ok) {
+    const big = o.tier !== 'supporting' || (o.months || 0) >= 2;
+    const exc = k.clauses.find((c) => c.id === 'exclusive');
+    const i = k.clauses.findIndex((c) => c.id === 'schedule');
+    if (i >= 0) k.clauses[i] = scheduleClause(s, o, big, exc ? !!exc.value : false);
+    s.lastEvent = 'They need to know when you can start — you are on a set. Ask them to hold it, or walk off what you are on, and send it.';
+    return s;
+  }
   if (sched && sched.value && sched.value.walkOff) walkOffSet(s, sched.value.walkOff, String(o.projectTitle || '').replace('⭐ ', ''));
   // What was agreed goes onto the offer, and then it is an offer accepted like any other.
   for (const c of k.clauses) {
@@ -277,21 +293,12 @@ export function signContract(s, id) {
   o.signed = true;
   const now = (s.year || 0) * 12 + (s.month || 0);
   const title = String(o.projectTitle || 'it').replace('⭐ ', '');
-  // Whatever the paper said, a set that is not free is not free: the start moves to the
-  // wrap, and the paper says so — so the calendar and the contract cannot disagree.
-  if (!(sched && sched.value && sched.value.walkOff)) {
-    const fit = canTakeSet(s, o);
-    if (!fit.ok) {
-      o.startAt = Math.max(o.startAt || 0, now + 1 + monthsUntilFree(s, o));
-      if (sched) { sched.value = { ...sched.value, start: o.startAt, after: (fit.until || s.production || {}).title }; sched.text = textFor(sched, o); }
-    }
-  }
-  // Signed to start later — after your current shoot. It waits in Messages, signed, and
-  // starts itself the month the set is free.
-  if ((o.startAt || 0) > now + 1 || !canTakeSet(s, o).ok) {
+  // Held for you, by agreement — after your current shoot. It waits in Messages, signed,
+  // and starts itself the month the set is free. Only a held part ever waits (see above).
+  if (held && ((o.startAt || 0) > now + 1 || !canTakeSet(s, o).ok)) {
     o.waitsForWrap = true; o.deadline = 99;
-    s.lastEvent = `Signed. "${title}" starts ${(o.startAt || 0) > now + 1 ? `in ${MON[(o.startAt || now) % 12]}` : 'when a set frees up'}.`;
-    addTimeline(s, `Signed for ${title}.`);
+    s.lastEvent = `Signed. "${title}" is held for you — it starts ${(o.startAt || 0) > now + 1 ? `in ${MON[(o.startAt || now) % 12]}` : 'the month you wrap'}.`;
+    addTimeline(s, `Signed for ${title}. They are holding it until you wrap.`);
     return s;
   }
   addTimeline(s, `Signed for ${title}.`);
