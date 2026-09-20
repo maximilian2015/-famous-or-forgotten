@@ -36,7 +36,9 @@ const st = (over) => Object.assign(born(), {
   ok('an assistant is ten energy a month', M.staffEnergy(s) === 10);
   ok('and shows up in the monthly bill', monthlyCosts(s).team === M.STAFF.assistant.cost, String(monthlyCosts(s).team));
   const t = advanceMonth(s);
-  ok('and is billed exactly once a month', 12000000 - t.cash === monthlyCosts(s).total, `€${(12000000 - t.cash).toLocaleString()} vs €${monthlyCosts(s).total.toLocaleString()}`);
+  // The odd bill (money.js surpriseBill) is its own line on the timeline; the regular bill is exact.
+  const odd = (t.timeline || []).filter((x) => /^€[d,]+ to /.test(x.text)).reduce((n, x) => n + Number(x.text.match(/^€([d,]+)/)[1].replace(/,/g, '')), 0);
+  ok('and is billed exactly once a month', 12000000 - t.cash - odd === monthlyCosts(s).total, `€${(12000000 - t.cash - odd).toLocaleString()} vs €${monthlyCosts(s).total.toLocaleString()}`);
   ok('and the month is worth more', t.apMaxEff >= 5, String(t.apMaxEff));
 }
 {

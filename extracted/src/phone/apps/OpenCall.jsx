@@ -140,6 +140,8 @@ export function OpenCall({ g, ocTab, setOcTab, teenMode }) {
       {audition.game === 'timing'
         ? <TimingBar zoneStart={audition.zoneStart} zoneWidth={audition.zoneWidth} speed={audition.speed} onResult={finishAudition} />
         : <GridRisk cols={4} rows={3} bad={audition.bad} full={5} labelSafe="✓" labelBad="✕" onResult={finishAudition} />}
+      {/* You can leave before you read. Nothing is spent until the read happens. */}
+      <button onClick={() => setAudition(null)} style={{ marginTop: 12, width: '100%', border: `1px solid ${theme.line}`, borderRadius: 10, padding: '8px', fontSize: 11.5, fontWeight: 800, cursor: 'pointer', background: 'transparent', color: theme.muted }}>Not today — back to the board</button>
     </div>);
   }
   if (result) {

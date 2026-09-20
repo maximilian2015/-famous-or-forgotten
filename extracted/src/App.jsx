@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef } from 'react';
 import { openStoryRoom, pushTake, trendNote } from './systems/career/story.js';
 import { useGame, dispatch, newLife } from './state/store.js';
-import { advanceTime, stepIsYear } from './engine/time.js';
+import { advanceTime, stepIsYear, advanceUntilSomething } from './engine/time.js';
 import { rentApartment, STAGE_LABEL } from './systems/life/stages.js';
 import { runAction, availableActions } from './systems/career/actions.js';
 import { acceptOffer, declineOffer } from './systems/career/offers.js';
@@ -21,6 +21,7 @@ import { EnergyBar } from './ui/components/EnergyBar.jsx';
 import { FAVOURS, FAVOUR_ORDER, canUse, costOf, asksLeft, ASKS_A_YEAR, canSmooth, smoothOver, canPushSequel, pushSequel, vouchFor, canOpenShelf, openShelf } from './systems/career/favours.js';
 import { sequelDue } from './systems/career/franchise.js';
 import { knownFor, isHit, isFlop } from './systems/meta/knownFor.js';
+import { townOpen, townFor, goOut } from './systems/life/town.js';
 import { addPrestigeListing } from './systems/career/castings.js';
 import { TimingBar } from './ui/components/TimingBar.jsx';
 import { GridRisk } from './ui/components/GridRisk.jsx';
@@ -61,7 +62,7 @@ import { classOf } from './systems/life/origin.js';
 import { mentalReport, closestPerson, canCall, callSomebody, canGetAway, getAway } from './systems/life/mood.js';
 import { HOME_PRICE, canBuyHome, buyHome, sellHome, STAFF, STAFF_ORDER, hasStaff, canHire, hire, fire, staffBill,
   THINGS, THING_ORDER, owns, canBuyThing, buyThing, sellThing, resaleOf, upkeepBill,
-  supportCost, canSupport, support, backingCost, canBack, backChild } from './systems/life/money.js';
+  supportCost, canSupport, support, backingCost, canBack, backChild, livingBelow } from './systems/life/money.js';
 import { interactionsFor, interact, findPerson, GROUPS } from './systems/life/interactions.js';
 import { relBand } from './systems/life/bonds.js';
 import { BigMoment } from './ui/components/BigMoment.jsx';
@@ -223,6 +224,22 @@ export default function App() {
           {availableActions(g).map((a) => { const noEnergy = !canAfford(g, COST.careerAction);
             return (<button key={a.id} onClick={() => dispatch(runAction, a.id)} disabled={noEnergy} style={{ textAlign: 'left', background: theme.panel, border: `1px solid ${theme.line}`, borderRadius: 12, padding: '10px 13px', cursor: noEnergy ? 'default' : 'pointer', color: theme.text, opacity: noEnergy ? .4 : 1 }}><div style={{ fontSize: 14, fontWeight: 800 }}>{a.label(g)}</div><div style={{ fontSize: 11.5, color: theme.muted, marginTop: 2 }}>{a.desc(g)}</div></button>); })}
           {!canAfford(g, COST.careerAction) && <div style={{ fontSize: 11.5, color: theme.gold, textAlign: 'center', padding: '4px 0' }}>Not enough energy left this {g.stage === 'child' || g.stage === 'teen' ? 'year' : 'month'} for these ({COST.careerAction} each).</div>}
+          {/* Around town: the cheap things an evening is for. Measured, half the month's energy
+              went unspent in the first years — a lesson, one read, and "live one month". */}
+          {townOpen(g) && (() => { const list = townFor(g); if (!list.length) return null;
+            return (<div>
+              <div style={{ fontSize: 10.5, fontWeight: 900, letterSpacing: '.09em', textTransform: 'uppercase', color: theme.muted, margin: '4px 2px 6px' }}>Around town</div>
+              <div style={{ display: 'grid', gap: 6 }}>
+                {list.map((t) => (<button key={t.id} onClick={() => dispatch(goOut, t.id)} disabled={!t.open} title={t.why || t.blurb}
+                  style={{ textAlign: 'left', background: t.open ? theme.panel : 'rgba(120,110,150,.10)', border: `1px solid ${t.open ? theme.line : 'transparent'}`, borderRadius: 12, padding: '9px 12px', cursor: t.open ? 'pointer' : 'default', color: t.open ? theme.text : '#6b6390' }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', gap: 8, alignItems: 'baseline' }}>
+                    <div style={{ fontSize: 13, fontWeight: 800 }}>{t.label}</div>
+                    <div style={{ fontSize: 10.5, fontWeight: 800, color: t.open ? theme.gold : '#6b6390', whiteSpace: 'nowrap' }}>{t.ap} energy{t.cost ? ` · €${t.cost.toLocaleString()}` : ''}</div>
+                  </div>
+                  <div style={{ fontSize: 11, color: t.open ? theme.muted : '#6b6390', marginTop: 2, lineHeight: 1.45 }}>{t.open ? t.blurb : t.why}</div>
+                </button>))}
+              </div>
+            </div>); })()}
           {inCareer(g) && <div style={{ fontSize: 11, color: theme.muted, textAlign: 'center', padding: '6px 8px', lineHeight: 1.55, opacity: .85 }}>
             Auditions and shifts are in your Phone. Training and parties are under Career. Family is under People.
           </div>}
@@ -231,6 +248,7 @@ export default function App() {
           </div>}
         </div>
         <Button kind="pri" sfx={stepIsYear(g) ? 'year' : 'month'} onClick={() => dispatch(advanceTime)}>{stepIsYear(g) ? '▶ Live one year' : '▶ Live one month'}</Button>
+        {g.stage === 'child' && (g.ageY || 0) < 12 && <button onClick={() => dispatch(advanceUntilSomething)} style={{ width: '100%', marginTop: 8, border: `1px solid ${theme.line}`, borderRadius: 12, padding: '10px', fontSize: 12.5, fontWeight: 800, cursor: 'pointer', background: 'transparent', color: theme.muted }}>▶▶ Live until something happens</button>}
         <div style={{ marginTop: 18 }}>
           <div style={{ fontSize: 11, fontWeight: 900, letterSpacing: '.09em', textTransform: 'uppercase', color: theme.muted, marginBottom: 8 }}>Timeline</div>
           {(g.timeline || []).slice(0, 8).map((e, i) => (<div key={i} style={{ fontSize: 12.5, color: e.bad ? theme.bad : theme.text, padding: '6px 0', borderBottom: `1px solid ${theme.line}` }}><span style={{ color: theme.muted, marginRight: 8 }}>{e.when}</span>{e.text}</div>))}
@@ -1441,6 +1459,8 @@ function HomeTab({ g, tier }) {
   const ownsThis = g.owns === current;
   return (<div>
     {!g.hasApartment && <div style={{ fontSize: 12.5, color: theme.muted, textAlign: 'center', padding: '10px 12px', marginBottom: 10, lineHeight: 1.6 }}>You still live with your parents. Move out first — then this is your problem.</div>}
+    {/* Living below your name costs standing every month — money.js livingBelow. */}
+    {(() => { const b = livingBelow(g); return b ? <div style={{ fontSize: 12, color: theme.gold, background: 'rgba(255,209,102,.08)', border: '1px solid rgba(255,209,102,.3)', borderRadius: 10, padding: '9px 11px', marginBottom: 10, lineHeight: 1.5 }}>A {fameTier(g.fame).label.toLowerCase()} in a {(HOUSING[g.housing || 'room'] || HOUSING.room).label.toLowerCase()}. The people who hire you notice where you live — it costs standing every month you stay. A {b.label.toLowerCase()} at least.</div> : null; })()}
     {/* Renting forever is what somebody who has not made it does. */}
     {g.hasApartment && !g.inheritedHome && (<Card style={{ marginBottom: 14, borderColor: ownsThis ? `${theme.good}55` : theme.line }}>
       <div style={{ fontSize: 11, fontWeight: 900, letterSpacing: '.08em', textTransform: 'uppercase', color: ownsThis ? theme.good : theme.accent, marginBottom: 5 }}>
@@ -2445,6 +2465,8 @@ function ProductionCard({ g, p }) {
 }
 function AaaTracker({ g }) {
   const acc = computeAccess(g);
+  // Nobody at zero needs to be told the tentpoles are closed. It shows once the ladder is in sight.
+  if (!acc.aaa && (g.fame || 0) < 25) return null;
   return (<Card style={{ marginBottom: 14, borderColor: acc.aaa ? 'rgba(95,206,138,.4)' : theme.line }}><div style={{ fontSize: 11, fontWeight: 900, letterSpacing: '.08em', textTransform: 'uppercase', color: acc.aaa ? theme.good : theme.muted, marginBottom: 6 }}>{acc.aaa ? '★ The tentpoles are open to you' : 'The tentpoles — closed to you'}</div><div style={{ fontSize: 12.5, color: theme.muted, lineHeight: 1.5 }}>{acc.aaa ? (acc.aaaReason === 'hit' ? 'You made a hit. Studios take your calls now.' : 'You know the right person. Doors open through them.') : 'The biggest pictures do not audition strangers. Two ways in: land a hit (rating 85+), or get genuinely close to somebody powerful in the industry (weight 80+).'}</div></Card>);
 }
 function LegacyPanel({ g, wall = true }) {

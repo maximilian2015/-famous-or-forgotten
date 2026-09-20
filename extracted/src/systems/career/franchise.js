@@ -23,6 +23,16 @@ export const SEASON_CAP = {
   'Prestige Series': 5,
 };
 export function seasonCap(type) { return SEASON_CAP[type] || 5; }
+// Months of shooting per episode ordered, by format, and the least a season takes. Television
+// shoots by the episode: a network hour is eight to ten days a piece, a soap does one a day,
+// prestige is slower and dearer. Maxi: "do they really shoot a series that long?" Read by the
+// board (castings.js) and by every renewal, so season two is not eight months for twelve
+// episodes because season one happened to be.
+export const TV_PACE = { 'Soap Opera': 0.09, 'Network Drama': 0.38, 'Prestige Series': 0.5, 'Talent Series': 0.3, 'Music Show': 0.3 };
+export function tvMonths(type, scale, episodes) {
+  const pace = TV_PACE[type] || (scale === 'prestige' ? 0.5 : 0.38);
+  return Math.max(2, Math.min(10, Math.round(1 + episodes * pace)));
+}
 
 // The network decides on the numbers. A flop is gone; a hit is renewed before the
 // finale airs. Long-running shows also get tired — each season shaves the odds.
@@ -311,7 +321,7 @@ export function maybeContinue(s, credit, p, force = false) {
       projectTitle: `${root} · season ${nextSeason}`, role: p.role, type: p.type, genre: p.genre,
       episodes, episodeFee, salary: episodeFee * episodes, baseSalary: p.baseSalary || p.salary,
       prestigeScore: seasonMaterial(p.prestigeScore || 50, nextSeason, arc), arc,
-      months: Math.max(2, Math.round((p.months || 4) * (0.9 + Math.random() * 0.25))),
+      months: tvMonths(p.type, p.scale, episodes),
       prestigeScore: Math.min(96, (p.prestigeScore || 45) + rint(2, 7)), tier: p.tier || 'lead',
       fame: p.tier === 'tentpole' ? 9 : 5, deadline: rint(2, 3), waitsForWrap: true,   // your own show waits for you
       note: nextSeason === 3 && pct > 0

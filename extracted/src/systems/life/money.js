@@ -1,4 +1,4 @@
-import { setRespect } from '../meta/status.js';
+import { setRespect, fameTier } from '../meta/status.js';
 // What money is FOR.
 //
 // Measured across forty lives: the median actor holds €152k in their twenties, €26m in
@@ -263,8 +263,39 @@ export function backChild(s, id) {
 // ── the monthly bill ──────────────────────────────────────────────────────────────────
 // Runs every month. An entourage is not a purchase, it is a standing cost, and that is the
 // whole reason it makes a fall hurt.
+// Living below your name. Maxi: "money should bite — a star in a room, taxes, living at your
+// level." Measured, the sensible player never went below €500 and money was a counter. A
+// known face in a shared room is a story the trades find charming for a month and odd
+// after; a star in one costs standing every month, and the photographers know the address.
+const HOME_FOR = { known: 'studio', star: 'flat', alist: 'house', icon: 'house' };
+export function livingBelow(s) {
+  if (!s.hasApartment || s.inheritedHome || (s.hostedBy)) return null;
+  const want = HOME_FOR[fameTier(s.fame).id]; if (!want) return null;
+  const have = HOUSING_ORDER.indexOf(s.housing || 'room'), need = HOUSING_ORDER.indexOf(want);
+  return have < need ? { want, label: HOUSING[want].label } : null;
+}
+function lifestyleTick(s) {
+  const below = livingBelow(s); if (!below) { s._belowMonths = 0; return; }
+  s._belowMonths = (s._belowMonths || 0) + 1;
+  const tier = fameTier(s.fame).id;
+  const cost = tier === 'known' ? 0.25 : tier === 'star' ? 0.6 : 1;
+  setRespect(s, (s.respect || 0) - cost);
+  if (s._belowMonths === 3 || s._belowMonths % 12 === 0) addTimeline(s, tier === 'known' ? `A known face in a ${HOUSING[s.housing || 'room'].label.toLowerCase()}. The trades found it charming for a month. Now they find it odd.` : `A ${tier === 'star' ? 'star' : 'name'} in a ${HOUSING[s.housing || 'room'].label.toLowerCase()}. People who hire you notice where you live, and the photographers have the address.`, true);
+  if (tier !== 'known' && chance(6)) { s.scandal = clamp((s.scandal || 0) + 3); addTimeline(s, 'A photographer outside your building. The piece is about the building.', true); }
+}
+// The odd bill. Money that only ever arrived was money nobody had to think about.
+const BILLS = [['the accountant', 'a tax bill nobody warned you about'], ['the car', 'a repair that cost what the car did'], ['a lawyer', 'a letter, a meeting, an invoice'], ['the flat', 'a flood, and the landlord’s idea of whose fault it was'], ['a cousin', 'a loan that will not come back']];
+function surpriseBill(s) {
+  if ((s.fame || 0) < 20 || (s.cash || 0) < 2000 || !chance(7)) return;
+  const [who, what] = BILLS[Math.floor(Math.random() * BILLS.length)];
+  const amt = Math.max(600, Math.round((s.cash || 0) * (0.02 + Math.random() * 0.05)));
+  s.cash -= amt;
+  addTimeline(s, `€${amt.toLocaleString()} to ${who} — ${what}.`, true);
+}
 export function moneyTick(s) {
   if (!inCareer(s)) return;
+  lifestyleTick(s);
+  surpriseBill(s);
   const bill = staffBill(s) + upkeepBill(s);
   if (!bill) return;
   // The money itself is taken by engine/economy.js applyMonthly, along with the rent and

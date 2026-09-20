@@ -19,7 +19,8 @@ import { ageFit, seenForIt } from './age.js';
 import { canWork, insurability, depressed } from '../life/strain.js';
 import { sendMail } from '../meta/email.js';
 import { newTitle } from '../world/titles.js';
-import { seasonCap, slotNorm } from './franchise.js';
+import { seasonCap, slotNorm, tvMonths } from './franchise.js';
+export { tvMonths, TV_PACE } from './franchise.js';
 // What a casting office will see you for. Usually that is fame — but an Asker counts,
 // and it is the one route into work above your level that does not run through
 // blockbusters. An actor with a statuette and forty fame gets read for parts that used
@@ -142,12 +143,6 @@ const SCALE_MONEY = { small: 0.16, festival: 0.45 };
 // spot is by definition on somebody else's running show. A new show is the rarer thing, and
 // the bigger gamble: nobody knows if anyone will watch, and if they do it is yours from the
 // pilot. An established show comes with an audience you can read off the listing.
-// Months of shooting per episode ordered, by format, and the least a season takes.
-export const TV_PACE = { 'Soap Opera': 0.09, 'Network Drama': 0.38, 'Prestige Series': 0.5, 'Talent Series': 0.3, 'Music Show': 0.3 };
-export function tvMonths(type, scale, episodes) {
-  const pace = TV_PACE[type] || (scale === 'prestige' ? 0.5 : 0.38);
-  return Math.max(2, Math.min(10, Math.round(1 + episodes * pace)));
-}
 export function seasonFor(type, scale) {
   const cap = seasonCap(type);
   if (scale === 'episode') return rint(2, Math.max(2, Math.min(cap - 1, 9)));      // always somebody else's show
@@ -352,6 +347,11 @@ export function castingChance(s, c) {
 // shot rather than a coin flip, which is the whole texture of the climb.
 function reachFactor(s, c) {
   if (!c) return 1;
+  // The small things are cast FROM unknowns — a short, a student film, a day as an extra. Reaching
+  // over your head is a long shot; these are not over anybody's head. Measured: a sensible
+  // player's first real credit came in month seventeen, eight reads to a booking, because
+  // even a short film read as a reach for somebody at zero.
+  if ((c.scale === 'small' || c.scale === 'oneoff') && reach(s) < 15) return 1;
   const demand = (scaleOf(c).prestige || [40, 55])[1];
   const gap = demand - reach(s);
   if (gap <= 0) return 1;
@@ -470,7 +470,9 @@ export function auditionFor(s, id, quality = 50) {
   // not. This is the whole rhythm of the job, and the game used to skip it: audition, book,
   // shoot, audition, book — 86% of a forty-five-year career was spent on a set.
   if (!dayWork(c)) {
-    const wait = rint(1, 3);
+    // The small things answer fast — a short, a guest spot, a festival picture knows by the
+    // end of the month. A studio takes its one to three.
+    const wait = ['small', 'oneoff', 'episode', 'festival'].includes(c.scale) ? 1 : rint(1, 3);
     (s.submissions = s.submissions || []).push({
       id: uid(s, 'sub'),
       casting: { ...c }, title: c.title, role: c.role, odds,

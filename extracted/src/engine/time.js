@@ -43,6 +43,17 @@ import { pressTick } from '../systems/meta/press.js';
 
 export function stepIsYear(state) { return state.stage === 'child' || state.stage === 'teen'; }
 export function advanceTime(state) { return stepIsYear(state) ? advanceYear(state) : advanceMonth(state); }
+// Childhood, fast: the years with nothing to decide go by in one press. Measured on a fresh
+// life, years one to five and seven to nine were empty clicks — eight of them before the
+// first choice. Stops the moment something wants an answer, or at the first teenage year.
+export function advanceUntilSomething(state) {
+  let s = state;
+  for (let i = 0; i < 12; i++) {
+    s = advanceYear(s);
+    if (!s.alive || s.pendingArc || s.bigMoment || (s.moments || []).length || s.stage !== 'child') break;
+  }
+  return s;
+}
 
 export function advanceMonth(state) {
   const s = { ...state, timeline: [...(state.timeline || [])] };
