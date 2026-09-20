@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { theme } from '../theme.js';
 import { FONT, FONT_DISPLAY } from '../chrome.js';
 import { dispatch } from '../../state/store.js';
-import { contractFor, markClause, sendContract, signContract, passContract, openTalks } from '../../systems/career/contract.js';
+import { contractFor, markClause, sendContract, signContract, passContract, openTalks, proposeStart, earliestStart } from '../../systems/career/contract.js';
 import { STUDIOS } from '../../systems/world/names.js';
 import { Diary } from './Diary.jsx';
 
@@ -38,6 +38,7 @@ export function Signature({ name, live }) {
 export function ContractRoom({ g, onClose }) {
   const [cal, setCal] = useState(false);
   const [open, setOpen] = useState(null);
+  const [pickMonth, setPickMonth] = useState(false);
   const o = (g.offers || []).find((x) => x.id === g.openContract);
   const k = o ? contractFor(g, o.id) : null;
   if (!o || !k) { return (<div style={{ position: 'fixed', inset: 0, background: P.bg, zIndex: 60, color: P.ink, fontFamily: FONT, padding: 20 }}>
@@ -82,7 +83,10 @@ export function ContractRoom({ g, onClose }) {
         {k.clauses.map((c, i) => {
           const chosen = c.options.find((x) => x.id === c.ask);
           const res = stanceLabel(c);
-          const isOpen = open === c.id;
+          // A clause they will not sign without an answer (the dates, on a set): no tick to give,
+          // the choices open on the paper itself. Maxi: "the button does not work — it will not let me sign."
+          const forced = !!c.must && c.result !== 'agreed' && c.stance !== 'talk';
+          const isOpen = open === c.id || forced;
           return (<div key={c.id} style={{ padding: '11px 0', borderBottom: `1px solid ${P.line}` }}>
             <div style={{ display: 'flex', gap: 10 }}>
               <div style={{ width: 22, flex: 'none', fontSize: 10, fontWeight: 800, color: P.accent, paddingTop: 2 }}>{String(i + 1).padStart(2, '0')}</div>
@@ -94,7 +98,8 @@ export function ContractRoom({ g, onClose }) {
                 <div style={{ fontSize: 12, lineHeight: 1.5, marginTop: 3 }}>{c.text}</div>
                 {c.stance === 'talk' && chosen && <div style={{ fontSize: 11, color: P.accent, marginTop: 4, fontWeight: 700 }}>→ {chosen.label} · {chosen.sure ? 'they will agree' : `about ${chosen.odds}% they agree`}</div>}
                 {/* the marks: a tick, or discuss */}
-                {!signed && !withThem && <div style={{ display: 'flex', gap: 6, marginTop: 7, flexWrap: 'wrap' }}>
+                {forced && !signed && !withThem && <div style={{ marginTop: 7, fontSize: 11.5, lineHeight: 1.5, color: P.accent, fontWeight: 700, background: 'rgba(139,67,47,.08)', border: `1px solid ${P.accent}55`, borderRadius: 6, padding: '7px 9px' }}>⚠ They need an answer on this before anything else. Pick one below, then send the paper back — they reply next month.</div>}
+                {!signed && !withThem && !forced && <div style={{ display: 'flex', gap: 6, marginTop: 7, flexWrap: 'wrap' }}>
                   <button onClick={() => { dispatch(markClause, o.id, c.id, null); setOpen(null); }}
                     style={{ display: 'inline-flex', alignItems: 'center', gap: 5, border: `1px solid ${c.stance === 'ok' ? P.green : P.line}`, background: c.stance === 'ok' ? P.green : 'transparent', color: c.stance === 'ok' ? P.paper : P.ink, borderRadius: 4, padding: '4px 9px', fontSize: 11, fontWeight: 800, cursor: 'pointer' }}>
                     <span style={{ width: 12, height: 12, border: `1.5px solid ${c.stance === 'ok' ? P.paper : P.ink}`, borderRadius: 2, display: 'inline-flex', alignItems: 'center', justifyContent: 'center', fontSize: 9 }}>{c.stance === 'ok' ? '✓' : ''}</span>Agreed
@@ -106,7 +111,14 @@ export function ContractRoom({ g, onClose }) {
                   {c.options.length === 0 && <span style={{ fontSize: 10.5, color: P.muted, alignSelf: 'center' }}>not up for discussion</span>}
                 </div>}
                 {isOpen && !signed && !withThem && <div style={{ marginTop: 7, background: P.shade, borderRadius: 6, padding: '6px 8px' }}>
-                  {c.options.map((op) => (<button key={op.id} onClick={() => { dispatch(markClause, o.id, c.id, op.id); setOpen(null); }}
+                  {c.id === 'schedule' && <button onClick={() => setPickMonth(!pickMonth)} style={{ display: 'flex', justifyContent: 'space-between', gap: 8, width: '100%', textAlign: 'left', background: 'none', border: 'none', borderBottom: `1px solid ${P.line}`, padding: '6px 2px', cursor: 'pointer', color: P.accent, fontSize: 11.5, fontWeight: 800 }}>
+                    <span>📅 Propose your own month — pick it in the calendar</span><span style={{ whiteSpace: 'nowrap' }}>{pickMonth ? '▴' : '▾'}</span>
+                  </button>}
+                  {c.id === 'schedule' && pickMonth && <div style={{ background: theme.bg, borderRadius: 10, padding: 8, margin: '6px 0' }}>
+                    <div style={{ fontSize: 10.5, color: theme.muted, marginBottom: 6, lineHeight: 1.45 }}>Tap the month you want to start. Nothing before {['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'][earliestStart(g, o) % 12]} {Math.floor(earliestStart(g, o) / 12)} — you are not free before then. The further past their date, the longer the odds.</div>
+                    <Diary g={g} pick={(abs) => { dispatch(proposeStart, o.id, abs); setPickMonth(false); }} pickFrom={earliestStart(g, o)} picked={(c.options.find((x) => x.id === 'propose') || {}).value?.start} />
+                  </div>}
+                  {c.options.filter((op) => op.id !== 'propose' || c.ask === 'propose').map((op) => (<button key={op.id} onClick={() => { dispatch(markClause, o.id, c.id, op.id); setOpen(null); }}
                     style={{ display: 'flex', justifyContent: 'space-between', gap: 8, width: '100%', textAlign: 'left', background: 'none', border: 'none', borderBottom: `1px solid ${P.line}`, padding: '6px 2px', cursor: 'pointer', color: P.ink, fontSize: 11.5 }}>
                     <span>{op.label}</span><span style={{ color: op.odds >= 50 ? P.green : op.odds >= 25 ? P.muted : P.accent, fontWeight: 800, whiteSpace: 'nowrap' }}>{op.sure ? 'they will' : `~${op.odds}%`}</span>
                   </button>))}
@@ -132,10 +144,11 @@ export function ContractRoom({ g, onClose }) {
         {withThem && <div style={{ fontSize: 12, color: P.muted, textAlign: 'center', lineHeight: 1.5, padding: '4px 6px' }}>It is with them. They answer next month; the offer does not expire while they read it.</div>}
         {signed && <div style={{ fontSize: 12, color: P.green, textAlign: 'center', lineHeight: 1.5, padding: '4px 6px', fontWeight: 700 }}>{o.waitsForWrap ? 'Signed. It starts the month a set frees up.' : 'Signed.'}</div>}
         {!withThem && !signed && <>
-          <button onClick={() => { dispatch(signContract, o.id); if (!talks.length && !must) onClose(); }} disabled={talks.length > 0 || must}
-            style={{ border: 'none', borderRadius: 4, padding: '13px', fontSize: 14, fontWeight: 800, cursor: talks.length || must ? 'default' : 'pointer', background: talks.length || must ? '#c9b89a' : P.accent, color: P.paper }}>
-            {must ? 'Sign — first ask about the dates' : talks.length ? `Sign — first settle ${talks.length} open point${talks.length === 1 ? '' : 's'}` : 'Sign it'}
-          </button>
+          {must && <div style={{ fontSize: 12.5, lineHeight: 1.5, color: P.ink, background: 'rgba(139,67,47,.08)', border: `1px solid ${P.accent}55`, borderRadius: 6, padding: '10px 12px', fontWeight: 700 }}>No signature yet — you are on another set. On clause 02, choose: they hold the part until you wrap, you propose your own month in the calendar, or you walk off what you are on — then send it back.</div>}
+          {!must && <button onClick={() => { dispatch(signContract, o.id); if (!talks.length) onClose(); }} disabled={talks.length > 0}
+            style={{ border: 'none', borderRadius: 4, padding: '13px', fontSize: 14, fontWeight: 800, cursor: talks.length ? 'default' : 'pointer', background: talks.length ? '#c9b89a' : P.accent, color: P.paper }}>
+            {talks.length ? `Sign — first settle ${talks.length} open point${talks.length === 1 ? '' : 's'}` : 'Sign it'}
+          </button>}
           {talks.length > 0 && <button onClick={() => { dispatch(sendContract, o.id); }} style={{ border: 'none', borderRadius: 4, padding: '13px', fontSize: 14, fontWeight: 800, cursor: 'pointer', background: P.accent, color: P.paper }}>
             Send it back with {talks.length} point{talks.length === 1 ? '' : 's'}{k.round >= 2 ? ' — they may walk' : ''}
           </button>}

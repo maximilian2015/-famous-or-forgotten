@@ -193,7 +193,10 @@ function Detail({ g, target, onClose }) {
     <div style={{ marginTop: 6 }}>{rows}</div>
   </div>);
 }
-export function Diary({ g }) {
+// `pick`: the calendar as a date picker — tap a month and it is handed back. Used by the
+// contract room to propose a start month. Maxi: "pick your month by clicking the calendar,
+// send it, and they decide." `pickFrom` is the first month you could start; earlier ones are dim.
+export function Diary({ g, pick, pickFrom, picked }) {
   const [two, setTwo] = useState(false);
   const [open, setOpen] = useState(null);
   const now = (g.year || 0) * 12 + (g.month || 0);
@@ -219,7 +222,10 @@ export function Diary({ g }) {
           : st === 'off' ? { background: 'linear-gradient(135deg,#3a1421,#2b1320)', border: '1px solid #ff6b8a', boxShadow: '0 0 0 1px rgba(255,107,138,.25)' }
           : st === 'shoot' || st === 'prep' ? { background: `linear-gradient(135deg, ${theme.panel}, rgba(139,92,246,.10))`, border: '1px solid rgba(167,139,250,.35)' }
           : { background: theme.panel, border: `1px solid ${c.i === 0 ? theme.accent : theme.line}` };
-        return (<div key={c.i} style={{ ...cell, borderRadius: 9, padding: '5px 6px 6px', minHeight: 54, overflow: 'hidden', position: 'relative' }}>
+        const pickable = !!pick && c.abs >= (pickFrom || now + 1);
+        const chosen = !!pick && picked === c.abs;
+        return (<div key={c.i} onClick={pickable ? () => pick(c.abs) : undefined} style={{ ...cell, borderRadius: 9, padding: '5px 6px 6px', minHeight: 54, overflow: 'hidden', position: 'relative', cursor: pickable ? 'pointer' : 'default', opacity: pick && !pickable ? .45 : 1, outline: chosen ? '2px solid #ffd166' : 'none', boxShadow: chosen ? '0 0 0 3px rgba(255,209,102,.25)' : cell.boxShadow }}>
+          {chosen && <div style={{ position: 'absolute', right: 5, bottom: 4, fontSize: 9, fontWeight: 900, color: '#ffd166' }}>YOUR MONTH</div>}
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 3 }}>
             <b style={{ fontSize: 10, color: c.i === 0 ? theme.accent : theme.text, whiteSpace: 'nowrap' }}>{MON[c.mo]} {c.i === 0 || c.mo === 0 ? c.yr : `’${String(c.yr).slice(2)}`}</b>
             <span style={pillStyle(st)}>{PILL[st].text}</span>

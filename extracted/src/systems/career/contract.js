@@ -85,7 +85,10 @@ function scheduleClause(s, o, big, ex) {
   if (s.production && big && !fit.ok && !clear) {
     const until = fit.until || s.production;
     const need = planned || now + 1;
-    sched.text = `They need you from ${MON[need % 12]} ${Math.floor(need / 12)}. You are on "${until.title}" until ${MON[(now + wait) % 12]}${fit.respect ? ` — a set alongside needs respect ${fit.respect}` : ''}. It does not start until they say how.`;
+    // Say WHY there is no room — the exclusive set, the third slot, the standing — not only until when.
+    // Maxi: "my second slot is open and the paper still says they wait" — his set was exclusive.
+    const why = fit.respect ? ` — a set alongside needs respect ${fit.respect}` : /exclusive/i.test(fit.why || '') ? ` — "${until.title}" is exclusive: nothing alongside it, whatever your standing` : /most anyone/.test(fit.why || '') ? ' — three sets at once is the most anyone can do' : '';
+    sched.text = `They need you from ${MON[need % 12]} ${Math.floor(need / 12)}. You are on "${until.title}" until ${MON[(now + wait) % 12]}${why}. It does not start until they say how.`;
     sched.value = { months: o.months || 1, start: need };
     sched.must = true;
     // Your own show's next season is written around you: the network schedules, it does not ask.
@@ -168,6 +171,36 @@ export function markClause(s, id, clauseId, askId) {
   if (!askId) { c.stance = 'ok'; c.ask = null; return s; }
   if (!c.options.some((op) => op.id === askId)) return s;
   c.stance = 'talk'; c.ask = askId;
+  return s;
+}
+// Your own month. Maxi: "if the set is exclusive you should be able to propose your month by
+// clicking the calendar, send it, and they decide." Any month from the first you could
+// start; the further past the date they wanted, the longer the odds, and a name is waited
+// for (holdOdds). On a set with no room a no means they cast somebody else — the same
+// deal as asking them to hold it; when you are free and simply want a later start, a no
+// means the date stands.
+export function earliestStart(s, o) {
+  const now = (s.year || 0) * 12 + (s.month || 0);
+  const fit = canTakeSet(s, o);
+  return now + 1 + (fit.ok ? 0 : monthsUntilFree(s, o));
+}
+export function proposeStart(s, id, month) {
+  const o = (s.offers || []).find((x) => x.id === id); if (!o) return s;
+  const k = draftContract(s, o);
+  if (k.sent || o.signed) return s;
+  const c = k.clauses.find((x) => x.id === 'schedule'); if (!c) return s;
+  const now = (s.year || 0) * 12 + (s.month || 0);
+  const first = earliestStart(s, o);
+  if (month < first) { s.lastEvent = `You are not free until ${MON[first % 12]} ${Math.floor(first / 12)}. Pick a month from there.`; return s; }
+  const want = (o.startAt || 0) > now + 1 ? o.startAt : now + 1;   // when they wanted you
+  const delay = Math.max(0, month - want);
+  const fit = canTakeSet(s, o);
+  const until = fit.ok ? null : (fit.until || s.production);
+  const odds = delay === 0 ? 100 : holdOdds(delay, s);
+  const op = { id: 'propose', label: `Start in ${MON[month % 12]} ${Math.floor(month / 12)} — your month${delay ? ` (${delay} past their date)` : ''}`, value: { months: o.months || 1, start: month, after: until ? until.title : (delay ? 'your own date' : undefined) }, odds, sure: odds >= 100, walkOnNo: !!c.must };
+  c.options = [...c.options.filter((x) => x.id !== 'propose'), op];
+  c.stance = 'talk'; c.ask = 'propose';
+  s.lastEvent = `You proposed ${MON[month % 12]} ${Math.floor(month / 12)}. Send the paper back and they answer next month.`;
   return s;
 }
 export function openTalks(o) { return ((o.contract && o.contract.clauses) || []).filter((c) => c.stance === 'talk'); }
@@ -259,7 +292,7 @@ export function contractsTick(s) {
 }
 function textFor(c, o) {
   if (c.id === 'fee') return c.perEpisode ? `${money(c.value)} an episode, ${c.episodes} episodes — ${money(c.value * c.episodes)}` : `${money(c.value)} for the picture, paid across the shoot`;
-  if (c.id === 'schedule') return `${c.value.months} month${c.value.months === 1 ? '' : 's'} of shooting, from ${MON[c.value.start % 12]} ${Math.floor(c.value.start / 12)}${c.value.after ? ` — after "${c.value.after}" wraps` : ''}`;
+  if (c.id === 'schedule') return `${c.value.months} month${c.value.months === 1 ? '' : 's'} of shooting, from ${MON[c.value.start % 12]} ${Math.floor(c.value.start / 12)}${c.value.after === 'your own date' ? ' — the month you asked for' : c.value.after ? ` — after "${c.value.after}" wraps` : ''}`;
   if (c.id === 'exclusive') return c.value ? 'Nothing else while you shoot — not a day, not a voice session' : 'A day’s work alongside is fine with them';
   if (c.id === 'prep') return `${c.value} month${c.value === 1 ? '' : 's'} before the first day — the body, the accent, the stunts`;
   if (c.id === 'backend') return `${c.value}% of the gross past break-even`;

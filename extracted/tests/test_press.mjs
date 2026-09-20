@@ -1,6 +1,6 @@
 import { piecesFor, pressTick, answerPiece, pressUnread } from '../src/systems/meta/press.js';
 import { laterOffersTick, SEQUEL_LEAD } from '../src/systems/career/franchise.js';
-import { draftContract, signContract } from '../src/systems/career/contract.js';
+import { draftContract, signContract, proposeStart, earliestStart, sendContract, contractsTick } from '../src/systems/career/contract.js';
 
 let fails = 0;
 const ok = (n, c, e = '') => { if (!c) { fails++; console.log('FAIL  ' + n + (e ? ' :: ' + e : '')); } else console.log('ok    ' + n); };
