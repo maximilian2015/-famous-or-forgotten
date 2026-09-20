@@ -254,13 +254,13 @@ function open(s, rel) {
     rating: rel.rating, status: rel.status, year: s.year, season: rel.season,
     part: rel.part > 1 ? rel.part : 0, episodes: rel.episodes,
     // In cinemas. Everything below is provisional until runTick closes it.
-    running: true, weeks: 0, weeksTotal: runWeeks(rel, verdict),
+    running: true, weeks: 0, weeksTotal: runWeeks(rel, verdict), openedAt: (s.year || 0) * 12 + (s.month || 0),
     boxOffice: 0, viewers: rel.viewers || 0, verdict: 'in cinemas', score: null,
     // Carried for the Asker season: what kind of thing it was, and whether it was pushed.
     scale: rel.scale, tier: rel.tier, prestigeScore: rel.prestigeScore, director: rel.director || null,
     premise: rel.premise || null, take: rel.take || null,
     campaignShare: rel.campaign ? 0.65 : 0,
-    with: rel.with || null, withId: rel.withId || null, withIcon: !!rel.withIcon,
+    with: rel.with || null, withId: rel.withId || null, withIcon: !!rel.withIcon, withFame: rel.withFame || 0,
     festival: fest,
   };
   const bucket = s.dream === 'singer' ? 'discography' : 'filmography';
@@ -368,6 +368,11 @@ export function runTick(s) {
     const c = shelf.find((x) => x.id === id);
     if (!c) continue;                       // the credit is gone; nothing left to finish
     const r = c._rel || {};
+    // Opening night and the verdict are never the same evening. A three-week flop used to open
+    // and close in one tick — the premiere and the numbers back to back on the same screen.
+    // Maxi: "the premiere window and then the score straight away — is that a bug?" The run
+    // counts from the month after it opens.
+    if (c.openedAt === (s.year || 0) * 12 + (s.month || 0)) { still.push(id); continue; }
     c.weeks = Math.min(c.weeksTotal, (c.weeks || 0) + 4);
     const share = c.weeks / Math.max(1, c.weeksTotal);
     // Front-loaded, the way opening weekends are: most of it lands early.
@@ -383,6 +388,7 @@ export function runTick(s) {
 function closeRun(s, credit, r) {
   credit.running = false;
   credit.closedAt = (s.year || 0) * 12 + (s.month || 0);   // so the phone knows somebody saw it this month
+  credit.meterAtClose = r.meter || 0;                        // the papers ask whose film it was (meta/press.js)
   delete credit._rel;
   credit.boxOffice = r.finalGross || 0;
   // Belt and braces. `r` comes off the credit and is gone the moment a run closes, so if

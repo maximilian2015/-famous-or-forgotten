@@ -11,6 +11,8 @@ import { chance, rint } from '../../engine/rng.js';
 import { addTimeline } from '../../engine/timeline.js';
 import { setFame, setRespect } from './status.js';
 import { OUTLETS } from '../world/names.js';
+import { slotNorm } from '../career/franchise.js';
+import { budgetFor } from '../career/release.js';
 
 const MON = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
 const clamp = (v) => Math.max(0, Math.min(100, v));
@@ -88,6 +90,128 @@ export function piecesFor(s, lines) {
   return out.sort((a, b) => rank[a.tone] - rank[b.tone]).slice(0, 3);
 }
 
+// ── the run, while it runs ────────────────────────────────────────────────────
+// Maxi: "your film came out — and in the News you can find how it was received, what the
+// critics say, what people want, what the producers think; for a series, whether there is
+// a continuation, whether they are looking for money, whether there are problems; a
+// blockbuster where they praise the other actor and not you." Written off the credit while
+// it is in front of people: the first reviews the month it opens, the numbers a month in,
+// the network's mood for television, and at the close who the piece decides the film
+// belonged to.
+function runPieces(s) {
+  const out = [];
+  const name = s.name || 'you', fn = first(s);
+  const add = (tone, head, body, extra = {}) => out.push({ tone, head, body, ...extra });
+  const now = stamp(s);
+  for (const c of s.filmography || []) {
+    if (!c.running) continue;
+    c._press = c._press || {};
+    const weeks = c.weeks || 0, r = c.rating || 0, film = !c.tv;
+    // the month it opened: the first reviews, and what the crowd is in the mood for
+    if (!c._press.open) {
+      c._press.open = now;
+      if (film && (s.fame || 0) >= 12) {
+        const crit = r >= 80 ? `The first reviews of "${c.title}" are raves — the word "career-best" appears twice before the second paragraph, and both times it is about ${fn}.`
+          : r >= 65 ? `The first reviews of "${c.title}" are warm. Solid, well made, "a film that knows what it is" — and a paragraph on ${name} that the studio will be quoting on the poster by Friday.`
+          : r >= 50 ? `The first reviews of "${c.title}" are mixed: respectable in one paper, forgettable in the next. ${name} is "fine", which is the word critics use when they have nothing to say.`
+          : `The first reviews of "${c.title}" are unkind. One of them uses the phrase "what were they thinking", and the industry reads the reviews too.`;
+        const want = c.genre === hotGenreOf(s) ? `The Friday crowd wants ${String(c.genre).toLowerCase()} this month, which is the wind at its back.` : `The Friday crowd wants ${hotGenreOf(s).toLowerCase()} this month; a ${String(c.genre || 'drama').toLowerCase()} has a fight on its hands.`;
+        add(r >= 65 ? 'praise' : r >= 50 ? 'news' : 'pan', r >= 65 ? `First reviews: "${c.title}" lands` : r >= 50 ? `First reviews: "${c.title}" divides` : `First reviews: "${c.title}" gets a kicking`, `${crit} ${want}`, { about: c.title, kind: 'you', react: r < 50 });
+      } else if (!film && (s.fame || 0) >= 12 && c.scale !== 'episode') {
+        add('news', `"${c.title}": the first night's numbers`, `${c.viewers || 0}m watched the first episode against the ${slotNormOf(c.type)}m the slot wants. ${(c.viewers || 0) >= slotNormOf(c.type) ? 'The network is pleased, in the way a network is pleased: quietly, and with a memo.' : (c.viewers || 0) >= slotNormOf(c.type) * 0.7 ? 'Soft. Not a disaster — the kind of number that makes a network wait a week before saying anything.' : 'Well under. Somebody at the network has already started a conversation about the slot.'}`, { about: c.title, kind: 'you' });
+      }
+    }
+    // a month in: the producers' number, or the network's mood
+    else if (!c._press.mid && weeks >= 4 && weeks < (c.weeksTotal || 8)) {
+      c._press.mid = now;
+      if (film && (s.fame || 0) >= 15 && c.scale !== 'small') {
+        const bud = budgetFor({ scale: c.scale }) || 1;
+        const share = Math.min(1, weeks / Math.max(1, c.weeksTotal || 8));
+        const pace = (c.boxOffice || 0) / (bud * 2.2 * Math.max(0.2, Math.pow(share, 0.55)));
+        add(pace >= 1.4 ? 'praise' : pace >= 0.8 ? 'news' : 'pan', pace >= 1.4 ? `"${c.title}" is ahead of the studio's numbers` : pace >= 0.8 ? `"${c.title}": on track, the studio says` : `"${c.title}" is soft, and the studio knows it`,
+          pace >= 1.4 ? `€${(c.boxOffice / 1e6).toFixed(1)}m so far on a €${(bud / 1e6).toFixed(0)}m picture, and a producer quoted "thrilled" without being asked. The word sequel is not in the piece, and it is in the piece.`
+          : pace >= 0.8 ? `€${(c.boxOffice / 1e6).toFixed(1)}m so far against a €${(bud / 1e6).toFixed(0)}m budget. Nobody is thrilled and nobody is worried, which is where most films live.`
+          : `€${(c.boxOffice / 1e6).toFixed(1)}m so far on a €${(bud / 1e6).toFixed(0)}m picture. A producer says "we are proud of the film", which is what producers say about films that are losing money.`, { about: c.title, kind: 'you' });
+      } else if (!film && c.scale !== 'episode' && (s.fame || 0) >= 12) {
+        const pull = (c.viewers || 0) / slotNormOf(c.type);
+        const soap = c.type === 'Soap Opera';
+        add(pull >= 1 ? 'news' : 'pan', pull >= 1.2 ? `Renewal talk around "${c.title}"` : pull >= 0.8 ? `"${c.title}": holding` : `Is "${c.title}" in trouble?`,
+          pull >= 1.2 ? `${c.viewers}m an episode and climbing. Insiders say the network is already talking about ${c.season ? `season ${(c.season || 1) + 1}` : 'another season'} — and about the cast's money, which is the other half of that conversation.`
+          : pull >= 0.8 ? `${c.viewers}m an episode against a ${slotNormOf(c.type)}m slot. ${soap ? 'A soap is a habit, and this one is holding its habit.' : 'Enough to come back, not enough to be sure of it. The network will decide on the finale.'}`
+          : `${c.viewers}m against a ${slotNormOf(c.type)}m slot, and the piece has a source at the network who "would not rule anything out" — which rules something in. ${soap ? 'The writers are being asked about exits.' : 'A move to a later slot, a shorter order, or the end.'}`, { about: c.title, kind: 'you', react: pull < 0.8 });
+      }
+    }
+  }
+  // At the close: whose film it was. A name on the poster next to yours can take the piece.
+  for (const c of s.filmography || []) {
+    if (c.running || c._press?.close || c.closedAt !== now) continue;
+    c._press = c._press || {}; c._press.close = now;
+    if (c.with && (c.rating || 0) >= 55 && (c.withFame || 0) > (s.fame || 0) + 10 && chance(60)) {
+      const carried = (c.meterAtClose || 0) >= 85;
+      add(carried ? 'praise' : 'news', carried ? `${name} steals "${c.title}" from ${c.with}` : `${c.with} carries "${c.title}". ${name} is fine.`,
+        carried ? `The bigger name is on the poster and the piece is about the smaller one: "the only reason to see it", it says, and it means you.` : `Two paragraphs on ${c.with}, a photograph of ${c.with}, and one line on ${name}: "fine". You were in the same film. The piece did not notice.`, { about: c.title, kind: 'you', react: !carried });
+    }
+  }
+  return out;
+}
+// ── the set, while you are on it ─────────────────────────────────────────────
+// Money that wobbles and sets that go cold get written about before the film exists.
+function setPieces(s) {
+  const out = [];
+  const name = s.name || 'you';
+  for (const p of (s.productions && s.productions.length ? s.productions : (s.production ? [s.production] : []))) {
+    p._press = p._press || {};
+    if (!p._press.money && (p.stability ?? 80) < 55 && (p.monthsLeft || 0) >= 1 && chance(30) && (s.fame || 0) >= 10) {
+      p._press.money = true;
+      out.push({ tone: 'news', head: `Money trouble on "${p.title}"?`, body: `A financier is "reviewing their position", the piece says, which is what financiers say the week before they leave. The production says everything is fine. ${name} is on the call sheet Monday either way.`, about: p.title, kind: 'you' });
+    }
+    const lead = (p.crew || [])[0];
+    if (!p._press.cold && lead && (lead.bond || 0) < 30 && (p.meter || 0) < 35 && (p.months || 0) - (p.monthsLeft || 0) >= 2 && chance(35) && (s.fame || 0) >= 20) {
+      p._press.cold = true;
+      out.push({ tone: 'gossip', head: `A difficult set: "${p.title}"`, body: `Somebody on the crew is talking. The director "has concerns", the schedule is "tight", and the piece manages to put ${name}'s name next to the word "tension" three times without saying anything at all.`, about: p.title, kind: 'you', react: true });
+    }
+  }
+  return out;
+}
+// ── the business ──────────────────────────────────────────────────────────────
+// Maxi: "and about your rivals — you can find out how they are doing." One a month, at most:
+// somebody near your rank and what they just did, a retirement, a death, the year's lists.
+function worldPieces(s) {
+  const out = [];
+  const w = s.world; if (!w || !w.actors) return out;
+  const year = s.year || 0;
+  s._pressWorld = s._pressWorld || { retired: [], died: [], credits: [] };
+  const seen = s._pressWorld;
+  for (const a of w.actors) {
+    if (a.died && !a.alive && !seen.died.includes(a.id)) { seen.died.push(a.id); if ((a.fame || 0) >= 40 || a.icon) out.push({ tone: 'news', head: `${a.name}, ${year - a.born}`, body: `${a.icon ? 'An icon' : 'A name'} of the business, ${(a.credits || []).length} films, ${a.askers ? `${a.askers} Asker${a.askers > 1 ? 's' : ''}` : 'never an Asker'}. The obituaries use the word "generation". Half of them get the films wrong.`, kind: 'biz' }); }
+    else if (a.retired && a.alive && !seen.retired.includes(a.id)) { seen.retired.push(a.id); if ((a.fame || 0) >= 45 || a.icon) out.push({ tone: 'news', head: `${a.name} steps away at ${year - a.born}`, body: `"For now", the statement says. ${a.icon ? 'An icon, and a chair that is now empty.' : `Rank #${a.rank || '—'} when the phone stopped ringing.`} The piece is kind, and it is written in the past tense.`, kind: 'biz' }); }
+  }
+  if (seen.retired.length > 80) seen.retired = seen.retired.slice(-40);
+  if (seen.died.length > 80) seen.died = seen.died.slice(-40);
+  if (out.length) return out.slice(0, 1);
+  // Somebody near you and what they made. The world's films are credited in January for the
+  // year before, so this is a piece about last year's picture — the trades are always late.
+  const you = (w.rank && w.rank.you) || 999;
+  const near = w.actors.filter((a) => a.alive && !a.retired && Math.abs((a.rank || 999) - you) <= 6 && (a.credits || []).some((c) => c.year >= year - 1 && !seen.credits.includes(a.id + '|' + c.title)));
+  if (near.length && chance(55)) {
+    const a = pick(near);
+    const c = (a.credits || []).filter((x) => x.year >= year - 1 && !seen.credits.includes(a.id + '|' + x.title)).sort((p, q) => (q.gross || 0) - (p.gross || 0))[0];
+    seen.credits.push(a.id + '|' + c.title); if (seen.credits.length > 120) seen.credits = seen.credits.slice(-60);
+    const g = (c.gross || 0) / 1e6;
+    const above = (a.rank || 999) < you;
+    const head = g >= 150 ? `${a.name}'s "${c.title}" takes €${g.toFixed(0)}m` : (c.rating || 0) >= 82 ? `${a.name}: the best reviews of the year for "${c.title}"` : (c.rating || 0) < 45 ? `${a.name} stumbles with "${c.title}"` : `${a.name} in "${c.title}": what the business made of it`;
+    const body = g >= 150 ? `${above ? 'The name above yours on the list' : 'A name a few places below you'} just had the year. The piece is about the money and it uses the word "bankable", which is the word you want said about you.`
+      : (c.rating || 0) >= 82 ? `${above ? 'Rank #' + a.rank + ', and climbing' : 'Rank #' + a.rank + ', and coming up behind you'}: the critics' darling this season. Your name is in the piece once, in a list of "the others".`
+      : (c.rating || 0) < 45 ? `€${g.toFixed(1)}m and reviews to match. ${above ? 'A chair above yours just got a little less certain.' : 'The piece wonders, politely, whether the moment has passed.'}`
+      : `€${g.toFixed(1)}m, ${((c.rating || 0) / 10).toFixed(1)}/10, and a paragraph on who is next for the studio. ${above ? 'They are ahead of you on the list, and this did not move them.' : 'They are behind you on the list, and this did not move them either.'}`;
+    out.push({ tone: 'news', head, body, kind: 'biz', rival: a.id });
+  }
+  return out.slice(0, 1);
+}
+// hotGenre and slotNorm without importing the world into the papers twice.
+function hotGenreOf(s) { const G = ['Drama', 'Thriller', 'Comedy', 'Sci-Fi', 'Romance', 'Horror', 'Musical', 'Crime']; return G[((s.year || 2026) * 12 + (s.month || 0)) % G.length]; }
+function slotNormOf(type) { return slotNorm(type); }
+
 // Monthly, at the end of the tick, after everything that writes to the timeline.
 export function pressTick(s) {
   // The month just lived and the one before it: what you did is stamped with the old month
@@ -97,10 +221,12 @@ export function pressTick(s) {
   const keys = new Set([`${MON[now % 12]} ${Math.floor(now / 12)}`, `${MON[((prev % 12) + 12) % 12]} ${Math.floor(prev / 12)}`]);
   const done = new Set(s._pressDone || []);
   const lines = (s.timeline || []).filter((e) => keys.has(e.when) && !done.has(e.when + '|' + e.text)).map((e) => e.text);
-  const pieces = piecesFor(s, lines).map((p, i) => ({ id: `pr${now}_${i}`, at: now, outlet: outletFor(p.tone), acted: false, ...p }));
+  // What happened (three at most), the run and the set (two), and the business (one).
+  const raw = [...piecesFor(s, lines).map((p) => ({ kind: 'you', ...p })), ...runPieces(s).slice(0, 2), ...setPieces(s).slice(0, 1), ...worldPieces(s)];
+  const pieces = raw.map((p, i) => ({ id: `pr${now}_${i}`, at: now, outlet: outletFor(p.tone), acted: false, ...p }));
   s._pressDone = [...(s.timeline || []).filter((e) => keys.has(e.when)).map((e) => e.when + '|' + e.text), ...(s._pressDone || [])].slice(0, 60);
   s._pressScandal = s.scandal || 0;
-  if (pieces.length) s.press = [...pieces, ...(s.press || [])].slice(0, 14);
+  if (pieces.length) s.press = [...pieces, ...(s.press || [])].slice(0, 30);
   return s;
 }
 export function pressThisMonth(s) { const now = stamp(s); return (s.press || []).filter((p) => p.at === now); }

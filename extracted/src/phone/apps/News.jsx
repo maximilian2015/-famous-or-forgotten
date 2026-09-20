@@ -1,4 +1,4 @@
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import { theme } from '../../ui/theme.js';
 import { dispatch } from '../../state/store.js';
 import { hotGenre } from '../../systems/meta/news.js';
@@ -18,12 +18,18 @@ export function News({ g }) {
   const genre = hotGenre(g);
   const now = (g.year || 0) * 12 + (g.month || 0);
   useEffect(() => { dispatch(markPressSeen); }, [now]);
-  const press = g.press || [];
+  const [tab, setTab] = useState('you');
+  const all = g.press || [];
+  const press = all.filter((p) => (tab === 'biz') === (p.kind === 'biz'));
+  const bizNew = all.filter((p) => p.kind === 'biz' && p.at === now && !p.seen).length, youNew = all.filter((p) => p.kind !== 'biz' && p.at === now && !p.seen).length;
   const item = (title, body, chip, chipCol) => (<div style={{ background: theme.panel, borderRadius: 12, padding: '10px 12px', marginBottom: 8 }}><div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline' }}><div style={{ fontSize: 13.5, fontWeight: 800 }}>{title}</div>{chip && <div style={{ fontSize: 10.5, fontWeight: 900, color: chipCol || theme.gold }}>{chip}</div>}</div><div style={{ fontSize: 11.5, color: theme.muted, marginTop: 4, lineHeight: 1.5 }}>{body}</div></div>);
   let lastMonth = null;
   return (<div>
     {item(`📈 ${genre} is what everyone wants`, `Studios are chasing ${genre.toLowerCase()} this month. Projects in a hot genre land harder — and the window closes fast.`, 'TREND', theme.gold)}
-    {!press.length && item('Nobody is writing about you', (g.filmography || []).length ? 'Not this month. A picture opening, a season ending, a night out — that is what gets a piece written.' : 'Not an insult — a starting position. Credits first, coverage after.')}
+    {/* Two papers: the ones about you, and the ones about everybody else. Maxi: "and about your rivals — how are they doing?" */}
+    <div style={{ display: 'flex', gap: 6, marginBottom: 8 }}>{[['you', 'About you', youNew], ['biz', 'The business', bizNew]].map(([id, label, n]) => (<button key={id} onClick={() => setTab(id)} style={{ flex: 1, border: 'none', borderRadius: 10, padding: '8px 4px', fontSize: 12, fontWeight: 800, cursor: 'pointer', background: tab === id ? `linear-gradient(135deg,${theme.accent2},${theme.accent})` : 'rgba(158,116,255,.16)', color: tab === id ? '#fff' : '#d9cffa' }}>{label}{n ? ` · ${n}` : ''}</button>))}</div>
+    {!press.length && tab === 'you' && item('Nobody is writing about you', (g.filmography || []).length ? 'Not this month. A picture opening, a season ending, a night out — that is what gets a piece written.' : 'Not an insult — a starting position. Credits first, coverage after.')}
+    {!press.length && tab === 'biz' && item('A quiet month in the trades', 'Somebody near you on the list will do something soon. They always do.')}
     {press.map((p) => {
       const t = TONE[p.tone] || TONE.news;
       const head = p.at !== lastMonth ? (lastMonth = p.at, <div key={'m' + p.at} style={{ fontSize: 10.5, fontWeight: 900, letterSpacing: '.09em', textTransform: 'uppercase', color: theme.muted, margin: '10px 2px 6px' }}>{p.at === now ? 'This month' : p.at === now - 1 ? 'Last month' : monthLabel(p.at)}</div>) : null;

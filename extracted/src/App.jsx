@@ -20,6 +20,7 @@ import { COST, canAfford } from './engine/energy.js';
 import { EnergyBar } from './ui/components/EnergyBar.jsx';
 import { FAVOURS, FAVOUR_ORDER, canUse, costOf, asksLeft, ASKS_A_YEAR, canSmooth, smoothOver, canPushSequel, pushSequel, vouchFor, canOpenShelf, openShelf } from './systems/career/favours.js';
 import { sequelDue } from './systems/career/franchise.js';
+import { knownFor, isHit, isFlop } from './systems/meta/knownFor.js';
 import { addPrestigeListing } from './systems/career/castings.js';
 import { TimingBar } from './ui/components/TimingBar.jsx';
 import { GridRisk } from './ui/components/GridRisk.jsx';
@@ -130,6 +131,8 @@ export default function App() {
             <div style={{ fontSize: 10, color: theme.accent, marginTop: 2, opacity: .75 }}>
               {companionOf(g) ? `with ${companionOf(g).person.name.split(' ')[0]} · ${companionOf(g).married ? 'married' : 'together'}` : g.city}
             </div>
+            {/* The film next to your name — the latest hit, and it changes when there is a new one. */}
+            {(() => { const k = inCareer(g) ? knownFor(g) : null; return k ? <div style={{ fontSize: 10, color: k.hit ? theme.gold : theme.muted, marginTop: 2, fontWeight: 700 }}>{k.hit ? '★ ' : ''}Known for "{k.title}" · {k.why}</div> : null; })()}
           </div>
         </div>
         <div style={{ textAlign: 'right' }}>
@@ -2075,7 +2078,9 @@ function CreditRow({ group, g }) {
   const yearEntry = g.world && g.world.years && g.world.years[c.year];
   const ranked = yearEntry && yearEntry.films.find((f) => f.you && f.title === c.title);
   const stars = (r / 10).toFixed(1).replace('.', ',');
-  const hit = r >= 85 || group.worldHit;
+  // Framed the way the business remembers them: a hit in gold, a flop in red, the rest plain.
+  const hit = isHit(c) || group.worldHit;
+  const flop = !hit && isFlop(c);
   const starCol = group.worldHit ? theme.gold : r >= 85 ? theme.good : r >= 60 ? theme.gold : theme.muted;
   const tv = !!(c.season || group.series);
   const kind = tv ? 'TV Series' : c.type || 'Feature Film';
@@ -2083,8 +2088,8 @@ function CreditRow({ group, g }) {
   const eps = tv ? (group.episodes || c.episodes || 0) : 0;
   return (<div style={{ display: 'flex', gap: 12, padding: '11px 10px', borderRadius: 12, marginBottom: 6,
     background: group.worldHit ? 'linear-gradient(100deg, rgba(255,209,102,.16), rgba(255,209,102,.04))'
-      : hit ? 'rgba(95,206,138,.09)' : 'transparent',
-    border: `1px solid ${group.worldHit ? 'rgba(255,209,102,.45)' : hit ? 'rgba(95,206,138,.28)' : theme.line}` }}>
+      : hit ? 'linear-gradient(100deg, rgba(255,209,102,.10), rgba(255,209,102,.02))' : flop ? 'rgba(255,106,138,.05)' : 'transparent',
+    border: `${hit || group.worldHit ? '1.5px' : '1px'} solid ${group.worldHit ? 'rgba(255,209,102,.6)' : hit ? 'rgba(255,209,102,.45)' : flop ? 'rgba(255,106,138,.3)' : theme.line}` }}>
     <Poster title={group.root} type={c.type} genre={c.genre} director={c.director} tall size={56} />
     <div style={{ flex: 1, minWidth: 0 }}>
       <div style={{ fontSize: 15, fontWeight: 800, lineHeight: 1.2 }}>{group.root}</div>
@@ -2118,10 +2123,10 @@ function CreditRow({ group, g }) {
           ◆ Push for a sequel · −{costOf(g, 'sequel')} standing
         </button>); })()}
       {/* the marks that never come off, and what it made */}
-      {(group.worldHit || r >= 85 || group.askers > 0 || c.comeback > 0 || group.boxOffice > 0 || group.viewers > 0 || c.festival) && (
+      {(group.worldHit || hit || group.askers > 0 || c.comeback > 0 || group.boxOffice > 0 || group.viewers > 0 || c.festival) && (
         <div style={{ fontSize: 10.5, marginTop: 5, display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
           {group.worldHit ? <span style={{ fontWeight: 900, color: theme.gold }}>🌍 WORLD HIT</span>
-            : r >= 85 ? <span style={{ fontWeight: 900, letterSpacing: '.06em', color: theme.good }}>HIT</span> : null}
+            : hit ? <span style={{ fontWeight: 900, letterSpacing: '.06em', color: theme.gold }}>★ HIT</span> : null}
           {/* Where it screened, and what happened there. See release.js, the festival. */}
           {c.festival && <span style={{ fontWeight: 900, letterSpacing: '.06em', color: c.festival.result === 'prize' ? theme.gold : c.festival.result === 'sold' ? theme.good : theme.muted }}>
             🎞️ {String(c.festival.name).replace(/^the /, '').toUpperCase()} · {c.festival.result === 'prize' ? 'PRIZE' : c.festival.result === 'sold' ? 'SOLD' : 'NO BUYER'}</span>}
