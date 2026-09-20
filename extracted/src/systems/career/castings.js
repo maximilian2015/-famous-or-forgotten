@@ -142,6 +142,12 @@ const SCALE_MONEY = { small: 0.16, festival: 0.45 };
 // spot is by definition on somebody else's running show. A new show is the rarer thing, and
 // the bigger gamble: nobody knows if anyone will watch, and if they do it is yours from the
 // pilot. An established show comes with an audience you can read off the listing.
+// Months of shooting per episode ordered, by format, and the least a season takes.
+export const TV_PACE = { 'Soap Opera': 0.09, 'Network Drama': 0.38, 'Prestige Series': 0.5, 'Talent Series': 0.3, 'Music Show': 0.3 };
+export function tvMonths(type, scale, episodes) {
+  const pace = TV_PACE[type] || (scale === 'prestige' ? 0.5 : 0.38);
+  return Math.max(2, Math.min(10, Math.round(1 + episodes * pace)));
+}
 export function seasonFor(type, scale) {
   const cap = seasonCap(type);
   if (scale === 'episode') return rint(2, Math.max(2, Math.min(cap - 1, 9)));      // always somebody else's show
@@ -269,7 +275,11 @@ export function refreshCastingPool(s, force, extra = 0) {
     const episodes = perEpisode ? rint(eps[0], eps[1]) : 0;
     // A guest spot shoots for as long as its episodes take: one or two is a week or so
     // inside a month, three or four is two.
-    const months = scale === 'episode' ? (episodes <= 2 ? 1 : 2) : rint(span[0], span[1]);
+    // Television shoots by the episode, so the months follow the order. Maxi: "do they really
+    // shoot a series that long?" — ten episodes took eight months because the months were a
+    // range of their own. A network hour is eight to ten days a piece; a soap does one a day;
+    // prestige is slower and dearer. See TV_PACE.
+    const months = scale === 'episode' ? (episodes <= 2 ? 1 : 2) : perEpisode ? tvMonths(type, scale, episodes) : rint(span[0], span[1]);
     // How solid the money behind this one is, and what they have to pay to make you
     // take that on. The player sees both before signing — that is the whole point.
     // A job that is over by the evening cannot fall apart, so it is never priced as if
