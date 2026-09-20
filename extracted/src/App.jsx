@@ -2099,7 +2099,7 @@ function CreditRow({ group, g }) {
   const ranked = yearEntry && yearEntry.films.find((f) => f.you && f.title === c.title);
   const stars = (r / 10).toFixed(1).replace('.', ',');
   // Framed the way the business remembers them: a hit in gold, a flop in red, the rest plain.
-  const hit = isHit(c) || group.worldHit;
+  const hit = isHit(c, g) || group.worldHit;
   const flop = !hit && isFlop(c);
   const starCol = group.worldHit ? theme.gold : r >= 85 ? theme.good : r >= 60 ? theme.gold : theme.muted;
   const tv = !!(c.season || group.series);

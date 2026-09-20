@@ -140,9 +140,17 @@ function sequelTitle(title, n) {
 // weekend, which is why beloved films die and stupid ones run five parts — the verdict
 // can rescue a mediocre picture and can bury a well-reviewed one that nobody bought.
 const SEQUEL_MONEY = { smash: 45, profitable: 18, 'broke even': -8, bomb: -55 };
-export function sequelOdds(rating, part, obliged, verdict = null) {
+// And what KIND of picture it was. Maxi: "if it is a success they shoot part two straight
+// away — in life not everyone gets a part two." A tentpole is built to continue; a studio
+// drama that made its money is left alone; nobody makes a sequel to a small picture. And
+// the genres that franchise are the ones you would guess — horror, sci-fi, thrillers,
+// comedy, crime — not a romance and not a musical.
+const SEQUEL_SCALE = { blockbuster: 1.2, feature: 0.7, indie: 0.35, small: 0.15, festival: 0 };
+const SEQUEL_GENRE = { Horror: 1.15, 'Sci-Fi': 1.1, Thriller: 1.05, Comedy: 1.0, Crime: 1.0, Drama: 0.5, Romance: 0.45, Musical: 0.4 };
+export function sequelOdds(rating, part, obliged, verdict = null, scale = null, genre = null) {
   if (obliged) return 100;
   if (part > 4) return 0;
+  const kind = (scale ? (SEQUEL_SCALE[scale] ?? 0.7) : 1) * (genre ? (SEQUEL_GENRE[genre] ?? 1) : 1);
   // MONEY first, and it is not close. A studio greenlights a sequel off what the last one
   // took; the reviews are a rounding error beside that. It is why beloved films die and
   // stupid ones run five parts, and it is the whole reason franchises exist at all.
@@ -156,7 +164,7 @@ export function sequelOdds(rating, part, obliged, verdict = null) {
     : verdict === 'broke even' ? 14 : verdict === 'bomb' ? 2
     : rating >= 92 ? 72 : rating >= 84 ? 52 : rating >= 78 ? 30 : rating >= 70 ? 9 : 0;
   const liked = rating >= 85 ? 10 : rating >= 72 ? 4 : rating >= 55 ? 0 : -10;
-  return Math.max(0, Math.min(92, base + liked - (part - 1) * 10));
+  return Math.max(0, Math.min(92, Math.round((base + liked) * kind) - (part - 1) * 10));
 }
 export function sequelRaise(part) { return part === 2 ? 1.6 : part === 3 ? 2.2 : 2.6; }
 
@@ -333,7 +341,7 @@ export function maybeContinue(s, credit, p, force = false) {
   }
 
   const obliged = !!p.optioned && part < (p.optionParts || 3);
-  const odds = sequelOdds(credit.rating, part, obliged, credit.verdict);
+  const odds = sequelOdds(credit.rating, part, obliged, credit.verdict, p.scale, p.genre);
   if (!force && !chance(odds)) return null;
   const nextPart = part + 1;
   const arc = p.arc || rollArc();

@@ -217,7 +217,7 @@ function studioCall(s, credit, festival) {
     offer: {
       id: uid(s, 'fest'), via: 'festival', kind: 'festival',
       projectTitle: newTitle(s, genre), role: 'Lead', type: 'Feature Film', genre,
-      salary: Math.round(quote * (0.8 + Math.random() * 0.3)), months: rint(4, 7), fame: 5,
+      salary: Math.round(quote * (0.8 + Math.random() * 0.3)), months: rint(3, 5), fame: 5,
       prestigeScore: rint(48, 72), tier: 'lead', scale: 'feature', stability: rint(78, 92), deadline: rint(2, 3),
       note: `They saw "${credit.title}" at ${festival}. Nobody at the studio has said the word "discovery" out loud, but it is in the email.`,
     },
@@ -426,7 +426,9 @@ function closeRun(s, credit, r) {
   const headroom = (cur) => {
     const f = cur || 0;
     if (f < 55) return 1 - f / 130;                 // the climb to Star is ordinary work
-    return Math.max(0.03, 0.577 * Math.pow(Math.max(0, (104 - f) / 49), 1.9));
+    // Steeper again once shoots became the length shoots are (a season, not a year): twice
+    // the credits a year put twenty-one of twenty-five perfect players on the Icon chair.
+    return Math.max(0.03, 0.577 * Math.pow(Math.max(0, (104 - f) / 49), 2.5));
   };
   // A comeback is a story, and the trades love a story. `credit.comeback` was a label on the
   // filmography and nothing else — a fallen name that landed something good got exactly what

@@ -279,7 +279,9 @@ function lifestyleTick(s) {
   s._belowMonths = (s._belowMonths || 0) + 1;
   const tier = fameTier(s.fame).id;
   const cost = tier === 'known' ? 0.25 : tier === 'star' ? 0.6 : 1;
-  setRespect(s, (s.respect || 0) - cost);
+  // It costs you the respect you have, not the respect you never had: this cannot make you
+  // the liability on its own. Below ten it stops taking, and the notes keep coming.
+  if ((s.respect || 0) > 10) setRespect(s, Math.max(10, (s.respect || 0) - cost));
   if (s._belowMonths === 3 || s._belowMonths % 12 === 0) addTimeline(s, tier === 'known' ? `A known face in a ${HOUSING[s.housing || 'room'].label.toLowerCase()}. The trades found it charming for a month. Now they find it odd.` : `A ${tier === 'star' ? 'star' : 'name'} in a ${HOUSING[s.housing || 'room'].label.toLowerCase()}. People who hire you notice where you live, and the photographers have the address.`, true);
   if (tier !== 'known' && chance(6)) { s.scandal = clamp((s.scandal || 0) + 3); addTimeline(s, 'A photographer outside your building. The piece is about the building.', true); }
 }

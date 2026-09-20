@@ -240,7 +240,7 @@ export function NightRoom({ g }) {
               <div style={{ fontSize: 10.5, color: theme.muted, textAlign: 'center', marginTop: 6 }}>{n.pending.kind === 'scene' ? 'Hit the mark dead centre. This is the only take.' : 'Beat by beat. Some beats fall flat. Stop while it still lands.'}</div>
             </div>)}
             {n.pending.id === 'pitch' && !pitch && (<>
-              <button onClick={() => setPitch({ genre: hotGenre(g), scale: 'indie', months: 4, title: '' })} style={btn('pri')}>Pitch them a picture</button>
+              <button onClick={() => setPitch({ genre: hotGenre(g), scale: 'indie', months: 3, title: '' })} style={btn('pri')}>Pitch them a picture</button>
               <button onClick={() => dispatch(skipPitch)} style={btn('')}>Talk about other things</button>
             </>)}
             {n.pending.id === 'pitch' && pitch && revivable(g).length > 0 && (<div style={{ display: 'grid', gap: 6, marginBottom: 4 }}>
@@ -262,7 +262,7 @@ export function NightRoom({ g }) {
               </div>
               <div style={{ display: 'flex', gap: 5, alignItems: 'center', fontSize: 11.5 }}>
                 <span style={{ color: theme.muted }}>Shooting</span>
-                {[3, 4, 6, 8, 10].map((m) => (<button key={m} onClick={() => setPitch({ ...pitch, months: m })} style={{ ...btn(pitch.months === m ? 'pri' : ''), padding: '5px 9px', fontSize: 11 }}>{m} mo</button>))}
+                {[2, 3, 4, 5, 6].map((m) => (<button key={m} onClick={() => setPitch({ ...pitch, months: m })} style={{ ...btn(pitch.months === m ? 'pri' : ''), padding: '5px 9px', fontSize: 11 }}>{m} mo</button>))}
               </div>
               <div style={{ fontSize: 11, color: theme.muted, lineHeight: 1.5 }}>{n.pending.who.split(' ')[0]} would say yes about <b style={{ color: theme.gold }}>{pitchOdds(g, n.pending.who, n.pending.weight, pitch.scale, pitch.genre)}%</b> of the time — their weight, your fame against the size of it, the genre people want this year, what the papers say about you.</div>
               <button onClick={() => { dispatch(sendPitch, pitch); setPitch(null); }} style={btn('pri')}>Pitch it</button>

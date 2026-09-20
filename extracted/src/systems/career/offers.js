@@ -35,7 +35,7 @@ export function generateOffer(s) {
     role: tier === 'supporting' ? 'Supporting' : 'Lead',
     type: s.dream === 'singer' ? (tier === 'tentpole' ? 'World Tour' : 'Album') : (tier === 'tentpole' ? 'Blockbuster' : 'Feature Film'),
     genre,
-    salary, months: rint(3, 8), fame: { tentpole: 9, lead: 5, supporting: 2 }[tier], prestigeScore: prestige, tier,
+    salary, months: tier === 'tentpole' ? rint(5, 8) : tier === 'lead' ? rint(3, 5) : rint(2, 3), fame: { tentpole: 9, lead: 5, supporting: 2 }[tier], prestigeScore: prestige, tier,
     // What kind of picture it is — decides the post-production wait and the box office it can take.
     scale: { tentpole: 'blockbuster', lead: 'feature', supporting: 'indie' }[tier],
     stability: rollStability({ tentpole: 'blockbuster', lead: 'feature', supporting: 'indie' }[tier]),
@@ -50,7 +50,7 @@ export function roomOffer(s, who) {
   const salary = Math.round(quote * (0.7 + Math.random() * 0.3));
   return { id: uid(s, 'off'), kind: 'room', via: 'partner', viaPartner: who.name,
     projectTitle: '⭐ ' + title(s, pick(GENRES)), role: 'Lead', type: s.dream === 'singer' ? 'World Tour' : 'Blockbuster',
-    genre: pick(GENRES), salary, months: rint(6, 11), fame: 9, prestigeScore: rint(60, 90), tier,
+    genre: pick(GENRES), salary, months: rint(5, 8), fame: 9, prestigeScore: rint(60, 90), tier,
     scale: 'blockbuster', stability: rollStability('blockbuster'), deadline: rint(2, 3),
     note: `${who.name.split(' ')[0]} got you in the room. Everybody on that set will know it — make it not matter.` };
 }

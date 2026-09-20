@@ -42,8 +42,8 @@ ok('one-off work is one month', range('oneoff')[1] === 1, JSON.stringify(range('
   const small = []; for (let i = 0; i < 30; i++) { refreshCastingPool(s, true); small.push(...s.castingPool.filter((c) => c.scale === 'small' && c.shelf === 'indie')); }
   ok('a horror victim is not paid like an indie lead', small.every((c) => c.salary < 40000), JSON.stringify(small.map((c) => c.salary).sort((a, b) => b - a).slice(0, 3)));
 }
-ok('a feature is half a year', range('feature')[0] >= 5 && range('feature')[1] <= 8, JSON.stringify(range('feature')));
-ok('a blockbuster can eat a year', range('blockbuster')[1] >= 12, JSON.stringify(range('blockbuster')));
+ok('a feature is a season of shooting, not a year', range('feature')[0] >= 2 && range('feature')[1] <= 5, JSON.stringify(range('feature')));
+ok('a blockbuster is the long one, five to eight', range('blockbuster')[0] >= 5 && range('blockbuster')[1] <= 8, JSON.stringify(range('blockbuster')));
 ok('lengths inside one scale vary', new Set(seen.feature).size > 1, [...new Set(seen.feature)].join(','));
 console.log('      shoot length by scale — ' + Object.keys(seen).sort().map((k) => `${k} ${range(k)[0]}-${range(k)[1]} mo`).join(', '));
 
@@ -70,7 +70,7 @@ function bookScale(scale) {
 const feature = bookScale('feature');
 ok('booking a feature starts a shoot', !!feature.production, JSON.stringify({ prod: !!feature.production, credits: feature.filmography.length }));
 ok('and does NOT hand you a finished credit', feature.filmography.length === 0);
-ok('the shoot has the right length', feature.production.monthsLeft === feature.production.months && feature.production.months >= 5);
+ok('the shoot has the right length', feature.production.monthsLeft === feature.production.months && feature.production.months >= 3);
 ok('the shoot has a crew', (feature.production.crew || []).length >= 3);
 ok('and the shoot begins once you accept', /Cameras roll/.test(feature.lastEvent), feature.lastEvent);
 const oneoff = bookScale('oneoff');

@@ -54,6 +54,9 @@ const clamp = (v) => Math.max(0, Math.min(100, v));
 //
 // tv:  [type, role, [minMo,maxMo], [minEps,maxEps], medium, scale, minFame, share]
 // film / indie / day: [type, role, [minMo,maxMo], medium, scale, minFame, share, maxFame]
+// Months are principal photography, the way it is: a studio picture two to four months, a
+// tentpole five to eight (and prep before it), an indie a month or two. Maxi: "fourteen
+// months?" — only Avatar. A supporting part is not there for the whole shoot.
 const POOLS = {
   actor: {
     tv: [
@@ -69,24 +72,24 @@ const POOLS = {
       ['Prestige Series', 'The matriarch', [6, 9], [6, 9], 'tv_prestige', 'prestige', 30, 0.8],
     ],
     film: [
-      ['Feature Film', 'Supporting', [5, 7], 'film_studio', 'feature', 18, 0.5],
-      ['Feature Film', 'Lead', [5, 8], 'film_studio', 'feature', 30],
-      ['Studio Blockbuster', 'Lead', [10, 14], 'film_tentpole', 'blockbuster', 70],
-      ['Feature Film', 'Elder statesman', [3, 6], 'film_studio', 'feature', 25, 0.55],
+      ['Feature Film', 'Supporting', [3, 4], 'film_studio', 'feature', 18, 0.5],
+      ['Feature Film', 'Lead', [3, 5], 'film_studio', 'feature', 30],
+      ['Studio Blockbuster', 'Lead', [5, 8], 'film_tentpole', 'blockbuster', 70],
+      ['Feature Film', 'Elder statesman', [2, 3], 'film_studio', 'feature', 25, 0.55],
     ],
     indie: [
       ['Short Film', 'Lead', [1, 2], 'film_indie', 'small', 0, 0.12, 42],
       ['Horror Movie', 'Victim', [1, 2], 'film_indie', 'small', 0, 0.3, 52],
-      ['Indie Film', 'Supporting', [2, 4], 'film_indie', 'indie', 0, 0.5],
-      ['Indie Film', 'Lead', [3, 5], 'film_indie', 'indie', 15],
+      ['Indie Film', 'Supporting', [2, 3], 'film_indie', 'indie', 0, 0.5],
+      ['Indie Film', 'Lead', [2, 4], 'film_indie', 'indie', 15],
       // The other way in. A festival picture pays nothing and nobody sees it — unless a jury
       // does. Maxi: "independent films that go to festivals are the real alternative; a nobody
       // can get in, and if it works there, you know what happens." See release.js, festivals.
       ['Festival Film', 'Lead', [2, 3], 'film_indie', 'festival', 0, 0.3],
       ['Festival Film', 'Supporting', [2, 3], 'film_indie', 'festival', 0, 0.18],
       // The late-career shelf: the parts that win things and do not sell tickets.
-      ['Prestige Drama', 'Character lead', [4, 7], 'film_indie', 'indie', 20, 1.6],
-      ['Indie Film', 'Grandparent', [2, 4], 'film_indie', 'indie', 0, 0.7],
+      ['Prestige Drama', 'Character lead', [3, 5], 'film_indie', 'indie', 20, 1.6],
+      ['Indie Film', 'Grandparent', [2, 3], 'film_indie', 'indie', 0, 0.7],
     ],
     // The eighth number is a CEILING. Nobody sends an A-lister a background call, and the
     // things that only start arriving once people know your face have to arrive from
@@ -111,7 +114,7 @@ const POOLS = {
     ],
     film: [
       ['Concert Film', 'Headliner', [2, 3], 'film_indie', 'feature', 30],
-      ['Stadium Tour', 'Headliner', [8, 12], 'film_tentpole', 'blockbuster', 70],
+      ['Stadium Tour', 'Headliner', [5, 8], 'film_tentpole', 'blockbuster', 70],
     ],
     indie: [['Music Video', 'Star', [1, 1], 'ad', 'oneoff', 0, 0.5]],
     day: [['Jingle', 'Voice', [1, 1], 'ad', 'oneoff', 0, 0.3], ['Brand Song', 'Artist', [1, 1], 'ad', 'oneoff'], ['Open Mic', 'Performer', [1, 1], 'gig', 'oneoff', 0, 0.4], ['Festival Slot', 'Act', [1, 1], 'gig', 'oneoff', 0, 3], ['Session Work', 'Session', [1, 1], 'gig', 'oneoff', 0, 1.5]],
