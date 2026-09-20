@@ -172,7 +172,10 @@ export function releaseTick(s) {
 // How long the thing is in front of people before anybody knows what it was. A film runs
 // for weeks and the number climbs every one of them; a season goes out and the audience
 // finds it. Opening night is not the verdict — it is the start of finding out.
-const RUN_WEEKS = { small: 3, indie: 6, festival: 5, feature: 11, blockbuster: 15, oneoff: 2,
+// Weeks in cinemas, the way it is: a studio picture six to eight, a tentpole eight, and the
+// legs below stretch a hit to twelve or thirteen. Maxi: "films are not in cinemas that long"
+// — a smash used to run twenty-four weeks, half a year on the calendar.
+const RUN_WEEKS = { small: 2, indie: 4, festival: 4, feature: 6, blockbuster: 8, oneoff: 2,
   episode: 6, recurring: 12, prestige: 10 };
 // Legs. A picture people love stays up half again as long; one nobody wants is pulled in
 // a fortnight to make room. Maxi: "if it is a success it is in cinemas longer, right?"
