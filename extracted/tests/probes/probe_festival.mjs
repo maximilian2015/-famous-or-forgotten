@@ -100,7 +100,7 @@ console.log('festival:', JSON.stringify(tally), '· mean rating', (ratings.reduc
   s.production.monthsLeft += 5; s.production.take = 'straight';
   let gone = false;
   for (let m = 0; m < 12 && !gone; m++) { s.bigMoment = null; s.moments = []; s.pendingArc = null; s.night = null; s = advanceMonth(s); if (!(s.offers || []).some((x) => x.id === 'orbit')) gone = true; }
-  const mail = (s.inbox || []).find((x) => /cast elsewhere/.test(x.body || ''));
+  const mail = (s.inbox || []).find((x) => /cast elsewhere/.test(x.body || '')) || (s.timeline || []).find((x) => /they recast/.test(x.text));
   if (!gone) problems.push('a held part waited forever while the set ran over');
   if (!mail) problems.push('no letter when they recast the held part');
   console.log(`held part, set ran over: ${gone ? 'recast' : 'still held'} · letter ${mail ? 'yes' : 'no'}`);

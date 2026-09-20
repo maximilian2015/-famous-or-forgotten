@@ -1,5 +1,5 @@
 import { emUnread } from '../../systems/meta/email.js';
-import { pressUnread } from '../../systems/meta/news.js';
+import { pressUnread } from '../../systems/meta/press.js';
 // minAge/stage controls when an app appears. Teen phone (13+) = limited set.
 // Each app carries its own colour all the way inside, not just on the icon:
 // `accent` tints headings and buttons, `wash` is the light behind the screen.

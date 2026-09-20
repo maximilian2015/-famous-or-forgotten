@@ -5,6 +5,7 @@ import { anniversaryMonth, anniversaryYears } from '../../systems/life/dating.js
 import { tierById } from '../../systems/social/events.js';
 import { sets, canTakeSet, monthsUntilFree } from '../../engine/sets.js';
 import { toursFor } from '../../systems/career/tour.js';
+import { SEQUEL_LEAD } from '../../systems/career/franchise.js';
 
 // The agenda. This is the calendar from the first prototype, the one Maxi remembered when
 // none of ten new ones would do: a card a month, two across, "Jan 2052 · 1/12" with a pill
@@ -81,10 +82,16 @@ function itemsFor(g, i, abs) {
     else if (i === 0 && left === 0) it(tv ? 'onair' : 'cinemas', tv ? '📺' : '🎟️', tv ? 'On air' : 'In cinemas', c.title, tv ? 'The season ends' : 'The run ends');
   }
   for (const x of (g.submissions || [])) if (x.due === abs) it('answer', '📞', 'They answer', x.title, 'About the part you read for');
-  // A sequel or a season on its way: the month the script is expected.
-  for (const x of (g.laterOffers || [])) if (x.due === abs && x.offer) it('answer', '📝', x.offer.kind === 'renewal' ? 'New season' : 'The sequel', clean(x.offer.projectTitle), 'The script is expected');
+  // A sequel on its way: the paper comes months before the cameras (franchise.js SEQUEL_LEAD).
+  for (const x of (g.laterOffers || [])) if (x.offer) {
+    const seq = x.offer.kind === 'sequel';
+    if (seq && x.due - SEQUEL_LEAD === abs) it('answer', '📝', 'The sequel', clean(x.offer.projectTitle), 'The contract arrives');
+    else if (x.due === abs) it('answer', seq ? '🎥' : '📝', seq ? 'The sequel' : x.offer.kind === 'renewal' ? 'New season' : 'On its way', clean(x.offer.projectTitle), seq ? 'Cameras planned for this month' : 'The script is expected');
+  }
   for (const o of (g.offers || [])) {
     if (o.signed) continue;
+    // An unsigned paper with the studio's date on it: the month they mean to shoot.
+    if ((o.startAt || 0) > now + 1 && o.startAt === abs) it('answer', '🎥', 'Cameras planned', clean(o.projectTitle), 'Unsigned — the paper is in Messages');
     const k = o.contract;
     if (k && k.sent && (k.sent < now ? i === 0 : i === 1)) { it('reply', '📨', 'Their answer', clean(o.projectTitle), `The contract comes back${k.round > 1 ? ` — round ${k.round}` : ''}`); continue; }
     if ((o.deadline || 0) - 1 === i && !(o.waitsForWrap && !canTakeSet(g, o).ok)) it('off', '⏳', 'Offer runs out', clean(o.projectTitle), i === 0 ? 'Answer it this month' : `Answer by ${MON[abs % 12]}`);

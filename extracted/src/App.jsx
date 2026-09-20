@@ -2111,7 +2111,7 @@ function CreditRow({ group, g }) {
       </div>
       {/* The studio said no. A name in the room can push — favours.js. */}
       {(() => { const sq = sequelDue(g, c.title); if (!sq) return null; const MONS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
-        return (<div style={{ fontSize: 11, color: theme.gold, margin: '4px 0 2px', fontWeight: 700 }}>📝 "{String(sq.title).replace('⭐ ', '')}" is in development — the script is expected around {MONS[sq.due % 12]} {Math.floor(sq.due / 12)}. They want you back.</div>); })()}
+        return (<div style={{ fontSize: 11, color: theme.gold, margin: '4px 0 2px', fontWeight: 700 }}>📝 "{String(sq.title).replace('⭐ ', '')}" is greenlit — cameras around {MONS[sq.due % 12]} {Math.floor(sq.due / 12)}; the contract comes half a year before. They want you back.</div>); })()}
       {false && canPushSequel(g, c.id) && (() => { const fit = canUse(g, 'sequel');
         return (<button onClick={() => dispatch(pushSequel, c.id)} disabled={!fit.ok} title={fit.ok ? FAVOURS.sequel.blurb : fit.why}
           style={{ marginTop: 6, border: `1px solid ${fit.ok ? theme.gold + '66' : 'transparent'}`, borderRadius: 9, padding: '5px 9px', fontSize: 10.5, fontWeight: 800, cursor: fit.ok ? 'pointer' : 'default', background: fit.ok ? 'rgba(255,209,102,.10)' : 'rgba(120,110,150,.12)', color: fit.ok ? theme.gold : '#6b6390' }}>

@@ -57,7 +57,10 @@ export function Messages({ g }) {
         : <>No new offers.<br />Build credits and buzz — people write to stars they can sell.</>}</div>}
     {!!offers.length && blocked && <div style={{ fontSize: 12, color: theme.bad, background: 'rgba(255,106,138,.10)', border: '1px solid rgba(255,106,138,.35)', borderRadius: 10, padding: '9px 11px', lineHeight: 1.5 }}>{blocked}</div>}
     {offers.map((o) => { const tc = o.prestigeScore >= 70 ? ['A-list', theme.good] : o.prestigeScore >= 45 ? ['Solid', theme.accent] : ['Small', theme.muted];
-      const big = o.tier !== 'supporting'; const onTrend = o.genre === trend; const cost = campaignCost(o);
+      // The same line the contract draws (contract.js): anything that shoots for two months is
+      // a paper, whatever the part. A supporting sequel used to get a bare Accept — Maxi:
+      // "part two came as a yes/no button, no contract at all."
+      const big = o.tier !== 'supporting' || (o.months || 0) >= 2; const onTrend = o.genre === trend; const cost = campaignCost(o);
       return (<div key={o.id} style={{ background: theme.panel2, border: `1px solid ${theme.line}`, borderRadius: 14, padding: 12 }}>
         <div style={{ fontSize: 11, fontWeight: 900, color: theme.accent, textTransform: 'uppercase', marginBottom: 4 }}>
           {o.kind === 'renewal' ? 'The network' : o.kind === 'sequel' ? 'The studio'
@@ -81,8 +84,11 @@ export function Messages({ g }) {
           <span style={{ fontSize: 10.5, fontWeight: 800, padding: '3px 8px', borderRadius: 20, background: onTrend ? 'rgba(95,206,138,.18)' : 'rgba(158,116,255,.12)', color: onTrend ? theme.good : theme.muted }}>{o.genre}{onTrend ? ' · trending' : ''}</span>
           {o.campaign && <span style={{ fontSize: 10.5, fontWeight: 800, padding: '3px 8px', borderRadius: 20, background: 'rgba(255,209,102,.18)', color: theme.gold }}>📣 campaign running</span>}
         </div>
-        {big && !o.campaign && <button onClick={() => dispatch(runCampaign, o.id)} style={{ ...btn(''), width: '100%', marginTop: 8 }}>Run a campaign · €{cost.toLocaleString()}</button>}
-        {big && <div style={{ fontSize: 10.5, color: theme.muted, marginTop: 8 }}>Lead and tentpole roles go into production — you'll shoot it over {o.months} months, with real choices on set.</div>}
+        {/* The Asker push. Maxi: "what does 'run the campaign' mean?" — it said nothing. */}
+        {o.tier !== 'supporting' && !o.campaign && <button onClick={() => dispatch(runCampaign, o.id)} style={{ ...btn(''), width: '100%', marginTop: 8 }}>🏆 Asker campaign · €{cost.toLocaleString()}</button>}
+        {o.tier !== 'supporting' && !o.campaign && <div style={{ fontSize: 10.5, color: theme.muted, marginTop: 5, lineHeight: 1.45 }}>A "for your consideration" push when it comes out: the studio's awards people work your name for the season. Better odds of a nomination if the film is any good — nothing if it is not. Paid now, out of your own pocket.</div>}
+        {o.campaign && <div style={{ fontSize: 10.5, color: theme.gold, marginTop: 8 }}>🏆 Asker campaign paid — the push runs when it comes out.</div>}
+        {big && <div style={{ fontSize: 10.5, color: theme.muted, marginTop: 8 }}>This one shoots — {o.months} months on a set, with real choices on it.</div>}
         <div style={{ display: 'flex', gap: 7, marginTop: 9 }}>
           {big
             ? <button onClick={() => dispatch(openContract, o.id)} disabled={!fit.ok} style={{ ...btn('pri'), opacity: !fit.ok ? .45 : 1 }}>{o.signed ? 'Signed — see the paper' : o.contract && o.contract.sent ? 'With them — see the paper' : o.contract && o.contract.round ? 'The paper came back' : 'Open the contract'}</button>

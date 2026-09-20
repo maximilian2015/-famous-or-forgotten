@@ -215,17 +215,26 @@ export function seasonMaterial(prevPrestige, season, arc = 'slides') {
 }
 
 // Anything a franchise offers you arrives LATER, not the month the last one closed.
+// And a sequel's paper comes before its cameras. Maxi: "if a sequel is happening, the new
+// contract for part two should come six months before, once it is decided — not a yes/no
+// button the month they shoot." `due` is the month the cameras roll; the contract arrives
+// this many months ahead of it with that date in the schedule, and once signed it waits
+// on the calendar for its month like any held part.
+export const SEQUEL_LEAD = 6;
 export function laterOffersTick(s) {
   const now = (s.year || 0) * 12 + (s.month || 0);
-  const due = (s.laterOffers || []).filter((x) => x.due <= now);
+  const lead = (x) => (x.offer && x.offer.kind === 'sequel' ? SEQUEL_LEAD : 0);
+  const due = (s.laterOffers || []).filter((x) => x.due - lead(x) <= now);
   if (!due.length) return s;
-  s.laterOffers = (s.laterOffers || []).filter((x) => x.due > now);
+  s.laterOffers = (s.laterOffers || []).filter((x) => x.due - lead(x) > now);
   for (const x of due) {
-    const o = { ...x.offer, expires: now + rint(3, 6), via: x.offer.via || 'studio', from: 'the studio' };
+    const ahead = Math.max(0, x.due - now);
+    const o = { ...x.offer, expires: now + rint(3, 6), via: x.offer.via || 'studio', from: 'the studio', deadline: ahead > 2 ? 3 : (x.offer.deadline || 2) };
+    if (ahead > 1) o.startAt = x.due;   // the studio's date, on the paper
     (s.offers = s.offers || []).push(o);
     // A sequel is "they want you back"; a studio that saw you at a festival is something else.
-    addTimeline(s, x.line || `They are making "${o.projectTitle}", and they want you back.`);
-    s.lastEvent = x.event || `"${o.projectTitle}" is happening. They called — the paper is in Messages.`;
+    addTimeline(s, x.line || (ahead > 1 ? `"${o.projectTitle}" is greenlit. The contract is in Messages — cameras in ${ahead} months.` : `They are making "${o.projectTitle}", and they want you back.`));
+    s.lastEvent = x.event || (ahead > 1 ? `"${o.projectTitle}" is happening. The studio sent the paper — they shoot in ${ahead} months, and they want it signed well before.` : `"${o.projectTitle}" is happening. They called — the paper is in Messages.`);
   }
   return s;
 }
@@ -325,7 +334,7 @@ export function maybeContinue(s, credit, p, force = false) {
   // Nobody shoots them back to back. It is announced, and then it is years.
   const gap = sequelGap(nextPart, credit.verdict);
   addTimeline(s, credit.verdict === 'smash' ? `"${p.title}" printed money. A sequel is in development — they want you, and it will not be years.` : `There is talk of a sequel to "${p.title}". These things take time.`);
-  s.lastEvent = credit.verdict === 'smash' ? `The studio is developing a sequel to "${p.title}". Expect the script in about ${gap} months.` : s.lastEvent;
+  s.lastEvent = credit.verdict === 'smash' ? `The studio is developing a sequel to "${p.title}". Cameras in about ${gap} months — the contract comes ${SEQUEL_LEAD} before that.` : s.lastEvent;
   (s.laterOffers = s.laterOffers || []).push({
     due: (s.year || 0) * 12 + (s.month || 0) + gap,
     offer: {
