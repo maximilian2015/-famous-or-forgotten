@@ -3,6 +3,7 @@ import { theme } from '../../ui/theme.js';
 import { dispatch, getState } from '../../state/store.js';
 import { refreshCastingPool, auditionFor, castingChance, reach, SHELVES, SHELF_BLURB, SHELF_EMPTY, rerollBoard, canReroll, prepareFor, nextPrep, prepBonus, dayWork, fieldFactor, poisoned } from '../../systems/career/castings.js';
 import { slotNorm } from '../../systems/career/franchise.js';
+import { typeWord } from '../../systems/meta/typecast.js';
 import { TimingBar } from '../../ui/components/TimingBar.jsx';
 import { GridRisk } from '../../ui/components/GridRisk.jsx';
 import { useAccent } from '../../ui/appTheme.js';
@@ -199,6 +200,7 @@ export function OpenCall({ g, ocTab, setOcTab, teenMode }) {
               {band && <span style={{ color: bandCol }}> · {band.label.toLowerCase()}</span>}
             </div>
             {/* Television says which season it is — a new show, or one that is already on. */}
+            {(() => { const w = typeWord(g, c); return w ? <span style={{ fontSize: 10, fontWeight: 900, padding: '2px 7px', borderRadius: 20, whiteSpace: 'nowrap', letterSpacing: '.04em', background: w === 'on type' ? 'rgba(95,206,138,.14)' : 'rgba(255,106,138,.14)', color: w === 'on type' ? theme.good : theme.bad }}>{w}</span> : null; })()}
             {c.perEpisode && <span style={{ fontSize: 10, fontWeight: 900, padding: '2px 7px', borderRadius: 20, whiteSpace: 'nowrap', letterSpacing: '.04em',
               background: (c.season || 1) > 1 ? 'rgba(127,179,255,.16)' : 'rgba(255,209,102,.16)', color: (c.season || 1) > 1 ? '#9fc4ff' : theme.gold }}>
               {(c.season || 1) > 1 ? `S${c.season}` : 'S1 · NEW'}

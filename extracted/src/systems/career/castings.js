@@ -21,6 +21,7 @@ import { sendMail } from '../meta/email.js';
 import { newTitle } from '../world/titles.js';
 import { seasonCap, slotNorm, tvMonths } from './franchise.js';
 import { rumourFactor } from '../meta/trouble.js';
+import { typeFit, typeFactor, typecastAfterDayWork, strongLabels } from '../meta/typecast.js';
 export { tvMonths, TV_PACE } from './franchise.js';
 // What a casting office will see you for. Usually that is fame — but an Asker counts,
 // and it is the one route into work above your level that does not run through
@@ -256,6 +257,10 @@ export function refreshCastingPool(s, force, extra = 0) {
     // Above the ceiling this kind of work simply stops being sent to you. Nobody offers an
     // A-lister a background call.
     if (maxFame != null && reach(s) > maxFame) continue;
+    // A strong label moves the board: the parts against it are sent to you less often, and
+    // the ones on it more. See meta/typecast.js.
+    const genre = pick(GENRES);
+    if (strongLabels(s).length) { const tf = typeFit(s, { genre, scale, type, perEpisode }); if (tf <= -0.5 && chance(45)) continue; }
     // And a board that is all locked is not a board. A shelf of two rows drew two series
     // regulars at 'fame 25' for an Unknown at 0 — every line locked. One rung above your
     // reach can show (something to aim at); anything further up does not exist for you yet.
@@ -291,7 +296,6 @@ export function refreshCastingPool(s, force, extra = 0) {
     const base = perEpisode ? episodeRate(quoted, (eps[0] + eps[1]) / 2, episodes) : quoted;
     const rate = Math.round(base * fee);
     if (rate <= 0) continue;
-    const genre = pick(GENRES);
     const title = titleFor(s, genre, taken);
     // Television: which season, and — for a show that is already on — what it is drawing.
     const season = perEpisode ? seasonFor(type, scale) : 0;
@@ -392,7 +396,7 @@ export function castingChance(s, c) {
   // And you are not yourself in a room when you are carrying this.
   const raw = base * (0.35 + 0.65 * fit) * insurability(s) * (depressed(s) ? 0.62 : 1);
   // Below zero, the room has heard about you before you read. See standing.js.
-  return Math.round(raw * reachFactor(s, c) * roomHasHeard(s) * rumourFactor(s) * (c ? fieldFactor(s, c) : 1));
+  return Math.round(raw * reachFactor(s, c) * roomHasHeard(s) * rumourFactor(s) * (c ? fieldFactor(s, c) * typeFactor(s, c) : 1));
 }
 // How far above you the part is.
 //
@@ -566,6 +570,7 @@ export function auditionFor(s, id, quality = 50) {
       salary: c.salary, rating, status, year: s.year, minor: true });
     addGenreXP(s, c.genre, rating);
     paid(s, c.salary, `"${c.title}" paid`); markReleased(s); setFame(s, s.fame + rint(1, 3)); s.confidence = clamp(s.confidence + 2);
+    typecastAfterDayWork(s, c);
     s.lastEvent = `${quality >= 80 ? 'The room goes quiet — you nailed it. ' : ''}One day's work on "${c.title}". It came out ${status.toLowerCase()} (${Math.round(rating)}/100).`;
     addTimeline(s, `Booked ${c.title}: ${status}.`, rating < 50);
   } else {

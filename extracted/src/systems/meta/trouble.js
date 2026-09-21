@@ -14,6 +14,7 @@ import { addTimeline } from '../../engine/timeline.js';
 import { setRespect } from './status.js';
 import { level as drinkLevel } from '../life/drink.js';
 import { inCareer } from '../../engine/stage.js';
+import { typecastScandal } from './typecast.js';
 
 const clamp = (v) => Math.max(0, Math.min(100, v));
 const stamp = (s) => (s.year || 0) * 12 + (s.month || 0);
@@ -56,6 +57,7 @@ export function storyTick(s) {
   addTimeline(s, `${st.line}${publicist ? ' Your publicist had a statement out before lunch.' : ''}`, true);
   s.lastEvent = st.line + (publicist ? ' Your publicist was on it by lunch, which is what you pay them for.' : ' Nobody is on it. That is what a publicist is for.');
   s._lastStory = stamp(s);
+  typecastScandal(s, st.id === 'lawsuit' ? 0.5 : 1);
 }
 
 // Overtaken. Once a year the business ranks everybody (world.js). If you fell more than a

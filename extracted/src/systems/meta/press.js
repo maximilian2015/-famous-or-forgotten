@@ -91,6 +91,8 @@ export function piecesFor(s, lines) {
       add('gossip', `${name}, photographed`, `Taken from a car, printed at full width, captioned by somebody who has never met you. The comments are the story.`, { react: true });
     } else if ((m = t.match(/^The year's list is out: you were #(d+), you are #(d+).(?: (.+) has your old chair.)?/))) {
       add('news', m[3] ? `${m[3]} takes ${fn}'s chair` : `${name} slips to #${m[2]}`, `Down from #${m[1]} to #${m[2]} on the year's list. The piece is about who went up, and it is not about you, which is the point of it.`, {});
+    } else if ((m = t.match(/^(.+): it is what you are to them now./))) {
+      add('news', `${name}, ${m[1].toLowerCase()}`, `The piece is a list of the parts, and the parts are all one part. It is meant kindly, in the way a box is kindly. Play to it and the offers keep coming; the day you want out of it, this is the piece they will quote.`, {});
     } else if (/box office poison/.test(t)) {
       add('pan', `${name}: box office poison?`, `Two leads, two pictures that lost money, and a phrase the trades have been waiting to use. The piece counts the grosses, quotes an insurer who "cannot comment on individual cases", and does not need to.`, { react: true });
     } else if (/^Did not do the press for/.test(t)) {

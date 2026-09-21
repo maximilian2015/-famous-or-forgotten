@@ -22,6 +22,7 @@ import { reviewsFor } from '../world/critics.js';
 import { actorById, applyFilmToActor } from '../world/world.js';
 import { tourMultiplier, tourFame } from './tour.js';
 import { networkLine, slotNorm } from './franchise.js';
+import { typecastAfterCredit, typeFit } from '../meta/typecast.js';
 
 const clamp = (v, a = 0, b = 100) => Math.max(a, Math.min(b, v));
 
@@ -489,6 +490,9 @@ function closeRun(s, credit, r) {
   let nepo = 0;
   if (r.viaPartner) nepo = r.rating >= 75 ? 6 : r.rating < 55 ? -5 : 0;
   if (nepo) addTimeline(s, nepo > 0 ? `"${credit.title}" is good enough that nobody mentions ${r.viaPartner.split(' ')[0]} any more.` : `"${credit.title}" is what everybody said it would be, and they are saying it again.`, nepo < 0);
+  // Against type and good: the room that had you down as one thing saw something else.
+  const against = typeFit(s, { genre: credit.genre, scale: r.scale, type: credit.type, perEpisode: !!credit.episodes }) <= -0.5;
+  if (against && r.rating >= 65) { respectGain += 2; addTimeline(s, `"${credit.title}" was against type, and it worked. The rooms that had you down as one thing have made a note.`); }
   respectGain += nepo;
   if (carried && r.rating < 45) respectGain = 0;
   else if (carried && r.rating >= 45 && r.rating < 70) respectGain = 1;
@@ -552,6 +556,7 @@ function closeRun(s, credit, r) {
   // Standing next to an icon is worth something on its own: the photographs, the poster,
   // the fact that they said yes to a film you were in.
   if (r.withIcon) { setFame(s, (s.fame || 0) + 3 * headroom(s.fame)); setRespect(s, (s.respect || 0) + 2 * soft(112, s.respect)); addTimeline(s, `Your name is on a poster next to ${r.with}'s. People noticed.`); }
+  typecastAfterCredit(s, credit);
   showMoment(s, {
     id: 'verdict', tv: film ? null : (r.scale === 'recurring' ? 'soap' : r.scale === 'prestige' ? 'prestige' : 'episode'), kind: r.rating >= 70 || verdict === 'smash' ? 'good' : 'bad',
     title: credit.title, score, money, verdict, reviews: credit.reviews,
