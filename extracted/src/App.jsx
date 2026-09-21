@@ -7,7 +7,7 @@ import { runAction, availableActions } from './systems/career/actions.js';
 import { acceptOffer, declineOffer } from './systems/career/offers.js';
 import { computeAccess } from './systems/career/access.js';
 import { SCHOOLS, train, trainingKey } from './systems/career/training.js';
-import { skillCap } from './systems/career/actions.js';
+import { skillCap, lessonCap, talentHint } from './systems/career/actions.js';
 import { seeDoctor, treatmentCost, pushThrough, PILLS, usePills, infectionOdds } from './systems/life/health.js';
 import { resolveArc } from './systems/life/arcs.js';
 import { computeLegacy, getHall, heirsOf, heirOpts, enshrine } from './systems/meta/legacy.js';
@@ -2306,21 +2306,23 @@ function OtherWork({ list }) {
 // The year ahead lives in ui/components/Diary.jsx — a row a month, every line written out.
 function TrainingScreen({ g }) {
   const key = trainingKey(g);
-  const skill = Math.round(g[key] || 0), cap = skillCap(g);
+  const skill = Math.round(g[key] || 0), cap = lessonCap(), ceiling = skillCap(g);
   const noEnergy = !canAfford(g, COST.rehearse);
   return (<div>
     <Card style={{ marginBottom: 14 }}>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline' }}>
         <div style={{ fontSize: 11, fontWeight: 900, letterSpacing: '.09em', textTransform: 'uppercase', color: theme.muted }}>{key === 'singing' ? 'Singing' : 'Acting'}</div>
-        <div style={{ fontSize: 13, fontWeight: 900 }}>{skill} <span style={{ color: theme.muted, fontWeight: 700 }}>/ {cap}</span></div>
+        <div style={{ fontSize: 13, fontWeight: 900 }}>{skill} <span style={{ color: theme.muted, fontWeight: 700 }}>/ {skill >= cap ? '—' : cap}</span></div>
       </div>
       <div style={{ height: 7, background: 'rgba(255,255,255,.08)', borderRadius: 4, margin: '8px 0 6px', position: 'relative' }}>
         <div style={{ width: cap + '%', height: '100%', background: 'rgba(158,116,255,.25)', borderRadius: 4, position: 'absolute' }} />
+        {skill >= ceiling && <div style={{ position: 'absolute', left: ceiling + '%', top: -2, bottom: -2, width: 2, background: theme.gold }} />}
         <div style={{ width: skill + '%', height: '100%', background: theme.accent, borderRadius: 4, position: 'absolute' }} />
       </div>
       <div style={{ fontSize: 11.5, color: theme.muted, lineHeight: 1.5 }}>
-        {skill >= cap ? 'You have taken lessons as far as they go. Only real credits raise the ceiling now.'
-          : `Teachers can take you to ${cap}. Past that it's real work that makes you better.`}
+        {skill >= ceiling ? `As good as you will get. The teachers said it early: ${talentHint(g)}.`
+          : skill >= cap ? `Lessons stop at ${cap}. It is sets from here — the teachers said you were ${talentHint(g)}.`
+          : `Teachers can take you to ${cap}. Past that it is sets — and the teachers already have a view: ${talentHint(g)}.`}
       </div>
     </Card>
     <div style={{ fontSize: 11, fontWeight: 900, letterSpacing: '.09em', textTransform: 'uppercase', color: theme.muted, marginBottom: 8 }}>Where to study</div>

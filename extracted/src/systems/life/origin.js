@@ -66,6 +66,10 @@ const YEARS = ['two', 'three', 'four', 'five', 'six', 'seven', 'eight', 'nine', 
 // Called once, at birth. Rolls the circumstances, builds the family around them, then
 // writes the story FROM the family that actually exists — so it can never contradict
 // what the People screen shows.
+export function talentRoll() {
+  const r = Math.random();
+  return r < 0.17 ? 86 + Math.floor(Math.random() * 15) : r < 0.55 ? 72 + Math.floor(Math.random() * 14) : 55 + Math.floor(Math.random() * 17);
+}
 export function beginLife(s) {
   // Born to somebody the game already played. Nothing here is rolled: the class, the money
   // and the name all come from a life that actually happened. See systems/meta/legacy.js.
@@ -77,6 +81,11 @@ export function beginLife(s) {
   s.familyAsk = c.ask;
   s.familyEstate = c.estate;
   s.familyLeavesHome = c.leavesHome;
+  // How good you can ever get. Rolled once, never shown as a number — teachers hint at it
+  // (training.js), and the ceiling is what the sets take you to. Measured before it existed:
+  // a perfect player reached acting 100 at twenty-seven. Most people's ceiling is in the
+  // seventies; a natural is one in six.
+  s.talent = talentRoll();
 
   // Not every child gets two married parents.
   const setup = chance(76) ? 'married' : chance(58) ? 'together' : 'single';

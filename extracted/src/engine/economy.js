@@ -139,6 +139,13 @@ export function relevanceDrift(s) {
   const sticky = comboOf(s) === 'face' || comboOf(s) === 'liability' ? 0.6 : 1;
   if ((s.scandal || 0) > 0) s.scandal = Math.max(0, s.scandal - 0.4 * (s.staff && s.staff.publicist ? 2.4 : 1) * sticky);
   if ((s.media || 0) > 0) s.media = Math.max(0, s.media - 0.8);
+  // The top is held, not kept. Above seventy the name slips every month whether you are
+  // working or not — the business is busy making new ones — and only a hit puts it back.
+  // Measured before: a perfect player sat on eighty-nine from forty-two to sixty-seven.
+  if ((s.fame || 0) > 70) {
+    const floorTop = (s.peakFame || 0) >= 90 ? 75 : 0;
+    s.fame = Math.max(floorTop, s.fame - 0.35 * ((s.fame - 70) / 30));
+  }
   if ((s._idleMonths || 0) < 4) return;
   // Purely proportional: nobody forgets a person they were never aware of. The flat
   // 0.35 that used to be here made the bottom of the ladder unclimbable — a supporting

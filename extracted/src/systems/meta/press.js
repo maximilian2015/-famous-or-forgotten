@@ -77,6 +77,22 @@ export function piecesFor(s, lines) {
       add('gossip', `A baby for ${name}`, `The name, the weight, and a photograph you did not approve. The comments are lovely, apart from the ones that are not.`, {});
     } else if (/calling .* a comeback/.test(t) || /^The trades are calling/.test(t)) {
       add('praise', `${name}: the comeback`, `Every piece uses the word, and every piece uses your name. It is a generous word for it, and it is doing more for you than the film is.`, {});
+    } else if ((m = t.match(/^(.+) is telling people you were difficult/))) {
+      add('gossip', `"Difficult": what ${m[1]} is saying about ${name}`, `A director, a dinner, and a word that travels faster than a review. The piece has it third-hand and prints it anyway. Every casting office in town has read it by Friday.`, { react: true });
+    } else if (/^Pulled over at two in the morning/.test(t)) {
+      add('gossip', `${name} arrested`, `The photograph from the station, the charge sheet, and a paragraph on the last time. The publicist's statement is quoted in full and believed by nobody.`, { react: true });
+    } else if (/^A recording from the party/.test(t)) {
+      add('gossip', `The tape: what ${name} said at the party`, `Forty seconds, badly lit, and the sentence in the middle of it is the headline. The piece transcribes it. Twice.`, { react: true });
+    } else if (/^A lawsuit —/.test(t)) {
+      add('news', `${name} sued`, `An old contract, a producer, and a number with a lot of zeros. The piece is careful, which is how you know the lawyers read it first.`, { react: true });
+    } else if (/^A co-star, an interview/.test(t)) {
+      add('gossip', `"Difficult": a co-star on ${name}`, `One sentence in a long interview, and the headline is built from it. The co-star's people say it was taken out of context. The context is printed underneath, and it does not help.`, { react: true });
+    } else if (/^A photograph you did not pose for/.test(t)) {
+      add('gossip', `${name}, photographed`, `Taken from a car, printed at full width, captioned by somebody who has never met you. The comments are the story.`, { react: true });
+    } else if ((m = t.match(/^The year's list is out: you were #(d+), you are #(d+).(?: (.+) has your old chair.)?/))) {
+      add('news', m[3] ? `${m[3]} takes ${fn}'s chair` : `${name} slips to #${m[2]}`, `Down from #${m[1]} to #${m[2]} on the year's list. The piece is about who went up, and it is not about you, which is the point of it.`, {});
+    } else if (/box office poison/.test(t)) {
+      add('pan', `${name}: box office poison?`, `Two leads, two pictures that lost money, and a phrase the trades have been waiting to use. The piece counts the grosses, quotes an insurer who "cannot comment on individual cases", and does not need to.`, { react: true });
     } else if (/^Did not do the press for/.test(t)) {
       add('pan', `${name} skips the tour`, `The studio says "scheduling". The piece says the word actors who do not turn up for their own pictures get called, and then says it again.`, { react: true });
     }

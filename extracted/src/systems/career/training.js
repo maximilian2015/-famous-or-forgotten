@@ -2,7 +2,7 @@ import { COST, canAfford, spend, tooTired } from '../../engine/energy.js';
 import { setRespect } from '../meta/status.js';
 import { rint } from '../../engine/rng.js';
 import { addTimeline } from '../../engine/timeline.js';
-import { skillCap } from './actions.js';
+import { lessonCap } from './actions.js';
 const clamp = (v) => Math.max(0, Math.min(100, v));
 
 // Practice used to be free and instant. Real training costs money — that's the point:
@@ -18,12 +18,12 @@ export function train(s, id) {
   const sc = SCHOOLS.find((x) => x.id === id); if (!sc) return s;
   if (!canAfford(s, COST.train)) { s.lastEvent = tooTired(s, COST.train); return s; }
   if ((s.cash || 0) < sc.cost) { s.lastEvent = `${sc.label} costs €${sc.cost.toLocaleString()}. You can't cover it.`; return s; }
-  const key = trainingKey(s); const skill = s[key] || 0; const cap = skillCap(s);
+  const key = trainingKey(s); const skill = s[key] || 0; const cap = lessonCap();
   // Said before anything is charged. A conservatory used to take €4,000 and the month's
   // energy to tell you it could not teach you anything.
   if (skill >= cap) {
     s.mental = clamp((s.mental || 50) - 1);
-    s.lastEvent = `You've plateaued at ${skill}. No teacher can take you further — only real work raises the ceiling now.`;
+    s.lastEvent = `Nobody can teach you past ${cap}. It is sets from here — and what you were born with.`;
     return s;
   }
   spend(s, COST.train);

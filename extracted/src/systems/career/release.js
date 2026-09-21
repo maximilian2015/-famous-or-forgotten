@@ -412,9 +412,10 @@ function closeRun(s, credit, r) {
   let fame = bySkill + (r.rating >= 85 ? 4 : 0) + (r.worldHit ? 25 : 0);
   if (verdict === 'smash') fame += 8;
   else if (verdict === 'profitable') fame += 3;
-  // A flop cuts what the film does for your name, but it can never take your name
-  // backwards: a bad film still put your face on a screen.
-  else if (verdict === 'bomb') fame = Math.max(1, fame - 3);
+  // A flop cuts what the film does for your name — and at the top it takes some of the
+  // name with it. Maxi: "at the top there is nothing to lose." A supporting part is not
+  // blamed for a picture; the lead is, and the bigger the name the louder the blame.
+  else if (verdict === 'bomb') fame = r.tier !== 'supporting' && (s.fame || 0) >= 45 ? -(2 + ((s.fame || 0) - 45) / 14) : Math.max(1, fame - 3);
   // The last stretch is the whole point of the ladder and it was the cheapest part of it.
   // A limit of 118 with a floor of 0.16 meant an A-lister still banked a sixth of every
   // credit forever: measured across 25 careers, A-list arrived at a median age of 33 and
@@ -453,7 +454,15 @@ function closeRun(s, credit, r) {
     addTimeline(s, `The trades are calling ${credit.title} a comeback. Every piece uses the word, and every piece uses your name.`);
     s.lastEvent = `"${credit.title}" is being written about as a comeback. It is a generous word for it, and it is doing more for you than the film is.`;
   }
-  setFame(s, (s.fame || 0) + fame * headroom(s.fame));
+  setFame(s, (s.fame || 0) + (fame < 0 ? fame : fame * headroom(s.fame)));
+  // Two leads that bombed inside two years and the insurers stop covering you on a studio
+  // picture: a year with no studio features or tentpoles on the board, and the trades
+  // have a phrase for it. See castings.js (poison) and meta/press.js.
+  if (verdict === 'bomb' && r.tier !== 'supporting' && film) {
+    const now = (s.year || 0) * 12 + (s.month || 0);
+    s.bombs = [...(s.bombs || []).filter((m) => now - m <= 24), now];
+    if (s.bombs.length >= 2 && !(s.poisonUntil > now)) { s.poisonUntil = now + 12; addTimeline(s, `Two leads that bombed in two years. The trades are using the phrase box office poison, and the insurers have stopped returning the studios' calls about you.`, true); s.lastEvent = `Two leads that bombed inside two years. The studios will not insure you on a picture for a year — the trades' phrase for it is box office poison.`; }
+  }
   // A bad film costs standing in proportion to what was expected of you. At forty it is
   // news and it costs the full four; at nothing it costs almost nothing, because nobody
   // expected anything. This mattered the moment standing could go below zero: a flat −4

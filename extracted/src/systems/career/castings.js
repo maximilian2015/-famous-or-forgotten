@@ -20,6 +20,7 @@ import { canWork, insurability, depressed } from '../life/strain.js';
 import { sendMail } from '../meta/email.js';
 import { newTitle } from '../world/titles.js';
 import { seasonCap, slotNorm, tvMonths } from './franchise.js';
+import { rumourFactor } from '../meta/trouble.js';
 export { tvMonths, TV_PACE } from './franchise.js';
 // What a casting office will see you for. Usually that is fame — but an Asker counts,
 // and it is the one route into work above your level that does not run through
@@ -27,6 +28,9 @@ export { tvMonths, TV_PACE } from './franchise.js';
 // to want seventy.
 // And standing, once it is high enough to be talked about: a respected nobody is sent parts
 // their fame does not justify. See systems/meta/standing.js — the actor's actor.
+// Box office poison: two leads that bombed inside two years (release.js). A year without
+// the studio's pictures, and the agent brings half as much.
+export function poisoned(s) { return (s.poisonUntil || 0) > (s.year || 0) * 12 + (s.month || 0); }
 export function reach(s) { return (s.fame || 0) + askerStanding(s) + reachFromStanding(s); }
 const clamp = (v) => Math.max(0, Math.min(100, v));
 // Two things the old table got wrong, both of them real-world facts:
@@ -97,7 +101,6 @@ const POOLS = {
     day: [
       ['Brand Campaign', 'Face', [1, 1], 'ad', 'oneoff', 15],
       ['Commercial', 'Actor', [1, 1], 'ad', 'oneoff', 0, 0.35],
-      ['Talk Show', 'Guest on the sofa', [1, 1], 'ad', 'oneoff', 35, 0.22],
       ['Magazine Cover', 'The cover', [1, 1], 'ad', 'oneoff', 40, 0.3],
       ['Awards Show', 'Presenting', [1, 1], 'ad', 'oneoff', 58, 0.45],
       ['Fashion House', 'The face of it', [1, 1], 'ad', 'oneoff', 66, 1.4],
@@ -264,7 +267,7 @@ export function refreshCastingPool(s, force, extra = 0) {
     // A word with the studio (favours.js): one prestige listing, and only a prestige one.
     if (s._openShelfOnce && !prestigeRow) continue;
     // And nobody will insure the liability on a studio picture, whatever the audience says.
-    if ((scale === 'feature' || scale === 'blockbuster') && insuranceShut(s)) continue;
+    if ((scale === 'feature' || scale === 'blockbuster') && (insuranceShut(s) || poisoned(s))) continue;
     // What YOU are worth in this medium. Zero means they would not have you at any
     // price yet — the listing simply does not appear.
     const cut = (share || 1) * (/^film/.test(medium) ? (SCALE_MONEY[scale] || 1) : 1);   // a theatre run is priced as a gig already
@@ -303,6 +306,7 @@ export function refreshCastingPool(s, force, extra = 0) {
       genre, minFame: minFame || 0,
       _expires: (s.year || 0) * 12 + (s.month || 0) + rint(2, 4),
     });
+    roomFor(s, s.castingPool[s.castingPool.length - 1]);   // who else is reading, decided now
     if (s._openShelfOnce) { s.castingPool[s.castingPool.length - 1].openedByName = true; delete s._openShelfOnce; }
   }
   delete s._openShelfOnce;
@@ -325,6 +329,58 @@ export function addPrestigeListing(s) {
   refreshCastingPool(s, false, 1);
   return (s.castingPool || []).find((c) => c.openedByName) || null;
 }
+// ── the room ─────────────────────────────────────────────────────────────────
+// Who else is reading, and what they are looking for. Maxi: "becoming a star is easy — there
+// are no obstacles." There were none in the room: a read was you against a number, and the
+// number was mostly the minigame. Now every part wants something — a face, a presence, the
+// craft, a name the poster can sell — and two to six other people are reading for it, drawn
+// from the business at the part's level. Your odds are your fit against theirs. Learning
+// the sides tells you what they want; the field you see only as a count.
+const WANTS = ['looks', 'charisma', 'craft', 'name'];
+function wantFor(type, scale, genre) {
+  if (scale === 'blockbuster') return chance(55) ? 'name' : 'looks';
+  if (scale === 'prestige' || /Prestige|Festival/.test(type)) return chance(75) ? 'craft' : 'charisma';
+  if (/Soap/.test(type)) return chance(60) ? 'looks' : 'charisma';
+  if (genre === 'Comedy' || genre === 'Romance') return chance(60) ? 'charisma' : 'looks';
+  if (scale === 'feature') return pick(['craft', 'name', 'looks', 'charisma']);
+  return chance(60) ? 'craft' : pick(['looks', 'charisma']);
+}
+function hashOf(str) { let h = 0; for (const ch of String(str)) h = (h * 31 + ch.charCodeAt(0)) >>> 0; return h; }
+// A world actor's face and presence: not stored, derived, and the same every time.
+function rivalTrait(a, want) {
+  if (want === 'craft') return a.craft || 50;
+  if (want === 'name') return a.fame || 0;
+  const h = hashOf(a.id + want);
+  return 38 + (h % 52);
+}
+function fitOf(skill, charisma, looks, fame, want) {
+  const w = { craft: skill, charisma, looks, name: fame }[want] || skill;
+  return 0.35 * skill + 0.15 * charisma + 0.15 * looks + 0.35 * w;
+}
+export function roomFor(s, c) {
+  if (c.room) return c.room;
+  const want = wantFor(c.type, c.scale, c.genre);
+  const level = Math.max(c.minFame || 0, Math.min(90, reach(s)));
+  const pool = ((s.world && s.world.actors) || []).filter((a) => a.alive && !a.retired && Math.abs((a.fame || 0) - level) <= 18);
+  const n = c.scale === 'blockbuster' ? rint(4, 6) : c.scale === 'feature' || c.scale === 'prestige' ? rint(3, 5) : c.scale === 'recurring' ? rint(2, 4) : rint(2, 3);
+  const picked = pool.sort(() => Math.random() - 0.5).slice(0, n);
+  const fits = picked.map((a) => fitOf(a.craft || 50, rivalTrait(a, 'charisma'), rivalTrait(a, 'looks'), a.fame || 0, want));
+  const field = fits.length ? fits.reduce((x, y) => x + y, 0) / fits.length : 45;
+  c.room = { want, readers: n, field: Math.round(field) };
+  return c.room;
+}
+export function yourFit(s, c) {
+  const skill = s.dream === 'singer' ? s.singing : s.acting;
+  return fitOf(skill || 0, s.charisma || 0, s.looks || 0, s.fame || 0, (c.room || roomFor(s, c)).want);
+}
+// Against the field: even money when you are the room's average, half when you are well
+// under it, half again over it when you are clearly the best in the room.
+export function fieldFactor(s, c) {
+  const r = roomFor(s, c);
+  const me = yourFit(s, c);
+  const ratio = me / Math.max(1, r.field);
+  return Math.max(0.45, Math.min(1.45, 0.25 + ratio * 0.75));
+}
 export function castingChance(s, c) {
   const skill = s.dream === 'singer' ? s.singing : s.acting;
   // Scandal was purely cosmetic before — it accumulated and did nothing.
@@ -336,7 +392,7 @@ export function castingChance(s, c) {
   // And you are not yourself in a room when you are carrying this.
   const raw = base * (0.35 + 0.65 * fit) * insurability(s) * (depressed(s) ? 0.62 : 1);
   // Below zero, the room has heard about you before you read. See standing.js.
-  return Math.round(raw * reachFactor(s, c) * roomHasHeard(s));
+  return Math.round(raw * reachFactor(s, c) * roomHasHeard(s) * rumourFactor(s) * (c ? fieldFactor(s, c) : 1));
 }
 // How far above you the part is.
 //
@@ -467,7 +523,9 @@ export function auditionFor(s, id, quality = 50) {
   if (reach(s) < (c.minFame || 0)) { s.lastEvent = 'You need more fame before they will see you for this.'; return s; }
   if (!canAfford(s, COST.audition)) { s.lastEvent = tooTired(s, COST.audition); return s; }
   spend(s, COST.audition);
-  const odds = clamp(castingChance(s, c) + (quality - 50) * 0.55 + prepBonus(c) + (c.boost || 0));
+  // The read itself is worth five points either way. It used to be worth twenty-six: land
+  // the bar and the part was yours whoever else was in the room.
+  const odds = clamp(castingChance(s, c) + Math.max(-5, Math.min(5, (quality - 50) * 0.12)) + prepBonus(c) + (c.boost || 0));
   // Anything with a real schedule does not answer you in the room. You did your read, you
   // went home, and somewhere between one and three months later a phone rings or it does
   // not. This is the whole rhythm of the job, and the game used to skip it: audition, book,
@@ -530,6 +588,7 @@ export const SHELF_BLURB = {
 export const SHELF_EMPTY = {
   tv: 'Nothing on television this month. Live a month and look again.',
   film: 'Nothing from the studios. They send scripts to names — get one, or get an agent who has one.',
+  poison: 'Nothing from the studios this year. Two leads that bombed, and nobody will insure you on a picture until the phrase wears off.',
   indie: 'Nothing small this month. It comes and goes.',
   day: 'No day work this month.',
 };

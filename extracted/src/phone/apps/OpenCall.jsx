@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { theme } from '../../ui/theme.js';
 import { dispatch, getState } from '../../state/store.js';
-import { refreshCastingPool, auditionFor, castingChance, reach, SHELVES, SHELF_BLURB, SHELF_EMPTY, rerollBoard, canReroll, prepareFor, nextPrep, prepBonus, dayWork } from '../../systems/career/castings.js';
+import { refreshCastingPool, auditionFor, castingChance, reach, SHELVES, SHELF_BLURB, SHELF_EMPTY, rerollBoard, canReroll, prepareFor, nextPrep, prepBonus, dayWork, fieldFactor, poisoned } from '../../systems/career/castings.js';
 import { slotNorm } from '../../systems/career/franchise.js';
 import { TimingBar } from '../../ui/components/TimingBar.jsx';
 import { GridRisk } from '../../ui/components/GridRisk.jsx';
@@ -170,7 +170,7 @@ export function OpenCall({ g, ocTab, setOcTab, teenMode }) {
       {canWork(g).why}
     </div>}
     {!list.length && <div style={{ fontSize: 12.5, color: theme.muted, textAlign: 'center', padding: 22, lineHeight: 1.5 }}>
-      {(g.ageY || 0) < 15 ? 'Casting offices do not read anyone under fifteen. The board opens at fifteen — until then it is school, the play, and lessons.' : (SHELF_EMPTY[cur] || 'Nothing on this shelf right now.')}
+      {(g.ageY || 0) < 15 ? 'Casting offices do not read anyone under fifteen. The board opens at fifteen — until then it is school, the play, and lessons.' : (cur === 'film' && poisoned(g) ? SHELF_EMPTY.poison : SHELF_EMPTY[cur] || 'Nothing on this shelf right now.')}
     </div>}
     {/* A board, not a wall. Every listing used to arrive fully open — backing, negotiation,
         the sides, the read, eight lines apiece, five apiece per shelf — and Maxi called it
@@ -241,6 +241,12 @@ export function OpenCall({ g, ocTab, setOcTab, teenMode }) {
             </div>
             <span style={{ fontSize: 10.5, fontWeight: 800, color: c.months >= 8 ? theme.gold : theme.muted, whiteSpace: 'nowrap' }}>{c.months} months of your life</span>
           </div>}
+          {/* The room: who else is reading, and — once you have the sides — what they want. */}
+          {c.room && (() => { const ff = fieldFactor(g, c); const WANT = { looks: 'a face', charisma: 'presence', craft: 'the craft', name: 'a name the poster can sell' };
+            return (<div style={{ fontSize: 10.5, lineHeight: 1.45, marginBottom: 6, padding: '6px 9px', borderRadius: 9, background: 'rgba(255,255,255,.03)', border: `1px solid ${theme.line}`, color: theme.muted }}>
+              <b style={{ color: theme.text }}>{c.room.readers} other{c.room.readers === 1 ? '' : 's'} reading.</b> {ff >= 1.2 ? 'You are the strongest in the room.' : ff >= 0.95 ? 'You are about the room’s level.' : ff >= 0.7 ? 'Most of them have more of what this wants.' : 'You are the long shot in this room.'}{' '}
+              {(c.prep || 0) >= 1 ? <span>They want <b style={{ color: theme.gold }}>{WANT[c.room.want]}</b>.</span> : <span>Learn the sides and you will know what they want.</span>}
+            </div>); })()}
           <Backing g={g} c={c} />
           {/* Your name, spent: a supporting part becomes a lead if they agree to read you for it. */}
           {!locked && (c.shelf === 'film' || c.shelf === 'indie') && c.role !== 'Lead' && !c.askedLead && (() => { const fit = canUse(g, 'lead');

@@ -89,11 +89,20 @@ export function fireAgent(s) {
   return s;
 }
 // Work money, net of the agent's cut. Wages from a day job are not agented.
+// What a fee is worth once the agent and the taxman have had theirs. Income tax was never
+// taken — a perfect player banked seven hundred million and money meant nothing. A third
+// above a small threshold, the way a working actor's accountant would put it.
+export const TAX_FREE = 30000, TAX_RATE = 0.34;
+export function taxOn(amount) { return amount <= TAX_FREE ? 0 : Math.round((amount - TAX_FREE) * TAX_RATE); }
 export function paid(s, amount, note) {
   const cut = agentCut(s);
-  if (!cut || amount <= 0) { earn(s, amount, note); return amount; }
-  const net = Math.round(amount * (1 - cut));
-  earn(s, net, `${note} (after ${s.agent.name}'s ${Math.round(cut * 100)}%)`);
+  if (amount <= 0) { earn(s, amount, note); return amount; }
+  const afterAgent = Math.round(amount * (1 - (cut || 0)));
+  const tax = taxOn(afterAgent);
+  const net = afterAgent - tax;
+  s.taxPaid = (s.taxPaid || 0) + tax;
+  const parts = [cut ? `${s.agent.name}'s ${Math.round(cut * 100)}%` : null, tax ? `${Math.round(tax / 1000).toLocaleString()}k tax` : null].filter(Boolean);
+  earn(s, net, parts.length ? `${note} (after ${parts.join(' and ')})` : note);
   return net;
 }
 // Monthly. The agent leaves the liability, and moves you up a desk when you have earned it.

@@ -107,6 +107,8 @@ export function maybeGenerateOffer(s) {
   let p = acc.agentReach ? 0.14 : (s.fame >= 20 ? 0.06 : 0.02);
   // A name people are nervous about gets fewer calls.
   p *= Math.max(0.25, 1 - (s.scandal || 0) / 90);
+  if ((s.poisonUntil || 0) > (s.year || 0) * 12 + (s.month || 0)) p *= 0.5;   // box office poison
+  if ((s.overtakenUntil || 0) > (s.year || 0) * 12 + (s.month || 0)) p *= 0.7;  // somebody younger has your chair
   if (chance(p * 100)) (s.offers = s.offers || []).push(generateOffer(s));
 }
 export function acceptOffer(s, id) {

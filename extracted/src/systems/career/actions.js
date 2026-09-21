@@ -13,14 +13,20 @@ const clamp = (v) => Math.max(0, Math.min(100, v));
 // already refuses to engrave. See systems/meta/legacy.js.
 const MINOR = /^(Brand Campaign|Commercial|Jingle|Brand Song|TV Extra|Voice Session|Open Mic|Festival Slot|Session Work|Music Video)$/;
 const isMinor = (c) => c.minor === true || (c.minor === undefined && MINOR.test(c.type || ''));
-export function skillCap(s) {
-  const all = [...(s.filmography || []), ...(s.discography || [])];
-  const real = all.filter((c) => !isMinor(c));
-  const hits = real.filter((x) => (x.rating || 0) >= 70).length;
-  // Minor work counts for a little and stops counting quickly — you learn something on your
-  // fourth commercial, and nothing at all on your fortieth.
-  const minor = Math.min(6, all.length - real.length);
-  return Math.min(100, 40 + real.length * 5 + hits * 5 + minor);
+// Two ceilings. Teachers take you to forty, full stop — the panel always said so, and the
+// number underneath it kept climbing with every credit, which is how a conservatory took a
+// perfect player to a hundred by twenty-seven. Past forty it is sets, and sets take you to
+// what you were born with (origin.js talentRoll): most people's ceiling is in the seventies,
+// a natural's in the nineties, and the last few points of anybody's are the slowest.
+export const LESSON_CAP = 40;
+export function lessonCap() { return LESSON_CAP; }
+export function skillCap(s) { return Math.max(LESSON_CAP, Math.min(100, s.talent || 70)); }
+// What the teachers say about you, without the number: read on the Training panel.
+export function talentHint(s) {
+  const t = s.talent || 70;
+  return t >= 86 ? 'a natural — the teachers use the word carefully, and they used it'
+    : t >= 72 ? 'good, properly good, and it will show on the right sets'
+    : 'solid — the parts that suit you are the ones to chase';
 }
 // Everything that exists elsewhere has been moved out and must NOT come back here:
 // askmoney is on the parent's card in People; networking is Career → Events; practice is

@@ -151,13 +151,15 @@ startProduction(live, { id: 'x', projectTitle: 'Golden Echo', role: 'Lead', type
   salary: 1200000, months: 3, tier: 'lead', scale: 'feature', prestigeScore: 65, stability: 96 });
 live.production.meter = 90; live.acting = 90;
 productionTick(live); productionTick(live); productionTick(live);
-ok('the shoot paid in full', live.cash === 1200000, '€' + live.cash.toLocaleString());
+// Paid in three, taxed in three (agent.js taxOn): what lands is the fee less a third of what is over the threshold each month.
+const expectNet = 3 * (400000 - Math.round((400000 - 30000) * 0.34));
+ok('the shoot paid in full, after tax', live.cash === expectNet, '€' + live.cash.toLocaleString() + ' vs €' + expectNet.toLocaleString());
 ok('and went into post', live.releases.length === 1 && live.filmography.length === 0);
 ok('the wrap message talks about waiting', /wait for it to open/.test(live.lastEvent), live.lastEvent);
 ok('no premiere modal at the wrap', !live.bigMoment);
 run(live, 24);
 ok('and the premiere arrives on its own', live.filmography.length === 1 && !!live.bigMoment, live.lastEvent);
-ok('the shoot fee did not double up at the premiere', live.cash === 1200000, '€' + live.cash.toLocaleString());
+ok('the shoot fee did not double up at the premiere', live.cash === expectNet, '€' + live.cash.toLocaleString());
 
 // ── the table ─────────────────────────────────────────────────────────────────
 console.log('\n      WHAT A PICTURE OPENS TO  (average of 300, star at fame 55)');

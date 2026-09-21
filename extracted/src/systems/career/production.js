@@ -4,6 +4,7 @@ import { uid } from '../../engine/id.js';
 import { setQuote, setRespect } from '../meta/status.js';
 import { addTimeline, showMoment } from '../../engine/timeline.js';
 import { inCareer } from '../../engine/stage.js';
+import { startRumour } from '../meta/trouble.js';
 import { paid } from './agent.js';
 import { hotGenre } from '../meta/news.js';
 import { addGenreXP, genreBonus } from './genres.js';
@@ -497,7 +498,7 @@ function wrapProduction(s, p) {
   // the months rehearsed, nothing walked off — still ended thirty years at −27 and spent
   // most of a life as the liability, three points a wrap, because every set below the
   // line tripped this. Twelve points colder than they started, on a set that went badly.
-  else if (lead.bond <= 25 && lead.bond <= (lead.bond0 ?? 100) - 12 && (p.meter || 0) < 45) { setRespect(s, (s.respect || 0) - 3); verdictNote = ` ${lead.name} has quietly started telling a different story about you.`; }
+  else if (lead.bond <= 25 && lead.bond <= (lead.bond0 ?? 100) - 12 && (p.meter || 0) < 45) { setRespect(s, (s.respect || 0) - 3); verdictNote = ` ${lead.name} has quietly started telling a different story about you.`; startRumour(s, lead.name); }
   if (worldHit) s.worldHits = (s.worldHits || 0) + 1;
   keepTheCrew(s, p);
   // What the months on set left in you. Computed AFTER the rating, so this shoot is judged

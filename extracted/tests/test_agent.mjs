@@ -59,15 +59,17 @@ const letter = (s) => (s.inbox || []).find((m) => m.tag === 'agent');
   ok('the table reaches further', N.reachOf(s) > N.reachOf(actor({ fame: 45 })));
   const before = s.cash;
   AG.paid(s, 100000, 'a job');
-  ok('and they take ten percent of a fee', s.cash - before === 90000, String(s.cash - before));
+  // The taxman takes his after the agent (agent.js taxOn): a third of what is over thirty thousand.
+  const net = (gross) => { const afterAgent = Math.round(gross * 0.9); return afterAgent - AG.taxOn(afterAgent); };
+  ok('and they take ten percent of a fee, and the taxman his', s.cash - before === net(100000), String(s.cash - before));
   ok('the timeline says after whose cut', /after Lena Voss's 10%/.test(s.timeline[0].text), s.timeline[0].text);
   const w = actor({ fame: 45 }); const b0 = w.cash; AG.paid(w, 100000, 'a job');
-  ok('no agent, no cut', w.cash - b0 === 100000);
+  ok('no agent, no cut — only the tax', w.cash - b0 === 100000 - AG.taxOn(100000));
   // a shoot pays net
   const p = actor({ fame: 45, respect: 10 }); AG.signAgent(p, { name: 'Lena Voss', tier: 'novice' });
   PR.startProduction(p, { id: 'o', projectTitle: 'T', role: 'Lead', type: 'Feature Film', genre: 'Drama', salary: 600000, months: 6, prestigeScore: 50, tier: 'lead', scale: 'feature', stability: 100 });
   const c0 = p.cash; PR.productionTick(p);
-  ok('a month on set pays net of the cut', p.cash - c0 === 90000, String(p.cash - c0));
+  ok('a month on set pays net of the cut and the tax', p.cash - c0 === net(100000), String(p.cash - c0));
 }
 
 // ── moving up, and leaving ──

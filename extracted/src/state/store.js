@@ -54,6 +54,9 @@ function normalize(saved) {
   merged.production = merged.productions[0] || null;
   // A save from before the sets announced themselves: whatever standing already allows is
   // already known, so an old star does not get told about a third set they have had for years.
+  // A save from before there was a ceiling: whatever they already have is theirs, and the
+  // roll above it is what the sets can still add.
+  if (merged.talent == null) { const r = Math.random(); const roll = r < 0.17 ? 86 + Math.floor(Math.random() * 15) : r < 0.55 ? 72 + Math.floor(Math.random() * 14) : 55 + Math.floor(Math.random() * 17); merged.talent = Math.max(roll, Math.ceil(merged.acting || 0), Math.ceil(merged.singing || 0)); }
   if (merged.setsKnown == null) { const r = merged.respect || 0; merged.setsKnown = 1 + (r >= 25 ? 1 : 0) + (r >= 50 ? 1 : 0); }
   ensureAppearance(merged); // saves made before the avatar existed still need a face
   return merged;
