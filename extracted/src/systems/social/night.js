@@ -257,6 +257,8 @@ export function startNight(s, ev, tier) {
     you: 'door', pos: null, looks: 0, guests: (ev.guestsPre && ev.guestsPre.length ? ev.guestsPre : guestsFor(s, ev, tier)).map((g) => ({ ...g, done: false, seen: false, came: false })), talk: null, done: false, blackout: false,
     log: [{ text: `${tier.label} at ${ev.venue}. ${ev.host ? `Hosted by ${ev.host}. ` : ''}You are in.`, tone: 'note' }],
     gains: { contacts: [], leads: 0, numbers: 0, fame: 0, respect: 0, scandal: 0 }, pending: null, cameras: tier.id === 'premiere' || tier.id === 'gala' };
+  // The nights add up (risk.js: the party face). A year is kept.
+  s.nights = [...(s.nights || []).filter((t) => stamp(s) - t < 12), stamp(s)];
   approach(s);
   return s;
 }

@@ -23,6 +23,7 @@ import { sequelDue } from './systems/career/franchise.js';
 import { knownFor, isHit, isFlop } from './systems/meta/knownFor.js';
 import { townOpen, townFor, goOut } from './systems/life/town.js';
 import { LABELS, activeLabels, isStrong } from './systems/meta/typecast.js';
+import { liveRisks } from './systems/meta/risk.js';
 import { addPrestigeListing } from './systems/career/castings.js';
 import { TimingBar } from './ui/components/TimingBar.jsx';
 import { GridRisk } from './ui/components/GridRisk.jsx';
@@ -186,6 +187,7 @@ export default function App() {
           <Stat label="Respect" value={g.respect} sub="tap ›" onClick={() => setShowRespect(true)} />
         </div>
         {g.lastEvent && <Card style={{ marginBottom: 14, borderColor: 'rgba(255,209,102,.35)' }}><div style={{ fontSize: 13.5, lineHeight: 1.5, whiteSpace: 'pre-line' }}>{g.lastEvent}</div></Card>}
+        {inCareer(g) && <RiskCard g={g} />}
         {g.illness && (<Card style={{ marginBottom: 14, borderColor: 'rgba(255,90,122,.5)' }}>
           <div style={{ fontSize: 11, fontWeight: 900, letterSpacing: '.08em', textTransform: 'uppercase', color: theme.bad, marginBottom: 5 }}>🤒 {g.illness.name}{g.illness.serious ? ' · serious' : ''}</div>
           <div style={{ fontSize: 12, color: theme.muted, lineHeight: 1.5, marginBottom: 9 }}>
@@ -1181,6 +1183,31 @@ function CheckpointModal({ g }) {
           </div>
         </>)
   ), shown ? 'A few seconds.' : 'Concentration is the first thing this takes. This is the one that asks for it back.');
+}
+// Worth watching. Every story the world can run on you (trouble.js) has a warning here
+// first, for a month or more, with what would fix it. Nothing lands out of a clear sky —
+// Maxi: a crisis you could not see coming is a dice roll, not difficulty. Empty months
+// show nothing; a careful life has a clean main screen.
+function RiskCard({ g }) {
+  const risks = liveRisks(g);
+  if (!risks.length) return null;
+  const hot = risks.some((r) => r.level === 2);
+  return (<Card style={{ marginBottom: 14, borderColor: hot ? 'rgba(255,90,122,.5)' : 'rgba(255,209,102,.3)' }}>
+    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', marginBottom: 6 }}>
+      <div style={{ fontSize: 11, fontWeight: 900, letterSpacing: '.09em', textTransform: 'uppercase', color: hot ? theme.bad : theme.gold }}>Worth watching</div>
+      <div style={{ fontSize: 10.5, color: theme.muted }}>{hot ? 'about to bite' : 'nothing has happened yet'}</div>
+    </div>
+    <div style={{ display: 'grid', gap: 7 }}>
+      {risks.map((r) => (<div key={r.id} style={{ display: 'grid', gridTemplateColumns: '10px 1fr', gap: 8, alignItems: 'start' }}>
+        <div style={{ width: 8, height: 8, borderRadius: 4, marginTop: 4, background: r.level === 2 ? theme.bad : theme.gold, boxShadow: r.level === 2 ? `0 0 8px ${theme.bad}` : 'none' }} />
+        <div>
+          <div style={{ fontSize: 12.5, fontWeight: 800 }}>{r.label}</div>
+          <div style={{ fontSize: 11.5, color: theme.muted, lineHeight: 1.45 }}>{r.line}</div>
+          <div style={{ fontSize: 11, color: r.level === 2 ? theme.text : theme.muted, marginTop: 2 }}>→ {r.fix}</div>
+        </div>
+      </div>))}
+    </div>
+  </Card>);
 }
 function LifeCard({ g }) {
   const c = monthlyCosts(g);

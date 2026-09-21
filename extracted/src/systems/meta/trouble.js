@@ -15,6 +15,7 @@ import { setRespect } from './status.js';
 import { level as drinkLevel } from '../life/drink.js';
 import { inCareer } from '../../engine/stage.js';
 import { typecastScandal } from './typecast.js';
+import { warned } from './risk.js';
 
 const clamp = (v) => Math.max(0, Math.min(100, v));
 const stamp = (s) => (s.year || 0) * 12 + (s.month || 0);
@@ -29,22 +30,24 @@ export function rumourOn(s) { return !!(s.rumour && s.rumour.until > stamp(s)); 
 // The room has heard: reads are harder while it lasts. Read by castings.js.
 export function rumourFactor(s) { return rumourOn(s) ? 0.82 : 1; }
 
-// Real scandal, once you are somebody. A publicist halves what sticks.
+// Real scandal, once you are somebody. A publicist halves what sticks. Every story has a
+// risk it must be preceded by (risk.js): it was on the main screen for a month or more
+// before the story could run. Nothing lands out of a clear sky.
 const STORIES = [
-  { id: 'dui', when: (s) => drinkLevel(s) >= 18, odds: (s) => 0.8 + drinkLevel(s) / 40,
+  { id: 'dui', risk: 'drink', when: (s) => drinkLevel(s) >= 18, odds: (s) => 0.8 + drinkLevel(s) / 40,
     scandal: [10, 18], respect: 4, line: 'Pulled over at two in the morning. The photograph from the station is everywhere by six.' },
-  { id: 'recording', when: (s) => (s._wentOut || 0) >= stamp(s) - 1, odds: () => 1.2,
+  { id: 'recording', risk: 'nights', when: (s) => (s._wentOut || 0) >= stamp(s) - 1, odds: () => 1.2,
     scandal: [6, 12], respect: 2, line: 'A recording from the party. You do not remember saying it; the internet does not need you to.' },
-  { id: 'lawsuit', when: (s) => (s.fame || 0) >= 45, odds: () => 0.6,
+  { id: 'lawsuit', risk: 'paper', when: (s) => (s.fame || 0) >= 30, odds: () => 0.6,
     scandal: [4, 8], respect: 1, cash: [0.03, 0.08], line: 'A lawsuit — an old contract, a producer, a number with a lot of zeros. Your lawyer says it is nothing. Your lawyer bills for saying it.' },
-  { id: 'cofact', when: (s) => (s.fame || 0) >= 30 && (s.productions || []).length > 0, odds: () => 0.9,
+  { id: 'cofact', risk: 'difficult', when: (s) => (s.fame || 0) >= 30 && (s.productions || []).length > 0, odds: () => 0.9,
     scandal: [5, 10], respect: 3, line: 'A co-star, an interview, and a sentence about you that the headline is built from. "Difficult" is in quotation marks, which changes nothing.' },
-  { id: 'photo', when: (s) => (s.fame || 0) >= 35, odds: () => 0.9,
+  { id: 'photo', risk: 'exposure', when: (s) => (s.fame || 0) >= 35, odds: () => 0.9,
     scandal: [4, 9], respect: 0, line: 'A photograph you did not pose for, taken from a car. The caption is worse than the picture.' },
 ];
 export function storyTick(s) {
   if (!inCareer(s) || (s.fame || 0) < 20) return;
-  const live = STORIES.filter((st) => st.when(s));
+  const live = STORIES.filter((st) => st.when(s) && warned(s, st.risk));
   if (!live.length) return;
   const st = pick(live);
   if (!chance(st.odds(s))) return;

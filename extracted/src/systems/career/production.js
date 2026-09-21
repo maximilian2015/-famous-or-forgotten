@@ -186,6 +186,7 @@ export function walkOffSet(s, setId, forTitle) {
   const p = sets(s).find((x) => x.id === setId); if (!p) return s;
   removeSet(s, p);
   setRespect(s, (s.respect || 0) - ((p.episodes || 0) > 0 ? 7 : 9));
+  s.walkedOff = [...(s.walkedOff || []).filter((t) => monthKey(s) - t < 36), monthKey(s)];   // risk.js: a lawyer has the paper
   addTimeline(s, `Walked off "${p.title}"${forTitle ? ` for "${forTitle}"` : ''}. They recast within the week. Everybody heard.`, true);
   return s;
 }

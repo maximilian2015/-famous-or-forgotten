@@ -41,6 +41,7 @@ import { moneyTick, staffEnergy } from '../systems/life/money.js';
 import { faceTick } from '../systems/life/face.js';
 import { pressTick } from '../systems/meta/press.js';
 import { storyTick, overtakenTick } from '../systems/meta/trouble.js';
+import { riskTick } from '../systems/meta/risk.js';
 import { typecastYear } from '../systems/meta/typecast.js';
 
 export function stepIsYear(state) { return state.stage === 'child' || state.stage === 'teen'; }
@@ -108,6 +109,7 @@ export function advanceMonth(state) {
   offersTick(s);      // and a part you never answered goes to somebody else
   maybeGenerateOffer(s);
   agentTick(s);      // the agent leaves the liability, or moves you up a desk
+  riskTick(s);       // what is worth watching, on the main screen a month before it bites
   storyTick(s);      // and the world comes for you now and then, whether you asked or not
   if (s.month === 0) { overtakenTick(s); typecastYear(s); }   // the year's list is out, and the labels fade a little
   standingTick(s);   // and the trades find a word for what you are now
