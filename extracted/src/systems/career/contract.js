@@ -16,6 +16,7 @@ import { negotiationFor, reachOf } from './negotiate.js';
 import { acceptOffer, declineOffer } from './offers.js';
 import { canTakeSet, monthsUntilFree, sets } from '../../engine/sets.js';
 import { walkOffSet } from './production.js';
+import { noteSequelLoss } from '../meta/stories.js';
 import { sendMail } from '../meta/email.js';
 import { STUDIOS } from '../world/names.js';
 // The studio on the letterhead — the same hash ContractRoom draws the stamp from.
@@ -274,6 +275,7 @@ export function contractsTick(s) {
       s.offers = s.offers.filter((x) => x.id !== o.id);
       s.inbox = (s.inbox || []).filter((m) => m.offerId !== o.id);
       addTimeline(s, `${title}: they stopped answering. Somebody else signed it as written.`, true);
+      if (o.kind === 'sequel' || o.kind === 'renewal') noteSequelLoss(s, o, o.story === 'recast' ? 'meeting' : 'talks');
       (s.moments = s.moments || []).push({ id: 'contract', kind: 'bad', title, lines, body: 'Three times back and forth, and on the third they simply stopped replying. Somebody else signed it as written.', walked: true });
       sendMail(s, { from: `${studioOf(o)} · business affairs`, subj: `Re: "${title}" — withdrawn`, tag: 'contract', kind: 'contract', body: `Further to your revisions: the role has been cast elsewhere. We thank you for your interest and wish you well.\n\n${lines.join(' · ')}`, cta: [{ label: 'Delete', fx: {}, reply: 'Gone.' }] });
       continue;

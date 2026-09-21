@@ -59,7 +59,7 @@ export function storyTick(s) {
   s.media = clamp((s.media || 0) + 4);
   addTimeline(s, `${st.line}${publicist ? ' Your publicist had a statement out before lunch.' : ''}`, true);
   s.lastEvent = st.line + (publicist ? ' Your publicist was on it by lunch, which is what you pay them for.' : ' Nobody is on it. That is what a publicist is for.');
-  s._lastStory = stamp(s);
+  s._lastStory = stamp(s); s._lastStoryId = st.id;   // the scandal chain starts from this (stories.js)
   typecastScandal(s, st.id === 'lawsuit' ? 0.5 : 1);
 }
 

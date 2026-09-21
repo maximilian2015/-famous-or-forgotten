@@ -10,6 +10,7 @@ import { startProduction } from './production.js';
 import { rollStability } from './stability.js';
 import { canWork } from '../life/strain.js';
 import { newTitle } from '../world/titles.js';
+import { storyOfferFactor, noteRefusal, noteSequelLoss } from '../meta/stories.js';
 import { canTakeSet } from '../../engine/sets.js';
 const clamp = (v) => Math.max(0, Math.min(100, v));
 // Titles come from the same generator as everything else the world makes, so an agent's
@@ -28,9 +29,13 @@ export function generateOffer(s) {
   const prestige = { tentpole: rint(70, 95), lead: rint(45, 70), supporting: rint(20, 45) }[tier];
   const salary = Math.round(quote * share * (0.85 + Math.random() * 0.45));
   const genre = pick(GENRES);
+  // One offer in four comes from a director already in your phone — so a no is a no to
+  // somebody, and a yes starts where you left them (production.js).
+  const known = (s.people || []).filter((p) => /Director/.test(p.role || '') && !p.cold && (p.relationship || 0) > 15);
+  const dir = known.length && chance(25) ? pick(known) : null;
   // Who brought it. Messages says so on the card — Maxi had three copies of one offer in
   // three apps and no idea where any of them had come from.
-  return { id: uid(s, 'off'), via: 'agent',
+  return { id: uid(s, 'off'), via: 'agent', director: dir ? dir.name : undefined, directorId: dir ? dir.id : undefined,
     projectTitle: (tier === 'tentpole' ? '⭐ ' : '') + title(s, genre),
     role: tier === 'supporting' ? 'Supporting' : 'Lead',
     type: s.dream === 'singer' ? (tier === 'tentpole' ? 'World Tour' : 'Album') : (tier === 'tentpole' ? 'Blockbuster' : 'Feature Film'),
@@ -87,6 +92,7 @@ export function offersTick(s) {
     // reason a deadline is on the card.
     if (o.kind === 'thaw') addTimeline(s, `${title} finally went ahead without you.`, true);
     else addTimeline(s, `They stopped waiting on ${title} and cast someone else.`, true);
+    if (o.kind === 'sequel' || o.kind === 'renewal') noteSequelLoss(s, o, o.story === 'recast' ? 'meeting' : 'expired');
     s.inbox = (s.inbox || []).filter((m) => m.offerId !== o.id);
   }
   if (kept.length !== s.offers.length && !s.lastEvent) {
@@ -109,6 +115,7 @@ export function maybeGenerateOffer(s) {
   p *= Math.max(0.25, 1 - (s.scandal || 0) / 90);
   if ((s.poisonUntil || 0) > (s.year || 0) * 12 + (s.month || 0)) p *= 0.5;   // box office poison
   if ((s.overtakenUntil || 0) > (s.year || 0) * 12 + (s.month || 0)) p *= 0.7;  // somebody younger has your chair
+  p *= storyOfferFactor(s);   // out of sight, or an agent who is working for you again, or not
   if (chance(p * 100)) (s.offers = s.offers || []).push(generateOffer(s));
 }
 export function acceptOffer(s, id) {
@@ -147,6 +154,10 @@ export function declineOffer(s, id) {
   s.inbox = (s.inbox || []).filter((m) => m.offerId !== id);
   if (!o) return s;
   const title = o.projectTitle.replace('⭐ ', '');
+  // The business remembers a no (stories.js): the director you passed on, and the sequel
+  // or the season that goes ahead without you.
+  if (o.kind === 'sequel' || o.kind === 'renewal') noteSequelLoss(s, o, o.story === 'recast' ? 'meeting' : 'passed');
+  else if (o.tier !== 'supporting' && o.via !== 'casting') noteRefusal(s, o);
   // Turning down an ordinary offer is your business. Turning down the one they finally
   // found the money to finish, after holding your part open for years, is not.
   // And walking out of an option you signed is walking out of a contract.

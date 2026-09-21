@@ -237,6 +237,7 @@ export function hostNight(s) {
   const fit = canHost(s); if (!fit.ok) { s.lastEvent = fit.why; return s; }
   const st = stamp(s);
   if (s._wentOut === st) { s.lastEvent = 'You have been out this month already. Next month.'; return s; }
+  if ((s.hiding || 0) >= st) { s.lastEvent = 'You are out of sight this month. Nobody is coming over.'; return s; }
   if ((s.cash || 0) < fit.cost) { s.lastEvent = `A night like that costs €${fit.cost.toLocaleString()}. Not this month.`; return s; }
   s.cash -= fit.cost; s._wentOut = st;
   (s._hosted = s._hosted || []).push(st); s._hosted = s._hosted.filter((t) => st - t < 12);

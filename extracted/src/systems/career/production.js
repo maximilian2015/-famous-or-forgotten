@@ -16,6 +16,7 @@ import { coldStart } from '../meta/standing.js';
 import { activeActors, actorById } from '../world/world.js';
 import { fameTier } from '../meta/status.js';
 import { personName, namesInUse } from '../world/names.js';
+import { holdsAGrudge } from '../meta/stories.js';
 import { sets, addSet, removeSet, setById, canTakeSet, slotsFree, MAX_SETS, SET_RESPECT } from '../../engine/sets.js';
 export { sets, canTakeSet, slotsFree, MAX_SETS, SET_RESPECT };
 const clamp = (v) => Math.max(0, Math.min(100, v));
@@ -53,7 +54,7 @@ function makeCrew(s, scale) {
   // with was gone at wrap, and the next shoot was three strangers again. Now a director in
   // your phone comes back to direct you, one shoot in three, and starts where you left
   // them: a warm one warm, a cold one cold. The business is small; that is the point of it.
-  const known = (s.people || []).filter((p) => /Director|Producer/.test(p.role || '') && !p.cold && (p.relationship || 0) > 15 && p.fromSet);
+  const known = (s.people || []).filter((p) => /Director|Producer/.test(p.role || '') && !p.cold && (p.relationship || 0) > 15 && p.fromSet && !holdsAGrudge(s, p.name));
   if (known.length && chance(33)) {
     const k = pick(known);
     crew[0] = { ...crew[0], name: k.name, bond: Math.max(10, Math.min(90, k.relationship || 40)), knownId: k.id };
@@ -130,6 +131,7 @@ export function startProduction(s, offer) {
     // The contract. Preparation is months on the calendar before the first day; an
     // exclusive shoot takes your Saturdays too; points pay out when the run closes.
     prepLeft: offer.prep || 0, prep: offer.prep || 0, exclusive: !!offer.exclusive, backend: offer.backend || 0,
+    story: offer.story || null,   // a career story this shoot belongs to (stories.js)
     // How solid the money is. Decides whether this shoot ever reaches its last day, and
     // how wildly the finished thing can turn out. See systems/career/stability.js.
     stability: offer.stability ?? rollStability(offer.scale || 'feature'),
@@ -140,6 +142,11 @@ export function startProduction(s, offer) {
   };
   // One more set. Three at most, and the second and third only for somebody they trust
   // to turn up — see engine/sets.js. The callers check first; this is the last door.
+  // The director who sent it, if it came from one you know; the rival, if the picture is
+  // the two-hander (stories.js).
+  if (offer.directorId) { const k = (s.people || []).find((x) => x.id === offer.directorId); if (k) { const b = Math.max(10, Math.min(90, k.relationship || 40)); p.crew[0] = { ...p.crew[0], name: k.name, bond: b, bond0: b, knownId: k.id }; } }
+  else if (offer.director) p.crew[0] = { ...p.crew[0], name: offer.director };
+  if (offer.costarId) { const a = actorById(s, offer.costarId); if (a && p.crew[1]) { const b = rint(15, 35); p.crew[1] = { ...p.crew[1], name: a.name, worldId: a.id, bond: b, bond0: b, trait: 'perfectionist' }; } }
   addSet(s, p);
   const star = p.crew.find((c) => c.worldId);
   if (star) {
@@ -462,7 +469,7 @@ function wrapProduction(s, p) {
     season: p.season || 0, part: p.part > 1 ? p.part : 0, episodes: p.episodes || 0,
     // Who directed it, and how long it ran. The crew is thrown away at wrap, and the
     // filmography had no director on it — every real one lists them under the title.
-    director: ((p.crew || [])[0] || {}).name || null, months: p.months || 0,
+    director: ((p.crew || [])[0] || {}).name || null, months: p.months || 0, story: p.story || null,
     wrappedAt: (s.year || 0) * 12 + (s.month || 0) };   // so the phone knows somebody wants to celebrate
   // The credit does NOT land here. It goes into post and opens months from now —
   // fame, box office and the score all arrive on premiere night, not on the last

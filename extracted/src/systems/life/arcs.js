@@ -3,6 +3,7 @@ import { rint, chance, pick } from '../../engine/rng.js';
 import { addTimeline } from '../../engine/timeline.js';
 import { setFame, setRespect } from '../meta/status.js';
 import { takeJob, JOBS } from './work.js';
+import { resolveStory } from '../meta/stories.js';
 const clamp = (v) => Math.max(0, Math.min(100, v));
 export const ARCS = [
   { id: 'firstCredit', once: true, when: (s) => (s.filmography || []).length + (s.discography || []).length === 1 && s.fame < 20,
@@ -87,6 +88,7 @@ export function maybeStartArc(s) {
 }
 export function resolveArc(s, i) {
   const arc = s.pendingArc; if (!arc) return s;
+  if (arc.story) return resolveStory(s, arc, i);   // a career story's beat (stories.js)
   const c = arc.choices[i]; if (!c) return s;
   let out = c, head = '';
   if (c.check) { const odds = 30 + (s[c.check.stat] || 0) * 0.6; const ok = chance(odds); out = ok ? c.good : c.bad; head = ok ? '✅ ' : '❌ '; }

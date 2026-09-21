@@ -170,6 +170,7 @@ export function attendEvent(s, eventId) {
   if (!isTonight(s, ev)) { s.lastEvent = `That is in ${monthName(atOf(s, ev))}. Tonight it is just you and the calendar.`; return s; }
   const stamp = (s.year || 0) * 12 + (s.month || 0);
   if (s._wentOut === stamp) { s.lastEvent = "You've already been out this month. Two nights in a row is how people start talking."; return s; }
+  if ((s.hiding || 0) >= stamp) { s.lastEvent = 'You are out of sight this month. That was the idea.'; return s; }
   const need = energyFor(ev.tier);
   if (!canAfford(s, need)) { s.lastEvent = tooTired(s, need); return s; }
   spend(s, need);

@@ -29,6 +29,7 @@ export function strongLabels(s) { return activeLabels(s).filter((id) => scoreOf(
 export function hasLabel(s, id) { return activeLabels(s).includes(id); }
 export function isStrong(s, id) { return scoreOf(s, id) >= STRONG_AT; }
 
+export function typecastBump(s, id, by) { bump(s, id, by); relabel(s); return s; }
 function bump(s, id, by) {
   const t = typecastOf(s);
   t.scores[id] = Math.max(0, Math.min(10, (t.scores[id] || 0) + by));

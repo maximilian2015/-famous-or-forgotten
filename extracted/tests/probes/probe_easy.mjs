@@ -15,6 +15,7 @@ const H = await import(P + 'systems/life/health.js');
 const W = await import(P + 'systems/life/work.js');
 const EM = await import(P + 'systems/meta/email.js');
 const C = await import(P + 'systems/career/contract.js');
+const AR = await import(P + 'systems/life/arcs.js');
 const N = +(process.argv[2] || 20);
 const tally = {};
 const bump = (k, n = 1) => { tally[k] = (tally[k] || 0) + n; };
@@ -24,7 +25,10 @@ for (let i = 0; i < N; i++) {
   Object.assign(t, { stage: 'career', ageY: 22, year: 2050, month: 0, hasApartment: true, livingWith: 'own_place', housing: 'room', cash: 9000, alive: true, ap: 100, apMax: 100, apMaxEff: 100, fame: 0, peakFame: 0 });
   let lastFame = 0, idle = 0, maxCash = 0;
   for (let m = 0; m < 45 * 12; m++) {
-    t.bigMoment = null; t.pendingArc = null; t.moments = []; t.night = null; t.openContract = null;
+    t.bigMoment = null;
+    // a career story's beat is answered, at random — the life dilemmas are skipped as before
+    if (t.pendingArc && t.pendingArc.story) { const k = t.pendingArc.choices.length; AR.resolveArc(t, Math.floor(Math.random() * k)); }
+    t.pendingArc = null; t.moments = []; t.night = null; t.openContract = null;
     for (const p of PR.sets(t)) if (!p.take) ST.pushTake(t, 'about');
     if (t.illness && (t.cash || 0) > H.treatmentCost(t, t.illness)) { H.seeDoctor(t); bump('saw a doctor'); }
     if (!t.job && (t.fame || 0) < 20) { const j = W.availableJobs(t)[0]; if (j) W.takeJob(t, j.id); }
@@ -72,6 +76,8 @@ for (let i = 0; i < N; i++) {
     if (m % 60 === 59) { const y = Math.floor(m / 60) + 1; (by5[y] = by5[y] || []).push({ fame: Math.round(t.fame || 0), resp: Math.round(t.respect || 0), cash: Math.round((t.cash || 0) / 1e6 * 10) / 10, acting: Math.round(t.acting || 0), credits: (t.filmography || []).filter((c) => !c.minor).length, askers: ((t.awards && t.awards.wins) || []).length }); }
   }
   bump('lives');
+  for (const k of Object.keys(t._storyLog || {})) bump('story: ' + k, t._storyLog[k].length);
+  for (const x of (t.stories || [])) bump('story: ' + x.id);
   bump('Askers won', ((t.awards && t.awards.wins) || []).length);
   bump('nominations', ((t.awards && t.awards.nominations) || []).length);
   if ((t.fame || 0) >= 75) bump('ended A-list or above');
@@ -81,6 +87,7 @@ for (let i = 0; i < N; i++) {
 }
 const med = (a) => { const b = [...a].sort((x, y) => x - y); return b[Math.floor(b.length / 2)]; };
 console.log(`${N} perfect lives, 45 years. Per life: ` + ['reads', 'a flop', 'a lead that bombed', 'fell ill', 'burnout', 'a scandal', 'a director who went cold', 'walked off', 'lost a part they would not hold', 'a year without work', 'fame went down (months)', 'standing went down (months)', 'in debt (months)', 'Askers won', 'nominations', 'box office poison', 'a rumour that stuck', 'a story in the papers', 'overtaken'].map((k) => `${k} ${((tally[k] || 0) / N).toFixed(1)}`).join(' · '));
+console.log('stories per life: ' + Object.keys(tally).filter((k) => k.startsWith('story: ')).map((k) => k.slice(7) + ' ' + (tally[k] / N).toFixed(1)).join(' · '));
 console.log(`never once: ` + ['box office poison', 'a rumour that stuck', 'a story in the papers', 'overtaken', 'died', 'in debt (months)', 'burnout', 'walked off'].filter((k) => !tally[k]).join(', '));
 console.log(`ended A-list+: ${tally['ended A-list or above'] || 0}/${N} · standing 60+: ${tally['ended standing 60+'] || 0}/${N} · with a partner: ${tally['ended with a partner'] || 0}/${N} · peak cash median ~€${med(Array.from({ length: N }, () => 0)).toFixed ? '' : ''}${Math.round((tally['peak cash (m) total'] || 0) / N)}m`);
 for (const y of Object.keys(by5)) { const r = by5[y]; console.log(`  age ${22 + y * 5}: fame ${med(r.map((x) => x.fame))} · standing ${med(r.map((x) => x.resp))} · cash €${med(r.map((x) => x.cash))}m · acting ${med(r.map((x) => x.acting))} · credits ${med(r.map((x) => x.credits))} · Askers ${med(r.map((x) => x.askers))}`); }

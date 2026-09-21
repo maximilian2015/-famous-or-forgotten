@@ -24,6 +24,7 @@ import { knownFor, isHit, isFlop } from './systems/meta/knownFor.js';
 import { townOpen, townFor, goOut } from './systems/life/town.js';
 import { LABELS, activeLabels, isStrong } from './systems/meta/typecast.js';
 import { liveRisks } from './systems/meta/risk.js';
+import { activeStories } from './systems/meta/stories.js';
 import { addPrestigeListing } from './systems/career/castings.js';
 import { TimingBar } from './ui/components/TimingBar.jsx';
 import { GridRisk } from './ui/components/GridRisk.jsx';
@@ -188,6 +189,7 @@ export default function App() {
         </div>
         {g.lastEvent && <Card style={{ marginBottom: 14, borderColor: 'rgba(255,209,102,.35)' }}><div style={{ fontSize: 13.5, lineHeight: 1.5, whiteSpace: 'pre-line' }}>{g.lastEvent}</div></Card>}
         {inCareer(g) && <RiskCard g={g} />}
+        {inCareer(g) && <StoriesCard g={g} />}
         {g.illness && (<Card style={{ marginBottom: 14, borderColor: 'rgba(255,90,122,.5)' }}>
           <div style={{ fontSize: 11, fontWeight: 900, letterSpacing: '.08em', textTransform: 'uppercase', color: theme.bad, marginBottom: 5 }}>🤒 {g.illness.name}{g.illness.serious ? ' · serious' : ''}</div>
           <div style={{ fontSize: 12, color: theme.muted, lineHeight: 1.5, marginBottom: 9 }}>
@@ -1209,6 +1211,21 @@ function RiskCard({ g }) {
     </div>
   </Card>);
 }
+// The career stories that are running (stories.js): a title and where it stands. The
+// beats arrive as the same modal a life dilemma uses; this is the thread between them.
+function StoriesCard({ g }) {
+  const list = activeStories(g);
+  if (!list.length) return null;
+  return (<Card style={{ marginBottom: 14, borderColor: `${theme.accent}40` }}>
+    <div style={{ fontSize: 11, fontWeight: 900, letterSpacing: '.09em', textTransform: 'uppercase', color: theme.accent, marginBottom: 6 }}>In your life now</div>
+    <div style={{ display: 'grid', gap: 6 }}>
+      {list.map((x) => (<div key={x.id}>
+        <div style={{ fontSize: 12.5, fontWeight: 800 }}>{x.title}</div>
+        {x.line && <div style={{ fontSize: 11.5, color: theme.muted, lineHeight: 1.45 }}>{x.line}</div>}
+      </div>))}
+    </div>
+  </Card>);
+}
 function LifeCard({ g }) {
   const c = monthlyCosts(g);
   // A month's income is the wage AND the shoot you are on. The balance used to show −€1,170
@@ -1684,7 +1701,7 @@ function LegacyScreen({ g }) {
 }
 function ArcModal({ g }) {
   const a = g.pendingArc;
-  return (<div style={{ maxWidth: 440, margin: '0 auto', minHeight: '100vh', background: 'transparent', color: theme.text, padding: 16, display: 'flex', flexDirection: 'column', justifyContent: 'center', fontFamily: FONT }}><div style={{ fontSize: 11, fontWeight: 900, letterSpacing: '.1em', textTransform: 'uppercase', color: theme.accent, marginBottom: 10 }}>{a.speaker}</div><div style={{ fontSize: 15, lineHeight: 1.6, marginBottom: 20 }}>{a.text}</div><div style={{ display: 'grid', gap: 9 }}>{a.choices.map((c, i) => (<button key={i} onClick={() => dispatch(resolveArc, i)} style={{ textAlign: 'left', background: theme.panel, border: `1px solid ${theme.line}`, borderRadius: 12, padding: '13px 15px', cursor: 'pointer', color: theme.text, fontSize: 14, fontWeight: 700 }}>{c.label}</button>))}</div></div>);
+  return (<div style={{ maxWidth: 440, margin: '0 auto', minHeight: '100vh', background: 'transparent', color: theme.text, padding: 16, display: 'flex', flexDirection: 'column', justifyContent: 'center', fontFamily: FONT }}><div style={{ fontSize: 11, fontWeight: 900, letterSpacing: '.1em', textTransform: 'uppercase', color: theme.accent, marginBottom: 10 }}>{a.speaker}</div><div style={{ fontSize: 15, lineHeight: 1.6, marginBottom: 20 }}>{a.text}</div><div style={{ display: 'grid', gap: 9 }}>{a.choices.map((c, i) => (<button key={i} onClick={() => dispatch(resolveArc, i)} style={{ textAlign: 'left', background: theme.panel, border: `1px solid ${theme.line}`, borderRadius: 12, padding: '13px 15px', cursor: 'pointer', color: theme.text, fontSize: 14, fontWeight: 700 }}>{c.label}{c.hint && <div style={{ fontSize: 11.5, fontWeight: 500, color: theme.muted, marginTop: 3 }}>{c.hint}</div>}</button>))}</div></div>);
 }
 function EndLifeModal({ onConfirm, onCancel }) {
   return (<div style={{ maxWidth: 440, margin: '0 auto', minHeight: '100vh', background: 'transparent', color: theme.text, padding: 16, display: 'flex', flexDirection: 'column', justifyContent: 'center', fontFamily: FONT }}>

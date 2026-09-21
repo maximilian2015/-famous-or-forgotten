@@ -93,6 +93,18 @@ export function piecesFor(s, lines) {
       add('news', m[3] ? `${m[3]} takes ${fn}'s chair` : `${name} slips to #${m[2]}`, `Down from #${m[1]} to #${m[2]} on the year's list. The piece is about who went up, and it is not about you, which is the point of it.`, {});
     } else if ((m = t.match(/^(.+): it is what you are to them now./))) {
       add('news', `${name}, ${m[1].toLowerCase()}`, `The piece is a list of the parts, and the parts are all one part. It is meant kindly, in the way a box is kindly. Play to it and the offers keep coming; the day you want out of it, this is the piece they will quote.`, {});
+    } else if ((m = t.match(/^Fans are furious: you are not coming back for season (\d+) of "(.+)"\./))) {
+      add('gossip', `${name} quits "${m[2]}"`, `Season ${m[1]} without the face on the poster. The network says "creative differences", the fans say something shorter, and the piece runs both, with the fan version in the headline.`, { about: m[2], react: true });
+    } else if ((m = t.match(/^Fans are furious: "(.+)" is going ahead without you\./))) {
+      add('gossip', `"${m[1]}" — without ${name}`, `The studio confirms it is going ahead and declines to say with whom. The fans have already decided whose fault it is, and it is not the studio's.`, { about: m[1], react: true });
+    } else if ((m = t.match(/^(.+) will not work with you again\. Not a rumour/))) {
+      add('pan', `${m[1]}: "never again" on ${name}`, `A director, on the record, which almost never happens. The piece prints the sentence and then prints the list of everybody who has worked with them twice, which is long.`, { react: true });
+    } else if ((m = t.match(/^"(.+)" (?:opened|went out) without you and did fine\./))) {
+      add('news', `"${m[1]}": the recast worked`, `The numbers held. The piece says the property was always bigger than any one name, and quotes a fan who "honestly didn't notice", and then it does not mention you again.`, { about: m[1] });
+    } else if ((m = t.match(/^"(.+)" (?:opened|went out) without you and sank\./))) {
+      add('news', `"${m[1]}" sinks without ${name}`, `The numbers fell off a cliff and the fans are saying the obvious thing loudly. The piece says it more quietly, in the last paragraph, where it counts.`, { about: m[1] });
+    } else if ((m = t.match(/^The trades call it settled: (.+), not (.+)\./))) {
+      add(m[1] === 'you' ? 'praise' : 'pan', m[1] === 'you' ? `${name} v ${m[2]}: settled` : `${m[1]} v ${name}: settled`, m[1] === 'you' ? `Two years of the trades pairing you, and this is the piece that stops. It is about you. They are a paragraph.` : `Two years of the trades pairing you, and this is the piece that stops. It is about them. You are the paragraph.`, {});
     } else if (/box office poison/.test(t)) {
       add('pan', `${name}: box office poison?`, `Two leads, two pictures that lost money, and a phrase the trades have been waiting to use. The piece counts the grosses, quotes an insurer who "cannot comment on individual cases", and does not need to.`, { react: true });
     } else if (/^Did not do the press for/.test(t)) {

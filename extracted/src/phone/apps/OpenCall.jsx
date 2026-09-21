@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { theme } from '../../ui/theme.js';
 import { dispatch, getState } from '../../state/store.js';
-import { refreshCastingPool, auditionFor, castingChance, reach, SHELVES, SHELF_BLURB, SHELF_EMPTY, rerollBoard, canReroll, prepareFor, nextPrep, prepBonus, dayWork, fieldFactor, poisoned } from '../../systems/career/castings.js';
+import { refreshCastingPool, auditionFor, castingChance, reach, SHELVES, SHELF_BLURB, SHELF_EMPTY, rerollBoard, canReroll, prepareFor, nextPrep, prepBonus, dayWork, fieldFactor, poisoned, hiding } from '../../systems/career/castings.js';
 import { slotNorm } from '../../systems/career/franchise.js';
 import { typeWord } from '../../systems/meta/typecast.js';
 import { TimingBar } from '../../ui/components/TimingBar.jsx';
@@ -171,7 +171,7 @@ export function OpenCall({ g, ocTab, setOcTab, teenMode }) {
       {canWork(g).why}
     </div>}
     {!list.length && <div style={{ fontSize: 12.5, color: theme.muted, textAlign: 'center', padding: 22, lineHeight: 1.5 }}>
-      {(g.ageY || 0) < 15 ? 'Casting offices do not read anyone under fifteen. The board opens at fifteen — until then it is school, the play, and lessons.' : (cur === 'film' && poisoned(g) ? SHELF_EMPTY.poison : SHELF_EMPTY[cur] || 'Nothing on this shelf right now.')}
+      {(g.ageY || 0) < 15 ? 'Casting offices do not read anyone under fifteen. The board opens at fifteen — until then it is school, the play, and lessons.' : (hiding(g) ? SHELF_EMPTY.hiding : cur === 'film' && poisoned(g) ? SHELF_EMPTY.poison : SHELF_EMPTY[cur] || 'Nothing on this shelf right now.')}
     </div>}
     {/* A board, not a wall. Every listing used to arrive fully open — backing, negotiation,
         the sides, the read, eight lines apiece, five apiece per shelf — and Maxi called it

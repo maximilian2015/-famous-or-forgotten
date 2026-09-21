@@ -23,6 +23,7 @@ import { actorById, applyFilmToActor } from '../world/world.js';
 import { tourMultiplier, tourFame } from './tour.js';
 import { networkLine, slotNorm } from './franchise.js';
 import { typecastAfterCredit, typeFit } from '../meta/typecast.js';
+import { storyAfterCredit } from '../meta/stories.js';
 
 const clamp = (v, a = 0, b = 100) => Math.max(a, Math.min(b, v));
 
@@ -557,6 +558,7 @@ function closeRun(s, credit, r) {
   // the fact that they said yes to a film you were in.
   if (r.withIcon) { setFame(s, (s.fame || 0) + 3 * headroom(s.fame)); setRespect(s, (s.respect || 0) + 2 * soft(112, s.respect)); addTimeline(s, `Your name is on a poster next to ${r.with}'s. People noticed.`); }
   typecastAfterCredit(s, credit);
+  storyAfterCredit(s, credit);
   showMoment(s, {
     id: 'verdict', tv: film ? null : (r.scale === 'recurring' ? 'soap' : r.scale === 'prestige' ? 'prestige' : 'episode'), kind: r.rating >= 70 || verdict === 'smash' ? 'good' : 'bad',
     title: credit.title, score, money, verdict, reviews: credit.reviews,

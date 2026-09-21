@@ -22,6 +22,7 @@ import { newTitle } from '../world/titles.js';
 import { seasonCap, slotNorm, tvMonths } from './franchise.js';
 import { rumourFactor } from '../meta/trouble.js';
 import { typeFit, typeFactor, typecastAfterDayWork, strongLabels } from '../meta/typecast.js';
+import { storyCastFactor, hiding } from '../meta/stories.js';
 export { tvMonths, TV_PACE } from './franchise.js';
 // What a casting office will see you for. Usually that is fame — but an Asker counts,
 // and it is the one route into work above your level that does not run through
@@ -31,6 +32,7 @@ export { tvMonths, TV_PACE } from './franchise.js';
 // their fame does not justify. See systems/meta/standing.js — the actor's actor.
 // Box office poison: two leads that bombed inside two years (release.js). A year without
 // the studio's pictures, and the agent brings half as much.
+export { hiding };
 export function poisoned(s) { return (s.poisonUntil || 0) > (s.year || 0) * 12 + (s.month || 0); }
 export function reach(s) { return (s.fame || 0) + askerStanding(s) + reachFromStanding(s); }
 const clamp = (v) => Math.max(0, Math.min(100, v));
@@ -219,6 +221,8 @@ export function refreshCastingPool(s, force, extra = 0) {
   // The early return was above this line, so a full board never expired anything and the
   // same four listings sat there for the rest of the life.
   s.castingPool = force ? [] : s.castingPool.filter((c) => (c._expires || 0) > now);
+  // Out of sight for a month (stories.js): nothing reaches you, which is the point.
+  if (hiding(s)) { s.castingPool = []; return; }
   const want = boardSize(s) + extra;
   if (!force && s.castingPool.length >= want) return;
   const career = s.dream === 'singer' ? 'singer' : 'actor';
@@ -396,7 +400,7 @@ export function castingChance(s, c) {
   // And you are not yourself in a room when you are carrying this.
   const raw = base * (0.35 + 0.65 * fit) * insurability(s) * (depressed(s) ? 0.62 : 1);
   // Below zero, the room has heard about you before you read. See standing.js.
-  return Math.round(raw * reachFactor(s, c) * roomHasHeard(s) * rumourFactor(s) * (c ? fieldFactor(s, c) * typeFactor(s, c) : 1));
+  return Math.round(raw * reachFactor(s, c) * roomHasHeard(s) * rumourFactor(s) * (c ? fieldFactor(s, c) * typeFactor(s, c) * storyCastFactor(s, c) : 1));
 }
 // How far above you the part is.
 //
@@ -593,6 +597,7 @@ export const SHELF_BLURB = {
 export const SHELF_EMPTY = {
   tv: 'Nothing on television this month. Live a month and look again.',
   film: 'Nothing from the studios. They send scripts to names — get one, or get an agent who has one.',
+  hiding: 'Phone off. Nothing reaches you this month, which was the idea.',
   poison: 'Nothing from the studios this year. Two leads that bombed, and nobody will insure you on a picture until the phrase wears off.',
   indie: 'Nothing small this month. It comes and goes.',
   day: 'No day work this month.',
