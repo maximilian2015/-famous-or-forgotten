@@ -131,6 +131,12 @@ export function draftContract(s, o) {
     options: neg ? neg.asks.map((a) => ({ id: a.id, label: a.label, odds: a.id === 'fair' ? 62 : a.id === 'push' ? 34 : 12,
         value: Math.round(Math.min(a.amount, unit * (a.id === 'fair' ? 1.2 : a.id === 'push' ? 1.5 : 2.2))) })).filter((a) => a.value > unit)
       : [{ id: 'fair', label: 'Ask for ten per cent more', value: Math.round(unit * 1.1), odds: 28 }] };
+  // A season under the network's option: the fee is the option's fee, and the only ask is
+  // the one the whole cast makes at season three — to the market rate, together.
+  if (o.kind === 'renewal' && o.optioned) {
+    fee.text += ` — the option's fee: what you signed for, plus five per cent a season`;
+    fee.options = (o.marketFee || 0) > unit ? [{ id: 'market', label: `Renegotiate to the market rate — ${money(o.marketFee)} an episode${(o.season || 0) === 3 ? ' (the whole cast is asking)' : ''}`, value: o.marketFee, odds: (o.season || 0) === 3 ? 48 : 18 }] : [];
+  }
   clauses.push(fee);
   // The dates — scheduleClause above. The exclusivity is rolled here because the dates depend on it.
   const ex = big && exclusiveFor(o);
@@ -156,6 +162,41 @@ export function draftContract(s, o) {
   if (big && o.scale === 'blockbuster' && tierIdx(s) >= 3 && !o.kind) {
     clauses.push({ id: 'option', label: 'Sequel option', value: true, text: 'They hold an option on two more pictures at this fee, whatever you are worth by then',
       options: [{ id: 'strike', label: 'Strike it — every sequel gets negotiated fresh', value: false, odds: 40 }] });
+  }
+  // ── the kinds of paper. Maxi: "what kinds of contracts — analyse what makes the game." ──
+  // Television. Your first season on a show comes with the network's options on the next
+  // ones: they decide whether there is a season, and you are in it, at a fee that barely
+  // moves. Strike it and every season is negotiated fresh; an exit after season three is
+  // the way to leave without the fans and the lawyers.
+  const firstSeason = !!o.perEpisode && o.scale !== 'episode' && !o.joined && (o.season || 1) <= 1 && o.kind !== 'renewal';
+  if (big && firstSeason) {
+    const n = o.scale === 'prestige' ? rint(2, 4) : rint(3, 6);
+    clauses.push({ id: 'seasons', label: 'Season options', value: n,
+      text: `The network holds options on ${n} more season${n === 1 ? '' : 's'} at this fee, plus five per cent a season. Whatever the show becomes, you are in it`,
+      options: [{ id: 'two', label: 'Cut it to two seasons', value: Math.min(2, n), odds: 45 },
+        { id: 'strike', label: 'Strike it — a season at a time, negotiated fresh', value: 0, odds: tierIdx(s) >= 3 ? 30 : 12 }] });
+    clauses.push({ id: 'exit', label: 'Exit', value: 0,
+      text: 'No exit: you leave when they write you out, or when the options run out',
+      options: [{ id: 'three', label: 'An exit after season three — six months’ notice, no hard feelings', value: 3, odds: 35 }] });
+  }
+  // Film. Pay-or-play: the whole fee whether or not the picture happens — the one clause
+  // that makes a shaky production somebody else's problem. Merchandise on a tentpole: your
+  // face on the toys is theirs unless the paper says otherwise. Points instead of pay on a
+  // small picture: sixty per cent now and five of the gross, which is a bet on the film.
+  if (big && (o.scale === 'blockbuster' || o.scale === 'feature') && tierIdx(s) >= 3) {
+    clauses.push({ id: 'payOrPlay', label: 'Pay-or-play', value: false,
+      text: 'If the picture stalls you are paid for the days you shot, and nothing else',
+      options: [{ id: 'ask', label: 'Pay-or-play — the whole fee, whether or not the picture happens', value: true, odds: tierIdx(s) >= 4 ? 50 : 25 }] });
+  }
+  if (big && o.scale === 'blockbuster') {
+    clauses.push({ id: 'merch', label: 'Merchandise', value: 0,
+      text: 'Your face on the toys, the lunchboxes and the game is theirs',
+      options: [{ id: 'two', label: 'Ask for two per cent of the merchandise', value: 2, odds: o.kind === 'sequel' ? 40 : 25 }] });
+  }
+  if (big && (o.scale === 'indie' || o.scale === 'festival') && !o.perEpisode && tierIdx(s) >= 1) {
+    clauses.push({ id: 'points', label: 'Points', value: 0,
+      text: 'The fee, and no share of what it makes',
+      options: [{ id: 'five', label: `Points instead of pay — ${money(Math.round(o.salary * 0.6))} now and five per cent of the gross`, value: 5, odds: 70 }] });
   }
   for (const c of clauses) { c.stance = 'ok'; c.ask = null; c.result = null; }
   o.contract = { round: 0, sent: null, clauses, walked: false };
@@ -299,6 +340,11 @@ function textFor(c, o) {
   if (c.id === 'prep') return `${c.value} month${c.value === 1 ? '' : 's'} before the first day — the body, the accent, the stunts`;
   if (c.id === 'backend') return `${c.value}% of the gross past break-even`;
   if (c.id === 'option') return c.value ? 'They hold an option on two more pictures at this fee' : 'No option — every sequel gets negotiated fresh';
+  if (c.id === 'seasons') return c.value ? `The network holds options on ${c.value} more season${c.value === 1 ? '' : 's'} at this fee, plus five per cent a season` : 'No options — a season at a time, negotiated fresh';
+  if (c.id === 'exit') return c.value ? `An exit after season ${c.value} — six months’ notice, no hard feelings` : 'No exit: you leave when they write you out';
+  if (c.id === 'payOrPlay') return c.value ? 'Pay-or-play: the whole fee, whether or not the picture happens' : 'If the picture stalls you are paid for the days you shot';
+  if (c.id === 'merch') return c.value ? `${c.value}% of the merchandise` : 'Your face on the toys is theirs';
+  if (c.id === 'points') return c.value ? `Points instead of pay — sixty per cent of the fee now and ${c.value}% of the gross` : 'The fee, and no share of what it makes';
   return c.text;
 }
 
@@ -336,6 +382,11 @@ export function signContract(s, id) {
     if (c.id === 'prep') o.prep = c.value;
     if (c.id === 'backend') o.backend = c.value;
     if (c.id === 'option') { o.optioned = !!c.value; o.optionParts = c.value ? 3 : 0; }
+    if (c.id === 'seasons') o.optionSeasons = c.value || 0;
+    if (c.id === 'exit') o.exitAfter = c.value || 0;
+    if (c.id === 'payOrPlay') o.payOrPlay = !!c.value;
+    if (c.id === 'merch') o.merch = c.value || 0;
+    if (c.id === 'points' && c.value) { o.salary = Math.round((o.salary || 0) * 0.6); o.backend = Math.max(o.backend || 0, c.value); o.points = true; }
   }
   o.signed = true;
   const now = (s.year || 0) * 12 + (s.month || 0);

@@ -105,6 +105,8 @@ export function piecesFor(s, lines) {
       add('news', `"${m[1]}" sinks without ${name}`, `The numbers fell off a cliff and the fans are saying the obvious thing loudly. The piece says it more quietly, in the last paragraph, where it counts.`, { about: m[1] });
     } else if ((m = t.match(/^The trades call it settled: (.+), not (.+)\./))) {
       add(m[1] === 'you' ? 'praise' : 'pan', m[1] === 'you' ? `${name} v ${m[2]}: settled` : `${m[1]} v ${name}: settled`, m[1] === 'you' ? `Two years of the trades pairing you, and this is the piece that stops. It is about you. They are a paragraph.` : `Two years of the trades pairing you, and this is the piece that stops. It is about them. You are the paragraph.`, {});
+    } else if ((m = t.match(/^Ten years on, "(.+)" is a cult classic\./))) {
+      add('praise', `"${m[1]}": the cult of a flop`, `Nobody saw it in the year it came out, and the piece says so, and then it explains why everybody has seen it since. Midnight screenings, the quote, the t-shirt. ${name} is interviewed about a film they had stopped mentioning.`, { about: m[1] });
     } else if (/box office poison/.test(t)) {
       add('pan', `${name}: box office poison?`, `Two leads, two pictures that lost money, and a phrase the trades have been waiting to use. The piece counts the grosses, quotes an insurer who "cannot comment on individual cases", and does not need to.`, { react: true });
     } else if (/^Did not do the press for/.test(t)) {

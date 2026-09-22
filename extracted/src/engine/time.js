@@ -18,7 +18,7 @@ import { datingYear } from '../systems/life/dating.js';
 import { childhoodTick, adoptionTick } from '../systems/life/children.js';
 import { spotlightYear } from '../systems/social/spotlight.js';
 import { productionTick, setsTick } from '../systems/career/production.js';
-import { releaseTick, runTick } from '../systems/career/release.js';
+import { releaseTick, runTick, cultTick } from '../systems/career/release.js';
 import { frozenTick } from '../systems/career/stability.js';
 import { laterOffersTick } from '../systems/career/franchise.js';
 import { submissionsTick, refreshCastingPool } from '../systems/career/castings.js';
@@ -116,7 +116,7 @@ export function advanceMonth(state) {
   storyTick(s);      // and the world comes for you now and then, whether you asked or not
   storiesTick(s);    // the career stories: what the last thing became, and the next beat of it
   grudgesTick(s);
-  if (s.month === 0) { overtakenTick(s); typecastYear(s); }   // the year's list is out, and the labels fade a little
+  if (s.month === 0) { overtakenTick(s); typecastYear(s); cultTick(s); }   // the year's list is out, and the labels fade a little
   standingTick(s);   // and the trades find a word for what you are now
   setsTick(s);       // and the month a second set, or a third, opens to you
   emailTick(s);

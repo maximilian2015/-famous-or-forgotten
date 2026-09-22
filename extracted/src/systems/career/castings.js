@@ -11,7 +11,7 @@ import { addGenreXP, genreBonus } from './genres.js';
 import { startProduction } from './production.js';
 import { canTakeSet } from '../../engine/sets.js';
 import { facePenalty } from '../life/face.js';
-import { quoteFor, episodeRate, setFame, isForgotten } from '../meta/status.js';
+import { quoteFor, episodeRate, setFame, setRespect, isForgotten } from '../meta/status.js';
 import { reachFromStanding, prestigeShut, insuranceShut, roomHasHeard, boardThinned } from '../meta/standing.js';
 import { rollStability, feeFactor, riskPrestige } from './stability.js';
 import { askerStanding } from './awards.js';
@@ -21,7 +21,7 @@ import { sendMail } from '../meta/email.js';
 import { newTitle } from '../world/titles.js';
 import { seasonCap, slotNorm, tvMonths } from './franchise.js';
 import { rumourFactor } from '../meta/trouble.js';
-import { typeFit, typeFactor, typecastAfterDayWork, strongLabels } from '../meta/typecast.js';
+import { typeFit, typeFactor, typecastAfterDayWork, strongLabels, isStrong } from '../meta/typecast.js';
 import { storyCastFactor, hiding } from '../meta/stories.js';
 import { hypeReach, hypeBrands } from '../meta/hype.js';
 export { tvMonths, TV_PACE } from './franchise.js';
@@ -579,7 +579,10 @@ export function auditionFor(s, id, quality = 50) {
     addGenreXP(s, c.genre, rating);
     paid(s, c.salary, `"${c.title}" paid`); markReleased(s); setFame(s, s.fame + rint(1, 3)); s.confidence = clamp(s.confidence + 2);
     typecastAfterDayWork(s, c);
-    s.lastEvent = `${quality >= 80 ? 'The room goes quiet — you nailed it. ' : ''}One day's work on "${c.title}". It came out ${status.toLowerCase()} (${Math.round(rating)}/100).`;
+    // The shampoo. A serious actor selling shampoo is a sentence the serious rooms repeat.
+    const shampoo = isStrong(s, 'serious') && /Brand|Commercial/.test(c.type || '');
+    if (shampoo) setRespect(s, (s.respect || 0) - 2);
+    s.lastEvent = `${quality >= 80 ? 'The room goes quiet — you nailed it. ' : ''}One day's work on "${c.title}". It came out ${status.toLowerCase()} (${Math.round(rating)}/100).${shampoo ? ' The serious rooms noticed the serious actor selling things. Two points of standing.' : ''}`;
     addTimeline(s, `Booked ${c.title}: ${status}.`, rating < 50);
   } else {
     s.mental = clamp(s.mental - 2);

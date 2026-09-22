@@ -68,6 +68,24 @@ const APPEAL = {
 // rare rather than routine — most films land near what they deserved.
 function luck() { return 0.5 + (Math.random() + Math.random()) * 0.55; }
 
+// Ten years on, the picture that sank is the one they screen at midnight. Once a year, for
+// a film of yours that failed a decade ago — a small one, mostly — a small chance it comes
+// back as a cult classic: a t-shirt, a quote everybody knows, and the standing that goes
+// with having been in it. Maxi's list: "shot a trash film → ten years later a cult classic".
+export function cultTick(s) {
+  const y = s.year || 0;
+  const cands = (s.filmography || []).filter((c) => !c.minor && !c.cult && isFilm(c.scale || 'indie') && (c.rating || 0) < 55 && (c.verdict === 'bomb' || c.verdict === 'broke even' || !c.verdict) && y - (c.year || 0) >= 8 && y - (c.year || 0) <= 16);
+  if (!cands.length) return s;
+  const c = pick(cands);
+  const odds = c.scale === 'blockbuster' ? 2 : /Horror|Sci-Fi|Musical/.test(c.genre || '') ? 10 : 6;
+  if (!chance(odds)) return s;
+  c.cult = y;
+  setRespect(s, (s.respect || 0) + 4);
+  addHype(s, 35, 'hit');
+  addTimeline(s, `Ten years on, "${c.title}" is a cult classic. Midnight screenings, a t-shirt, and a line of yours everybody can quote.`);
+  s.lastEvent = `"${c.title}" — the one that sank — is a cult classic now. Somebody screens it at midnight, somebody made a t-shirt, and a line of yours is a thing people say. Nobody saw it coming, least of all the people who made it.`;
+  return s;
+}
 export function isFilm(scale) { return ['small', 'indie', 'festival', 'feature', 'blockbuster'].includes(scale); }
 
 // The commercial result. Star power sells tickets — that is what a name is FOR.
@@ -141,7 +159,7 @@ export function scheduleRelease(s, credit, p) {
     // Carried for the Asker season: whether it was pushed, and how good the material was.
     campaign: !!p.campaign, prestigeScore: p.prestigeScore, director: credit.director || null,
     // And how the set went, because the business judges the performance, not only the film.
-    meter: p.meter || 0, viaPartner: p.viaPartner || null, fellApart: !!p.fellApart, backend: p.backend || 0,
+    meter: p.meter || 0, viaPartner: p.viaPartner || null, fellApart: !!p.fellApart, backend: p.backend || 0, merch: p.merch || 0,
     // Who was on the poster with you, if it was somebody. See production.js makeCrew.
     with: p.with || null, withId: p.withId || null, withFame: p.withFame || 0, withIcon: !!p.withIcon,
     // What the version you shot does to the box office, and the line it was pitched on.
@@ -316,7 +334,7 @@ function open(s, rel) {
     salary: rel.salary, finalGross: rel.finalGross || 0, job: rel.job, film,
     // Read by closeRun and by the critics. These were read off _rel and never written to it,
     // so a carried set and a part got over dinner were both invisible once the run closed.
-    meter: rel.meter || 0, viaPartner: rel.viaPartner || null, fellApart: !!rel.fellApart, backend: rel.backend || 0,
+    meter: rel.meter || 0, viaPartner: rel.viaPartner || null, fellApart: !!rel.fellApart, backend: rel.backend || 0, merch: rel.merch || 0,
     with: rel.with || null, withIcon: !!rel.withIcon };
   // BY ID, never by reference. A save is JSON, and JSON.parse hands back a fresh object for
   // every entry — so a list holding the credit itself pointed at a copy the moment anybody
@@ -509,6 +527,13 @@ function closeRun(s, credit, r) {
   setRespect(s, (s.respect || 0) + (respectGain > 0 ? respectGain * soft(112, s.respect) : respectGain));
   if (film && verdict === 'smash') setQuote(s, Math.max(s.quote || 0, (r.salary || 0) * 1.6));
   // Points. A percentage of what it took past what it cost — the clause that only a name gets.
+  // The toys. A tentpole that worked sells a market of its own, and the paper said whether
+  // any of it is yours (contract.js merch). Nobody buys the lunchbox of a bomb.
+  if (film && r.scale === 'blockbuster' && (r.merch || 0) > 0 && (verdict === 'smash' || verdict === 'profitable')) {
+    const market = Math.round((credit.boxOffice || 0) * (verdict === 'smash' ? 0.25 : 0.1));
+    const cut = Math.round(market * (r.merch / 100));
+    if (cut > 0) { paid(s, cut, `"${credit.title}" — ${r.merch}% of the merchandise`); credit.merchPaid = cut; addTimeline(s, `Your face is on the toys, and ${r.merch}% of the toys is yours: €${cut.toLocaleString()}.`); }
+  }
   if (film && r.backend > 0) {
     const over = Math.max(0, (credit.boxOffice || 0) - budgetFor({ scale: r.scale }) * 2.2);
     const cut = Math.round(over * (r.backend / 100));

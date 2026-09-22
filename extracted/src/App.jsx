@@ -2206,7 +2206,8 @@ function CreditRow({ group, g }) {
       {(group.worldHit || hit || group.askers > 0 || c.comeback > 0 || group.boxOffice > 0 || group.viewers > 0 || c.festival) && (
         <div style={{ fontSize: 10.5, marginTop: 5, display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
           {group.worldHit ? <span style={{ fontWeight: 900, color: theme.gold }}>🌍 WORLD HIT</span>
-            : hit ? <span style={{ fontWeight: 900, letterSpacing: '.06em', color: theme.gold }}>★ HIT</span> : null}
+            : hit ? <span style={{ fontWeight: 900, letterSpacing: '.06em', color: theme.gold }}>★ HIT</span>
+            : c.cult ? <span style={{ fontWeight: 900, letterSpacing: '.06em', color: theme.accent }}>🌙 CULT CLASSIC · {c.cult}</span> : null}
           {/* Where it screened, and what happened there. See release.js, the festival. */}
           {c.festival && <span style={{ fontWeight: 900, letterSpacing: '.06em', color: c.festival.result === 'prize' ? theme.gold : c.festival.result === 'sold' ? theme.good : theme.muted }}>
             🎞️ {String(c.festival.name).replace(/^the /, '').toUpperCase()} · {c.festival.result === 'prize' ? 'PRIZE' : c.festival.result === 'sold' ? 'SOLD' : 'NO BUYER'}</span>}

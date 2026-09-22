@@ -11,7 +11,7 @@ import { rollStability } from './stability.js';
 import { canWork } from '../life/strain.js';
 import { newTitle } from '../world/titles.js';
 import { storyOfferFactor, noteRefusal, noteSequelLoss } from '../meta/stories.js';
-import { hypeDemand } from '../meta/hype.js';
+import { hypeDemand, hype } from '../meta/hype.js';
 import { canTakeSet } from '../../engine/sets.js';
 const clamp = (v) => Math.max(0, Math.min(100, v));
 // Titles come from the same generator as everything else the world makes, so an agent's
@@ -86,6 +86,8 @@ export function offersTick(s) {
     if (o.waitsForWrap && !canTakeSet(s, o).ok) { kept.push(o); continue; }
     // A signed paper does not expire, and one that is with them is waiting on them, not you.
     if (o.signed || (o.contract && o.contract.sent)) { kept.push(o); continue; }
+    // A brand that called for the story (stories.js) goes quiet when the story does.
+    if (o.kind === 'brand' && hype(s) < 30) { addTimeline(s, 'The brand went quiet when you did. The campaign is off.'); s.inbox = (s.inbox || []).filter((m) => m.offerId !== o.id); continue; }
     o.deadline -= 1;
     if (o.deadline > 0) { kept.push(o); continue; }
     const title = String(o.projectTitle || 'it').replace('⭐ ', '');
@@ -158,8 +160,23 @@ export function declineOffer(s, id) {
   const title = o.projectTitle.replace('⭐ ', '');
   // The business remembers a no (stories.js): the director you passed on, and the sequel
   // or the season that goes ahead without you.
+  // Leaving by the exit clause (contract.js): after the season it names, with notice, and
+  // nobody's lawyer and nobody's fans have a word to say.
+  const byExit = o.kind === 'renewal' && (o.exitAfter || 0) > 0 && (o.season || 0) > o.exitAfter;
+  if (byExit) {
+    s.lastEvent = `You left "${o.seriesTitle || title}" after season ${(o.season || 1) - 1}, the way the paper said you could. The network wrote a graceful exit and the fans got a last episode.`;
+    addTimeline(s, `Left ${o.seriesTitle || title} by the exit clause. A last episode, and no hard feelings.`);
+    return s;
+  }
   if (o.kind === 'sequel' || o.kind === 'renewal') noteSequelLoss(s, o, o.story === 'recast' ? 'meeting' : 'passed');
   else if (o.tier !== 'supporting' && o.via !== 'casting') noteRefusal(s, o);
+  // Walking out of a season the network holds an option on is walking out of a contract.
+  if (o.kind === 'renewal' && o.optioned) {
+    setRespect(s, (s.respect || 0) - 6);
+    s.lastEvent = `You passed on season ${o.season} of "${o.seriesTitle || title}". The network holds an option on it, and their lawyers have read it more recently than you have.`;
+    addTimeline(s, `Walked out of the option on ${o.seriesTitle || title}. The business remembers a contract.`, true);
+    return s;
+  }
   // Turning down an ordinary offer is your business. Turning down the one they finally
   // found the money to finish, after holding your part open for years, is not.
   // And walking out of an option you signed is walking out of a contract.

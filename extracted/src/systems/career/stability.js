@@ -1,4 +1,5 @@
 import { setRespect } from '../meta/status.js';
+import { paid } from './agent.js';
 import { count } from '../../engine/text.js';
 import { uid } from '../../engine/id.js';
 // Not every project that starts gets made. Financing walks, a studio changes its mind,
@@ -133,8 +134,17 @@ const DEAD_REASONS = [
   'the director walked and took the money with him',
 ];
 
+// Pay-or-play (contract.js): the fee is owed whether or not the picture happens. Paid the
+// month it stops, and the shutdown is somebody else's problem.
+function payOrPlay(s, p) {
+  if (!p.payOrPlay) return 0;
+  const owed = Math.max(0, (p.salary || 0) - (p.paid || 0));
+  if (owed > 0) { paid(s, owed, `"${p.title}" — pay-or-play, the rest of the fee`); p.paid = p.salary; addTimeline(s, `"${p.title}" stopped and the paper said pay-or-play. They paid the rest of the fee.`); }
+  return owed;
+}
 export function freezeProject(s, p) {
   const why = FROZEN_REASONS[rint(0, FROZEN_REASONS.length - 1)];
+  const pop = payOrPlay(s, p);
   const frozen = {
     id: uid(s, 'frz'),
     title: p.title, role: p.role, type: p.type, genre: p.genre, scale: p.scale, tier: p.tier,
@@ -145,7 +155,7 @@ export function freezeProject(s, p) {
     // How long they will hold it for you, decided by who you were when it stopped.
     patience: patienceFor(s.fame || 0),
     // Whatever is left of the fee, which is what you would be paid if it ever restarts.
-    owed: Math.max(0, (p.salary || 0) - (p.paid || 0)),
+    owed: pop ? 0 : Math.max(0, (p.salary || 0) - (p.paid || 0)), payOrPlay: !!p.payOrPlay,
     paid: p.paid || 0, salary: p.salary || 0, why,
   };
   (s.frozen = s.frozen || []).push(frozen);
@@ -166,6 +176,7 @@ export function freezeProject(s, p) {
 
 export function collapseProject(s, p) {
   const why = DEAD_REASONS[rint(0, DEAD_REASONS.length - 1)];
+  const pop = payOrPlay(s, p);
   const paid = p.paid || 0;
   const months = (p.months || 1) - (p.monthsLeft || 0);
   s.productions = (s.productions || []).filter((x) => x !== p && (x.id == null || x.id !== p.id)); s.production = s.productions[0] || null;
@@ -176,7 +187,7 @@ export function collapseProject(s, p) {
     id: 'shutdown', kind: 'bad', frozen: false, title: p.title,
     reason: why, months, paid,
     body: `It is over — ${why}. `
-      + (paid > 0 ? `You keep the €${Math.round(paid).toLocaleString()} you were paid and nothing else. ` : 'You were never paid a cent. ')
+      + (pop ? `Pay-or-play: they paid the whole fee, €${Math.round(paid).toLocaleString()}, for a film that does not exist. ` : paid > 0 ? `You keep the €${Math.round(paid).toLocaleString()} you were paid and nothing else. ` : 'You were never paid a cent. ')
       + `There is no film, so there is no premiere, and nobody outside the crew will ever know you did it.`,
   });
   return { title: p.title, why, paid, months };

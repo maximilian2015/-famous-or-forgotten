@@ -313,18 +313,29 @@ export function maybeContinue(s, credit, p, force = false) {
     const nextSeason = season + 1;
     // Rolled once, when the show first comes back, and it is what the show IS from then on.
     const arc = p.arc || rollArc();
-    const raise = seasonRaise(nextSeason, credit.rating, previousRating(s, root, season));
+    const raiseMarket = seasonRaise(nextSeason, credit.rating, previousRating(s, root, season));
+    // Under the network's option (contract.js seasons) the fee is what you signed for plus
+    // five per cent a season, whatever the show became; the market rate is on the paper as
+    // the thing to ask for, and at season three the whole cast asks together.
+    const underOption = (p.optionSeasons || 0) >= nextSeason - (p.optionFrom || 1);
+    const raise = underOption ? 1.05 : raiseMarket;
     const pct = Math.round((raise - 1) * 100);
     // Television does compound season on season, and it still cannot outrun what somebody
     // of your standing is paid — twelve renewals used to reach numbers with no meaning.
     const wasFee = p.episodeFee || Math.round(p.salary / Math.max(1, p.episodes || 1));
     const episodeFee = Math.min(Math.round(wasFee * raise), ceilingFor(s, mediumOf(p)));
+    const marketFee = Math.min(Math.round(wasFee * raiseMarket), ceilingFor(s, mediumOf(p)));
     const episodes = Math.max(4, Math.round((p.episodes || 8) * (0.9 + Math.random() * 0.3)));
     addTimeline(s, `"${root}" was renewed for season ${nextSeason}.`);
     return {
       id: uid(s, 'ren'),
       // A show that got renewed is a show that works. The money is not the question here.
       kind: 'renewal', seriesTitle: root, season: nextSeason, scale: p.scale,
+      // Television is priced by the episode on the paper too — the renewal used to read
+      // 'for the picture' in the contract room.
+      perEpisode: true, medium: mediumOf(p),
+      optioned: underOption, marketFee: underOption ? marketFee : 0,
+      optionSeasons: p.optionSeasons || 0, optionFrom: p.optionFrom || 1, exitAfter: p.exitAfter || 0,
       stability: Math.max(82, p.stability || 82),
       projectTitle: `${root} · season ${nextSeason}`, role: p.role, type: p.type, genre: p.genre,
       episodes, episodeFee, salary: episodeFee * episodes, baseSalary: p.baseSalary || p.salary,
@@ -332,7 +343,9 @@ export function maybeContinue(s, credit, p, force = false) {
       months: tvMonths(p.type, p.scale, episodes),
       prestigeScore: Math.min(96, (p.prestigeScore || 45) + rint(2, 7)), tier: p.tier || 'lead',
       fame: p.tier === 'tentpole' ? 9 : 5, deadline: rint(2, 3), waitsForWrap: true,   // your own show waits for you
-      note: nextSeason === 3 && pct > 0
+      note: underOption
+        ? `The network took up its option: season ${nextSeason}, five per cent more, as the paper said.${nextSeason === 3 ? ' The whole cast is asking for the market rate; the paper lets you ask too.' : ''}${(p.exitAfter || 0) && nextSeason > (p.exitAfter || 0) ? ' Your exit clause is live — you can leave this one without a word said against you.' : ''}`
+        : nextSeason === 3 && pct > 0
         ? `Third season — the whole cast renegotiates together and the network knows it. ${pct}% more an episode.`
         : pct > 0 ? `The network wants you back. Same part, ${pct}% more an episode.`
         : pct < 0 ? `The network wants you back — at ${-pct}% less an episode. The numbers were not good.`

@@ -132,6 +132,9 @@ export function startProduction(s, offer) {
     // exclusive shoot takes your Saturdays too; points pay out when the run closes.
     prepLeft: offer.prep || 0, prep: offer.prep || 0, exclusive: !!offer.exclusive, backend: offer.backend || 0,
     story: offer.story || null,   // a career story this shoot belongs to (stories.js)
+    // The kinds of paper (contract.js): the network's options and your exit, pay-or-play,
+    // a share of the toys. Carried season to season by franchise.js.
+    optionSeasons: offer.optionSeasons || 0, optionFrom: offer.optionFrom || (offer.optionSeasons ? (offer.season || 1) : 0), exitAfter: offer.exitAfter || 0, payOrPlay: !!offer.payOrPlay, merch: offer.merch || 0,
     // How solid the money is. Decides whether this shoot ever reaches its last day, and
     // how wildly the finished thing can turn out. See systems/career/stability.js.
     stability: offer.stability ?? rollStability(offer.scale || 'feature'),
