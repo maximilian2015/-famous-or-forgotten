@@ -8,6 +8,7 @@ import { agentWantsYou, offerAgent, signAgent, declineAgent, AGENT_TIERS } from 
 import { toursFor } from '../career/tour.js';
 import { STUDIOS } from '../world/names.js';
 import { COST } from '../../engine/energy.js';
+import { hype, hypeSource, showBump } from './hype.js';
 const clamp = (v) => Math.max(0, Math.min(100, v));
 export function emUnread(s) { return (s.inbox || []).filter((m) => !m.read).length; }
 function has(s, tag) { return (s.inbox || []).some((m) => m.tag === tag); }
@@ -145,7 +146,10 @@ export function emailTick(s) {
       body: `${t.label}. ${t.blurb} They take ${Math.round(t.cut * 100)}% of every fee, bring you offers, and reach further than you can at the table.`,
       cta: [{ label: 'Sign', sign: 'agent', reply: `${o.name} is your agent now.` }, { label: 'Not now', decline: 'agent', reply: 'They say to call when you change your mind. They will not call you.' }] });
   }
-  if (fame >= 40 && fame < 75 && offer(s, 'show', 0, 45)) { const sh = pickOne(SHOWS); push(s, { from: sh[0], subj: "We'd love to have you on", tag: 'show', kind: 'invite', body: sh[1], cta: [{ label: 'Go on the show', check: { stat: 'charisma', diff: 48 }, good: { fx: { fame: 3, media: 5, mental: 1 }, reply: 'You kill it. "So likeable" trends with your name.' }, bad: { fx: { scandal: 3, media: 2, mental: -3 }, reply: 'You freeze. The awkward clip loops.' } }, { label: 'Politely decline', fx: {}, reply: 'Safe, forgettable, no clip.' }] }); }
+  // The sofa books whoever is being talked about — a hit, the season, a night that went
+  // everywhere — and rarely anybody else. Each one is worth less than the last (meta/hype.js).
+  const booked = hype(s) >= 30 && hypeSource(s) !== 'scandal' ? offer(s, 'show', 0, 60) : fame >= 40 && fame < 75 && offer(s, 'show', 0, 12);
+  if (booked) { const sh = pickOne(SHOWS); push(s, { from: sh[0], subj: "We'd love to have you on", tag: 'show', kind: 'invite', body: sh[1], cta: [{ label: 'Go on the show', check: { stat: 'charisma', diff: 48 }, good: { fx: { fame: 1, media: 1, mental: 1 }, reply: 'You kill it. "So likeable" trends with your name.' }, bad: { fx: { scandal: 3, mental: -3 }, reply: 'You freeze. The awkward clip loops.' } }, { label: 'Politely decline', fx: {}, reply: 'Safe, forgettable, no clip.' }] }); }
   if (fame >= 55 && offer(s, 'event', 0, 40)) { const cp = pickOne(CARPETS); push(s, { from: cp[0], subj: 'Red carpet invitation', tag: 'event', kind: 'invite', body: cp[1], cta: [{ label: 'Walk the carpet', check: { stat: 'looks', diff: 46 }, good: { fx: { fame: 2, media: 4, respect: 1 }, reply: 'Best dressed. Your look leads the galleries.' }, bad: { fx: { media: 2, scandal: 2 }, reply: '"Worst dressed" lists are also lists.' } }, { label: 'Send regrets', fx: { mental: 1 }, reply: 'The night happens without you.' }] }); }
   if (fame >= 75 && offer(s, 'vip', 0, 34)) { const rm = pickOne(ROOMS); push(s, { from: rm[0], subj: "You're on the list", tag: 'vip', kind: 'invite', body: rm[1], cta: [{ label: 'Go — work the room', check: { stat: 'charisma', diff: 52 }, good: { fx: { fame: 2, respect: 4, media: 2 }, reply: "You leave with a director's promise." }, bad: { fx: { scandal: 4, mental: -3 }, reply: 'You say the wrong thing to the wrong legend.' } }, { label: 'Too risky — skip', fx: {}, reply: 'That room does not send twice.' }] }); }
 }
@@ -175,7 +179,8 @@ export function emailAct(s, id, i) {
   // Fame and standing have single write points (status.js). Writing them here bypassed the
   // fame ceiling and — worse — clamped standing at zero, so walking a carpet at −9 put you
   // on 0: an email was the one thing in the game that could not go below zero.
-  ['media','mental','scandal','looks'].forEach((k) => { if (typeof fx[k] === 'number') s[k] = clamp((s[k] || 0) + fx[k]); });
+  // A show's attention goes through hype.js: worth less each time in a year.
+  ['media','mental','scandal','looks'].forEach((k) => { if (typeof fx[k] === 'number') { if (k === 'media' && m.tag === 'show' && fx[k] > 0) showBump(s); else s[k] = clamp((s[k] || 0) + fx[k]); } });
   if (typeof fx.fame === 'number') setFame(s, (s.fame || 0) + fx.fame);
   if (typeof fx.respect === 'number') setRespect(s, (s.respect || 0) + fx.respect);
   s.lastEvent = `✉️ ${m.subj}\n\n${head}${out.reply || c.reply || c.label}`;

@@ -10,6 +10,7 @@ import { onCooldown, markUsed } from '../../engine/cooldown.js';
 import { makePerson } from './relationships.js';
 import { addSentListing } from '../career/castings.js';
 import { setFame } from '../meta/status.js';
+import { addHype, bumpHype } from '../meta/hype.js';
 import { skillCap } from '../career/actions.js';
 import { inCareer } from '../../engine/stage.js';
 
@@ -60,9 +61,9 @@ export function goOut(s, id) {
   } else if (id === 'post') {
     const r = Math.random() * 100;
     const small = (s.fame || 0) < 25;
-    if (r < 8) { s.scandal = clamp((s.scandal || 0) + (small ? 2 : 4)); s.media = clamp((s.media || 0) + 3); s.lastEvent = 'You posted it, and then you read it back. A screenshot is already going round. Not career-ending. Not good.'; addTimeline(s, 'A post that did not read the way you meant it.', true); }
-    else if (r < 30 + charm * 0.2) { s.media = clamp((s.media || 0) + 3); if (small) setFame(s, (s.fame || 0) + 0.5); s.lastEvent = small ? 'A few hundred strangers, and one of them shared it. The number under your name went up by a digit.' : 'It did the numbers. A day of being looked at, which is the job.'; }
-    else { s.media = clamp((s.media || 0) + 1); s.lastEvent = 'You posted it. Forty people liked it. Your mother commented.'; }
+    if (r < 8) { s.scandal = clamp((s.scandal || 0) + (small ? 2 : 4)); addHype(s, small ? 15 : 28, 'scandal'); s.lastEvent = 'You posted it, and then you read it back. A screenshot is already going round. Not career-ending. Not good.'; addTimeline(s, 'A post that did not read the way you meant it.', true); }
+    else if (r < 30 + charm * 0.2) { if (!small && chance(8)) { addHype(s, 40, 'viral'); addTimeline(s, 'A post of yours went everywhere. Forty seconds, and everybody has seen it.'); } else bumpHype(s, 3); if (small) setFame(s, (s.fame || 0) + 0.5); s.lastEvent = small ? 'A few hundred strangers, and one of them shared it. The number under your name went up by a digit.' : 'It did the numbers. A day of being looked at, which is the job.'; }
+    else { bumpHype(s, 1); s.lastEvent = 'You posted it. Forty people liked it. Your mother commented.'; }
   }
   return s;
 }

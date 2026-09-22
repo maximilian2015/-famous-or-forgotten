@@ -2,6 +2,7 @@ import { inCareer } from '../../engine/stage.js';
 import { an } from '../../engine/text.js';
 import { addTimeline } from '../../engine/timeline.js';
 import { HOUSING, HOUSING_ORDER } from '../../engine/economy.js';
+import { hypePrice } from './hype.js';
 export const FAME_TIERS = [
   { id: 'unknown', label: 'Unknown', min: 0, housingMax: 'studio' },
   { id: 'rising', label: 'Rising Star', min: 15, housingMax: 'studio' },
@@ -128,7 +129,8 @@ export function quoteBand(s, medium) {
 export function quoteFor(s, medium) {
   const band = quoteBand(s, medium);
   if (!band) return 0;
-  return Math.round(band[0] + Math.random() * (band[1] - band[0]));
+  // And what you can ask for while they are asking about you: up to a quarter more (meta/hype.js).
+  return Math.round((band[0] + Math.random() * (band[1] - band[0])) * hypePrice(s));
 }
 // True when the medium will not have you at any price yet.
 export function shutOutOf(s, medium) { return quoteBand(s, medium) === null; }

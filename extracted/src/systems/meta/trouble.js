@@ -16,6 +16,7 @@ import { level as drinkLevel } from '../life/drink.js';
 import { inCareer } from '../../engine/stage.js';
 import { typecastScandal } from './typecast.js';
 import { warned } from './risk.js';
+import { addHype } from './hype.js';
 
 const clamp = (v) => Math.max(0, Math.min(100, v));
 const stamp = (s) => (s.year || 0) * 12 + (s.month || 0);
@@ -56,7 +57,7 @@ export function storyTick(s) {
   s.scandal = clamp((s.scandal || 0) + sc);
   if (st.respect) setRespect(s, (s.respect || 0) - st.respect * (publicist ? 0.5 : 1));
   if (st.cash) { const amt = Math.round((s.cash || 0) * (st.cash[0] + Math.random() * (st.cash[1] - st.cash[0]))); if (amt > 0) { s.cash -= amt; addTimeline(s, `€${amt.toLocaleString()} to the lawyers.`, true); } }
-  s.media = clamp((s.media || 0) + 4);
+  addHype(s, rint(25, 45), 'scandal');   // the wrong kind of being talked about (meta/hype.js)
   addTimeline(s, `${st.line}${publicist ? ' Your publicist had a statement out before lunch.' : ''}`, true);
   s.lastEvent = st.line + (publicist ? ' Your publicist was on it by lunch, which is what you pay them for.' : ' Nobody is on it. That is what a publicist is for.');
   s._lastStory = stamp(s); s._lastStoryId = st.id;   // the scandal chain starts from this (stories.js)

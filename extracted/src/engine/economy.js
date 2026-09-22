@@ -138,13 +138,21 @@ export function relevanceDrift(s) {
   // The press has decided you are a story. See systems/meta/standing.js.
   const sticky = comboOf(s) === 'face' || comboOf(s) === 'liability' ? 0.6 : 1;
   if ((s.scandal || 0) > 0) s.scandal = Math.max(0, s.scandal - 0.4 * (s.staff && s.staff.publicist ? 2.4 : 1) * sticky);
-  if ((s.media || 0) > 0) s.media = Math.max(0, s.media - 0.8);
+  // Hype (`media`) decays in systems/meta/hype.js, by a tenth and a point a month.
   // The top is held, not kept. Above seventy the name slips every month whether you are
   // working or not — the business is busy making new ones — and only a hit puts it back.
   // Measured before: a perfect player sat on eighty-nine from forty-two to sixty-seven.
   if ((s.fame || 0) > 70) {
     const floorTop = (s.peakFame || 0) >= 90 ? 75 : 0;
     s.fame = Math.max(floorTop, s.fame - 0.35 * ((s.fame - 70) / 30));
+  }
+  // Standing is what the work says lately. Above sixty it slips unless something of yours
+  // rated seventy or better has come out inside two years — measured, a perfect player sat
+  // on a hundred from fifty to eighty, and a hundred that cannot move is not a number.
+  if ((s.respect || 0) > 60) {
+    const since = ((s.year || 0) - 2) * 12 + (s.month || 0);
+    const kept = (s.filmography || []).some((c) => !c.minor && (c.rating || 0) >= 70 && ((c.closedAt || ((c.year || 0) * 12)) >= since));
+    if (!kept) s.respect = Math.max(60, s.respect - 0.3 * ((s.respect - 60) / 40));
   }
   if ((s._idleMonths || 0) < 4) return;
   // Purely proportional: nobody forgets a person they were never aware of. The flat

@@ -10,6 +10,7 @@ import { rint, chance, pick } from '../../engine/rng.js';
 import { setQuote, setFame, setRespect } from '../meta/status.js';
 import { addTimeline, showMoment } from '../../engine/timeline.js';
 import { actorById, maybeIcon } from '../world/world.js';
+import { addHype } from '../meta/hype.js';
 
 const clamp = (v, a = 0, b = 100) => Math.max(a, Math.min(b, v));
 // The same diminishing curve the premieres use. Five nominations at a flat +6 each put a
@@ -260,6 +261,7 @@ export function runNominations(s) {
 
   s.awards.pending = pending;
   s.awards.nominations = (s.awards.nominations || []).concat(pending.map((p) => ({ title: p.title, category: p.category, year })));
+  addHype(s, 45, 'award');   // the season: your name on the lists (meta/hype.js)
   // A nomination is a title you keep. It moves what you can ask for, immediately.
   setQuote(s, (s.quote || 0) * 1.25 || s.quote);
   setRespect(s, (s.respect || 0) + 6 * headroom(112, s.respect));
@@ -354,6 +356,7 @@ export function ceremonyTick(s) {
     addTimeline(s, `"${r.title}" won Best Picture. You were in it, and everybody knows.`);
   }
   if (won.length) {
+    addHype(s, 75, 'award');
     a.wins = (a.wins || []).concat(won.map((r) => ({ title: r.title, category: r.category, year: s.year })));
     a.losses = 0;
     // Marked in the filmography for good.

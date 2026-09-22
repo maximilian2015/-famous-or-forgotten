@@ -24,6 +24,7 @@ import { tourMultiplier, tourFame } from './tour.js';
 import { networkLine, slotNorm } from './franchise.js';
 import { typecastAfterCredit, typeFit } from '../meta/typecast.js';
 import { storyAfterCredit } from '../meta/stories.js';
+import { addHype, flopHype } from '../meta/hype.js';
 
 const clamp = (v, a = 0, b = 100) => Math.max(a, Math.min(b, v));
 
@@ -412,6 +413,13 @@ function closeRun(s, credit, r) {
   // of them are settled here rather than on opening night.
   const bySkill = { tentpole: 9, lead: 5, supporting: 2 }[r.tier] || 2;
   let fame = bySkill + (r.rating >= 85 ? 4 : 0) + (r.worldHit ? 25 : 0);
+  // Hype: where the talk comes from this year. A hit replaces whatever was there; a flop
+  // takes it off the lead, and only a little off a supporting part. See meta/hype.js.
+  if (r.worldHit) addHype(s, 85, 'hit');
+  else if (verdict === 'smash') addHype(s, 70, 'hit');
+  else if (verdict === 'profitable' || r.rating >= 80) addHype(s, r.tier === 'supporting' ? 30 : 50, 'hit');
+  else if (!film && credit.renewal === 'renewed' && r.tier !== 'supporting') addHype(s, 40, 'hit');
+  else if (verdict === 'bomb') flopHype(s, r.tier);
   if (verdict === 'smash') fame += 8;
   else if (verdict === 'profitable') fame += 3;
   // A flop cuts what the film does for your name — and at the top it takes some of the
@@ -450,7 +458,7 @@ function closeRun(s, credit, r) {
   const wasForgotten = (s.peakFame || 0) >= 35 && (s.fame || 0) < 15;
   if (wasForgotten && r.rating >= comebackFloor(s) && !s._cameBack) {
     s._cameBack = true;
-    s.media = Math.min(100, (s.media || 0) + 28);
+    addHype(s, 60, 'hit');
     setRespect(s, (s.respect || 0) + 4);
     setFame(s, Math.max(s.fame || 0, 35));   // straight to Known Face; the film's own fame lands on top below
     addTimeline(s, `The trades are calling ${credit.title} a comeback. Every piece uses the word, and every piece uses your name.`);

@@ -11,6 +11,7 @@ import { rollStability } from './stability.js';
 import { canWork } from '../life/strain.js';
 import { newTitle } from '../world/titles.js';
 import { storyOfferFactor, noteRefusal, noteSequelLoss } from '../meta/stories.js';
+import { hypeDemand } from '../meta/hype.js';
 import { canTakeSet } from '../../engine/sets.js';
 const clamp = (v) => Math.max(0, Math.min(100, v));
 // Titles come from the same generator as everything else the world makes, so an agent's
@@ -116,6 +117,7 @@ export function maybeGenerateOffer(s) {
   if ((s.poisonUntil || 0) > (s.year || 0) * 12 + (s.month || 0)) p *= 0.5;   // box office poison
   if ((s.overtakenUntil || 0) > (s.year || 0) * 12 + (s.month || 0)) p *= 0.7;  // somebody younger has your chair
   p *= storyOfferFactor(s);   // out of sight, or an agent who is working for you again, or not
+  p *= hypeDemand(s);         // the phone rings more while they are asking about you (meta/hype.js)
   if (chance(p * 100)) (s.offers = s.offers || []).push(generateOffer(s));
 }
 export function acceptOffer(s, id) {

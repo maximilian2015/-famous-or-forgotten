@@ -3,6 +3,8 @@ import { addTimeline } from '../../engine/timeline.js';
 import { rint, chance } from '../../engine/rng.js';
 import { markRested } from '../life/strain.js';
 import { onCooldown, markUsed } from '../../engine/cooldown.js';
+import { inCareer } from '../../engine/stage.js';
+import { canGoQuiet, goQuiet } from '../meta/hype.js';
 const clamp = (v) => Math.max(0, Math.min(100, v));
 // What teaching can take you to. It has to be earned on real jobs, because the alternative
 // is what this used to do: start every actor at a ceiling of 50 and count a deodorant
@@ -58,6 +60,10 @@ export const ACTIONS = [
       s.confidence = clamp(s.confidence + rint(2, 4)); s.mental = clamp(s.mental + rint(2, 5));
       return 'Nobody heard a thing. The band was loud and you were somewhere else entirely.';
     } },
+  // Maxi's review of the hype design: a way to put it down on purpose. Phone off, nothing
+  // on the board, nobody at the door — the story finds somebody else (meta/hype.js).
+  { id: 'quiet', label: () => 'A month out of sight', desc: (s) => ((s.scandal || 0) >= 25 ? 'Phone off. The story starves without you in it' : 'Phone off. The cameras go and find somebody else'), when: (s) => inCareer(s) && canGoQuiet(s) && !((s.hiding || 0) >= (s.year || 0) * 12 + (s.month || 0)),
+    run: (s) => { goQuiet(s); return 'A month out of sight. Phone off, nothing on the board, nobody at the door. Whatever they were saying, they are saying it about somebody else by the end of it.'; } },
   { id: 'rest', label: () => 'Rest & recover', desc: (s) => (s.strain || 0) >= 60 ? 'You need this more than you think' : 'Recover mental and health', when: () => true,
     run: (s) => { s.mental = clamp(s.mental + rint(6, 12)); s.health = clamp(s.health + rint(3, 8));
       // Resting properly is the only thing that pulls the strain down faster than time does.

@@ -23,6 +23,7 @@ import { seasonCap, slotNorm, tvMonths } from './franchise.js';
 import { rumourFactor } from '../meta/trouble.js';
 import { typeFit, typeFactor, typecastAfterDayWork, strongLabels } from '../meta/typecast.js';
 import { storyCastFactor, hiding } from '../meta/stories.js';
+import { hypeReach, hypeBrands } from '../meta/hype.js';
 export { tvMonths, TV_PACE } from './franchise.js';
 // What a casting office will see you for. Usually that is fame — but an Asker counts,
 // and it is the one route into work above your level that does not run through
@@ -34,7 +35,8 @@ export { tvMonths, TV_PACE } from './franchise.js';
 // the studio's pictures, and the agent brings half as much.
 export { hiding };
 export function poisoned(s) { return (s.poisonUntil || 0) > (s.year || 0) * 12 + (s.month || 0); }
-export function reach(s) { return (s.fame || 0) + askerStanding(s) + reachFromStanding(s); }
+// A name they have heard this month reads as a bigger name (meta/hype.js).
+export function reach(s) { return (s.fame || 0) + askerStanding(s) + reachFromStanding(s) + hypeReach(s); }
 const clamp = (v) => Math.max(0, Math.min(100, v));
 // Two things the old table got wrong, both of them real-world facts:
 //   · television is paid PER EPISODE, film is paid for the picture. They are not the
@@ -258,6 +260,8 @@ export function refreshCastingPool(s, force, extra = 0) {
     // A casting office reading somebody else's age never sends you the sides at all.
     if (!seenForIt(s, role)) continue;
     const [eps, medium, scale, minFame, share, maxFame] = perEpisode ? row.slice(3) : [null, ...row.slice(3)];
+    // The brands ring when you are being talked about — most of all the tabloid kind (meta/hype.js).
+    if (shelf === 'day' && /Brand|Commercial|Cover|Fashion/.test(type) && chance(Math.max(0, 40 - (hypeBrands(s) - 1) * 100))) continue;
     // Above the ceiling this kind of work simply stops being sent to you. Nobody offers an
     // A-lister a background call.
     if (maxFame != null && reach(s) > maxFame) continue;

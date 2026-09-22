@@ -25,6 +25,7 @@ import { townOpen, townFor, goOut } from './systems/life/town.js';
 import { LABELS, activeLabels, isStrong } from './systems/meta/typecast.js';
 import { liveRisks } from './systems/meta/risk.js';
 import { activeStories } from './systems/meta/stories.js';
+import { hype, hypeSource, hypeLine, SOURCES, hypeReach, hypeDemand, hypePrice, showsThisYear } from './systems/meta/hype.js';
 import { addPrestigeListing } from './systems/career/castings.js';
 import { TimingBar } from './ui/components/TimingBar.jsx';
 import { GridRisk } from './ui/components/GridRisk.jsx';
@@ -559,13 +560,20 @@ function FameScreen({ g, onBack }) {
     <Card style={{ marginBottom: 10 }}>
       <div style={{ display: 'flex', gap: 10 }}>
         <Meter label="Scandal" value={sc} col={sc >= 45 ? '#ff5a72' : sc >= 20 ? '#f0b429' : theme.muted} />
-        <Meter label="Being talked about" value={media} col={media >= 30 ? '#4fc07f' : theme.muted} />
+        <Meter label={hypeSource(g) ? `Hype · from ${SOURCES[hypeSource(g)].label}` : 'Hype'} value={media} col={hypeSource(g) === 'scandal' ? '#ff8d9e' : media >= 30 ? '#4fc07f' : theme.muted} />
       </div>
-      <div style={{ fontSize: 11.5, color: theme.muted, lineHeight: 1.55, marginTop: 9 }}>
-        {media > 0
-          ? `Attention is slowing how fast you are forgotten, by ${Math.round(Math.min(0.55, media / 130) * 100)}%. It fades on its own — the only thing that tops it up is turning up where the cameras are.`
-          : 'Nobody is writing about you. Attention is the only thing that slows being forgotten, and it comes from the nights out, the sofa and the carpet.'}
-      </div>
+      {/* Hype is access, demand and price — the rooms, the phone, the fee — and it comes from
+          somewhere. The tabloid kind buys none of those; it sells the brand shelf. meta/hype.js */}
+      <div style={{ fontSize: 11.5, color: theme.muted, lineHeight: 1.55, marginTop: 9 }}>{hypeLine(g)}</div>
+      {media >= 12 && (<div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, marginTop: 8 }}>
+        {[hypeReach(g) >= 1 ? `reads as +${Math.round(hypeReach(g))} fame in the room` : null,
+          hypeDemand(g) > 1 ? `the phone rings ${Math.round((hypeDemand(g) - 1) * 100)}% more` : null,
+          hypePrice(g) > 1 ? `asks ${Math.round((hypePrice(g) - 1) * 100)}% more` : null,
+          hypeSource(g) === 'scandal' ? 'the brands are calling; the serious rooms are not' : null,
+          showsThisYear(g) ? `${showsThisYear(g)} sofa${showsThisYear(g) > 1 ? 's' : ''} this year — each one worth less` : null,
+        ].filter(Boolean).map((t) => <span key={t} style={{ fontSize: 10.5, fontWeight: 700, padding: '3px 8px', borderRadius: 20, background: 'rgba(255,255,255,.07)', color: theme.text }}>{t}</span>)}
+      </div>)}
+      <div style={{ fontSize: 11, color: theme.muted, lineHeight: 1.5, marginTop: 8 }}>It fades by a tenth a month. A hit, the season or a night that went everywhere replaces it; a show tops it up a little, less each time. A month out of sight (under What now) puts it down on purpose.</div>
     </Card>
     {scLines.length > 0
       ? <Card style={{ marginBottom: 14, padding: '4px 14px', borderColor: sc >= 45 ? '#ff5a7244' : theme.line }}>
@@ -869,6 +877,11 @@ function HealthScreen({ g, onBack }) {
 }
 // Fame reads as a ladder: who you are now, and how far to the next rung.
 function fameSub(g) {
+  const h = Math.round(hype(g));
+  const tail = h >= 20 ? ` · hype ${h}${hypeSource(g) === 'scandal' ? ' (tabloid)' : ''}` : '';
+  return fameSubBase(g) + tail;
+}
+function fameSubBase(g) {
   // The other half of the title, on the tile that is named after it.
   if (isForgotten(g)) { const was = fameTier(g.peakFame); return `Forgotten · you were ${/^[AI]/.test(was.label) ? 'an' : 'a'} ${was.label}`; }
   const t = fameTier(g.fame);
