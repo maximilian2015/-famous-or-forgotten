@@ -39,7 +39,8 @@ export const RISKS = {
     level: (s) => { const n = within(s, s.bombs, 24); return n >= 2 ? 2 : n >= 1 ? 1 : 0; },
     line: (s, l) => (l === 2 ? 'Two leads that bombed inside two years. The trades have a phrase for it and the insurers are using it.' : 'A lead that bombed. One more inside two years and the phrase is box office poison.') },
   exposure: { label: 'Cameras outside', fix: 'A month out of sight. A publicist, if you can afford one.',
-    level: (s) => ((s.media || 0) >= 80 ? 2 : (s.media || 0) >= 60 ? 1 : 0),
+    // A hit is talked about; the tabloid kind is watched. Ordinary hype is not a car outside.
+    level: (s) => { const h = s.media || 0, tab = s.hypeSource === 'scandal'; return h >= 85 || (tab && h >= 45) ? 2 : h >= 65 || (tab && h >= 28) ? 1 : 0; },
     line: (s, l) => (l === 2 ? 'There is a car outside most days. Whatever you do next is a photograph, and the caption is not yours to write.' : 'You are in the papers more than you are in the work. That is when the long lenses come.') },
   money: { label: 'Running out', fix: 'Work that pays this month, or a cheaper month.',
     level: (s) => { if (!inCareer(s) || !s.hasApartment) return 0; const c = s.cash || 0, b = monthlyBills(s); return c < b ? 2 : c < b * 3 ? 1 : 0; },

@@ -443,7 +443,7 @@ function closeRun(s, credit, r) {
   // A flop cuts what the film does for your name — and at the top it takes some of the
   // name with it. Maxi: "at the top there is nothing to lose." A supporting part is not
   // blamed for a picture; the lead is, and the bigger the name the louder the blame.
-  else if (verdict === 'bomb') fame = r.tier !== 'supporting' && (s.fame || 0) >= 45 ? -(2 + ((s.fame || 0) - 45) / 14) : Math.max(1, fame - 3);
+  else if (verdict === 'bomb') fame = r.tier !== 'supporting' && r.scale !== 'episode' && (s.fame || 0) >= 45 ? -(2 + ((s.fame || 0) - 45) / 14) : Math.max(1, fame - 3);
   // The last stretch is the whole point of the ladder and it was the cheapest part of it.
   // A limit of 118 with a floor of 0.16 meant an A-lister still banked a sixth of every
   // credit forever: measured across 25 careers, A-list arrived at a median age of 33 and

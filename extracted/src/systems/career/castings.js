@@ -262,6 +262,10 @@ export function refreshCastingPool(s, force, extra = 0) {
     const [eps, medium, scale, minFame, share, maxFame] = perEpisode ? row.slice(3) : [null, ...row.slice(3)];
     // The brands ring when you are being talked about — most of all the tabloid kind (meta/hype.js).
     if (shelf === 'day' && /Brand|Commercial|Cover|Fashion/.test(type) && chance(Math.max(0, 40 - (hypeBrands(s) - 1) * 100))) continue;
+    // And not while your face is already on something. A campaign a month made an A-lister
+    // €30m a year off the day shelf alone, and a face on two campaigns at once is a face on
+    // neither: after one, the brands wait half a year (a little less while you are talked about).
+    if (shelf === 'day' && medium === 'ad' && (s._brandUntil || 0) > now - (hypeBrands(s) > 1 ? 2 : 0)) continue;
     // Above the ceiling this kind of work simply stops being sent to you. Nobody offers an
     // A-lister a background call.
     if (maxFame != null && reach(s) > maxFame) continue;
@@ -579,6 +583,7 @@ export function auditionFor(s, id, quality = 50) {
     addGenreXP(s, c.genre, rating);
     paid(s, c.salary, `"${c.title}" paid`); markReleased(s); setFame(s, s.fame + rint(1, 3)); s.confidence = clamp(s.confidence + 2);
     typecastAfterDayWork(s, c);
+    if (c.medium === 'ad' || /Brand|Cover|Fashion|Commercial|Awards Show/.test(c.type || '')) s._brandUntil = (s.year || 0) * 12 + (s.month || 0) + rint(4, 8);   // overexposure: the brands wait
     // The shampoo. A serious actor selling shampoo is a sentence the serious rooms repeat.
     const shampoo = isStrong(s, 'serious') && /Brand|Commercial/.test(c.type || '');
     if (shampoo) setRespect(s, (s.respect || 0) - 2);

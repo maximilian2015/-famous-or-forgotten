@@ -1,6 +1,6 @@
 import { cultTick } from '../src/systems/career/release.js';
 import { offersTick } from '../src/systems/career/offers.js';
-import { auditionFor } from '../src/systems/career/castings.js';
+import { auditionFor, refreshCastingPool } from '../src/systems/career/castings.js';
 
 let fails = 0;
 const ok = (n, c, e = '') => { if (!c) { fails++; console.log('FAIL  ' + n + (e ? ' :: ' + e : '')); } else console.log('ok    ' + n); };
@@ -26,6 +26,17 @@ const st = (over) => ({ version: 'x', name: 'Mira Vale', ageY: 40, stage: 'caree
   ok('with the hype up, the brand waits', s.offers.length === 1);
   s.media = 20; offersTick(s);
   ok('with the hype gone, so is the brand', s.offers.length === 0 && s.timeline.some((x) => /brand went quiet/.test(x.text)));
+}
+// ── overexposure: after a campaign the brands wait ───────────────────────────
+{
+  const s = st({ fame: 70, peakFame: 70, respect: 30 });
+  s.castingPool = [{ id: 'b1', title: 'Glow', type: 'Brand Campaign', role: 'Face', genre: 'Commercial', salary: 900000, months: 1, scale: 'oneoff', medium: 'ad', shelf: 'day', minFame: 0, room: { want: 'looks', readers: 1, field: 40 } }];
+  let took = null; for (let i = 0; i < 60 && !took; i++) { const t = JSON.parse(JSON.stringify(s)); auditionFor(t, 'b1', 95); if (t.filmography.length) took = t; }
+  ok('a campaign taken', !!took && (took._brandUntil || 0) > took.year * 12 + took.month + 3);
+  let ads = 0; for (let i = 0; i < 30; i++) { refreshCastingPool(took, true); ads += took.castingPool.filter((c) => c.medium === 'ad').length; }
+  ok('and for months the brands do not call', ads === 0, String(ads));
+  took._brandUntil = 0; ads = 0; for (let i = 0; i < 30; i++) { refreshCastingPool(took, true); ads += took.castingPool.filter((c) => c.medium === 'ad').length; }
+  ok('then they do', ads > 0);
 }
 // ── the shampoo ────────────────────────────────────────────────────────────────
 {

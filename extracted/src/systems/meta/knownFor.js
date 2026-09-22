@@ -26,6 +26,7 @@ export function hitWeight(c, s) {
 export function isHit(c, s) { return hitWeight(c, s) > 0; }
 export function isFlop(c) {
   if (!c || minor(c) || c.running) return false;
+  if (c.scale === 'episode' || (c.episodes && c.episodes <= 4 && !c.season)) return false;   // a guest spot is somebody else's show
   return c.verdict === 'bomb' || c.verdict === 'ignored' || scoreOf(c) < 4.5;
 }
 function whyOf(s, c) {

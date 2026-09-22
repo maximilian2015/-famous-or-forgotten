@@ -197,6 +197,13 @@ export function walkOffSet(s, setId, forTitle) {
   removeSet(s, p);
   setRespect(s, (s.respect || 0) - ((p.episodes || 0) > 0 ? 7 : 9));
   s.walkedOff = [...(s.walkedOff || []).filter((t) => monthKey(s) - t < 36), monthKey(s)];   // risk.js: a lawyer has the paper
+  // The director remembers. Five years without a call from them (makeCrew, stories.js grudges),
+  // and if they were in your phone, they are cold now.
+  const lead = (p.crew || [])[0];
+  if (lead && lead.name) {
+    (s.grudges = s.grudges || []).push({ who: lead.name, title: p.title, scale: p.scale, since: monthKey(s), due: monthKey(s) + 9999, until: monthKey(s) + 60, hit: false, gross: 0, opened: true });
+    const k = (s.people || []).find((x) => x.name === lead.name); if (k) { k.cold = true; k.relationship = Math.min(k.relationship || 0, 10); }
+  }
   addTimeline(s, `Walked off "${p.title}"${forTitle ? ` for "${forTitle}"` : ''}. They recast within the week. Everybody heard.`, true);
   return s;
 }

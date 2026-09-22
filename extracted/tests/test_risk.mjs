@@ -46,7 +46,7 @@ const month = (s) => { s.month++; if (s.month > 11) { s.month = 0; s.year++; } }
   ok('no month off', riskLevel(st({ strain: 70 }), 'norest') === 1 && riskLevel(st({ strain: 90 }), 'norest') === 2);
   const s = st(); s.bombs = [stamp(s) - 3];
   ok('a flop is worth watching', riskLevel(s, 'flops') === 1);
-  ok('cameras outside', riskLevel(st({ media: 65 }), 'exposure') === 1 && riskLevel(st({ media: 85 }), 'exposure') === 2);
+  ok('cameras outside', riskLevel(st({ media: 65 }), 'exposure') === 1 && riskLevel(st({ media: 85 }), 'exposure') === 2 && riskLevel(st({ media: 50 }), 'exposure') === 0 && riskLevel(st({ media: 50, hypeSource: 'scandal' }), 'exposure') === 2);
   ok('running out', riskLevel(st({ cash: 1000 }), 'money') === 2 && riskLevel(st({ cash: 200000 }), 'money') === 0);
   const w = st(); w.walkedOff = [stamp(w) - 2];
   ok('a walk-off is paper a lawyer keeps', riskLevel(w, 'paper') === 1);
@@ -55,11 +55,11 @@ const month = (s) => { s.month++; if (s.month > 11) { s.month = 0; s.year++; } }
 }
 // ── the tick forgets what went away and says so once when it gets worse ─────────
 {
-  const s = st({ media: 65 });
+  const s = st({ media: 70 });
   riskTick(s); const n = s.timeline.length;
   month(s); riskTick(s);
   ok('the same risk is not announced twice', s.timeline.length === n);
-  s.media = 85; month(s); riskTick(s);
+  s.media = 90; month(s); riskTick(s);
   ok('getting worse is said', s.timeline.length === n + 1 && /Cameras outside/.test(s.timeline[0].text));
   s.media = 10; month(s); riskTick(s);
   ok('gone from the record when it goes', !s.risks.exposure && !warned(s, 'exposure'));
