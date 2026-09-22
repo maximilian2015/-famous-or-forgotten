@@ -49,6 +49,7 @@ export function showBump(s) {
 }
 // Monthly: ×0.9 and −1. From seventy it is a year to nothing.
 export function hypeTick(s) {
+  s.peakHype = Math.max(s.peakHype || 0, hype(s));   // read by meta/ambition.js
   if (hype(s) > 0) s.media = Math.max(0, hype(s) * 0.9 - 1);
   if (hype(s) < 12) { s.hypeSource = null; }
   return s;

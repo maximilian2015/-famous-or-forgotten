@@ -145,8 +145,12 @@ const SEQUEL_MONEY = { smash: 45, profitable: 18, 'broke even': -8, bomb: -55 };
 // drama that made its money is left alone; nobody makes a sequel to a small picture. And
 // the genres that franchise are the ones you would guess — horror, sci-fi, thrillers,
 // comedy, crime — not a romance and not a musical.
-const SEQUEL_SCALE = { blockbuster: 1.2, feature: 0.7, indie: 0.35, small: 0.15, festival: 0 };
-const SEQUEL_GENRE = { Horror: 1.15, 'Sci-Fi': 1.1, Thriller: 1.05, Comedy: 1.0, Crime: 1.0, Drama: 0.5, Romance: 0.45, Musical: 0.4 };
+// Maxi: "every popular film gets a sequel — in life it is not so." So: not every hit, not
+// every kind of hit. A smash tentpole is likelier than not; a smash drama is a coin the
+// studio mostly does not flip; a profitable picture is a one-in-four; and every part after
+// the second is a longer shot than the one before.
+const SEQUEL_SCALE = { blockbuster: 1.15, feature: 0.65, indie: 0.3, small: 0.1, festival: 0 };
+const SEQUEL_GENRE = { Horror: 1.2, 'Sci-Fi': 1.15, Thriller: 0.95, Comedy: 0.9, Crime: 0.9, Drama: 0.35, Romance: 0.3, Musical: 0.35 };
 export function sequelOdds(rating, part, obliged, verdict = null, scale = null, genre = null) {
   if (obliged) return 100;
   if (part > 4) return 0;
@@ -160,11 +164,11 @@ export function sequelOdds(rating, part, obliged, verdict = null, scale = null, 
   // happening — thirty-six of sixty got no second part.
   // With no verdict to hand — an old save, or anybody asking the question directly — fall
   // back to the reviews rather than answering "almost never" to everything.
-  const base = verdict === 'smash' ? 76 : verdict === 'profitable' ? 44
-    : verdict === 'broke even' ? 14 : verdict === 'bomb' ? 2
+  const base = verdict === 'smash' ? 55 : verdict === 'profitable' ? 26
+    : verdict === 'broke even' ? 5 : verdict === 'bomb' ? 0
     : rating >= 92 ? 72 : rating >= 84 ? 52 : rating >= 78 ? 30 : rating >= 70 ? 9 : 0;
-  const liked = rating >= 85 ? 10 : rating >= 72 ? 4 : rating >= 55 ? 0 : -10;
-  return Math.max(0, Math.min(92, Math.round((base + liked) * kind) - (part - 1) * 10));
+  const liked = rating >= 85 ? 8 : rating >= 72 ? 3 : rating >= 55 ? 0 : -8;
+  return Math.max(0, Math.min(75, Math.round((base + liked) * kind) - Math.max(0, part - 2) * 14));
 }
 export function sequelRaise(part) { return part === 2 ? 1.6 : part === 3 ? 2.2 : 2.6; }
 
@@ -208,11 +212,17 @@ export function sequelMaterial(prevPrestige, part, arc = 'slides') {
 // life, if it is a good project, they sometimes offer you the sequel — I have not seen it."
 // It was there, two to three years out, said once on the timeline; now it is months, and
 // on the calendar, and on the credit.
+// When. Maxi: "a sequel can be a year away or ten — not every two years." Most come in
+// two to four years; some take five; one in ten is the legacy sequel, a decade on, when
+// somebody remembers the first one fondly enough to pay for it.
 export function sequelGap(part, verdict = null) {
-  if (verdict === 'smash') return part === 2 ? rint(8, 16) : rint(12, 22);
-  if (verdict === 'profitable') return part === 2 ? rint(12, 24) : rint(16, 30);
-  return part === 2 ? rint(18, 36) : rint(24, 48);
+  const r = Math.random();
+  const late = part > 2 ? 6 : 0;
+  if (verdict === 'smash') return late + (r < 0.7 ? rint(14, 30) : r < 0.9 ? rint(30, 48) : rint(72, 120));
+  if (verdict === 'profitable') return late + (r < 0.6 ? rint(20, 40) : r < 0.9 ? rint(40, 66) : rint(84, 120));
+  return late + (r < 0.85 ? rint(30, 72) : rint(84, 132));
 }
+export function isLegacyGap(gap) { return gap >= 72; }
 // What is on its way, for the calendar and the filmography.
 export function sequelDue(s, title) {
   const root = String(title || '').replace(/\s+(II|III|IV|V|VI)$/, '');
@@ -364,8 +374,10 @@ export function maybeContinue(s, credit, p, force = false) {
   const salary = Math.min(raw, ceilingFor(s, mediumOf(p)));
   // Nobody shoots them back to back. It is announced, and then it is years.
   const gap = sequelGap(nextPart, credit.verdict);
-  addTimeline(s, credit.verdict === 'smash' ? `"${p.title}" printed money. A sequel is in development — they want you, and it will not be years.` : `There is talk of a sequel to "${p.title}". These things take time.`);
-  s.lastEvent = credit.verdict === 'smash' ? `The studio is developing a sequel to "${p.title}". Cameras in about ${gap} months — the contract comes ${SEQUEL_LEAD} before that.` : s.lastEvent;
+  const years = Math.round(gap / 12);
+  addTimeline(s, isLegacyGap(gap) ? `Somebody at the studio owns the rights to "${p.title}" and has not forgotten it. Nothing is happening. Nothing will, for years.`
+    : credit.verdict === 'smash' ? `"${p.title}" printed money. A sequel is in development — they want you, and it will be a couple of years.` : `There is talk of a sequel to "${p.title}". These things take time.`);
+  s.lastEvent = isLegacyGap(gap) ? s.lastEvent : credit.verdict === 'smash' ? `The studio is developing a sequel to "${p.title}". Cameras in about ${years < 2 ? `${gap} months` : `${years} years`} — the contract comes ${SEQUEL_LEAD} months before that.` : s.lastEvent;
   (s.laterOffers = s.laterOffers || []).push({
     due: (s.year || 0) * 12 + (s.month || 0) + gap,
     offer: {

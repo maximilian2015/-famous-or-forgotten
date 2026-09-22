@@ -10,6 +10,7 @@ import { LABELS, activeLabels, scoreOf, STRONG_AT, ACTIVE_AT } from '../../syste
 import { apparentAge, height, weightKg } from '../../systems/life/face.js';
 import { band as drinkBand, dependent } from '../../systems/life/drink.js';
 import { strainBand } from '../../systems/life/strain.js';
+import { ambitionProgress } from '../../systems/meta/ambition.js';
 
 // Who you are, on one card. Maxi: "when you press your little person — when you were
 // born, how old you are and how old you look, height, weight, where you live, status,
@@ -55,6 +56,7 @@ export function Passport({ g, onClose, onRoom }) {
       {row('Fame · respect', `${Math.round(g.fame || 0)} · ${Math.round(g.respect || 0)}`)}
       {g.quote > 0 && row('Your quote', money(g.quote))}
       {g.agent && g.agent.level > 0 && row('Agent', g.agent.name)}
+      {ambitionProgress(g) && row('Wanted, at ten', `${ambitionProgress(g).label} · ${ambitionProgress(g).met ? 'got it' : `${Math.round(ambitionProgress(g).progress * 100)}%`}`, ambitionProgress(g).met ? theme.gold : undefined)}
       {/* Public image: the label the business has for you, and how firmly. See meta/typecast.js. */}
       {head('Public image')}
       {activeLabels(g).length === 0 && <div style={{ fontSize: 12, color: theme.muted, padding: '4px 0 8px', lineHeight: 1.5 }}>No label yet. Three parts of a kind and the business finds a word for you — and the parts that fit it come easier.</div>}

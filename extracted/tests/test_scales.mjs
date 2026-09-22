@@ -100,8 +100,9 @@ ok('and nobody went through the floor', minR >= S.RESPECT_FLOOR, String(minR));
       salary: 500000, months: 5, prestigeScore: 55, tier: 'lead', scale: 'feature', stability: 85 });
     return s;
   }
-  // rehearse every month vs never
+  // rehearse every month vs never — b coasts (production.js STANCES); the default stance rehearses for you
   let a = shoot(), b = shoot();
+  b.production.stance = 'coast';
   const bondA0 = a.production.crew[0].bond, bondB0 = b.production.crew[0].bond;
   a.production.crew[0].bond = 45; b.production.crew[0].bond = 45;
   for (let m = 0; m < 4; m++) {

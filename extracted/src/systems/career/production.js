@@ -206,6 +206,47 @@ export function walkOffSet(s, setId, forTitle) {
 const REHEARSAL_GAIN = [[4, 9], [3, 6], [1, 3]];
 function monthKey(s) { return (s.year || 0) * 12 + (s.month || 0); }
 export function rehearsalsThisMonth(s, id) { const p = setById(s, id); return p && p._rehearsedMonth === monthKey(s) ? (p._rehearsals || 0) : 0; }
+// How you take a set. Maxi: "every month I have to press it? Over a five-month shoot that
+// is tedious and not interesting." So the month's work on a set is a stance, chosen once
+// and changed whenever: coast (nothing, and the director sees it), turn up prepared (a
+// pass on the pages every month — the first rehearsal, done for you, at its cost), or all
+// in (the pages and the crew, every month, at more than twice the cost). The buttons stay
+// for the months you want to push past that. The stance is charged at the top of the
+// month from the month's energy (time.js), never below zero: a month you cannot afford is
+// a month you coasted, and the card says so.
+export const STANCES = {
+  coast: { label: 'Coast', cost: 0, blurb: 'Turn up, say the lines, go home. The set is what it is, and the director notices.' },
+  steady: { label: 'Turn up prepared', cost: COST.rehearse, blurb: 'A pass on the pages every month. Quality climbs; the director sees the work.' },
+  allin: { label: 'All in', cost: COST.rehearse + COST.bond + 10, blurb: 'The pages, the takes and the crew, every month. It costs, and it shows — on the set and on you.' },
+};
+export const STANCE_ORDER = ['coast', 'steady', 'allin'];
+export function stanceOf(p) { return STANCES[p && p.stance] ? p.stance : 'steady'; }
+export function setStance(s, id, stance) {
+  const p = setById(s, id); if (!p || !STANCES[stance]) return s;
+  p.stance = stance;
+  s.lastEvent = stance === 'coast' ? `"${p.title}": you will coast. The month's energy is yours; the set is what it is.` : stance === 'allin' ? `"${p.title}": all in. ${STANCES.allin.cost} energy a month, and the set will know it.` : `"${p.title}": you turn up prepared. ${STANCES.steady.cost} energy a month, taken at the top of the month.`;
+  return s;
+}
+// The top of the month: the stance does its work from the month's fresh energy.
+export function stanceTick(s) {
+  for (const p of sets(s)) {
+    if ((p.prepLeft || 0) > 0 || p.paused) continue;
+    const id = stanceOf(p); const st = STANCES[id];
+    p._stanceDone = null;
+    if (!st.cost) continue;
+    if (!canAfford(s, st.cost)) { p._stanceDone = 'broke'; (s.apWhy = s.apWhy || []).push(`no energy for "${p.title}" — coasted`); continue; }
+    spend(s, st.cost);
+    const gain = rint(REHEARSAL_GAIN[0][0], REHEARSAL_GAIN[0][1]) + (id === 'allin' ? rint(3, 6) : 0);
+    p.meter = clamp(p.meter + gain);
+    p._workedMonth = monthKey(s); p._rehearsedMonth = monthKey(s); p._rehearsals = 1;
+    const lead = (p.crew || [])[0];
+    if (id === 'allin') { for (const c of p.crew || []) c.bond = clamp(c.bond + rint(4, 8)); s.strain = clamp((s.strain || 0) + 2); }
+    else if (lead) lead.bond = clamp(lead.bond + rint(1, 3));
+    p._stanceDone = id;
+    (s.apWhy = s.apWhy || []).push(`"${p.title}" −${st.cost}`);
+  }
+  return s;
+}
 export function rehearse(s, id) {
   const p = setById(s, id); if (!p) return s;
   const n = rehearsalsThisMonth(s, id);

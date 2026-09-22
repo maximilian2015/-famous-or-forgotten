@@ -69,15 +69,26 @@ function scheduleClause(s, o, big, ex) {
   const wait = fit.ok ? 0 : monthsUntilFree(s, { ...o, exclusive: ex });
   // A sequel comes with the studio's date on it, months out (franchise.js SEQUEL_LEAD). If
   // you are on a set that wraps before then, there is nothing to ask — you will be free.
-  const planned = (o.startAt || 0) > now + 1 ? o.startAt : 0;
-  const freeBy = now + 1 + wait;
-  const clear = planned && (fit.ok || freeBy <= planned);
-  const start = Math.max(now + 1 + (big ? wait : 0), planned);
+  // The date on the paper is the first month of shooting — this month if you are free,
+  // the month you wrap if you are not, the studio's month if they set one. It used to be
+  // written one month later than the shoot actually started, and the calendar disagreed
+  // with the contract (Maxi: "the paper says March, the calendar says October").
+  const planned = (o.startAt || 0) > now ? o.startAt : 0;
+  const soonest = now + (big ? wait : 0);
+  const clear = planned && (fit.ok || soonest <= planned);
+  const start = Math.max(soonest, planned);
   const sched = { id: 'schedule', label: 'Schedule', value: { months: o.months || 1, start },
     text: `${o.months || 1} month${(o.months || 1) === 1 ? '' : 's'} of shooting, from ${MON[start % 12]} ${Math.floor(start / 12)}`
       + (planned ? ` — the studio's date${s.production && !fit.ok && clear ? `; you wrap "${(fit.until || s.production).title}" before then` : ''}` : '')
       + (s.production && big && !planned ? (fit.ok ? ` — alongside "${s.production.title}"` : ` — after "${(fit.until || s.production).title}" wraps; ${fit.respect ? `a set alongside needs respect ${fit.respect}` : fit.why.replace(/\.$/, '')}`) : ''),
-    options: s.production && big && fit.ok && !planned ? [{ id: 'afterWrap', label: `Start after "${s.production.title}" wraps instead (${(s.production.prepLeft || 0) + (s.production.monthsLeft || 0)} mo)`, value: { months: o.months || 1, start: now + 1 + (s.production.prepLeft || 0) + (s.production.monthsLeft || 0), after: s.production.title }, odds: 70 }] : [] };
+    options: s.production && big && fit.ok && !planned ? [{ id: 'afterWrap', label: `Start after "${s.production.title}" wraps instead (${(s.production.prepLeft || 0) + (s.production.monthsLeft || 0)} mo)`, value: { months: o.months || 1, start: now + (s.production.prepLeft || 0) + (s.production.monthsLeft || 0), after: s.production.title }, odds: 70 }] : [] };
+  // A paper you already signed for later (a sequel with the studio's date, a held part) is
+  // on the calendar; a shoot that runs past its date is a shoot you cannot be on for both.
+  // Said here, before you sign — Maxi's case was two signatures and a recast nobody warned of.
+  const later = (s.offers || []).filter((x) => x.signed && x.waitsForWrap && x.id !== o.id && (x.startAt || 0) > now);
+  const runsTo = start + (o.prep || 0) + (o.months || 1);
+  const clash = later.find((x) => (x.startAt || 0) < runsTo);
+  if (clash) sched.text += ` ⚠ You are signed for "${String(clash.projectTitle || '').replace('⭐ ', '')}" from ${MON[clash.startAt % 12]} ${Math.floor(clash.startAt / 12)} — this shoot runs to ${MON[runsTo % 12]}, and they will not hold it past ${MON[(clash.startAt + 2) % 12]}`;
   // No set for it now. They will not simply wait — Maxi: "without the respect you cannot
   // take it and cannot ask to move it, so you choose very carefully; though when you are
   // starting you take everything." So the choice is the paper: ask them to hold it (a
@@ -85,7 +96,7 @@ function scheduleClause(s, o, big, ex) {
   // for it, if it is the bigger picture — and everybody hears you did.
   if (s.production && big && !fit.ok && !clear) {
     const until = fit.until || s.production;
-    const need = planned || now + 1;
+    const need = planned || now;
     // Say WHY there is no room — the exclusive set, the third slot, the standing — not only until when.
     // Maxi: "my second slot is open and the paper still says they wait" — his set was exclusive.
     const why = fit.respect ? ` — a set alongside needs respect ${fit.respect}` : /exclusive/i.test(fit.why || '') ? ` — "${until.title}" is exclusive: nothing alongside it, whatever your standing` : /most anyone/.test(fit.why || '') ? ' — three sets at once is the most anyone can do' : '';
@@ -94,9 +105,9 @@ function scheduleClause(s, o, big, ex) {
     sched.must = true;
     // Your own show's next season is written around you: the network schedules, it does not ask.
     const own = o.kind === 'renewal';
-    sched.options = [{ id: 'hold', label: own ? `They schedule the season around you — it starts when you wrap (${wait} mo)` : `Ask them to hold the part until you wrap (${wait} mo)`, value: { months: o.months || 1, start: now + 1 + wait, after: until.title }, odds: own ? 100 : holdOdds(wait, s), walkOnNo: !own, sure: own || holdOdds(wait, s) >= 100 }];
+    sched.options = [{ id: 'hold', label: own ? `They schedule the season around you — it starts when you wrap (${wait} mo)` : `Ask them to hold the part until you wrap (${wait} mo)`, value: { months: o.months || 1, start: now + wait, after: until.title }, odds: own ? 100 : holdOdds(wait, s), walkOnNo: !own, sure: own || holdOdds(wait, s) >= 100 }];
     const bigger = (SCALE_RANK[o.scale] || 0) > (SCALE_RANK[until.scale] || 0);
-    if (bigger) sched.options.push({ id: 'walk', label: `Walk off "${until.title}" for this — they recast in a week, and everybody hears`, value: { months: o.months || 1, start: now + 1, walkOff: until.id }, odds: 100, sure: true });
+    if (bigger) sched.options.push({ id: 'walk', label: `Walk off "${until.title}" for this — they recast in a week, and everybody hears`, value: { months: o.months || 1, start: now, walkOff: until.id }, odds: 100, sure: true });
   }
   sched.stance = 'ok'; sched.ask = null; sched.result = null;
   return sched;
@@ -115,6 +126,20 @@ export function draftContract(s, o) {
       const big = o.tier !== 'supporting' || (o.months || 0) >= 2;
       const exc = k.clauses.find((c) => c.id === 'exclusive');
       k.clauses[i] = scheduleClause(s, o, big, exc ? !!exc.value : false);
+    }
+    // Signed and waiting: the paper says where it stands NOW — the month it will start given
+    // what you are on, and how long they will hold it. It used to keep the sentence it was
+    // drafted with ("you wrap X before then") long after X had wrapped and Y had taken its place.
+    if (o.signed && i >= 0) {
+      const now = (s.year || 0) * 12 + (s.month || 0);
+      const fit = canTakeSet(s, o);
+      const start = Math.max(o.startAt || now, now + (fit.ok ? 0 : monthsUntilFree(s, o)));
+      const until = fit.ok ? null : (fit.until || s.production);
+      const late = (o.startAt || 0) < start;
+      k.clauses[i].value = { ...(k.clauses[i].value || {}), start };
+      k.clauses[i].text = `${o.months || 1} month${(o.months || 1) === 1 ? '' : 's'} of shooting, from ${MON[start % 12]} ${Math.floor(start / 12)}`
+        + (until ? ` — after "${until.title}" wraps` : '')
+        + (late ? `. They expected you in ${MON[(o.startAt || 0) % 12]} and will not hold it past ${MON[((o.startAt || 0) + 2) % 12]}` : '');
     }
     return k;
   }
@@ -224,7 +249,7 @@ export function markClause(s, id, clauseId, askId) {
 export function earliestStart(s, o) {
   const now = (s.year || 0) * 12 + (s.month || 0);
   const fit = canTakeSet(s, o);
-  return now + 1 + (fit.ok ? 0 : monthsUntilFree(s, o));
+  return now + (fit.ok ? 1 : monthsUntilFree(s, o));
 }
 export function proposeStart(s, id, month) {
   const o = (s.offers || []).find((x) => x.id === id); if (!o) return s;
@@ -234,7 +259,7 @@ export function proposeStart(s, id, month) {
   const now = (s.year || 0) * 12 + (s.month || 0);
   const first = earliestStart(s, o);
   if (month < first) { s.lastEvent = `You are not free until ${MON[first % 12]} ${Math.floor(first / 12)}. Pick a month from there.`; return s; }
-  const want = (o.startAt || 0) > now + 1 ? o.startAt : now + 1;   // when they wanted you
+  const want = (o.startAt || 0) > now ? o.startAt : now;   // when they wanted you
   const delay = Math.max(0, month - want);
   const fit = canTakeSet(s, o);
   const until = fit.ok ? null : (fit.until || s.production);
@@ -270,7 +295,7 @@ export function contractsTick(s) {
   // still not free two months after they expected you, they stop waiting and recast. The
   // shaky picture you stayed on is what cost you the one they were holding.
   for (const o of [...(s.offers || [])]) {
-    if (!o.signed || !o.waitsForWrap || (o.startAt || 0) + 2 > now || canTakeSet(s, o).ok) continue;
+    if (!o.signed || (o.startAt || 0) + 2 > now || canTakeSet(s, o).ok) continue;
     const title = String(o.projectTitle || 'it').replace('⭐ ', '');
     s.offers = s.offers.filter((x) => x.id !== o.id);
     s.inbox = (s.inbox || []).filter((m) => m.offerId !== o.id);
@@ -364,7 +389,7 @@ export function signContract(s, id) {
   const held = !!(sched && sched.value && (sched.value.after || sched.value.walkOff));
   // A sequel with the studio's date months out: you are on a set now, and free before then.
   const nowM = (s.year || 0) * 12 + (s.month || 0);
-  const planned = !!(sched && sched.value && sched.value.start > nowM + 1 && monthsUntilFree(s, o) <= sched.value.start - nowM - 1);
+  const planned = !!(sched && sched.value && sched.value.start > nowM && monthsUntilFree(s, o) <= sched.value.start - nowM);
   if (!held && !planned && !canTakeSet(s, o).ok) {
     const big = o.tier !== 'supporting' || (o.months || 0) >= 2;
     const exc = k.clauses.find((c) => c.id === 'exclusive');
@@ -393,9 +418,9 @@ export function signContract(s, id) {
   const title = String(o.projectTitle || 'it').replace('⭐ ', '');
   // Held for you, by agreement — after your current shoot. It waits in Messages, signed,
   // and starts itself the month the set is free. Only a held part ever waits (see above).
-  if ((held || planned) && ((o.startAt || 0) > now + 1 || !canTakeSet(s, o).ok)) {
+  if ((held || planned) && ((o.startAt || 0) > now || !canTakeSet(s, o).ok)) {
     o.waitsForWrap = true; o.deadline = 99;
-    s.lastEvent = planned && !held ? `Signed. "${title}" shoots from ${MON[(o.startAt || now) % 12]} ${Math.floor((o.startAt || now) / 12)} — the studio's date. It is on the calendar.` : `Signed. "${title}" is held for you — it starts ${(o.startAt || 0) > now + 1 ? `in ${MON[(o.startAt || now) % 12]}` : 'the month you wrap'}.`;
+    s.lastEvent = planned && !held ? `Signed. "${title}" shoots from ${MON[(o.startAt || now) % 12]} ${Math.floor((o.startAt || now) / 12)} — the studio's date. It is on the calendar.` : `Signed. "${title}" is held for you — it starts ${(o.startAt || 0) > now ? `in ${MON[(o.startAt || now) % 12]}` : 'the month you wrap'}.`;
     addTimeline(s, planned && !held ? `Signed for ${title}. Cameras in ${MON[(o.startAt || now) % 12]}.` : `Signed for ${title}. They are holding it until you wrap.`);
     return s;
   }
@@ -411,8 +436,13 @@ export function passContract(s, id) { return declineOffer(s, id); }
 // slot in the month, after a wrap — see engine/time.js.
 export function startSigned(s) {
   const now = (s.year || 0) * 12 + (s.month || 0);
-  const o = (s.offers || []).find((x) => x.signed && (x.startAt || 0) <= now + 1 && canTakeSet(s, x).ok);
-  if (!o) return s;
-  o.waitsForWrap = false;
-  return acceptOffer(s, o.id);
+  // Earliest date first, and every one that fits — a second paper used to wait behind a first
+  // that could not start, and start a month before the studio's date besides.
+  const due = (s.offers || []).filter((x) => x.signed && (x.startAt || 0) <= now).sort((a, b) => (a.startAt || 0) - (b.startAt || 0));
+  for (const o of due) {
+    if (!canTakeSet(s, o).ok) continue;
+    o.waitsForWrap = false;
+    acceptOffer(s, o.id);
+  }
+  return s;
 }

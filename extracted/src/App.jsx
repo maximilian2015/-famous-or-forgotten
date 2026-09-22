@@ -12,7 +12,7 @@ import { seeDoctor, treatmentCost, pushThrough, PILLS, usePills, infectionOdds }
 import { resolveArc } from './systems/life/arcs.js';
 import { computeLegacy, getHall, heirsOf, heirOpts, enshrine } from './systems/meta/legacy.js';
 import { fameTier, setHousing, FAME_TIERS, fameCeiling, ladderBlurb, TIER_OPENS, alistKey, iconKey, scandalReport, respectReport, RESPECT_MOVES, RESPECT_TIERS, RESPECT_OPENS, respectTier, FORGOTTEN, FORGOTTEN_OPENS, isForgotten, forgottenDepth } from './systems/meta/status.js';
-import { rehearse, riskyTake, bondWithCrew, meterTier } from './systems/career/production.js';
+import { rehearse, riskyTake, bondWithCrew, STANCES, STANCE_ORDER, stanceOf, setStance, meterTier } from './systems/career/production.js';
 // Every set you are on. Three at most — see engine/sets.js; g.production is the first.
 const allSets = (g) => (g.productions && g.productions.length ? g.productions : (g.production ? [g.production] : []));
 import { agentCut, agentLine, fireAgent } from './systems/career/agent.js';
@@ -25,6 +25,7 @@ import { townOpen, townFor, goOut } from './systems/life/town.js';
 import { LABELS, activeLabels, isStrong } from './systems/meta/typecast.js';
 import { liveRisks } from './systems/meta/risk.js';
 import { activeStories } from './systems/meta/stories.js';
+import { ambitionProgress } from './systems/meta/ambition.js';
 import { hype, hypeSource, hypeLine, SOURCES, hypeReach, hypeDemand, hypePrice, showsThisYear } from './systems/meta/hype.js';
 import { addPrestigeListing } from './systems/career/castings.js';
 import { TimingBar } from './ui/components/TimingBar.jsx';
@@ -317,19 +318,18 @@ function OnSetNow({ g, p }) {
   const noEnergy = !canAfford(g, COST.rehearse);
   const b = lead ? lead.bond : 50;
   const mood = b >= 70 ? ['warm to you', '#4fc07f'] : b >= 45 ? ['fine with you', theme.muted] : b >= 26 ? ['cooling on you', '#f0b429'] : ['done with you', '#ff5a72'];
+  const st = stanceOf(p);
   return (<div style={{ marginTop: 8 }}>
     {lead && <div style={{ fontSize: 11.5, color: theme.muted, marginBottom: 8 }}>
       {lead.name}, directing, is <b style={{ color: mood[1] }}>{mood[0]}</b>.
       {b < 45 && ' A cold director is what costs you standing at wrap.'}
     </div>}
-    <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
-      <Button kind={worked ? 'default' : 'pri'} sfx="slate" disabled={noEnergy || worked} onClick={() => dispatch(rehearse, p.id)} style={{ flex: 1 }}>
-        {worked ? '✓ Rehearsed this month' : noEnergy ? 'Rehearse · not enough energy' : `Rehearse · ${COST.rehearse} energy`}</Button>
+    <StanceRow g={g} p={p} />
+    <div style={{ fontSize: 11, color: p._stanceDone === 'broke' ? theme.bad : theme.muted, marginTop: 6, lineHeight: 1.45 }}>
+      {p._stanceDone === 'broke' ? 'No energy for the set this month — you coasted. The director noticed.'
+        : worked ? `✓ This month's work is done${st !== 'coast' ? ` (${STANCES[st].cost} energy, taken at the top of the month)` : ''}. Push harder under Career if you want to.`
+        : st === 'coast' ? 'Coasting. Live the month like this and you turned up not knowing the pages; a pattern, the director notices.' : 'The set is under Career.'}
     </div>
-    {!worked && !noEnergy && <div style={{ fontSize: 11, color: theme.gold, marginTop: 6, lineHeight: 1.45 }}>
-      Live the month without this and you turned up not knowing the pages. Once is nothing. A pattern, the director notices.
-    </div>}
-    <div style={{ fontSize: 11, color: theme.muted, marginTop: 6 }}>Takes, the crew and the rest of the set are under Career.</div>
   </div>);
 }
 
@@ -2034,6 +2034,7 @@ function EndOfLifeScreen({ g }) {
       {row('Left behind', `€${Math.round(g.cash || 0).toLocaleString()}`)}
       {row('Family', spouse ? `${spouse.name}${kids ? ` · ${kids} child${kids > 1 ? 'ren' : ''}` : ''}` : kids ? `${kids} child${kids > 1 ? 'ren' : ''}` : 'None of their own')}
     </div>
+    {L.ambition && <div style={{ fontSize: 13, lineHeight: 1.6, color: L.ambition.met ? theme.gold : theme.text, textAlign: 'center', marginBottom: 14, fontWeight: 700 }}>{L.ambition.text}</div>}
     <div style={{ fontSize: 13, lineHeight: 1.6, color: theme.muted, textAlign: 'center', marginBottom: 20 }}>
       {L.tier === 'Forgotten' ? 'The obituaries were short. Somewhere, a few people still remember what you were trying to do.'
         : L.tier === 'Legend' ? 'They will be teaching your work long after everyone who knew you is gone.'
@@ -2487,6 +2488,18 @@ function EventsScreen({ g }) {
     })}
   </div>);
 }
+// The stance chips: one tap, and it holds for the rest of the shoot.
+function StanceRow({ g, p }) {
+  const st = stanceOf(p);
+  return (<div>
+    <div style={{ display: 'flex', gap: 6 }}>
+      {STANCE_ORDER.map((id) => (<button key={id} onClick={() => dispatch(setStance, p.id, id)} style={{ flex: 1, border: `1px solid ${st === id ? theme.gold : theme.line}`, borderRadius: 10, padding: '7px 6px', background: st === id ? 'rgba(255,209,102,.16)' : theme.panel, color: st === id ? theme.gold : theme.text, fontSize: 11.5, fontWeight: 800, cursor: 'pointer' }}>
+        {STANCES[id].label}{STANCES[id].cost ? <div style={{ fontSize: 10, fontWeight: 600, color: theme.muted }}>{STANCES[id].cost} energy / mo</div> : <div style={{ fontSize: 10, fontWeight: 600, color: theme.muted }}>free</div>}
+      </button>))}
+    </div>
+    <div style={{ fontSize: 11, color: theme.muted, marginTop: 5, lineHeight: 1.45 }}>{STANCES[st].blurb}</div>
+  </div>);
+}
 function ProductionCard({ g, p }) {
   const tier = meterTier(p.meter); const noEnergy = !canAfford(g, COST.rehearse);
   const [minigame, setMinigame] = useState(null);
@@ -2506,6 +2519,8 @@ function ProductionCard({ g, p }) {
     <div style={{ fontSize: 11.5, color: theme.muted, margin: '3px 0 8px' }}>{p.role} · {p.type}</div>
     <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 11.5, color: theme.muted, marginBottom: 4 }}><span>Shoot quality</span><span>{tier.label} · {Math.round(p.meter)}</span></div>
     <div style={{ height: 7, background: 'rgba(255,255,255,.08)', borderRadius: 4, marginBottom: 10 }}><div style={{ width: p.meter + '%', height: '100%', background: theme.gold, borderRadius: 4 }} /></div>
+    {p.prepLeft > 0 ? null : <div style={{ marginBottom: 10 }}><StanceRow g={g} p={p} /></div>}
+    <div style={{ fontSize: 10.5, fontWeight: 900, letterSpacing: '.08em', textTransform: 'uppercase', color: theme.muted, marginBottom: 6 }}>Push harder this month</div>
     {minigame ? (<div style={{ marginBottom: 12 }}>
       <div style={{ fontSize: 11.5, color: theme.gold, textAlign: 'center', marginBottom: 8, lineHeight: 1.45 }}>
         {minigame.game === 'timing' ? 'Hit your mark — tap dead centre of the green.' : 'Push the scene take by take. Some choices fall flat. Stop while it still works.'}
@@ -2545,7 +2560,14 @@ function LegacyCard({ g, young }) {
   // A child has no legacy yet — but the lives before this one are still on the wall. The
   // whole panel used to vanish until eighteen, Hall of Fame included.
   if (young && !hall.length) return null;
-  return (<div style={{ marginTop: 18 }}><div style={{ fontSize: 11, fontWeight: 900, letterSpacing: '.09em', textTransform: 'uppercase', color: theme.muted, marginBottom: 8 }}>Legacy</div>{!young && <Card><div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline' }}><div style={{ fontSize: 15, fontWeight: 900, color: theme.gold }}>{L.tier}</div><div style={{ fontSize: 13, fontWeight: 800, color: theme.muted }}>{L.points} pts</div></div><div style={{ fontSize: 11.5, color: theme.muted, marginTop: 4 }}>Peak fame {Math.round(L.peakFame)} · {L.credits} credit{L.credits !== 1 ? 's' : ''} · {L.hits} hit{L.hits !== 1 ? 's' : ''}{L.worldHits > 0 ? ` · 🌍 ${L.worldHits} world hit${L.worldHits !== 1 ? 's' : ''}` : ''}{L.askerWins > 0 ? ` · 🏆 ${L.askerWins} Asker${L.askerWins !== 1 ? 's' : ''}` : L.askerNoms > 0 ? ` · ${L.askerNoms} Asker nom${L.askerNoms !== 1 ? 's' : ''}` : ''}</div></Card>}{hall.length > 0 && <div style={{ marginTop: 10 }}><div style={{ fontSize: 10.5, fontWeight: 900, letterSpacing: '.08em', textTransform: 'uppercase', color: theme.muted, marginBottom: 6 }}>Hall of Fame</div>{hall.slice(0, 5).map((h, i) => (<div key={i} style={{ display: 'flex', justifyContent: 'space-between', fontSize: 12, color: theme.muted, padding: '5px 0', borderBottom: `1px solid ${theme.line}` }}><span>{i + 1}. {h.name} · {h.tier}</span><span style={{ color: theme.gold }}>{h.points}</span></div>))}</div>}</div>);
+  const amb = ambitionProgress(g);
+  return (<div style={{ marginTop: 18 }}><div style={{ fontSize: 11, fontWeight: 900, letterSpacing: '.09em', textTransform: 'uppercase', color: theme.muted, marginBottom: 8 }}>Legacy</div>{!young && amb && <Card style={{ marginBottom: 8, borderColor: amb.met ? 'rgba(255,209,102,.45)' : theme.line }}>
+      {/* What you wanted at ten (meta/ambition.js). A different question from how much you got. */}
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline' }}><div style={{ fontSize: 11, fontWeight: 900, letterSpacing: '.08em', textTransform: 'uppercase', color: theme.accent }}>What you wanted, at ten</div><div style={{ fontSize: 11, color: amb.met ? theme.gold : theme.muted, fontWeight: 800 }}>{amb.met ? 'you got it' : `${Math.round(amb.progress * 100)}% of the way`}</div></div>
+      <div style={{ fontSize: 14, fontWeight: 800, marginTop: 3 }}>{amb.label}</div>
+      <div style={{ height: 5, background: 'rgba(255,255,255,.08)', borderRadius: 3, margin: '6px 0 5px' }}><div style={{ width: `${Math.round(amb.progress * 100)}%`, height: '100%', background: amb.met ? theme.gold : theme.accent, borderRadius: 3 }} /></div>
+      <div style={{ fontSize: 11.5, color: theme.muted, lineHeight: 1.45 }}>{amb.line}</div>
+    </Card>}{!young && <Card><div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline' }}><div style={{ fontSize: 15, fontWeight: 900, color: theme.gold }}>{L.tier}</div><div style={{ fontSize: 13, fontWeight: 800, color: theme.muted }}>{L.points} pts</div></div><div style={{ fontSize: 11.5, color: theme.muted, marginTop: 4 }}>Peak fame {Math.round(L.peakFame)} · {L.credits} credit{L.credits !== 1 ? 's' : ''} · {L.hits} hit{L.hits !== 1 ? 's' : ''}{L.worldHits > 0 ? ` · 🌍 ${L.worldHits} world hit${L.worldHits !== 1 ? 's' : ''}` : ''}{L.askerWins > 0 ? ` · 🏆 ${L.askerWins} Asker${L.askerWins !== 1 ? 's' : ''}` : L.askerNoms > 0 ? ` · ${L.askerNoms} Asker nom${L.askerNoms !== 1 ? 's' : ''}` : ''}</div></Card>}{hall.length > 0 && <div style={{ marginTop: 10 }}><div style={{ fontSize: 10.5, fontWeight: 900, letterSpacing: '.08em', textTransform: 'uppercase', color: theme.muted, marginBottom: 6 }}>Hall of Fame</div>{hall.slice(0, 5).map((h, i) => (<div key={i} style={{ display: 'flex', justifyContent: 'space-between', fontSize: 12, color: theme.muted, padding: '5px 0', borderBottom: `1px solid ${theme.line}` }}><span>{i + 1}. {h.name} · {h.tier}</span><span style={{ color: theme.gold }}>{h.points}</span></div>))}</div>}</div>);
 }
 function StageBody({ g }) {
   if (g.stage === 'child') return <div style={{ fontSize: 14, lineHeight: 1.55 }}>You are a kid living with your parents. School, cartoons, and the first hints of a dream. Live through the years — the real choices come when you grow up.</div>;

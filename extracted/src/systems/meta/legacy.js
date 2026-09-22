@@ -1,4 +1,5 @@
 import { estateValue } from '../life/money.js';
+import { ambitionVerdict } from './ambition.js';
 // Ads and voice sessions are not a legacy. They paid for a room; they do not go on the
 // stone. Kept in step with the Other work split in the filmography.
 const MINOR_TYPES = /^(Brand Campaign|Commercial|Jingle|Brand Song|TV Extra|Voice Session|Open Mic|Festival Slot|Session Work|Music Video)$/;
@@ -15,12 +16,15 @@ export function computeLegacy(s) {
   // because it is the industry itself saying so.
   const askerWins = (s.awards?.wins || []).length;
   const askerNoms = (s.awards?.nominations || []).length;
+  // And whether you got what you wanted at ten (meta/ambition.js): a triumph in one life is
+  // a consolation in another, and the stone says which.
+  const amb = ambitionVerdict(s);
   const points = Math.round(peakFame * 2.5 + hits * 25 + worldHits * 400 + credits * 1
     + askerWins * 600 + askerNoms * 150
-    + (s.respect || 0) * 1.5 + Math.max(0, (s.cash || 0) / 150000));
+    + (s.respect || 0) * 1.5 + Math.max(0, (s.cash || 0) / 150000) + (amb ? amb.points : 0));
   let tier = 'Forgotten';
   if (points >= 2300) tier = 'Legend'; else if (points >= 1500) tier = 'A-list Icon'; else if (points >= 800) tier = 'Established Star'; else if (points >= 350) tier = 'Working Actor'; else if (points >= 120) tier = 'Had a Moment';
-  return { points, tier, credits, hits, worldHits, peakFame, askerWins, askerNoms };
+  return { points, tier, credits, hits, worldHits, peakFame, askerWins, askerNoms, ambition: amb };
 }
 export function enshrine(s) {
   const L = computeLegacy(s); let hall = [];

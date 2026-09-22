@@ -61,7 +61,7 @@ function itemsFor(g, i, abs) {
   // A signed paper waiting for a set: it starts the month one frees up.
   for (const o of (g.offers || [])) {
     if (!o.signed) continue;
-    const start = Math.max((o.startAt || now + 1) - now, canTakeSet(g, o).ok ? 0 : monthsUntilFree(g, o));
+    const start = Math.max((o.startAt || now) - now, canTakeSet(g, o).ok ? 0 : monthsUntilFree(g, o));
     const prep = o.prep || 0, months = o.months || 1;
     if (i >= start && i < start + prep) it('prep', '🥊', 'Preparation', clean(o.projectTitle), `Month ${i - start + 1} of ${prep} before the first day`, { bar: (i - start + 1) / prep, hue: hueOf(clean(o.projectTitle)), ref: { kind: 'offer', id: o.id } });
     else if (i >= start + prep && i < start + prep + months) it('signed', '✍️', 'Signed', clean(o.projectTitle), `Shooting, month ${i - start - prep + 1} of ${months}`, { hue: hueOf(clean(o.projectTitle)), ref: { kind: 'offer', id: o.id } });
@@ -91,7 +91,7 @@ function itemsFor(g, i, abs) {
   for (const o of (g.offers || [])) {
     if (o.signed) continue;
     // An unsigned paper with the studio's date on it: the month they mean to shoot.
-    if ((o.startAt || 0) > now + 1 && o.startAt === abs) it('answer', '🎥', 'Cameras planned', clean(o.projectTitle), 'Unsigned — the paper is in Messages');
+    if ((o.startAt || 0) > now && o.startAt === abs) it('answer', '🎥', 'Cameras planned', clean(o.projectTitle), 'Unsigned — the paper is in Messages');
     const k = o.contract;
     if (k && k.sent && (k.sent < now ? i === 0 : i === 1)) { it('reply', '📨', 'Their answer', clean(o.projectTitle), `The contract comes back${k.round > 1 ? ` — round ${k.round}` : ''}`); continue; }
     if ((o.deadline || 0) - 1 === i && !(o.waitsForWrap && !canTakeSet(g, o).ok)) it('off', '⏳', 'Offer runs out', clean(o.projectTitle), i === 0 ? 'Answer it this month' : `Answer by ${MON[abs % 12]}`);

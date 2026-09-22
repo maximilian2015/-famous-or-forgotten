@@ -1,16 +1,21 @@
 import { addTimeline } from '../../engine/timeline.js';
+import { AMBITIONS, AMBITION_ORDER } from '../meta/ambition.js';
 const clamp = (v) => Math.max(0, Math.min(100, v));
 export const YOUTH_EVENTS = [
   { age: 6, id: 'firstStage', build: () => ({ speaker: 'The school play', text: `Your class is putting on a play. The teacher asks who wants the lead. Your heart pounds. Little hand — up or down?`,
     choices: [ { label: 'Raise your hand — take the lead', fx: { confidence: 6, acting: 3 }, reply: 'You forget two lines and love every second. Something just woke up in you.' },
       { label: 'Too scared, stay backstage', fx: { discipline: 3, acting: 1 }, reply: 'You paint the sets instead. Safer. But you watch the lead and wonder "what if".' } ] }) },
+  // The ambition. Every road is acting (the singer road is kept for old saves and nothing
+  // else), but what you want FROM it is chosen here and remembered: it leans the stories a
+  // little and the Legacy page answers it at the end — did you get what you wanted, which
+  // is a different question from whether you got a lot. See meta/ambition.js.
   { age: 10, id: 'dreamChoice', build: () => ({ speaker: "A daydream that won't leave", text: `You're ten, and you've decided what you want to be when you grow up. It's all you think about. Which dream grabs you?`,
-    // Both roads are acting. The singer road existed and was half a game — two series rows,
-    // no posters, "Music Show · Guest" on every line of the board (Maxi: "why do the series
-    // all say Music Show?"). The base game is an actor's life; the code for a singer stays,
-    // for old saves and a later expansion, but nobody is sent down it at ten any more.
-    choices: [ { label: 'A movie star — the screen', fx: { acting: 4, charisma: 3, confidence: 3 }, set: { dream: 'actor' }, reply: 'Films. You start watching them differently — studying faces, not just stories.' },
-      { label: 'A serious actor — the stage', fx: { acting: 6, discipline: 3 }, set: { dream: 'actor' }, reply: 'The stage. Two hours a night with nowhere to hide, and you cannot imagine wanting anything else.' } ] }) },
+    choices: AMBITION_ORDER.map((id) => ({ label: `${AMBITIONS[id].label} — ${AMBITIONS[id].want}`, fx: AMBITIONS[id].fx, set: { dream: 'actor', ambition: id },
+      reply: { star: 'Films. The big ones. You start watching them differently — studying faces, not just stories, and the size of the name on the poster.',
+        serious: 'The stage, and the films that feel like it. Two hours a night with nowhere to hide, and you cannot imagine wanting anything else.',
+        tv: 'A show. The same faces every week, in every house. You want to be one of the faces.',
+        face: 'Famous. You are not sure for what yet, and you are not sure it matters.',
+        working: 'Work. Not the poster, not the speech — the call sheet, every year, for the rest of your life. It is more than most people get.' }[id] })) }) },
   { age: 14, id: 'talentShow', build: (s) => ({ speaker: 'The school talent show', text: `There's a talent show, and for once you could actually be seen. Your friends dare you to sign up. Do you?`,
     choices: [ { label: 'Sign up and perform', check: { stat: 'confidence', diff: 45 }, good: { fx: { confidence: 6, charisma: 4, [s.dream === 'singer' ? 'singing' : 'acting']: 4 }, reply: "You nail it. For a week, the whole school knows your name. You'll chase that feeling forever." }, bad: { fx: { confidence: -3, mental: -2 }, reply: 'You choke halfway through. The laughter still echoes sometimes. But you survived — and you learned.' } },
       { label: 'Chicken out', fx: { mental: 1, confidence: -1 }, reply: "You don't sign up. Relief, then a small quiet regret that lingers." } ] }) },

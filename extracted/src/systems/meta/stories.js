@@ -22,6 +22,7 @@ import { personName, namesInUse } from '../world/names.js';
 import { newTitle } from '../world/titles.js';
 import { GENRES } from './news.js';
 import { rollStability } from '../career/stability.js';
+import { ambitionOf } from './ambition.js';
 
 const clamp = (v, a = 0, b = 100) => Math.max(a, Math.min(b, v));
 const stamp = (s) => (s.year || 0) * 12 + (s.month || 0);
@@ -168,7 +169,7 @@ export const CHAINS = {
           choices: [
             { label: 'Fight it', hint: 'Hold the leads two more years. The face pays for it.', apply: () => { st.data.path = 'fight'; s.ageFight = stamp(s) + 24; return { reply: 'The gym, the diet, the people who do things to faces. You hold the parts. Nobody says how long for.', next: { beat: 'verdict', inMonths: 18 } }; } },
             { label: 'Take the character parts', hint: 'Supporting, the parents, the villains. The good ones.', apply: () => { st.data.path = 'character'; s.characterActor = true; setRespect(s, (s.respect || 0) + 3); return { reply: 'You stop reading for the lead and start reading for the part that steals the film. The rooms are warmer. The fees are not.', next: { beat: 'verdict', inMonths: 18 } }; } },
-            { label: 'Television', hint: 'A season a year. A face people see every week.', apply: () => { st.data.path = 'tv'; typecastBump(s, 'tv', 2); return { reply: 'The networks were waiting. A season a year, and a face people see every week is a face people remember.', next: { beat: 'verdict', inMonths: 18 } }; } },
+            { label: 'Television', hint: ambitionOf(s) === 'tv' ? 'A season a year. A face people see every week — the thing you wanted at ten.' : 'A season a year. A face people see every week.', apply: () => { st.data.path = 'tv'; typecastBump(s, 'tv', 2); return { reply: 'The networks were waiting. A season a year, and a face people see every week is a face people remember.', next: { beat: 'verdict', inMonths: 18 } }; } },
           ] }) },
       verdict: {
         build: (s, st) => {
@@ -202,7 +203,7 @@ export const CHAINS = {
             { label: 'Take it', hint: 'A festival film. The one road back that is a road.', apply: () => { st.data.path = 'film'; const genre = pick(['Drama', 'Drama', 'Thriller', 'Romance']);
                 (s.offers = s.offers || []).push({ id: uid(s, 'off'), via: 'director', kind: 'comeback', story: 'comeback', projectTitle: newTitle(s, genre), role: 'Lead', type: 'Festival Film', genre, salary: rint(12000, 24000), months: 2, fame: 2, prestigeScore: rint(58, 78), tier: 'lead', scale: 'festival', stability: rint(72, 90), deadline: 3, director: st.data.who, note: `${first(st.data.who)} asked for you by name. Nobody else did.` });
                 return { reply: 'The paper is in Messages. It is not much paper.', next: { beat: 'wait', inMonths: 30 } }; } },
-            { label: 'The reality show instead', hint: 'A lot of money. The wrong kind of famous.', apply: () => { const fee = Math.round(150000 + (s.peakFame || 0) * 4000); s.cash = (s.cash || 0) + fee; setFame(s, (s.fame || 0) + 6); setRespect(s, (s.respect || 0) - 8); typecastScandal(s, 1); return { reply: `Twelve weeks in a house with cameras. ${money(fee)}, six points of fame, and the business now knows exactly what you would do for it.`, end: true }; } },
+            { label: 'The reality show instead', hint: ambitionOf(s) === 'face' ? 'A lot of money, and famous again — which is what you wanted, in a way.' : 'A lot of money. The wrong kind of famous.', apply: () => { const fee = Math.round(150000 + (s.peakFame || 0) * 4000); s.cash = (s.cash || 0) + fee; setFame(s, (s.fame || 0) + (ambitionOf(s) === 'face' ? 9 : 6)); setRespect(s, (s.respect || 0) - 8); typecastScandal(s, 1); return { reply: `Twelve weeks in a house with cameras. ${money(fee)}, six points of fame, and the business now knows exactly what you would do for it.`, end: true }; } },
             { label: 'Wait for a real offer', hint: 'It may not come.', apply: () => { if (chance(25)) { const genre = pick(GENRES); (s.laterOffers = s.laterOffers || []).push({ due: stamp(s) + rint(4, 8), line: 'A studio remembered your name.', event: 'A studio remembered your name. The paper is in Messages.', offer: { id: uid(s, 'off'), via: 'studio', projectTitle: newTitle(s, genre), role: 'Lead', type: 'Feature Film', genre, salary: Math.round((quoteFor(s, 'film_studio') || 150000) * 0.7), months: rint(3, 5), fame: 5, prestigeScore: rint(45, 65), tier: 'lead', scale: 'feature', stability: rollStability('feature'), deadline: 3 } }); return { reply: 'You say no, politely. Months later, somebody at a studio says your name in a meeting, and it goes quiet, and then it does not.', end: true }; } s.mental = clamp((s.mental || 50) - 3); return { reply: 'You say no, politely. The phone does what it has been doing.', end: true }; } },
           ] }) },
       wait: {

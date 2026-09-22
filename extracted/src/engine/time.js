@@ -17,7 +17,7 @@ import { bondsTick } from '../systems/life/bonds.js';
 import { datingYear } from '../systems/life/dating.js';
 import { childhoodTick, adoptionTick } from '../systems/life/children.js';
 import { spotlightYear } from '../systems/social/spotlight.js';
-import { productionTick, setsTick } from '../systems/career/production.js';
+import { productionTick, setsTick, stanceTick } from '../systems/career/production.js';
 import { releaseTick, runTick, cultTick } from '../systems/career/release.js';
 import { frozenTick } from '../systems/career/stability.js';
 import { laterOffersTick } from '../systems/career/franchise.js';
@@ -112,6 +112,7 @@ export function advanceMonth(state) {
   maybeGenerateOffer(s);
   agentTick(s);      // the agent leaves the liability, or moves you up a desk
   hypeTick(s);       // being talked about fades: a tenth and a point a month
+  if ((s.cash || 0) < 0) s._debtMonths = (s._debtMonths || 0) + 1;   // the working life's one number (meta/ambition.js)
   riskTick(s);       // what is worth watching, on the main screen a month before it bites
   storyTick(s);      // and the world comes for you now and then, whether you asked or not
   storiesTick(s);    // the career stories: what the last thing became, and the next beat of it
@@ -136,6 +137,7 @@ export function advanceMonth(state) {
   s.apMaxEff = monthEnergy(s, { home: homeEnergy(s), staff: staffEnergy(s), jobSlots: jobSlots(s), lostSlots: slotsLost(s), extraSets: setLoad(s) });
   s.apWhy = energyWhy(s, { home: homeEnergy(s), staff: staffEnergy(s), jobSlots: jobSlots(s), lostSlots: slotsLost(s), extraSets: setLoad(s), setCount: sets(s).length });
   s.ap = s.apMaxEff;
+  stanceTick(s);      // the month's work on every set, the way you said you would take it
   showQueued(s);
   return s;
 }
