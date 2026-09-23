@@ -25,6 +25,7 @@ import { submissionsTick, refreshCastingPool } from '../systems/career/castings.
 import { runNominations, ceremonyTick } from '../systems/career/awards.js';
 import { closeYear } from '../systems/world/yearbook.js';
 import { contractsTick, startSigned } from '../systems/career/contract.js';
+import { tentpolesTick } from '../systems/career/tentpoles.js';
 import { agingNote } from '../systems/career/age.js';
 import { iconTick, quoteTick } from '../systems/meta/status.js';
 import { strainTick } from '../systems/life/strain.js';
@@ -112,6 +113,7 @@ export function advanceMonth(state) {
   offersTick(s);      // and a part you never answered goes to somebody else
   maybeGenerateOffer(s);
   maybeBrandOffer(s);   // and the brands, once you are a name worth putting on something
+  tentpolesTick(s);     // the pictures in development, and what became of the names put in
   agentTick(s);      // the agent leaves the liability, or moves you up a desk
   hypeTick(s);       // being talked about fades: a tenth and a point a month
   if ((s.cash || 0) < 0) s._debtMonths = (s._debtMonths || 0) + 1;   // the working life's one number (meta/ambition.js)
