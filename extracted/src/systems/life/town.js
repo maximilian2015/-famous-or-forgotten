@@ -11,6 +11,7 @@ import { makePerson } from './relationships.js';
 import { addSentListing } from '../career/castings.js';
 import { setFame } from '../meta/status.js';
 import { addHype, bumpHype } from '../meta/hype.js';
+import { theLens } from '../meta/price.js';
 import { skillCap } from '../career/actions.js';
 import { inCareer } from '../../engine/stage.js';
 
@@ -40,6 +41,8 @@ export function goOut(s, id) {
   if (cost > (s.cash || 0)) { s.lastEvent = `That is €${cost.toLocaleString()} and you do not have it.`; return s; }
   markUsed(s, 'town:' + id); spend(s, t.ap); s.cash = (s.cash || 0) - cost;
   const charm = (s.charisma || 0);
+  // An hour in public, priced by how well they know the face (meta/price.js).
+  const lens = id === 'post' ? null : theLens(s, id === 'reading' ? 'a reading' : 'a drink');
   if (id === 'reading') {
     const r = Math.random() * 100;
     if (r < 12 + charm * 0.1) { const p = makePerson(s, 'Fellow Actor'); (s.people = s.people || []).push(p); s.lastEvent = `${p.name} read after you and bought you a drink afterwards. In your phone now — a fellow actor, which is worth more than it sounds.`; addTimeline(s, `Met ${p.name} at a reading.`); }
@@ -65,5 +68,6 @@ export function goOut(s, id) {
     else if (r < 30 + charm * 0.2) { if (!small && chance(8)) { addHype(s, 40, 'viral'); addTimeline(s, 'A post of yours went everywhere. Forty seconds, and everybody has seen it.'); } else bumpHype(s, 3); if (small) setFame(s, (s.fame || 0) + 0.5); s.lastEvent = small ? 'A few hundred strangers, and one of them shared it. The number under your name went up by a digit.' : 'It did the numbers. A day of being looked at, which is the job.'; }
     else { bumpHype(s, 1); s.lastEvent = 'You posted it. Forty people liked it. Your mother commented.'; }
   }
+  if (lens) s.lastEvent = `${s.lastEvent} ${lens}`;
   return s;
 }

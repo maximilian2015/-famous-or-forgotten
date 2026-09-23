@@ -28,6 +28,7 @@ import { activeStories } from './systems/meta/stories.js';
 import { ambitionProgress } from './systems/meta/ambition.js';
 import { rename as renameProject, canRename, whyNot, TITLE_MAX } from './systems/career/naming.js';
 import { goals } from './systems/meta/goals.js';
+import { priceLine } from './systems/meta/price.js';
 import { hype, hypeSource, hypeLine, SOURCES, hypeReach, hypeDemand, hypePrice, showsThisYear } from './systems/meta/hype.js';
 import { addPrestigeListing } from './systems/career/castings.js';
 import { TimingBar } from './ui/components/TimingBar.jsx';
@@ -1228,13 +1229,21 @@ function GoalsCard({ g }) {
 // show nothing; a careful life has a clean main screen.
 function RiskCard({ g }) {
   const risks = liveRisks(g);
-  if (!risks.length) return null;
+  const price = priceLine(g);
+  if (!risks.length && !price) return null;
   const hot = risks.some((r) => r.level === 2);
   return (<Card style={{ marginBottom: 14, borderColor: hot ? 'rgba(255,90,122,.5)' : 'rgba(255,209,102,.3)' }}>
     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', marginBottom: 6 }}>
       <div style={{ fontSize: 11, fontWeight: 900, letterSpacing: '.09em', textTransform: 'uppercase', color: hot ? theme.bad : theme.gold }}>Worth watching</div>
       <div style={{ fontSize: 10.5, color: theme.muted }}>{hot ? 'about to bite' : 'nothing has happened yet'}</div>
     </div>
+    {/* What the name itself costs — not a risk you took, a bill that comes with the face.
+        See meta/price.js. */}
+    {price && <div style={{ marginBottom: 8, paddingBottom: 8, borderBottom: `1px solid ${theme.line}` }}>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline' }}><div style={{ fontSize: 12.5, fontWeight: 800 }}>{price.label}</div><div style={{ fontSize: 10.5, color: theme.muted }}>the price of the name</div></div>
+      <div style={{ fontSize: 11.5, color: theme.muted, lineHeight: 1.45 }}>{price.line}</div>
+      <div style={{ fontSize: 11, color: theme.muted, marginTop: 2 }}>→ {price.fix}</div>
+    </div>}
     <div style={{ display: 'grid', gap: 7 }}>
       {risks.map((r) => (<div key={r.id} style={{ display: 'grid', gridTemplateColumns: '10px 1fr', gap: 8, alignItems: 'start' }}>
         <div style={{ width: 8, height: 8, borderRadius: 4, marginTop: 4, background: r.level === 2 ? theme.bad : theme.gold, boxShadow: r.level === 2 ? `0 0 8px ${theme.bad}` : 'none' }} />

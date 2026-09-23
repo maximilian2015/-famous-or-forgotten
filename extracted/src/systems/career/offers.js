@@ -11,7 +11,8 @@ import { rollStability } from './stability.js';
 import { canWork } from '../life/strain.js';
 import { newTitle } from '../world/titles.js';
 import { storyOfferFactor, noteRefusal, noteSequelLoss } from '../meta/stories.js';
-import { hypeDemand, hype } from '../meta/hype.js';
+import { hypeDemand, hype, hypeSource, hypeBrands } from '../meta/hype.js';
+import { isStrong, activeLabels, labelInfo } from '../meta/typecast.js';
 import { canTakeSet } from '../../engine/sets.js';
 const clamp = (v) => Math.max(0, Math.min(100, v));
 // Titles come from the same generator as everything else the world makes, so an agent's
@@ -105,6 +106,38 @@ export function offersTick(s) {
   }
   s.offers = kept;
 }
+// The brands. Maxi: "as you grow, companies look for you; once you are a star the brands
+// come with the fees to match, and it should take time in the calendar too." A campaign is
+// not a day in a studio at this level — it is two months of your year, a year of not being
+// able to sign with anybody else, and a sentence about you that you did not write.
+const HOUSES = ['Maison Cassel', 'Veldt & Sons', 'Aurum', 'Nordhavn', 'Casa Pirelli', 'Halden', 'Sable Frères', 'Iris Tokyo', 'Verano', 'Brennan Athletic'];
+const GOODS = [['a fragrance', 1.35], ['a watch', 1.2], ['a car', 1.15], ['a fashion house', 1.4], ['a bank', 0.85], ['an airline', 0.9], ['a phone', 1.1], ['a soft drink', 0.8], ['a sportswear line', 1.0], ['a supermarket', 0.55]];
+export function maybeBrandOffer(s) {
+  if (!inCareer(s)) return;
+  const fame = s.fame || 0;
+  if (fame < 45) return;                                   // below a name, the brands are day work
+  if ((s._brandUntil || 0) > (s.year || 0) * 12 + (s.month || 0)) return;   // you are already a face
+  if ((s.offers || []).some((o) => o.kind === 'brand')) return;
+  let p = 2.5 + (fame - 45) / 12;
+  p *= hypeBrands(s);
+  p *= 1 + (s.looks || 50) / 200;
+  p *= Math.max(0.3, 1 - (s.scandal || 0) / 120);
+  if (!chance(p)) return;
+  const [what, mult] = pick(GOODS);
+  const house = pick(HOUSES.filter((h) => !(s._brandsDone || []).includes(h))) || pick(HOUSES);
+  // Their money is the ad band for your name, and a fragrance pays what a supermarket does not.
+  const fee = Math.round((quoteFor(s, 'ad') || 50000) * mult * (0.85 + Math.random() * 0.4));
+  const months = fee >= 2000000 ? 2 : 1;
+  (s.offers = s.offers || []).push({
+    id: uid(s, 'brd'), via: 'brand', kind: 'brand', from: house,
+    projectTitle: house + ' — ' + what, role: 'The face', type: 'Brand Campaign', genre: 'Commercial',
+    salary: fee, months, fame: 2, prestigeScore: rint(15, 35), tier: 'supporting', scale: 'oneoff',
+    stability: 96, deadline: rint(2, 3), brandFor: 12,
+    note: `${house} want you to be the face of ${what} for a year. ${months} month${months === 1 ? '' : 's'} of shooting, and no other brand while it runs.`,
+  });
+  addTimeline(s, `${house} would like you to be the face of ${what}.`);
+  s.lastEvent = `${house} called your agent. They want your face on ${what} for a year — €${fee.toLocaleString()}, and nobody else's while it runs. The paper is in Messages.`;
+}
 export function maybeGenerateOffer(s) {
   const acc = computeAccess(s);
   if (!inCareer(s)) return;
@@ -124,6 +157,13 @@ export function maybeGenerateOffer(s) {
 }
 export function acceptOffer(s, id) {
   const o = (s.offers || []).find((x) => x.id === id); if (!o) return s;
+  // The face of something. A year of nobody else's, a word the business uses about you,
+  // and a bill if the business had decided you were the serious one.
+  if (o.kind === 'brand') {
+    s._brandUntil = (s.year || 0) * 12 + (s.month || 0) + (o.brandFor || 12);
+    (s._brandsDone = s._brandsDone || []).push(o.from);
+    if (isStrong(s, 'serious')) { setRespect(s, (s.respect || 0) - 3); addTimeline(s, `The serious actor is selling ${String(o.projectTitle).split('— ')[1] || 'something'}. It was said in print, in those words.`, true); }
+  }
   // Anything with a real schedule becomes a shoot you live through — same rule as a
   // casting. Only a day's work resolves in the same click.
   const fit = canWork(s);

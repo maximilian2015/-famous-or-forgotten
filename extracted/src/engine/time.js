@@ -4,7 +4,7 @@ import { sets, setLoad } from './sets.js';
 import { energyWhy } from './energy-month.js';
 import { advanceStage } from '../systems/life/stages.js';
 import { applyMonthly, applyYearly, relevanceDrift, homeEnergy } from './economy.js';
-import { maybeGenerateOffer, offersTick } from '../systems/career/offers.js';
+import { maybeGenerateOffer, maybeBrandOffer, offersTick } from '../systems/career/offers.js';
 import { emailTick } from '../systems/meta/email.js';
 import { agentTick } from '../systems/career/agent.js';
 import { smsTick } from '../systems/social/sms.js';
@@ -44,6 +44,7 @@ import { storyTick, overtakenTick } from '../systems/meta/trouble.js';
 import { riskTick } from '../systems/meta/risk.js';
 import { storiesTick, grudgesTick } from '../systems/meta/stories.js';
 import { hypeTick } from '../systems/meta/hype.js';
+import { priceTick } from '../systems/meta/price.js';
 import { typecastYear } from '../systems/meta/typecast.js';
 
 export function stepIsYear(state) { return state.stage === 'child' || state.stage === 'teen'; }
@@ -110,9 +111,11 @@ export function advanceMonth(state) {
   nightTick(s);       // and somebody you met at a party calls, or does not
   offersTick(s);      // and a part you never answered goes to somebody else
   maybeGenerateOffer(s);
+  maybeBrandOffer(s);   // and the brands, once you are a name worth putting on something
   agentTick(s);      // the agent leaves the liability, or moves you up a desk
   hypeTick(s);       // being talked about fades: a tenth and a point a month
   if ((s.cash || 0) < 0) s._debtMonths = (s._debtMonths || 0) + 1;   // the working life's one number (meta/ambition.js)
+  priceTick(s);      // what the name costs: the people who stop ringing, and the quiet
   riskTick(s);       // what is worth watching, on the main screen a month before it bites
   storyTick(s);      // and the world comes for you now and then, whether you asked or not
   storiesTick(s);    // the career stories: what the last thing became, and the next beat of it

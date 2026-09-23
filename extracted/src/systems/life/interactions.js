@@ -301,6 +301,9 @@ export function interact(s, personId, actionId) {
   const key = `int:${a.id}:${personId}`;
   if (onCooldown(s, key)) { s.lastEvent = `You already did that with ${first(found.p)} this month.`; return s; }
   markUsed(s, key);
+  // You saw them. The drift (meta/price.js) leaves alone anybody you have been in touch
+  // with in the last half-year — which is the whole answer to it.
+  (s._seen = s._seen || {})[personId] = (s.year || 0) * 12 + (s.month || 0);
   if (a.ap) spend(s, a.ap);
   const msg = a.run({ ...ctx, cost });
   if (msg) s.lastEvent = msg;

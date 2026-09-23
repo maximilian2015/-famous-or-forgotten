@@ -13,7 +13,12 @@ import { openContract } from '../../systems/career/contract.js';
 export function Messages({ g }) {
   if (phoneGone(g)) return (<div style={{ fontSize: 13, color: theme.muted, textAlign: 'center', padding: '40px 18px', lineHeight: 1.6 }}>📵 No phone.<br />It went somewhere on a night you do not remember. A new one next month — and not every number is coming back.</div>);
   const agent = g.agent && g.agent.level > 0 ? g.agent.name : null;
-  const offers = g.offers || [];
+  // One thing, one place. Maxi: "do not duplicate the same offer in Email and Messages."
+  // Messages is what came TO you — the agent, the studio, a brand, your own show asking you
+  // back. An answer to something you went and read for lives in Email, where the rest of the
+  // correspondence is; if that letter is ever gone, the offer comes back here so nothing is
+  // ever stranded.
+  const offers = (g.offers || []).filter((o) => !(g.inbox || []).some((m) => m.offerId === o.id));
   const trend = hotGenre(g);
   const al = agentLine(g);
   // Why Accept would do nothing. It used to do nothing silently: signed off, or mid-shoot, and
@@ -63,7 +68,8 @@ export function Messages({ g }) {
       const big = o.tier !== 'supporting' || (o.months || 0) >= 2; const onTrend = o.genre === trend; const cost = campaignCost(o);
       return (<div key={o.id} style={{ background: theme.panel2, border: `1px solid ${theme.line}`, borderRadius: 14, padding: 12 }}>
         <div style={{ fontSize: 11, fontWeight: 900, color: theme.accent, textTransform: 'uppercase', marginBottom: 4 }}>
-          {o.kind === 'renewal' ? 'The network' : o.kind === 'sequel' ? 'The studio'
+          {o.kind === 'brand' ? `${o.from || 'A brand'} · they came to you`
+            : o.kind === 'renewal' ? 'The network' : o.kind === 'sequel' ? 'The studio'
             : o.via === 'casting' ? 'Casting · you read for this'
             : o.via === 'party' ? `${o.from || 'Somebody'} · you met at a party`
             : o.via === 'pitch' ? `${o.from || 'Somebody'} · your own picture, from your own sofa`
