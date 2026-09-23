@@ -27,6 +27,7 @@ import { liveRisks } from './systems/meta/risk.js';
 import { activeStories } from './systems/meta/stories.js';
 import { ambitionProgress } from './systems/meta/ambition.js';
 import { rename as renameProject, canRename, whyNot, TITLE_MAX } from './systems/career/naming.js';
+import { goals } from './systems/meta/goals.js';
 import { hype, hypeSource, hypeLine, SOURCES, hypeReach, hypeDemand, hypePrice, showsThisYear } from './systems/meta/hype.js';
 import { addPrestigeListing } from './systems/career/castings.js';
 import { TimingBar } from './ui/components/TimingBar.jsx';
@@ -193,6 +194,7 @@ export default function App() {
         {g.lastEvent && <Card style={{ marginBottom: 14, borderColor: 'rgba(255,209,102,.35)' }}><div style={{ fontSize: 13.5, lineHeight: 1.5, whiteSpace: 'pre-line' }}>{g.lastEvent}</div></Card>}
         {inCareer(g) && <RiskCard g={g} />}
         {inCareer(g) && <StoriesCard g={g} />}
+        {inCareer(g) && <GoalsCard g={g} />}
         {g.illness && (<Card style={{ marginBottom: 14, borderColor: 'rgba(255,90,122,.5)' }}>
           <div style={{ fontSize: 11, fontWeight: 900, letterSpacing: '.08em', textTransform: 'uppercase', color: theme.bad, marginBottom: 5 }}>🤒 {g.illness.name}{g.illness.serious ? ' · serious' : ''}</div>
           <div style={{ fontSize: 12, color: theme.muted, lineHeight: 1.5, marginBottom: 9 }}>
@@ -1199,6 +1201,25 @@ function CheckpointModal({ g }) {
           </div>
         </>)
   ), shown ? 'A few seconds.' : 'Concentration is the first thing this takes. This is the one that asks for it back.');
+}
+// What you are working toward, and the one next thing that would move each. Three at a
+// time, the urgent ones first. See systems/meta/goals.js.
+function GoalsCard({ g }) {
+  const list = goals(g);
+  if (!list.length) return null;
+  return (<Card style={{ marginBottom: 14 }}>
+    <div style={{ fontSize: 11, fontWeight: 900, letterSpacing: '.09em', textTransform: 'uppercase', color: theme.muted, marginBottom: 7 }}>What you are working toward</div>
+    <div style={{ display: 'grid', gap: 9 }}>
+      {list.map((x) => (<div key={x.id}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', gap: 10 }}>
+          <div style={{ fontSize: 13, fontWeight: 800, color: x.urgent ? theme.bad : theme.text }}>{x.label}</div>
+          {x.now && <div style={{ fontSize: 11, color: x.urgent ? theme.bad : theme.muted, flex: 'none' }}>{x.now}</div>}
+        </div>
+        {x.progress != null && <div style={{ height: 4, background: 'rgba(255,255,255,.08)', borderRadius: 2, margin: '5px 0 4px' }}><div style={{ width: `${Math.round(x.progress * 100)}%`, height: '100%', background: x.urgent ? theme.bad : theme.accent, borderRadius: 2 }} /></div>}
+        <div style={{ fontSize: 11.5, color: theme.muted, lineHeight: 1.45, marginTop: x.progress != null ? 0 : 3 }}>→ {x.next}</div>
+      </div>))}
+    </div>
+  </Card>);
 }
 // Worth watching. Every story the world can run on you (trouble.js) has a warning here
 // first, for a month or more, with what would fix it. Nothing lands out of a clear sky —
