@@ -2198,7 +2198,7 @@ function CreditRow({ group, g }) {
       <div style={{ fontSize: 15, fontWeight: 800, lineHeight: 1.2 }}>{group.root}</div>
       {/* line two: what it is, when, and which season — the way a listing says it */}
       <div style={{ fontSize: 12, color: theme.muted, marginTop: 3 }}>
-        {kind} ({years}){tv && group.seasons ? ` · ${group.seasonFrom > 1 ? (group.seasons > 1 ? `Seasons ${group.seasonFrom}–${group.seasonTo}` : `Season ${group.seasonFrom}`) : group.seasons > 1 ? count(group.seasons, 'season') : 'Season 1'}` : ''}{c.part > 1 ? ` · Part ${c.part}` : ''}
+        {kind}{c.genre && c.genre !== kind ? ` · ${c.genre}` : ''} ({years}){tv && group.seasons ? ` · ${group.seasonFrom > 1 ? (group.seasons > 1 ? `Seasons ${group.seasonFrom}–${group.seasonTo}` : `Season ${group.seasonFrom}`) : group.seasons > 1 ? count(group.seasons, 'season') : 'Season 1'}` : ''}{c.part > 1 ? ` · Part ${c.part}` : ''}
       </div>
       {/* line three: the score and the small print */}
       <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginTop: 4, flexWrap: 'wrap', fontSize: 12 }}>
@@ -2272,7 +2272,7 @@ function CreditsList({ g, credits, label }) {
       {shooting.map((p) => (<div key={p.id || p.title} style={{ display: 'flex', gap: 11, padding: '10px 2px', borderBottom: `1px solid ${theme.line}`, opacity: .85 }}>
         <Poster title={p.title} type={p.type} genre={p.genre} director={(p.crew || [])[0] && p.crew[0].name} />
         <div style={{ flex: 1, minWidth: 0 }}>
-          <div style={{ fontSize: 14, fontWeight: 800 }}>{p.title}</div>
+          <TitleLine g={g} kind="set" id={p.id} title={p.title} size={14} />
           <div style={{ fontSize: 11.5, color: theme.gold, margin: '4px 0 3px' }}>{p.prepLeft > 0 ? `Preparing · ${p.prepLeft} mo` : `Shooting · ${p.monthsLeft} mo left`}</div>
           <div style={{ fontSize: 11.5, color: theme.muted }}>{p.role}{p.genre ? ` · ${p.genre}` : ''}</div>
         </div>
