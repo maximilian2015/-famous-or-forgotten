@@ -101,7 +101,7 @@ export function difficulty(s, p, id) {
 // Monthly, from the production tick. One to three a shoot, never two months running, never
 // in the preparation months and never on the last day.
 export function maybeScene(s) {
-  if (s.scene || s.pendingArc || s.bigMoment) return s;
+  if (s.scene) return s;   // one day at a time; everything else queues behind it (App.jsx)
   for (const p of sets(s)) {
     if ((p.prepLeft || 0) > 0 || p.paused) continue;
     const done = (p._scenes || []).length;
@@ -125,6 +125,22 @@ export function maybeScene(s) {
   return s;
 }
 // The day is done. quality is 0..100 — what the game gave back.
+// For the on-set card: how many days this shoot has thrown, how many it has left in it,
+// and what the good ones left on the film.
+export function sceneState(s, p) {
+  if (!p) return null;
+  const done = (p._scenes || []).length;
+  const cap = (p.months || 4) >= 6 ? 3 : (p.months || 4) >= 3 ? 2 : 1;
+  const justHad = p._sceneMonth === stamp(s);
+  return {
+    done, cap, left: Math.max(0, cap - done),
+    moments: p.moments || [],
+    line: done >= cap ? 'The big days on this one are shot.'
+      : justHad ? 'That was today. The next one is not this month.'
+      : done === 0 ? `${cap} day${cap === 1 ? '' : 's'} on this shoot will be a scene, not a month. They come when they come.`
+      : `${cap - done} more day${cap - done === 1 ? '' : 's'} like that to come.`,
+  };
+}
 export function resolveScene(s, quality) {
   const sc0 = s.scene; if (!sc0) return s;
   s.scene = null;

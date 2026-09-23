@@ -28,7 +28,7 @@ import { activeStories } from './systems/meta/stories.js';
 import { ambitionProgress } from './systems/meta/ambition.js';
 import { rename as renameProject, canRename, whyNot, TITLE_MAX } from './systems/career/naming.js';
 import { goals } from './systems/meta/goals.js';
-import { resolveScene } from './systems/career/scenes.js';
+import { resolveScene, sceneState } from './systems/career/scenes.js';
 import { RhythmLine, HoldZone, KeySequence, QuickPick } from './ui/components/SceneGames.jsx';
 import { priceLine } from './systems/meta/price.js';
 import { hype, hypeSource, hypeLine, SOURCES, hypeReach, hypeDemand, hypePrice, showsThisYear } from './systems/meta/hype.js';
@@ -333,6 +333,7 @@ function OnSetNow({ g, p }) {
       {b < 45 && ' A cold director is what costs you standing at wrap.'}
     </div>}
     <StanceRow g={g} p={p} />
+    {(() => { const sc = sceneState(g, p); return sc && sc.left > 0 ? (<div style={{ fontSize: 11, color: theme.gold, marginTop: 6, lineHeight: 1.45 }}>🎬 {sc.line}</div>) : null; })()}
     <div style={{ fontSize: 11, color: p._stanceDone === 'broke' ? theme.bad : theme.muted, marginTop: 6, lineHeight: 1.45 }}>
       {p._stanceDone === 'broke' ? 'No energy for the set this month — you coasted. The director noticed.'
         : worked ? `✓ This month's work is done${st !== 'coast' ? ` (${STANCES[st].cost} energy, taken at the top of the month)` : ''}. Push harder under Career if you want to.`
@@ -2646,6 +2647,15 @@ function ProductionCard({ g, p }) {
     <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 11.5, color: theme.muted, marginBottom: 4 }}><span>Shoot quality</span><span>{tier.label} · {Math.round(p.meter)}</span></div>
     <div style={{ height: 7, background: 'rgba(255,255,255,.08)', borderRadius: 4, marginBottom: 10 }}><div style={{ width: p.meter + '%', height: '100%', background: theme.gold, borderRadius: 4 }} /></div>
     {p.prepLeft > 0 ? null : <div style={{ marginBottom: 10 }}><StanceRow g={g} p={p} /></div>}
+    {/* The days on this shoot that are a scene rather than a month — see career/scenes.js. */}
+    {p.prepLeft > 0 ? null : (() => { const sc = sceneState(g, p); if (!sc) return null; return (<div style={{ marginBottom: 10, padding: '8px 10px', borderRadius: 10, background: 'rgba(255,209,102,.06)', border: `1px solid ${theme.line}` }}>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', gap: 8 }}>
+        <div style={{ fontSize: 11, fontWeight: 900, letterSpacing: '.08em', textTransform: 'uppercase', color: theme.gold }}>The days</div>
+        <div style={{ fontSize: 10.5, color: theme.muted }}>{sc.done} of {sc.cap} shot</div>
+      </div>
+      <div style={{ fontSize: 11.5, color: theme.muted, lineHeight: 1.45, marginTop: 3 }}>{sc.line}</div>
+      {!!sc.moments.length && <div style={{ fontSize: 11.5, color: theme.text, lineHeight: 1.45, marginTop: 4 }}>★ In the film now: {sc.moments.join('; ')}.</div>}
+    </div>); })()}
     <div style={{ fontSize: 10.5, fontWeight: 900, letterSpacing: '.08em', textTransform: 'uppercase', color: theme.muted, marginBottom: 6 }}>Push harder this month</div>
     {minigame ? (<div style={{ marginBottom: 12 }}>
       <div style={{ fontSize: 11.5, color: theme.gold, textAlign: 'center', marginBottom: 8, lineHeight: 1.45 }}>
