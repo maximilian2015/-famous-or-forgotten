@@ -1,4 +1,5 @@
 import { maybeContinue, sequelGap, laterOffersTick, renewalOdds, sequelOdds, seasonRaise, seasonBase, performanceFactor, trendFactor, sequelRaise, seasonCap, SEASON_CAP } from '../src/systems/career/franchise.js';
+import * as F2 from '../src/systems/career/franchise.js';
 import { startProduction, productionTick } from '../src/systems/career/production.js';
 import { releaseTick } from '../src/systems/career/release.js';
 
@@ -152,5 +153,32 @@ ok('a bomb buries a well-reviewed one', sequelOdds(88, 1, false, 'bomb') < seque
   `${sequelOdds(88, 1, false, null)}% → ${sequelOdds(88, 1, false, 'bomb')}%`);
 ok('an option still overrides the money', sequelOdds(20, 2, true, 'bomb') === 100);
 
+// ── is it franchise material at all (Maxi: not every film with a box office) ─────
+{
+  const share = (sc, g) => { const c = { built: 0, open: 0, closed: 0 }; for (let i = 0; i < 3000; i++) c[F2.rollPotential(sc, g)]++; return c; };
+  const bb = share('blockbuster', 'Sci-Fi'), dr = share('feature', 'Drama');
+  ok('a sci-fi tentpole is usually built for it', bb.built > 1200 && bb.closed > 150, JSON.stringify(bb));
+  ok('a drama feature usually ends', dr.closed > 1600 && dr.built < 400, JSON.stringify(dr));
+  ok('a closed story never gets a sequel, whatever it took', F2.sequelOdds(95, 1, false, 'smash', 'blockbuster', 'Sci-Fi', 'closed') === 0);
+  ok('and one built for it does, when it made money', F2.sequelOdds(80, 1, false, 'smash', 'blockbuster', 'Sci-Fi', 'built') > 60);
+  ok('a smash drama mostly does not', F2.sequelOdds(88, 1, false, 'smash', 'feature', 'Drama', 'open') < 15);
+  ok('breaking even is not a sequel, however kind the reviews', F2.sequelOdds(92, 1, false, 'broke even', 'blockbuster', 'Sci-Fi', 'built') === 0);
+  ok('an option still overrides all of it', F2.sequelOdds(20, 2, true, 'bomb', 'indie', 'Drama', 'closed') === 100);
+  // development hell
+  const s = { year: 2060, month: 0, timeline: [], offers: [], filmography: [{ title: 'Iron Tide', rating: 80 }], laterOffers: [] };
+  let died = 0, made = 0;
+  for (let i = 0; i < 300; i++) {
+    const t = JSON.parse(JSON.stringify(s));
+    t.laterOffers = [{ due: 2060 * 12, since: 2060 * 12 - 30, offer: { id: 'x', kind: 'sequel', part: 2, projectTitle: 'Iron Tide II', role: 'Lead', months: 5, salary: 1e6, deadline: 3 } }];
+    F2.laterOffersTick(t);
+    if (t.timeline.some((x) => /is dead\./.test(x.text))) died++; else if (t.offers.length) made++;
+  }
+  ok('a quarter of announced sequels are never made', died > 40 && died < 130, `${died} dead, ${made} made of 300`);
+  const t = JSON.parse(JSON.stringify(s));
+  t.laterOffers = [{ due: 2060 * 12, since: 2060 * 12 - 30, offer: { id: 'x', kind: 'sequel', part: 2, projectTitle: 'Iron Tide II', role: 'Lead', months: 5, salary: 1e6, deadline: 3 } }];
+  let n = 0; while (!t.filmography[0].sequelDead && n++ < 200) { t.laterOffers = [{ due: 2060 * 12, since: 2060 * 12 - 30, offer: { id: 'x', kind: 'sequel', part: 2, projectTitle: 'Iron Tide II', role: 'Lead', months: 5, salary: 1e6, deadline: 3 } }]; F2.laterOffersTick(t); }
+  ok('and the film says so in the filmography', t.filmography[0].sequelDead === true);
+}
 console.log(fails ? `\n${fails} FAILED` : '\nall passed');
 process.exit(fails ? 1 : 0);
+

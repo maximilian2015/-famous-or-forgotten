@@ -2196,6 +2196,7 @@ function CreditRow({ group, g }) {
         {c.with ? <span> · with <span style={{ color: c.withIcon ? theme.gold : theme.text, fontWeight: 700 }}>{c.with}</span></span> : null}
       </div>
       {/* The studio said no. A name in the room can push — favours.js. */}
+      {c.sequelDead && <div style={{ fontSize: 11, color: theme.muted, margin: '4px 0 2px', fontWeight: 700 }}>📝 The sequel was announced and never made. Three writers, a director who left, and a studio that stopped answering.</div>}
       {(() => { const sq = sequelDue(g, c.title); if (!sq) return null; const MONS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
         return (<div style={{ fontSize: 11, color: theme.gold, margin: '4px 0 2px', fontWeight: 700 }}>📝 "{String(sq.title).replace('⭐ ', '')}" is greenlit — cameras around {MONS[sq.due % 12]} {Math.floor(sq.due / 12)}; the contract comes half a year before. They want you back.</div>); })()}
       {false && canPushSequel(g, c.id) && (() => { const fit = canUse(g, 'sequel');

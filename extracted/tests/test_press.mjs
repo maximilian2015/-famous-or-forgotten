@@ -54,7 +54,10 @@ const st = (over) => ({ version: 'x', name: 'Mira Vale', ageY: 30, stage: 'caree
   laterOffersTick(s);
   ok('ten months out, nothing yet', !(s.offers || []).length && s.laterOffers.length === 1);
   s.month += 4;   // six months before the cameras
-  laterOffersTick(s);
+  // A quarter of announced sequels die in development (franchise.js). This one is about
+  // the paper, so it is made: run until it is, and the rest of the checks are the paper's.
+  let guard = 0;
+  while (!(s.offers || []).length && guard++ < 200) { s.laterOffers = [{ due: now + 10, since: now, offer: { id: 'seq1', kind: 'sequel', part: 2, projectTitle: 'Radiant Signal II', role: 'Supporting', type: 'Feature Film', genre: 'Crime', salary: 400000, months: 5, tier: 'supporting', scale: 'feature', prestigeScore: 60, stability: 88, deadline: 2, waitsForWrap: true, medium: 'film_studio' } }]; s.timeline = []; laterOffersTick(s); }
   ok(`the paper arrives ${SEQUEL_LEAD} months before the cameras`, s.offers.length === 1 && s.laterOffers.length === 0, JSON.stringify(s.offers.map((o) => o.projectTitle)));
   const o = s.offers[0];
   ok('with the studio\'s date on it', o.startAt === now + 10 && o.deadline === 3, JSON.stringify({ startAt: o.startAt, deadline: o.deadline }));

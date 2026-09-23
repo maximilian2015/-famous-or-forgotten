@@ -151,10 +151,49 @@ const SEQUEL_MONEY = { smash: 45, profitable: 18, 'broke even': -8, bomb: -55 };
 // the second is a longer shot than the one before.
 const SEQUEL_SCALE = { blockbuster: 1.15, feature: 0.65, indie: 0.3, small: 0.1, festival: 0 };
 const SEQUEL_GENRE = { Horror: 1.2, 'Sci-Fi': 1.15, Thriller: 0.95, Comedy: 0.9, Crime: 0.9, Drama: 0.35, Romance: 0.3, Musical: 0.35 };
-export function sequelOdds(rating, part, obliged, verdict = null, scale = null, genre = null) {
+// Whether the thing is franchise material at all, rolled once when it is made and kept on
+// the film. Maxi: "not every film with a box office gets a second part — that is not how it
+// is." And it is not the money that decides it, it is the story: Titanic took a billion and
+// a half and ends with the ship at the bottom of the ocean; Oppenheimer, Gladiator, The
+// Martian, Forrest Gump — closed. Some pictures are built with a door left open and some
+// are not, and no amount of money opens a closed one.
+//   built  — a world, a door left open. The studio was thinking about part two on day one.
+//   open   — it could go either way. Most films.
+//   closed — it ends. There is no part two, whatever it took.
+const POTENTIAL = {
+  blockbuster: { built: 45, open: 35, closed: 20 },
+  feature:     { built: 14, open: 34, closed: 52 },
+  indie:       { built: 5,  open: 22, closed: 73 },
+  prestige:    { built: 3,  open: 17, closed: 80 },
+  small:       { built: 2,  open: 18, closed: 80 },
+  festival:    { built: 0,  open: 8,  closed: 92 },
+};
+// The genre scales how likely a door was left open, rather than nudging it: a drama that
+// takes a billion is still a drama, and it still ends (Titanic, Forrest Gump, Gladiator).
+const POTENTIAL_GENRE = { Horror: 1.5, 'Sci-Fi': 1.4, Thriller: 1.15, Crime: 1.1, Comedy: 0.9, Musical: 0.5, Romance: 0.4, Drama: 0.3 };
+export function rollPotential(scale, genre) {
+  const row = POTENTIAL[scale] || POTENTIAL.feature;
+  const mult = POTENTIAL_GENRE[genre] ?? 1;
+  // The genre shifts the weights, and then they are normalised — nothing is ever certain
+  // franchise material: even the world-building blockbuster is sometimes a closed story.
+  let built = Math.min(55, row.built * mult), open = row.open * (0.8 + mult * 0.2);
+  let closed = Math.max(12, 100 - built - open);
+  const total = built + open + closed;
+  const r = Math.random() * total;
+  return r < built ? 'built' : r < built + open ? 'open' : 'closed';
+}
+export const POTENTIAL_FACTOR = { built: 1.15, open: 0.5, closed: 0 };
+export function potentialLine(id) {
+  return id === 'built' ? 'It was built with a door left open. If it makes money, there is a part two.'
+    : id === 'closed' ? 'It ends. Whatever it takes, there is no part two in it.'
+    : 'It could go either way. Most of them can.';
+}
+export function sequelOdds(rating, part, obliged, verdict = null, scale = null, genre = null, potential = null) {
   if (obliged) return 100;
   if (part > 4) return 0;
-  const kind = (scale ? (SEQUEL_SCALE[scale] ?? 0.7) : 1) * (genre ? (SEQUEL_GENRE[genre] ?? 1) : 1);
+  if (potential && POTENTIAL_FACTOR[potential] === 0) return 0;
+  const kind = (scale ? (SEQUEL_SCALE[scale] ?? 0.7) : 1) * (genre ? (SEQUEL_GENRE[genre] ?? 1) : 1)
+    * (potential ? POTENTIAL_FACTOR[potential] : 1);
   // MONEY first, and it is not close. A studio greenlights a sequel off what the last one
   // took; the reviews are a rounding error beside that. It is why beloved films die and
   // stupid ones run five parts, and it is the whole reason franchises exist at all.
@@ -164,10 +203,12 @@ export function sequelOdds(rating, part, obliged, verdict = null, scale = null, 
   // happening — thirty-six of sixty got no second part.
   // With no verdict to hand — an old save, or anybody asking the question directly — fall
   // back to the reviews rather than answering "almost never" to everything.
-  const base = verdict === 'smash' ? 55 : verdict === 'profitable' ? 26
-    : verdict === 'broke even' ? 5 : verdict === 'bomb' ? 0
+  const base = verdict === 'smash' ? 58 : verdict === 'profitable' ? 26
+    : verdict === 'broke even' ? 0 : verdict === 'bomb' ? 0
     : rating >= 92 ? 72 : rating >= 84 ? 52 : rating >= 78 ? 30 : rating >= 70 ? 9 : 0;
-  const liked = rating >= 85 ? 8 : rating >= 72 ? 3 : rating >= 55 ? 0 : -8;
+  // Being liked lifts a picture that made money. It does not rescue one that did not:
+  // a film that broke even is not made again because the reviews were kind.
+  const liked = base <= 0 ? 0 : rating >= 85 ? 8 : rating >= 72 ? 3 : rating >= 55 ? 0 : -8;
   return Math.max(0, Math.min(75, Math.round((base + liked) * kind) - Math.max(0, part - 2) * 14));
 }
 export function sequelRaise(part) { return part === 2 ? 1.6 : part === 3 ? 2.2 : 2.6; }
@@ -249,6 +290,15 @@ export function seasonMaterial(prevPrestige, season, arc = 'slides') {
 // this many months ahead of it with that date in the schedule, and once signed it waits
 // on the calendar for its month like any held part.
 export const SEQUEL_LEAD = 6;
+// Announced is not made. A sequel in development is a script, a director who leaves, a
+// studio head who goes, and a rights window that closes — a quarter of them never happen,
+// and the longer it was going to take, the likelier that is. Maxi: some of these should
+// simply never come.
+function diesInDevelopment(s, x) {
+  if (!x.offer || x.offer.kind !== 'sequel') return false;
+  const waited = Math.max(0, x.due - (x.since || x.due));
+  return chance(waited >= 60 ? 45 : waited >= 36 ? 32 : 22);
+}
 export function laterOffersTick(s) {
   const now = (s.year || 0) * 12 + (s.month || 0);
   const lead = (x) => (x.offer && x.offer.kind === 'sequel' ? SEQUEL_LEAD : 0);
@@ -256,6 +306,15 @@ export function laterOffersTick(s) {
   if (!due.length) return s;
   s.laterOffers = (s.laterOffers || []).filter((x) => x.due - lead(x) > now);
   for (const x of due) {
+    if (diesInDevelopment(s, x)) {
+      const title = String(x.offer.projectTitle || '').replace('⭐ ', '');
+      const rootTitle = title.replace(/\s+(II|III|IV|V|VI)$/, '');
+      const src = (s.filmography || []).find((c) => c.title === rootTitle || c.title === title);
+      if (src) src.sequelDead = true;
+      addTimeline(s, `"${title}" is dead. Three writers, a director who left, and a studio that stopped answering. It was never going to be made.`, true);
+      s.lastEvent = `They are not making "${title}". Nobody says so out loud — the script goes round one more time, the director takes something else, and one day it is simply not on the schedule any more.`;
+      continue;
+    }
     const ahead = Math.max(0, x.due - now);
     const o = { ...x.offer, expires: now + rint(3, 6), via: x.offer.via || 'studio', from: 'the studio', deadline: ahead > 2 ? 3 : (x.offer.deadline || 2) };
     if (ahead > 1) o.startAt = x.due;   // the studio's date, on the paper
@@ -364,7 +423,7 @@ export function maybeContinue(s, credit, p, force = false) {
   }
 
   const obliged = !!p.optioned && part < (p.optionParts || 3);
-  const odds = sequelOdds(credit.rating, part, obliged, credit.verdict, p.scale, p.genre);
+  const odds = sequelOdds(credit.rating, part, obliged, credit.verdict, p.scale, p.genre, p.potential || credit.potential);
   if (!force && !chance(odds)) return null;
   const nextPart = part + 1;
   const arc = p.arc || rollArc();
@@ -380,6 +439,7 @@ export function maybeContinue(s, credit, p, force = false) {
   s.lastEvent = isLegacyGap(gap) ? s.lastEvent : credit.verdict === 'smash' ? `The studio is developing a sequel to "${p.title}". Cameras in about ${years < 2 ? `${gap} months` : `${years} years`} — the contract comes ${SEQUEL_LEAD} months before that.` : s.lastEvent;
   (s.laterOffers = s.laterOffers || []).push({
     due: (s.year || 0) * 12 + (s.month || 0) + gap,
+    since: (s.year || 0) * 12 + (s.month || 0),   // how long it was going to take, for development hell
     offer: {
     id: uid(s, 'seq'),
     kind: 'sequel', part: nextPart, optioned: p.optioned, optionParts: p.optionParts, scale: p.scale,

@@ -17,6 +17,7 @@ import { activeActors, actorById } from '../world/world.js';
 import { fameTier } from '../meta/status.js';
 import { personName, namesInUse } from '../world/names.js';
 import { holdsAGrudge } from '../meta/stories.js';
+import { rollPotential } from './franchise.js';
 import { sets, addSet, removeSet, setById, canTakeSet, slotsFree, MAX_SETS, SET_RESPECT } from '../../engine/sets.js';
 export { sets, canTakeSet, slotsFree, MAX_SETS, SET_RESPECT };
 const clamp = (v) => Math.max(0, Math.min(100, v));
@@ -142,6 +143,8 @@ export function startProduction(s, offer) {
     // What it is about, and which version of it you end up shooting. See story.js — the
     // argument happens on day one and the room decides whether you are listened to.
     premise: makePremise(), take: null, takeWon: false,
+    // Franchise material, or a story that ends. Rolled once, here, and kept — see franchise.js.
+    potential: offer.potential || rollPotential(scaleOfOffer(offer), offer.genre),
   };
   // One more set. Three at most, and the second and third only for somebody they trust
   // to turn up — see engine/sets.js. The callers check first; this is the last door.
@@ -520,7 +523,7 @@ function wrapProduction(s, p) {
     season: p.season || 0, part: p.part > 1 ? p.part : 0, episodes: p.episodes || 0,
     // Who directed it, and how long it ran. The crew is thrown away at wrap, and the
     // filmography had no director on it — every real one lists them under the title.
-    director: ((p.crew || [])[0] || {}).name || null, months: p.months || 0, story: p.story || null,
+    director: ((p.crew || [])[0] || {}).name || null, months: p.months || 0, story: p.story || null, potential: p.potential || null,
     wrappedAt: (s.year || 0) * 12 + (s.month || 0) };   // so the phone knows somebody wants to celebrate
   // The credit does NOT land here. It goes into post and opens months from now —
   // fame, box office and the score all arrive on premiere night, not on the last

@@ -76,6 +76,13 @@ for (let i = 0; i < N; i++) {
     if (m % 60 === 59) { const y = Math.floor(m / 60) + 1; (by5[y] = by5[y] || []).push({ fame: Math.round(t.fame || 0), resp: Math.round(t.respect || 0), cash: Math.round((t.cash || 0) / 1e6 * 10) / 10, acting: Math.round(t.acting || 0), credits: (t.filmography || []).filter((c) => !c.minor).length, askers: ((t.awards && t.awards.wins) || []).length }); }
   }
   bump('lives');
+  { const films = (t.filmography || []).filter((c) => !c.minor && !c.episodes);
+    bump('films', films.length);
+    bump('films built for it', films.filter((c) => c.potential === 'built').length);
+    bump('films that end', films.filter((c) => c.potential === 'closed').length);
+    bump('sequels made', films.filter((c) => (c.part || 1) > 1).length);
+    bump('sequels that died', films.filter((c) => c.sequelDead).length);
+    bump('hits', films.filter((c) => c.verdict === 'smash' || c.verdict === 'profitable').length); }
   for (const k of Object.keys(t._storyLog || {})) bump('story: ' + k, t._storyLog[k].length);
   for (const x of (t.stories || [])) bump('story: ' + x.id);
   bump('Askers won', ((t.awards && t.awards.wins) || []).length);
@@ -87,6 +94,7 @@ for (let i = 0; i < N; i++) {
 }
 const med = (a) => { const b = [...a].sort((x, y) => x - y); return b[Math.floor(b.length / 2)]; };
 console.log(`${N} perfect lives, 45 years. Per life: ` + ['reads', 'a flop', 'a lead that bombed', 'fell ill', 'burnout', 'a scandal', 'a director who went cold', 'walked off', 'lost a part they would not hold', 'a year without work', 'fame went down (months)', 'standing went down (months)', 'in debt (months)', 'Askers won', 'nominations', 'box office poison', 'a rumour that stuck', 'a story in the papers', 'overtaken'].map((k) => `${k} ${((tally[k] || 0) / N).toFixed(1)}`).join(' · '));
+console.log('films per life: ' + ['films','hits','films built for it','films that end','sequels made','sequels that died'].map((k)=>k+' '+((tally[k]||0)/N).toFixed(1)).join(' · '));
 console.log('stories per life: ' + Object.keys(tally).filter((k) => k.startsWith('story: ')).map((k) => k.slice(7) + ' ' + (tally[k] / N).toFixed(1)).join(' · '));
 console.log(`never once: ` + ['box office poison', 'a rumour that stuck', 'a story in the papers', 'overtaken', 'died', 'in debt (months)', 'burnout', 'walked off'].filter((k) => !tally[k]).join(', '));
 console.log(`ended A-list+: ${tally['ended A-list or above'] || 0}/${N} · standing 60+: ${tally['ended standing 60+'] || 0}/${N} · with a partner: ${tally['ended with a partner'] || 0}/${N} · peak cash median ~€${med(Array.from({ length: N }, () => 0)).toFixed ? '' : ''}${Math.round((tally['peak cash (m) total'] || 0) / N)}m`);
