@@ -35,7 +35,8 @@ import { GridRisk } from './ui/components/GridRisk.jsx';
 import { StairsGame } from './ui/components/StairsGame.jsx';
 import { Reviews } from './ui/components/BigMoment.jsx';
 import { WalkOfFame } from './ui/components/WalkOfFame.jsx';
-import { Diary } from './ui/components/Diary.jsx';
+import { Diary, INK } from './ui/components/Diary.jsx';
+import { canTakeSet, monthsUntilFree } from './engine/sets.js';
 import { FamilyTree } from './ui/components/FamilyTree.jsx';
 import { ContractRoom } from './ui/components/ContractRoom.jsx';
 import { NightRoom } from './ui/components/NightRoom.jsx';
@@ -2189,19 +2190,19 @@ function CreditRow({ group, g }) {
   const kind = tv ? 'TV Series' : c.type || 'Feature Film';
   const years = group.from === group.to ? String(group.to) : `${group.from}–${group.to}`;
   const eps = tv ? (group.episodes || c.episodes || 0) : 0;
-  return (<div style={{ display: 'flex', gap: 12, padding: '11px 10px', borderRadius: 12, marginBottom: 6,
+  return (<div style={{ display: 'flex', gap: 10, padding: '8px 9px', borderRadius: 11, marginBottom: 5,
     background: group.worldHit ? 'linear-gradient(100deg, rgba(255,209,102,.16), rgba(255,209,102,.04))'
       : hit ? 'linear-gradient(100deg, rgba(255,209,102,.10), rgba(255,209,102,.02))' : flop ? 'rgba(255,106,138,.05)' : 'transparent',
     border: `${hit || group.worldHit ? '1.5px' : '1px'} solid ${group.worldHit ? 'rgba(255,209,102,.6)' : hit ? 'rgba(255,209,102,.45)' : flop ? 'rgba(255,106,138,.3)' : theme.line}` }}>
-    <Poster title={group.root} type={c.type} genre={c.genre} director={c.director} tall size={56} />
+    <Poster title={group.root} type={c.type} genre={c.genre} director={c.director} tall size={46} />
     <div style={{ flex: 1, minWidth: 0 }}>
-      <div style={{ fontSize: 15, fontWeight: 800, lineHeight: 1.2 }}>{group.root}</div>
+      <div style={{ fontSize: 14, fontWeight: 800, lineHeight: 1.2 }}>{group.root}</div>
       {/* line two: what it is, when, and which season — the way a listing says it */}
-      <div style={{ fontSize: 12, color: theme.muted, marginTop: 3 }}>
+      <div style={{ fontSize: 11.5, color: theme.muted, marginTop: 2 }}>
         {kind}{c.genre && c.genre !== kind ? ` · ${c.genre}` : ''} ({years}){tv && group.seasons ? ` · ${group.seasonFrom > 1 ? (group.seasons > 1 ? `Seasons ${group.seasonFrom}–${group.seasonTo}` : `Season ${group.seasonFrom}`) : group.seasons > 1 ? count(group.seasons, 'season') : 'Season 1'}` : ''}{c.part > 1 ? ` · Part ${c.part}` : ''}
       </div>
       {/* line three: the score and the small print */}
-      <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginTop: 4, flexWrap: 'wrap', fontSize: 12 }}>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 7, marginTop: 3, flexWrap: 'wrap', fontSize: 11.5 }}>
         {c.running
           ? <span style={{ fontSize: 10.5, fontWeight: 900, letterSpacing: '.06em', textTransform: 'uppercase', color: theme.gold }}>
               {(c.tv || !['small', 'indie', 'festival', 'feature', 'blockbuster'].includes(c.scale)) ? `On air · episode ${Math.max(1, Math.round(((c.weeks || 0) / Math.max(1, c.weeksTotal || 1)) * (c.episodes || 1)))} of ${c.episodes || '?'}` : `In cinemas · week ${c.weeks || 0} of ${c.weeksTotal}`}</span>
@@ -2212,7 +2213,7 @@ function CreditRow({ group, g }) {
         <span style={{ color: theme.muted }}>{runtimeOf(c)}</span>
       </div>
       {/* line four: who directed it, and the part */}
-      <div style={{ fontSize: 12, color: theme.muted, marginTop: 4 }}>
+      <div style={{ fontSize: 11.5, color: theme.muted, marginTop: 3 }}>
         {c.director ? <span style={{ color: theme.text, opacity: .85 }}>{c.director}</span> : null}
         {c.director ? ' · ' : ''}{c.role}
         {c.with ? <span> · with <span style={{ color: c.withIcon ? theme.gold : theme.text, fontWeight: 700 }}>{c.with}</span></span> : null}
@@ -2228,7 +2229,7 @@ function CreditRow({ group, g }) {
         </button>); })()}
       {/* the marks that never come off, and what it made */}
       {(group.worldHit || hit || group.askers > 0 || c.comeback > 0 || group.boxOffice > 0 || group.viewers > 0 || c.festival) && (
-        <div style={{ fontSize: 10.5, marginTop: 5, display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
+        <div style={{ fontSize: 10.5, marginTop: 4, display: 'flex', gap: 7, alignItems: 'center', flexWrap: 'wrap' }}>
           {group.worldHit ? <span style={{ fontWeight: 900, color: theme.gold }}>🌍 WORLD HIT</span>
             : hit ? <span style={{ fontWeight: 900, letterSpacing: '.06em', color: theme.gold }}>★ HIT</span>
             : c.cult ? <span style={{ fontWeight: 900, letterSpacing: '.06em', color: theme.accent }}>🌙 CULT CLASSIC · {c.cult}</span> : null}
@@ -2242,15 +2243,19 @@ function CreditRow({ group, g }) {
           {c.verdict && !c.running && <span style={{ fontWeight: 900, letterSpacing: '.07em', textTransform: 'uppercase', fontSize: 9.5,
             color: VERDICT_COL[c.verdict] || theme.muted }}>{c.verdict}</span>}
           {ranked && <span style={{ fontWeight: 900, letterSpacing: '.06em', color: ranked.rank <= 3 ? theme.gold : theme.muted }}>#{ranked.rank} OF {c.year}</span>}
+          {/* What was written, on the same row as the marks — it used to cost every credit
+              a line of its own. world/critics.js keeps it from the night the run closed. */}
+          {c.reviews && !c.running && <button onClick={() => setShowReviews(!showReviews)} style={{ background: 'none', border: 'none', padding: 0, cursor: 'pointer', fontSize: 10.5, fontWeight: 800, color: theme.accent }}>
+            Kinomark {c.reviews.grade} · {c.reviews.audience.toFixed(1)}/{c.reviews.critics.toFixed(1)} {showReviews ? '▾' : '▸'}
+          </button>}
         </div>
       )}
-      {/* What was written. Kept on the credit the night the run closed — world/critics.js. */}
-      {c.reviews && !c.running && <div>
-        <button onClick={() => setShowReviews(!showReviews)} style={{ background: 'none', border: 'none', padding: '5px 0 0', cursor: 'pointer', fontSize: 10.5, fontWeight: 800, color: theme.accent }}>
-          Kinomark {c.reviews.grade} · audience {c.reviews.audience.toFixed(1)} · critics {c.reviews.critics.toFixed(1)} {showReviews ? '▾' : '▸'}
-        </button>
-        {showReviews && <Reviews page={c.reviews} accent={theme.gold} compact />}
-      </div>}
+      {/* Nothing to mark, and still something written: the button stands on its own. */}
+      {c.reviews && !c.running && !(group.worldHit || hit || group.askers > 0 || c.comeback > 0 || group.boxOffice > 0 || group.viewers > 0 || c.festival) && (
+        <button onClick={() => setShowReviews(!showReviews)} style={{ background: 'none', border: 'none', padding: '4px 0 0', cursor: 'pointer', fontSize: 10.5, fontWeight: 800, color: theme.accent }}>
+          Kinomark {c.reviews.grade} · {c.reviews.audience.toFixed(1)}/{c.reviews.critics.toFixed(1)} {showReviews ? '▾' : '▸'}
+        </button>)}
+      {showReviews && c.reviews && <Reviews page={c.reviews} accent={theme.gold} compact />}
     </div>
   </div>);
 }
@@ -2278,6 +2283,32 @@ function CreditsList({ g, credits, label }) {
         </div>
       </div>))}
     </div>)}
+    {/* Signed, not shooting. A paper you signed for a date months out — the studio's date,
+        or the month you wrap what you are on — is as real a project as the one on the
+        floor, and the list used to pretend it did not exist until cameras rolled. */}
+    {(() => {
+      const now = (g.year || 0) * 12 + (g.month || 0);
+      const waiting = (g.offers || []).filter((o) => o.signed);
+      if (!waiting.length) return null;
+      return (<div style={{ marginBottom: 16 }}>
+        <div style={{ fontSize: 11, fontWeight: 900, letterSpacing: '.09em', textTransform: 'uppercase', color: INK.signed, marginBottom: 8 }}>Signed · {waiting.length}</div>
+        {waiting.map((o) => {
+          const title = String(o.projectTitle || '').replace('⭐ ', '');
+          const start = Math.max(o.startAt || 0, now + (canTakeSet(g, o).ok ? 0 : monthsUntilFree(g, o)));
+          const away = Math.max(0, start - now);
+          return (<div key={o.id} style={{ display: 'flex', gap: 11, padding: '9px 2px', borderBottom: `1px solid ${theme.line}`, opacity: .85 }}>
+            <Poster title={title} type={o.type} genre={o.genre} director={o.director} size={46} />
+            <div style={{ flex: 1, minWidth: 0 }}>
+              <div style={{ fontSize: 13.5, fontWeight: 800, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{title}</div>
+              <div style={{ fontSize: 11.5, color: INK.signed, margin: '3px 0 2px' }}>
+                {away === 0 ? 'Cameras any month now' : `Cameras in ${count(away, 'month')}`}{o.prep ? ` · ${o.prep} mo preparation first` : ''}
+              </div>
+              <div style={{ fontSize: 11.5, color: theme.muted }}>{o.role}{o.genre ? ` · ${o.genre}` : ''}</div>
+            </div>
+          </div>);
+        })}
+      </div>);
+    })()}
     {/* Shot, cut, not out. The wait is half the game now — it should be visible. */}
     {(g.releases || []).length > 0 && (() => {
       const now = (g.year || 0) * 12 + (g.month || 0);
