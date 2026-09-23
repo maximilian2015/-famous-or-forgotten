@@ -160,6 +160,8 @@ export function scheduleRelease(s, credit, p) {
     campaign: !!p.campaign, prestigeScore: p.prestigeScore, director: credit.director || null,
     // And how the set went, because the business judges the performance, not only the film.
     meter: p.meter || 0, viaPartner: p.viaPartner || null, fellApart: !!p.fellApart, backend: p.backend || 0, merch: p.merch || 0, potential: p.potential || null,
+    // The days that came out right (career/scenes.js) — the critics name one of them.
+    moments: (p.moments || []).slice(0, 3),
     // Who was on the poster with you, if it was somebody. See production.js makeCrew.
     with: p.with || null, withId: p.withId || null, withFame: p.withFame || 0, withIcon: !!p.withIcon,
     // What the version you shot does to the box office, and the line it was pitched on.
@@ -338,6 +340,7 @@ function open(s, rel) {
     // Read by closeRun and by the critics. These were read off _rel and never written to it,
     // so a carried set and a part got over dinner were both invisible once the run closed.
     meter: rel.meter || 0, viaPartner: rel.viaPartner || null, fellApart: !!rel.fellApart, backend: rel.backend || 0, merch: rel.merch || 0, potential: rel.potential || null,
+    moments: rel.moments || [],
     with: rel.with || null, withIcon: !!rel.withIcon };
   // BY ID, never by reference. A save is JSON, and JSON.parse hands back a fresh object for
   // every entry — so a list holding the credit itself pointed at a copy the moment anybody
@@ -369,18 +372,18 @@ function open(s, rel) {
     : `"${rel.title}" aired tonight.`;
   addTimeline(s, fest ? (fest.result === 'prize' ? `"${rel.title}" won at ${fest.name}.` : `"${rel.title}" sold at ${fest.name}.`) : film ? `"${rel.title}" opened.` : `"${rel.title}" went out.`);
   showMoment(s, fest ? {
-    id: 'premiere', kind: 'good', festival: fest.name, result: fest.result, title: rel.title,
+    id: 'premiere', kind: 'good', festival: fest.name, result: fest.result, genre: rel.genre, scale: rel.scale, title: rel.title,
     verdict: fest.result === 'prize' ? 'the jury prize' : 'sold on the Sunday',
     body: fest.result === 'prize'
       ? `A cinema at nine in the morning, a jury in the front row, and at the end of the week your title read out in a room of people who buy films for a living. Three distributors by Sunday. The trades used the word "discovery", and they used your name.`
       : `Two screenings, a good one and a quiet one, and on the Sunday a distributor who liked the quiet one. A small release, a few cities, a poster with the laurels on it. It exists now. What it does is the next few weeks.`,
   } : film ? {
-    id: 'premiere', kind: 'good', title: rel.title, verdict: 'opening night',
+    id: 'premiere', kind: 'good', title: rel.title, verdict: 'opening night', genre: rel.genre, scale: rel.scale,
     body: 'You stood on a carpet and answered the same four questions eleven times, and then '
       + 'the lights went down and you watched it with strangers. Nobody knows anything yet — '
       + 'not the reviews, not the money, not you. That comes over the next few weeks.',
   } : {
-    id: 'premiere', kind: 'good', tv: tvKind, title: rel.title, verdict: (rel.season || 0) > 1 ? `season ${rel.season}` : 'season one',
+    id: 'premiere', kind: 'good', tv: tvKind, genre: rel.genre, scale: rel.scale, title: rel.title, verdict: (rel.season || 0) > 1 ? `season ${rel.season}` : 'season one',
     episodes: rel.episodes || 0,
     body: tvKind === 'soap'
       ? `Seven o'clock, a Tuesday. The theme, the titles, your face for the first time in ${(rel.episodes || 25)} episodes of it. Nobody watches a soap for the reviews — they watch it every week, or they do not, and you find out over the run.`
@@ -598,6 +601,7 @@ function closeRun(s, credit, r) {
   // What was written about it — kept on the credit for the filmography, shown tonight.
   credit.reviews = reviewsFor(s, { title: credit.title, rating: r.rating, genre: credit.genre, verdict, director: credit.director,
     actorName: s.name, meter: r.meter, fellApart: r.fellApart, viaPartner: r.viaPartner, worldHit: r.worldHit, take: credit.take,
+    moment: (r.moments || [])[Math.floor(Math.random() * Math.max(1, (r.moments || []).length))] || null,
     costar: r.with, costarIcon: r.withIcon, comeback: !!credit.comeback, sequel: (credit.part || 0) > 1,
     lateShelf: /Character lead|matriarch|Elder|Grandparent/.test(credit.role || '') });
   // Standing next to an icon is worth something on its own: the photographs, the poster,
@@ -607,7 +611,7 @@ function closeRun(s, credit, r) {
   storyAfterCredit(s, credit);
   showMoment(s, {
     id: 'verdict', tv: film ? null : (r.scale === 'recurring' ? 'soap' : r.scale === 'prestige' ? 'prestige' : 'episode'), kind: r.rating >= 70 || verdict === 'smash' ? 'good' : 'bad',
-    title: credit.title, score, money, verdict, reviews: credit.reviews,
+    title: credit.title, score, money, verdict, reviews: credit.reviews, genre: credit.genre, scale: r.scale,
     // Television: the network's number against yours, and what it decided.
     network: !film && r.scale !== 'episode' && credit.renewal ? networkLine(credit.type, credit.viewers, null, r.rating, credit.renewal) : null,
     renewal: credit.renewal || null,

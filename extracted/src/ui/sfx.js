@@ -186,6 +186,37 @@ export const CUES = {
                       tone(c, t + 0.9, { f: 55, type: 'sine', gain: 0.12, dur: 3.0, attack: 0.5 }); },
   born:   (c, t) => seq(c, t, [N.C5, N.G5, N.C6], { gap: 0.16, gain: 0.075, dur: 1.0 }),
   // A television coming on: a breath of static, then the network's three-note sting.
+  // A day on set, and how it went.
+  action: (c, t) => { hiss(c, t, { gain: 0.3, dur: 0.013, freq: 4400, q: 0.4, type: 'highpass', attack: 0.0008 });
+                      tone(c, t + 0.02, { f: 240, f2: 150, type: 'square', gain: 0.05, dur: 0.1 }); },
+  printed: (c, t) => { seq(c, t, [N.D5, N.A5, N.D6], { gap: 0.09, gain: 0.09, dur: 0.5 });
+                       crowd(c, t + 0.22, { dur: 1.1, gain: 0.05, density: 40 }); },
+  blown:  (c, t) => { tone(c, t, { f: 180, f2: 90, type: 'sawtooth', gain: 0.07, dur: 0.5, attack: 0.004 });
+                      hiss(c, t + 0.08, { gain: 0.05, dur: 0.3, freq: 700, q: 0.7, sweepTo: 200 }); },
+  // The genres, for the night a picture opens. Maxi wanted a premiere to SOUND like the
+  // film it is: strings for a drama, a stab for horror, a fanfare for the big loud one.
+  gHorror: (c, t) => { hiss(c, t, { gain: 0.05, dur: 0.9, freq: 300, q: 0.7, attack: 0.25 });
+                       tone(c, t + 0.5, { f: 1600, f2: 1520, type: 'sawtooth', gain: 0.075, dur: 0.5, attack: 0.001, detune: 22 });
+                       tone(c, t + 0.52, { f: 73, type: 'sine', gain: 0.22, dur: 1.5, attack: 0.01 }); },
+  gThriller: (c, t) => { seq(c, t, [N.A4, N.A4, N.C5, N.A4], { gap: 0.145, gain: 0.06, dur: 0.22, type: 'triangle' });
+                         tone(c, t + 0.6, { f: 98, f2: 65, type: 'sine', gain: 0.18, dur: 1.2, attack: 0.01 }); },
+  gCrime:  (c, t) => { seq(c, t, [116.54, 87.31, 116.54, 155.56], { gap: 0.19, gain: 0.09, dur: 0.5, type: 'triangle' });
+                       hiss(c, t + 0.1, { gain: 0.022, dur: 1.1, freq: 900, q: 0.5, attack: 0.3 }); },
+  gComedy: (c, t) => { seq(c, t, [N.C5, N.E5, N.G5, N.E5, N.C6], { gap: 0.085, gain: 0.075, dur: 0.3, type: 'triangle' });
+                       tone(c, t + 0.44, { f: N.G5, f2: N.C6, type: 'square', gain: 0.03, dur: 0.18 }); },
+  gRomance:(c, t) => { seq(c, t, [N.F4, N.A4, N.C5, N.F5], { gap: 0.2, gain: 0.07, dur: 1.1, type: 'sine' });
+                       tone(c, t + 0.12, { f: N.C4, type: 'sine', gain: 0.05, dur: 1.8, attack: 0.25 }); },
+  gDrama:  (c, t) => { tone(c, t, { f: N.D4, type: 'sine', gain: 0.07, dur: 2.2, attack: 0.5 });
+                       tone(c, t + 0.05, { f: N.A4, type: 'sine', gain: 0.055, dur: 2.0, attack: 0.6 });
+                       tone(c, t + 0.6, { f: N.F5, type: 'triangle', gain: 0.045, dur: 1.6, attack: 0.4 }); },
+  gSciFi:  (c, t) => { tone(c, t, { f: 1200, f2: 240, type: 'sine', gain: 0.05, dur: 1.4, attack: 0.02 });
+                       tone(c, t + 0.1, { f: 55, type: 'sine', gain: 0.2, dur: 1.8, attack: 0.05 });
+                       hiss(c, t + 0.3, { gain: 0.03, dur: 1.0, freq: 2200, q: 1.6, sweepTo: 5200, attack: 0.2 }); },
+  gMusical:(c, t) => { seq(c, t, [N.C5, N.D5, N.E5, N.G5, N.C6], { gap: 0.105, gain: 0.08, dur: 0.6 });
+                       crowd(c, t + 0.5, { dur: 1.4, gain: 0.06, density: 50 }); },
+  gBlockbuster: (c, t) => { tone(c, t, { f: 58, type: 'sine', gain: 0.26, dur: 1.9, attack: 0.01 });
+                            seq(c, t + 0.22, [N.C4, N.G4, N.C5, N.E5], { gap: 0.16, gain: 0.1, dur: 0.9, type: 'sawtooth' });
+                            crowd(c, t + 0.9, { dur: 1.6, gain: 0.07, density: 70 }); },
   tv:     (c, t) => { hiss(c, t, { gain: 0.05, dur: 0.3, freq: 2600, q: 0.5, attack: 0.01 });
                       seq(c, t + 0.18, [N.E5, N.A5, N.E6], { gap: 0.13, gain: 0.07, dur: 0.55 });
                       tone(c, t + 0.58, { f: N.A4, type: 'triangle', gain: 0.05, dur: 0.9, attack: 0.03 }); },
@@ -204,6 +235,13 @@ export function installTapSounds() {
 }
 
 let last = 0;
+// What a premiere sounds like: the picture's genre, and the size of it. Read by the
+// BigMoment when a film opens.
+const GENRE_CUE = { Horror: 'gHorror', Thriller: 'gThriller', Crime: 'gCrime', Comedy: 'gComedy', Romance: 'gRomance', Drama: 'gDrama', 'Sci-Fi': 'gSciFi', Musical: 'gMusical' };
+export function playGenre(genre, scale, delay = 0) {
+  if (scale === 'blockbuster') { play('gBlockbuster', delay); return; }
+  play(GENRE_CUE[genre] || 'gDrama', delay);
+}
 export function play(kind, delay = 0) {
   if (!on) return;
   const c = ac();

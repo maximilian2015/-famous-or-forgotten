@@ -18,6 +18,7 @@ import { datingYear } from '../systems/life/dating.js';
 import { childhoodTick, adoptionTick } from '../systems/life/children.js';
 import { spotlightYear } from '../systems/social/spotlight.js';
 import { productionTick, setsTick, stanceTick } from '../systems/career/production.js';
+import { maybeScene } from '../systems/career/scenes.js';
 import { releaseTick, runTick, cultTick } from '../systems/career/release.js';
 import { frozenTick } from '../systems/career/stability.js';
 import { laterOffersTick } from '../systems/career/franchise.js';
@@ -127,6 +128,7 @@ export function advanceMonth(state) {
   setsTick(s);       // and the month a second set, or a third, opens to you
   emailTick(s);
   smsTick(s);        // and the people in your life text about what just happened
+  maybeScene(s);     // and one day on the set that is a day, not a month
   maybeStartArc(s);
   iconTick(s);        // and the last rung says why it is out of reach
   quoteTick(s);       // and what you ask for comes back down when nobody is paying it

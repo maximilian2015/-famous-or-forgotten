@@ -28,6 +28,8 @@ import { activeStories } from './systems/meta/stories.js';
 import { ambitionProgress } from './systems/meta/ambition.js';
 import { rename as renameProject, canRename, whyNot, TITLE_MAX } from './systems/career/naming.js';
 import { goals } from './systems/meta/goals.js';
+import { resolveScene } from './systems/career/scenes.js';
+import { RhythmLine, HoldZone, KeySequence, QuickPick } from './ui/components/SceneGames.jsx';
 import { priceLine } from './systems/meta/price.js';
 import { hype, hypeSource, hypeLine, SOURCES, hypeReach, hypeDemand, hypePrice, showsThisYear } from './systems/meta/hype.js';
 import { addPrestigeListing } from './systems/career/castings.js';
@@ -110,6 +112,7 @@ export default function App() {
   useEffect(() => onSkinChange(() => bumpSkin((n) => n + 1)), []);
   if (!g.created) return <CreatorScreen />;
   if (!g.alive) return <EndOfLifeScreen g={g} />;
+  if (g.scene) return <SceneModal g={g} />;
   if (g.pendingArc) return <ArcModal g={g} />;
   if (showGenres) return <GenreScreen g={g} onBack={() => setShowGenres(false)} />;
   if (showHealth) return <HealthScreen g={g} onBack={() => setShowHealth(false)} />;
@@ -1742,6 +1745,38 @@ function LegacyScreen({ g }) {
             </div>
           </Card>))}
     </div>
+  </div>);
+}
+// A day on the set. One of six games, skinned by the scene and scaled by how hard the day
+// is, and what comes out of it moves the picture. See systems/career/scenes.js.
+function SceneModal({ g }) {
+  const sc = g.scene;
+  const [state, setState] = useState('brief');
+  const done = (q) => { play(q >= 88 ? 'printed' : q < 25 ? 'blown' : 'tap'); dispatch(resolveScene, q); };
+  const d = sc.difficulty || 1;
+  const lines = {
+    Horror: ['It was in the house.', 'You said that already.', 'No — listen.', 'It is upstairs.', 'Do not turn round.', 'I said do not.', 'It knows my name.', 'It always did.'],
+    Comedy: ['This is fine.', 'This is completely fine.', 'Nobody is panicking.', 'I am not panicking.', 'You are panicking.', 'That is the smoke alarm.', 'That is definitely the smoke alarm.', 'Right.'],
+    Romance: ['I was going to write.', 'You were not.', 'I was.', 'For eleven years.', 'I kept the envelopes.', 'That is not the same.', 'No.', 'It is not.'],
+  }[sc.genre];
+  const opts = [
+    { label: 'Stay in it and answer as the character', good: 82 },
+    { label: 'Break, and make the break part of it', good: 58 },
+    { label: 'Wait for the director to call cut', good: 24 },
+  ];
+  const game = sc.game === 'timing' ? <TimingBar zoneStart={14 + Math.random() * 58} zoneWidth={Math.max(6, 15 - d * 3.5)} speed={2.2 + d * 1.4} onResult={done} />
+    : sc.game === 'grid' ? <GridRisk cols={4} rows={3} bad={Math.max(2, Math.round(2 + d))} labelSafe="✓" labelBad="✕" onResult={done} />
+    : sc.game === 'rhythm' ? <RhythmLine difficulty={d} lines={lines} onResult={done} />
+    : sc.game === 'hold' ? <HoldZone difficulty={d} seconds={6} onResult={done} />
+    : sc.game === 'keys' ? <KeySequence difficulty={d} onResult={done} />
+    : <QuickPick difficulty={d} prompt={`"${sc.director} has not called cut. Your co-star is looking at you."`} options={opts} onResult={done} />;
+  return (<div style={{ maxWidth: 440, margin: '0 auto', minHeight: '100vh', color: theme.text, padding: 16, display: 'flex', flexDirection: 'column', justifyContent: 'center', fontFamily: FONT }}>
+    <div style={{ fontSize: 11, fontWeight: 900, letterSpacing: '.1em', textTransform: 'uppercase', color: theme.gold, marginBottom: 8 }}>🎬 {sc.title} · {sc.label}</div>
+    <div style={{ fontSize: 14.5, lineHeight: 1.6, marginBottom: 14 }}>{sc.line}</div>
+    {state === 'brief'
+      ? (<><div style={{ fontSize: 12.5, color: theme.muted, lineHeight: 1.5, marginBottom: 16 }}>{sc.hint}</div>
+          <Button kind="pri" sfx="action" onClick={() => setState('play')}>Action</Button></>)
+      : game}
   </div>);
 }
 function ArcModal({ g }) {

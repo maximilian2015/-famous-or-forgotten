@@ -124,6 +124,17 @@ const YOU = {
   ],
 };
 // Something specific happened, and the critics know — they always know.
+// The day on set that came out of the games (career/scenes.js). A critic who liked it
+// names it; one who did not says it was the only thing worth naming.
+const MOMENT_LINE = {
+  good: ['There is {moment} in the middle of it, and it is the reason to go.',
+    'Whatever else is in the film, {moment} is the thing people will describe to each other.',
+    'It has {moment}, done for real and held long enough that you notice.',
+    '{actor} does {moment} in a way that stops the film dead, in the good sense.'],
+  bad: ['The film has {moment} and very little else.',
+    'Somewhere in it there is {moment}, which deserved a better picture around it.',
+    'The one thing here is {moment}. It is not enough, and it is not {actor}\'s fault.'],
+};
 const SPECIAL = {
   fellApart: ['Something went badly wrong between the set and the screen; you can see the edit fighting the film.',
     'It has the look of a picture that was rescued in the cutting room, and not quite rescued.'],
@@ -176,7 +187,9 @@ function draw(s, key, pool) {
 function fill(line, ctx) {
   return line.replace(/\{actor\}/g, ctx.actor).replace(/\{you\}/g, ctx.you).replace(/\{title\}/g, ctx.title)
     .replace(/\{director\}/g, ctx.director || 'the director').replace(/\{genre\}/g, String(ctx.genre || 'film').toLowerCase())
-    .replace(/\{costar\}/g, ctx.costar || 'the co-star').replace(/\{month\}/g, ctx.month || 'spring');
+    .replace(/\{costar\}/g, ctx.costar || 'the co-star').replace(/\{month\}/g, ctx.month || 'spring')
+    // The day on the set that came out right — see systems/career/scenes.js.
+    .replace(/\{moment\}/g, ctx.moment || 'the performance');
 }
 
 // ── the review page ───────────────────────────────────────────────────────────
@@ -221,6 +234,11 @@ export function reviewsFor(s, ctx) {
     if (ctx.comeback) specials.push('comeback');
     if (ctx.sequel) specials.push('sequel');
     if (ctx.lateShelf) specials.push('late');
+    // The moment beats everything else on the list: it is the concrete thing in the film.
+    if (ctx.moment && chance(62)) {
+      bits[1] = fill(draw(s, 'mom:' + (stars >= 3 ? 'g' : 'b'), MOMENT_LINE[stars >= 3 ? 'good' : 'bad']), { ...full, moment: ctx.moment });
+      return { critic: c.name, outlet: c.outlet, stars, text: bits.map((b) => fill(b, full)).join(' ') };
+    }
     if (specials.length && chance(55)) { const k = pick(specials); bits[1] = draw(s, 'sp:' + k, SPECIAL[k]); }
     else if (chance(45)) bits.push(draw(s, 'close:' + (CLOSE[ctx.genre] ? ctx.genre : 'any'), CLOSE[ctx.genre] || CLOSE.any));
     return { critic: c.name, outlet: c.outlet, stars, text: bits.map((b) => fill(b, full)).join(' ') };

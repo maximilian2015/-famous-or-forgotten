@@ -1,7 +1,7 @@
 import { useEffect } from 'react';
 import { theme } from '../theme.js';
 import { FONT, FONT_DISPLAY } from '../chrome.js';
-import { play } from '../sfx.js';
+import { play, playGenre } from '../sfx.js';
 import { Avatar } from './Avatar.jsx';
 
 // Some things should stop the game rather than scroll past in a list. Eviction, an
@@ -300,6 +300,9 @@ export function BigMoment({ moment, look, onClose }) {
     play(cue);
     // A premiere is a carpet: the shutters keep going after the first one.
     if (moment.id === 'premiere' && !moment.tv && !moment.festival) { play('camera', 0.42); play('camera', 0.78); play('applause', 0.5); }
+    // And the picture sounds like the picture it is — strings for a drama, a stab for a
+    // horror, the big low fanfare for a tentpole. Maxi: "different sounds by genre."
+    if (moment.id === 'premiere' || moment.id === 'verdict') playGenre(moment.genre, moment.scale, moment.id === 'premiere' ? 0.95 : 0.5);
     if (moment.id === 'premiere' && moment.festival && moment.result === 'prize') { play('applause', 0.6); play('camera', 1.0); }
   }, [moment.id]);
   const accent = good ? theme.gold : theme.bad;
