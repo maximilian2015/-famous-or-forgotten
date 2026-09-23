@@ -22,7 +22,7 @@ import { FAVOURS, FAVOUR_ORDER, canUse, costOf, asksLeft, ASKS_A_YEAR, canSmooth
 import { sequelDue } from './systems/career/franchise.js';
 import { knownFor, isHit, isFlop } from './systems/meta/knownFor.js';
 import { townOpen, townFor, goOut } from './systems/life/town.js';
-import { LABELS, activeLabels, isStrong } from './systems/meta/typecast.js';
+import { LABELS, labelInfo, activeLabels, isStrong } from './systems/meta/typecast.js';
 import { liveRisks } from './systems/meta/risk.js';
 import { activeStories } from './systems/meta/stories.js';
 import { ambitionProgress } from './systems/meta/ambition.js';
@@ -143,7 +143,7 @@ export default function App() {
             {/* The film next to your name — the latest hit, and it changes when there is a new one. */}
             {(() => { const k = inCareer(g) ? knownFor(g) : null; return k ? <div style={{ fontSize: 10, color: k.hit ? theme.gold : theme.muted, marginTop: 2, fontWeight: 700 }}>{k.hit ? '★ ' : ''}Known for "{k.title}" · {k.why}</div> : null; })()}
             {/* The label the business has for you — two at most, the strong ones in gold. Tap the figure for the rest. */}
-            {activeLabels(g).length > 0 && <div style={{ fontSize: 10, marginTop: 2, fontWeight: 700, color: theme.muted }}>{activeLabels(g).slice(0, 2).map((id, i) => <span key={id} style={{ color: isStrong(g, id) ? theme.gold : theme.muted }}>{i ? ' · ' : ''}{LABELS[id].label}</span>)}</div>}
+            {activeLabels(g).length > 0 && <div style={{ fontSize: 10, marginTop: 2, fontWeight: 700, color: theme.muted }}>{activeLabels(g).slice(0, 2).map((id, i) => <span key={id} style={{ color: isStrong(g, id) ? theme.gold : theme.muted }}>{i ? ' · ' : ''}{labelInfo(id).label}</span>)}</div>}
           </div>
         </div>
         <div style={{ textAlign: 'right' }}>

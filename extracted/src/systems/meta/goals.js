@@ -68,6 +68,14 @@ export function goals(s) {
         : nextTier.id === 'icon' && !iconKey(s) ? 'Fame alone will not do it — a world hit, or an Asker on the shelf.'
         : 'Work that opens. The bigger the picture and the better it is received, the faster.' });
   }
+  // ── the tentpoles. Above the climb, because being shut out of the biggest pictures
+  // matters more than the next rung of standing — and it was always fourth of three,
+  // which meant it was never shown at all.
+  const acc = computeAccess(s);
+  if (!acc.aaa && fame >= 25) {
+    out.push({ id: 'aaa', label: 'The tentpoles', now: 'closed',
+      next: 'Two ways in: land a hit rated 85, or get genuinely close to somebody powerful — an agent’s desk will not do it.' });
+  }
   // ── standing, when it is the thing in the way ────────────────────────────────
   const rt = respectTier(resp);
   const nextR = RESPECT_TIERS[RESPECT_TIERS.indexOf(rt) + 1];
@@ -77,12 +85,6 @@ export function goals(s) {
       next: resp < 0 ? 'Finish what you start and end a set warm. Standing below zero is the room hearing about you first.'
         : nextR.min >= 40 ? 'Good reviews, not big openings — and a second set at once needs 25, a third 50.'
         : 'Turn up prepared, finish the shoot, and let the director have a good word for the next one.' });
-  }
-  // ── the tentpoles ────────────────────────────────────────────────────────────
-  const acc = computeAccess(s);
-  if (!acc.aaa && fame >= 25) {
-    out.push({ id: 'aaa', label: 'The tentpoles', now: 'closed',
-      next: 'Two ways in: land a hit rated 85, or get genuinely close to somebody powerful — an agent’s desk will not do it.' });
   }
   const urgent = out.filter((g) => g.urgent), rest = out.filter((g) => !g.urgent);
   return [...urgent, ...rest].slice(0, 3);

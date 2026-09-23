@@ -18,6 +18,32 @@ export const LABELS = {
   scandal: { label: 'Scandal celebrity', blurb: 'Known for the stories more than the work. The tabloids love you; the serious rooms do not return the call.' },
   child: { label: 'Former child star', blurb: 'Famous before you could drive. The business is waiting to see if there is an adult in there.' },
 };
+// And the genre. Maxi: "when does an actor get typecast if he only does comedies, or only
+// thrillers?" The labels above are about the KIND of part; this is about the kind of
+// picture, and it is the one everybody actually means by typecasting — the comedy actor
+// nobody will cast in a thriller, the horror name who cannot get read for a drama.
+//
+// It uses the same scores, the same thresholds and the same yearly fade as the rest, under
+// a "g:" key, so a career spread across eight genres never earns one (a quarter of a point
+// a year against half a point of fade) and a career of nothing but comedies earns it in two.
+export const GENRE_LABEL = {
+  Drama: ['A dramatic actor', 'The serious pictures, the quiet ones. Comedy and the big loud films do not think of you.'],
+  Comedy: ['A comic actor', 'Funny is the first thing anybody says about you. Nobody is offering you the murder.'],
+  Horror: ['A horror name', 'The genre has you, and the genre is loyal. The rest of the business thinks of you as a horror actor.'],
+  Thriller: ['A thriller lead', 'Tense, capable, usually armed. It pays, and it is a box.'],
+  'Sci-Fi': ['A science-fiction face', 'Worlds, prosthetics, green screens. There are worse boxes and they are all smaller.'],
+  Romance: ['A romantic actor', 'Two people and a problem. The dark pictures do not call.'],
+  Crime: ['A crime actor', 'Somebody in a bad room making a worse decision. You are very good at it, which is the problem.'],
+  Musical: ['A musical performer', 'You can sing, and the business has never forgotten it.'],
+};
+export function genreKey(g) { return 'g:' + g; }
+export function genreOf(id) { return String(id || '').startsWith('g:') ? id.slice(2) : null; }
+// What a label is called and what it costs you — the static ones, and the genre one.
+export function labelInfo(id) {
+  const g = genreOf(id);
+  if (g) { const row = GENRE_LABEL[g] || [`${g} actor`, 'The business has decided what kind of picture you are for.']; return { label: row[0], blurb: row[1], genre: g }; }
+  return LABELS[id] || { label: id, blurb: '' };
+}
 export const ACTIVE_AT = 3, STRONG_AT = 5;
 export function typecastOf(s) {
   if (!s.typecast) s.typecast = { scores: {}, active: [], primary: null };
@@ -37,12 +63,13 @@ function bump(s, id, by) {
 function relabel(s) {
   const t = typecastOf(s);
   const was = new Set(t.active || []);
-  const now = Object.keys(LABELS).filter((id) => (t.scores[id] || 0) >= ACTIVE_AT).sort((a, b) => (t.scores[b] || 0) - (t.scores[a] || 0));
+  // Every score, not only the named labels — the genre ones live in the same table.
+  const now = Object.keys(t.scores).filter((id) => (t.scores[id] || 0) >= ACTIVE_AT).sort((a, b) => (t.scores[b] || 0) - (t.scores[a] || 0));
   t.active = now.slice(0, 3);
   t.primary = t.active[0] || null;
-  for (const id of t.active) if (!was.has(id)) addTimeline(s, `The business has a word for you now: ${LABELS[id].label.toLowerCase()}. ${LABELS[id].blurb}`);
-  for (const id of was) if (!t.active.includes(id)) addTimeline(s, `Nobody calls you ${LABELS[id].label.toLowerCase()} any more.`);
-  for (const id of t.active) if ((t.scores[id] || 0) >= STRONG_AT && !(t.strong || []).includes(id)) addTimeline(s, `${LABELS[id].label}: it is what you are to them now. The parts that fit it come easier; the ones that do not, harder.`);
+  for (const id of t.active) if (!was.has(id)) addTimeline(s, `The business has a word for you now: ${labelInfo(id).label.toLowerCase()}. ${labelInfo(id).blurb}`);
+  for (const id of was) if (!t.active.includes(id)) addTimeline(s, `Nobody calls you ${labelInfo(id).label.toLowerCase()} any more.`);
+  for (const id of t.active) if ((t.scores[id] || 0) >= STRONG_AT && !(t.strong || []).includes(id)) addTimeline(s, `${labelInfo(id).label}: it is what you are to them now. The parts that fit it come easier; the ones that do not, harder.`);
   t.strong = t.active.filter((id) => (t.scores[id] || 0) >= STRONG_AT);
 }
 
@@ -52,6 +79,8 @@ export function typecastAfterCredit(s, c) {
   const lead = c.tier !== 'supporting';
   const r = c.rating || 0;
   const genre = c.genre || '';
+  // The genre of the picture, every time. A career in one genre becomes a genre actor.
+  if (genre && GENRE_LABEL[genre]) bump(s, genreKey(genre), lead ? 1 : 0.5);
   if (c.tv) bump(s, 'tv', c.scale === 'episode' ? 0.5 : 1);
   if (lead && (genre === 'Romance' || (genre === 'Drama' && (s.looks || 0) >= 62)) && r >= 50) bump(s, 'romantic', 1);
   if (/^(Horror|Thriller|Crime)$/.test(genre) && r >= 45) bump(s, 'villain', lead ? 1 : 0.5);
@@ -96,6 +125,9 @@ export function typeFit(s, c) {
     if (id === 'commercial') v += (scale === 'blockbuster' || /Brand|Commercial|Cover|Fashion/.test(c.type || '')) ? w(id) : (scale === 'prestige' || /Prestige/.test(c.type || '')) ? -w(id) : 0;
     if (id === 'scandal') v += /Talk Show|Awards Show|Magazine|Brand/.test(c.type || '') ? w(id) * 0.6 : (scale === 'prestige' || scale === 'feature' || /Prestige/.test(c.type || '')) ? -w(id) : 0;
     if (id === 'child') v += scale === 'blockbuster' || scale === 'feature' ? -w(id) * 0.5 : 0;
+    // The genre box: your own genre reads easy, everything else reads as a stretch.
+    const mine = genreOf(id);
+    if (mine) v += genre === mine ? w(id) : genre ? -w(id) * 0.45 : 0;
   }
   return Math.max(-1.5, Math.min(1.5, v));
 }

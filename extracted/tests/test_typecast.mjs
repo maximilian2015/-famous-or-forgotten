@@ -1,4 +1,4 @@
-import { typecastAfterCredit, typecastYear, typeFit, typeFactor, activeLabels, isStrong, typecastScandal, LABELS } from '../src/systems/meta/typecast.js';
+import { typecastAfterCredit, typecastYear, typeFit, typeFactor, activeLabels, isStrong, typecastScandal, LABELS, labelInfo, GENRE_LABEL } from '../src/systems/meta/typecast.js';
 import { refreshCastingPool, castingChance } from '../src/systems/career/castings.js';
 
 let fails = 0;
@@ -25,7 +25,9 @@ const st = (over) => ({ version: 'x', name: 'Mira Vale', ageY: 30, stage: 'caree
   const s = st();
   for (let i = 0; i < 3; i++) typecastAfterCredit(s, { title: 'S', genre: 'Drama', rating: 60, tier: 'lead', scale: 'recurring', tv: true, episodes: 20, season: i + 1 });
   ok('three seasons make a television actor', activeLabels(s).includes('tv'));
-  ok('and the studios think of you as television', typeFit(s, { genre: 'Drama', scale: 'feature', type: 'Feature Film' }) < 0);
+  // Three seasons of a drama also make you a dramatic actor, so the studio's DRAMA is a
+  // wash — it is the picture that is not your genre where television is the whole story.
+  ok('and the studios think of you as television', typeFit(s, { genre: 'Comedy', scale: 'feature', type: 'Feature Film' }) < 0, String(typeFit(s, { genre: 'Comedy', scale: 'feature', type: 'Feature Film' })));
 }
 // ── it fades ───────────────────────────────────────────────────────────────────
 {
@@ -45,6 +47,24 @@ const st = (over) => ({ version: 'x', name: 'Mira Vale', ageY: 30, stage: 'caree
   const a = share(s), b = share(st({ respect: 45 }));
   ok('the serious rooms send less', a < b, `${(100 * a).toFixed(1)}% vs ${(100 * b).toFixed(1)}%`);
   ok('a feature reads against type for the scandal celebrity', typeFit(s, { genre: 'Drama', scale: 'feature', type: 'Feature Film' }) <= -0.5);
+}
+// ── the genre you are (Maxi: only comedies, or only thrillers) ──────────────────
+{
+  const s = st();
+  for (let i = 0; i < 2; i++) typecastAfterCredit(s, { title: 'C' + i, genre: 'Comedy', rating: 65, tier: 'lead', scale: 'feature' });
+  ok('two comedies are not a type yet', !activeLabels(s).some((x) => /^g:/.test(x)));
+  typecastAfterCredit(s, { title: 'C3', genre: 'Comedy', rating: 65, tier: 'lead', scale: 'feature' });
+  ok('three and you are a comic actor', activeLabels(s).includes('g:Comedy') && labelInfo('g:Comedy').label === 'A comic actor');
+  ok('and the timeline says it in words', s.timeline.some((x) => /a comic actor/.test(x.text)));
+  ok('a comedy reads easy', typeFit(s, { genre: 'Comedy', scale: 'feature', type: 'Feature Film' }) > 0);
+  ok('and a thriller reads as a stretch', typeFit(s, { genre: 'Thriller', scale: 'feature', type: 'Feature Film' }) < 0);
+  ok('the odds move with it', castingChance(s, { genre: 'Comedy', scale: 'feature', type: 'Feature Film', role: 'Lead', room: { want: 'craft', readers: 2, field: 50 } }) > castingChance(s, { genre: 'Thriller', scale: 'feature', type: 'Feature Film', role: 'Lead', room: { want: 'craft', readers: 2, field: 50 } }));
+  for (let y = 0; y < 5; y++) typecastYear(s);
+  ok('and five quiet years take it off you', !activeLabels(s).includes('g:Comedy'));
+  // a career spread across genres never earns one
+  const w = st(); const gs = ['Drama','Comedy','Horror','Thriller','Sci-Fi','Romance','Crime','Musical'];
+  for (let i = 0; i < 24; i++) { typecastAfterCredit(w, { title: 'X' + i, genre: gs[i % 8], rating: 65, tier: 'lead', scale: 'feature' }); if (i % 2 === 1) typecastYear(w); }
+  ok('a career across eight genres is not typecast by genre', !activeLabels(w).some((x) => /^g:/.test(x)), activeLabels(w).join(','));
 }
 // ── the child star ───────────────────────────────────────────────────────────────
 {
