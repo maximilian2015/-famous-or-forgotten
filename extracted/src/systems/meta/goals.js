@@ -36,8 +36,9 @@ export function goals(s) {
     out.push({ id: 'comeback', urgent: true, label: 'A comeback', now: `you were ${fameTier(s.peakFame).label}`,
       next: 'One film rated 70 and the trades use the word. The board is thinner than a newcomer’s — take what comes.' });
   }
-  const hot = liveRisks(s).filter((r) => r.level === 2)[0];
-  if (hot) out.push({ id: 'risk:' + hot.id, urgent: true, label: hot.label, now: 'about to bite', next: hot.fix });
+  // A risk about to bite is already on the screen, in its own card with the same words —
+  // Maxi had "No month off" twice, one above the other. Worth watching owns the risks; this
+  // board owns what you are climbing toward. It only takes a risk when there is nothing else.
   if (inCareer(s) && !hasAgent(s) && fame >= 8) {
     out.push({ id: 'agent', label: 'An agent', now: 'none',
       next: 'They come to you: keep working, keep the standing up, and one of them asks. Everything above Known Face goes through a desk.' });
@@ -87,5 +88,11 @@ export function goals(s) {
         : 'Turn up prepared, finish the shoot, and let the director have a good word for the next one.' });
   }
   const urgent = out.filter((g) => g.urgent), rest = out.filter((g) => !g.urgent);
-  return [...urgent, ...rest].slice(0, 3);
+  const board = [...urgent, ...rest];
+  // Nothing to climb toward at all — then the thing biting is the thing you are working on.
+  if (!board.length) {
+    const hot = liveRisks(s).filter((r) => r.level === 2)[0];
+    if (hot) board.push({ id: 'risk:' + hot.id, urgent: true, label: hot.label, now: 'about to bite', next: hot.fix });
+  }
+  return board.slice(0, 3);
 }

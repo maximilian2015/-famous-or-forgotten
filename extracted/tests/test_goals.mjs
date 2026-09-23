@@ -26,8 +26,12 @@ ok('a child is not working toward anything yet', goals(st({ stage: 'child', ageY
   ok('forgotten: the comeback', ids(s).includes('comeback') && /rated 70/.test(goals(s).find((x) => x.id === 'comeback').next));
 }
 {
+  // Worth watching owns the risks now, in its own card with the same words — the board
+  // only takes one when there is nothing at all to climb toward.
   const s = st({ strain: 90 });
-  ok('a risk about to bite is what you are working toward', ids(s)[0] === 'risk:norest' && /month with nothing/.test(goals(s)[0].next));
+  ok('a risk does not appear twice on one screen', !ids(s).includes('risk:norest'), ids(s).join(','));
+  const nothing = st({ strain: 90, fame: 100, peakFame: 100, respect: 100, ambition: undefined, filmography: [{ title: 'H', rating: 95, verdict: 'smash', year: 2049, scale: 'blockbuster', tier: 'tentpole', role: 'Lead' }], awards: { wins: [{ title: 'H' }], nominations: [{ title: 'H' }] }, worldHits: 1, agent: { name: 'A', tier: 'elite', level: 1 } });
+  ok('unless there is nothing else, and then it is the whole board', ids(nothing).includes('risk:norest'), ids(nothing).join(','));
 }
 {
   const s = st({ ambition: 'serious', filmography: [{ title: 'A', rating: 82, year: 2049 }] });

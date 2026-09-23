@@ -1753,7 +1753,11 @@ function LegacyScreen({ g }) {
 function SceneModal({ g }) {
   const sc = g.scene;
   const [state, setState] = useState('brief');
-  const done = (q) => { play(q >= 88 ? 'printed' : q < 25 ? 'blown' : 'tap'); dispatch(resolveScene, q); };
+  const [score, setScore] = useState(null);
+  // The day ends on a card. It used to drop you straight back to the main screen with a
+  // line in the feed, which read as nothing having happened at all.
+  const done = (q) => { play(q >= 88 ? 'printed' : q < 25 ? 'blown' : 'tap'); setScore(Math.round(q)); setState('done'); };
+  const finish = () => dispatch(resolveScene, score);
   const d = sc.difficulty || 1;
   const lines = {
     Horror: ['It was in the house.', 'You said that already.', 'No — listen.', 'It is upstairs.', 'Do not turn round.', 'I said do not.', 'It knows my name.', 'It always did.'],
@@ -1777,7 +1781,22 @@ function SceneModal({ g }) {
     {state === 'brief'
       ? (<><div style={{ fontSize: 12.5, color: theme.muted, lineHeight: 1.5, marginBottom: 16 }}>{sc.hint}</div>
           <Button kind="pri" sfx="action" onClick={() => setState('play')}>Action</Button></>)
-      : game}
+      : state === 'play' ? game
+      : (<>
+          <div style={{ textAlign: 'center', padding: '10px 0 14px' }}>
+            <div style={{ fontFamily: FONT_DISPLAY, fontSize: 44, fontWeight: 700, color: score >= 70 ? theme.gold : score >= 45 ? theme.text : theme.bad }}>{score}</div>
+            <div style={{ fontSize: 12, color: theme.muted, letterSpacing: '.08em', textTransform: 'uppercase', fontWeight: 800 }}>out of a hundred</div>
+          </div>
+          <div style={{ fontSize: 14, lineHeight: 1.6, textAlign: 'center', marginBottom: 6 }}>
+            {score >= 88 ? `They printed the first one. ${sc.director} came over afterwards, which they do not do.`
+              : score >= 70 ? 'Three takes and it was there. A good day, and everybody knew it.'
+              : score >= 45 ? 'You got it in the end. Nobody will remember the day either way.'
+              : score >= 25 ? 'It never quite landed. They have enough to cut around it.'
+              : 'It did not work. They moved on, and the schedule moved with them.'}
+          </div>
+          {score >= 88 && <div style={{ fontSize: 12, color: theme.gold, textAlign: 'center', marginBottom: 14, lineHeight: 1.5 }}>★ That take is in the film now — the critics will have something to name.</div>}
+          <Button kind="pri" onClick={finish}>{score >= 70 ? 'That is the day' : 'Move on'}</Button>
+        </>)}
   </div>);
 }
 function ArcModal({ g }) {
@@ -2653,6 +2672,10 @@ function ProductionCard({ g, p }) {
         <div style={{ fontSize: 11, fontWeight: 900, letterSpacing: '.08em', textTransform: 'uppercase', color: theme.gold }}>The days</div>
         <div style={{ fontSize: 10.5, color: theme.muted }}>{sc.done} of {sc.cap} shot</div>
       </div>
+      {sc.days.map((d, k) => (<div key={k} style={{ display: 'flex', justifyContent: 'space-between', gap: 10, fontSize: 11.5, padding: '3px 0' }}>
+        <span style={{ fontWeight: 700 }}>{d.label}</span>
+        <span style={{ color: d.q >= 70 ? theme.gold : d.q >= 45 ? theme.muted : theme.bad }}>{d.word} · {d.q}</span>
+      </div>))}
       <div style={{ fontSize: 11.5, color: theme.muted, lineHeight: 1.45, marginTop: 3 }}>{sc.line}</div>
       {!!sc.moments.length && <div style={{ fontSize: 11.5, color: theme.text, lineHeight: 1.45, marginTop: 4 }}>★ In the film now: {sc.moments.join('; ')}.</div>}
     </div>); })()}

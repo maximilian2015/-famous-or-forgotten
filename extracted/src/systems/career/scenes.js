@@ -111,8 +111,12 @@ export function maybeScene(s) {
     const left = Math.max(1, p.monthsLeft || 1);
     // Spread them: the fewer months left, the likelier the next one is now.
     if (!chance(Math.min(70, 22 + (cap - done) * 14 + (left <= 2 ? 25 : 0)))) continue;
-    const pool = poolFor(s, p).filter((id) => !(p._scenes || []).includes(id));
+    let pool = poolFor(s, p).filter((id) => !(p._scenes || []).includes(id));
     if (!pool.length) continue;
+    if (!(p._scenes || []).length) {
+      const fresh = pool.filter((id) => SCENES[id].game !== 'timing' && SCENES[id].game !== 'grid');
+      if (fresh.length) pool = fresh;
+    }
     const id = pick(pool);
     p._sceneMonth = stamp(s);
     (p._scenes = p._scenes || []).push(id);
@@ -135,6 +139,8 @@ export function sceneState(s, p) {
   return {
     done, cap, left: Math.max(0, cap - done),
     moments: p.moments || [],
+    days: (p._sceneLog || []).map((x) => ({ label: x.label, q: x.q,
+      word: x.q >= 88 ? 'printed the first one' : x.q >= 70 ? 'got it in three' : x.q >= 45 ? 'got there in the end' : x.q >= 25 ? 'never quite landed' : 'they moved on without it' })),
     line: done >= cap ? 'The big days on this one are shot.'
       : justHad ? 'That was today. The next one is not this month.'
       : done === 0 ? `${cap} day${cap === 1 ? '' : 's'} on this shoot will be a scene, not a month. They come when they come.`
@@ -148,6 +154,7 @@ export function resolveScene(s, quality) {
   const sc = SCENES[sc0.id] || SCENES.mark;
   const q = clamp(quality);
   if (!p) return s;
+  (p._sceneLog = p._sceneLog || []).push({ id: sc0.id, label: sc.label, q: Math.round(q) });
   const d = lead(p);
   // The picture. A good day is worth more than a month of turning up; a bad one costs.
   const swing = q >= 88 ? rint(12, 18) : q >= 70 ? rint(7, 11) : q >= 45 ? rint(2, 5) : q >= 25 ? -rint(2, 5) : -rint(6, 11);
