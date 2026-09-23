@@ -26,6 +26,7 @@ import { LABELS, activeLabels, isStrong } from './systems/meta/typecast.js';
 import { liveRisks } from './systems/meta/risk.js';
 import { activeStories } from './systems/meta/stories.js';
 import { ambitionProgress } from './systems/meta/ambition.js';
+import { rename as renameProject, canRename, whyNot, TITLE_MAX } from './systems/career/naming.js';
 import { hype, hypeSource, hypeLine, SOURCES, hypeReach, hypeDemand, hypePrice, showsThisYear } from './systems/meta/hype.js';
 import { addPrestigeListing } from './systems/career/castings.js';
 import { TimingBar } from './ui/components/TimingBar.jsx';
@@ -2269,7 +2270,7 @@ function CreditsList({ g, credits, label }) {
           return (<div key={r.id} style={{ display: 'flex', gap: 11, padding: '10px 2px', borderBottom: `1px solid ${theme.line}`, opacity: .85 }}>
             <Poster title={r.title} type={r.type} genre={r.genre} director={r.director} />
             <div style={{ flex: 1, minWidth: 0 }}>
-              <div style={{ fontSize: 14, fontWeight: 800 }}>{r.title}</div>
+              <TitleLine g={g} kind="release" id={r.id} title={r.title} size={14} />
               <div style={{ fontSize: 11.5, color: theme.accent, margin: '4px 0 3px' }}>
                 Opens in {left <= 1 ? 'weeks' : `${count(left, 'month')}`}
               </div>
@@ -2489,6 +2490,34 @@ function EventsScreen({ g }) {
     })}
   </div>);
 }
+// The working title. Maxi: "let the player write their own names — much more interesting."
+// Anything that has not opened yet can be renamed; the night it opens, the name is the name.
+// See systems/career/naming.js.
+function TitleLine({ g, kind, id, title, size = 15 }) {
+  const [editing, setEditing] = useState(false);
+  const [draft, setDraft] = useState('');
+  const fit = canRename(g, kind, id);
+  const bad = editing ? whyNot(g, kind, id, draft) : null;
+  if (!editing) return (<div style={{ display: 'flex', alignItems: 'baseline', gap: 7 }}>
+    <div style={{ fontSize: size, fontWeight: 800, minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{title}</div>
+    {fit.ok && <button onClick={() => { setDraft(String(title).replace(/(\s*·\s*season\s+\d+)+\s*$/i, '')); setEditing(true); }}
+      title="Name it yourself — a title is provisional until it opens"
+      style={{ flex: 'none', background: 'none', border: 'none', color: theme.muted, fontSize: 11.5, fontWeight: 700, cursor: 'pointer', padding: 0 }}>✎ name it</button>}
+  </div>);
+  return (<div>
+    <div style={{ display: 'flex', gap: 6 }}>
+      <input autoFocus value={draft} maxLength={TITLE_MAX} onChange={(e) => setDraft(e.target.value)}
+        onKeyDown={(e) => { if (e.key === 'Enter' && !bad) { dispatch(renameProject, kind, id, draft); setEditing(false); } if (e.key === 'Escape') setEditing(false); }}
+        style={{ flex: 1, minWidth: 0, background: theme.bg, border: `1px solid ${bad ? theme.bad : theme.gold}`, borderRadius: 8, padding: '7px 9px', color: theme.text, fontSize: 14, fontWeight: 800, fontFamily: 'inherit' }} />
+      <button disabled={!!bad} onClick={() => { dispatch(renameProject, kind, id, draft); setEditing(false); }}
+        style={{ flex: 'none', border: 'none', borderRadius: 8, padding: '7px 11px', background: bad ? 'rgba(120,110,150,.2)' : theme.gold, color: bad ? '#6b6390' : '#241a05', fontSize: 12, fontWeight: 900, cursor: bad ? 'default' : 'pointer' }}>Set</button>
+      <button onClick={() => setEditing(false)} style={{ flex: 'none', background: 'none', border: 'none', color: theme.muted, fontSize: 12, fontWeight: 700, cursor: 'pointer' }}>✕</button>
+    </div>
+    <div style={{ fontSize: 11, color: bad ? theme.bad : theme.muted, marginTop: 4, lineHeight: 1.4 }}>
+      {bad || 'A working title, until the night it opens. Nothing is called what it was called on the first day.'}
+    </div>
+  </div>);
+}
 // The stance chips: one tap, and it holds for the rest of the shoot.
 function StanceRow({ g, p }) {
   const st = stanceOf(p);
@@ -2516,7 +2545,7 @@ function ProductionCard({ g, p }) {
   }
   return (<Card style={{ marginBottom: 14, borderColor: 'rgba(255,209,102,.35)' }}>
     <div style={{ fontSize: 11, fontWeight: 900, letterSpacing: '.08em', textTransform: 'uppercase', color: theme.gold, marginBottom: 6 }}>🎬 {p.prepLeft > 0 ? `Preparing · ${p.prepLeft} mo before the first day` : `On set · ${p.monthsLeft} mo left`}</div>
-    <div style={{ fontSize: 15, fontWeight: 800 }}>{p.title}</div>
+    <TitleLine g={g} kind="set" id={p.id} title={p.title} />
     <div style={{ fontSize: 11.5, color: theme.muted, margin: '3px 0 8px' }}>{p.role} · {p.type}</div>
     <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 11.5, color: theme.muted, marginBottom: 4 }}><span>Shoot quality</span><span>{tier.label} · {Math.round(p.meter)}</span></div>
     <div style={{ height: 7, background: 'rgba(255,255,255,.08)', borderRadius: 4, marginBottom: 10 }}><div style={{ width: p.meter + '%', height: '100%', background: theme.gold, borderRadius: 4 }} /></div>
