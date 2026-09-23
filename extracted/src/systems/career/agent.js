@@ -13,7 +13,7 @@
 // nobody keeps a client the studios will not insure. When you are off that rung, somebody
 // else asks.
 
-import { earn } from '../../engine/economy.js';
+import { earn, spent } from '../../engine/economy.js';
 import { addTimeline } from '../../engine/timeline.js';
 import { agentTakesYou, agentDropped, comboOf } from '../meta/standing.js';
 import { hasHit } from './access.js';
@@ -101,6 +101,7 @@ export function paid(s, amount, note) {
   const tax = taxOn(afterAgent);
   const net = afterAgent - tax;
   s.taxPaid = (s.taxPaid || 0) + tax;
+  spent(s, 'agent', amount - afterAgent); spent(s, 'tax', tax);   // the statement (engine/economy.js)
   const parts = [cut ? `${s.agent.name}'s ${Math.round(cut * 100)}%` : null, tax ? `${Math.round(tax / 1000).toLocaleString()}k tax` : null].filter(Boolean);
   earn(s, net, parts.length ? `${note} (after ${parts.join(' and ')})` : note);
   return net;

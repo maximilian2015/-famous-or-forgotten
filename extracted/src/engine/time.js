@@ -72,7 +72,6 @@ export function advanceMonth(state) {
     if (mortalityCheck(s)) return s;   // life is over — nothing else runs this tick
     closeYear(s, s.year - 1);   // the rest of the business publishes its year
     if (inCareer(s)) {
-      runNominations(s);   // the season judges last year's work
       // The board quietly changes shape as you age. Say so once, out loud, rather than
       // letting the player wonder why the offers dried up.
       const note = agingNote(s);
@@ -105,7 +104,8 @@ export function advanceMonth(state) {
   if ((s.castingPool || []).length) refreshCastingPool(s);
   frozenTick(s);     // and anything that stopped might find its money again
   laterOffersTick(s); // and a sequel announced years ago finally has a script
-  ceremonyTick(s);   // and the Askers land a couple of months after the nominations
+  if (inCareer(s)) runNominations(s);   // the lists come out in September, and judge the year behind them
+  ceremonyTick(s);   // and the night itself is the following March
   eventsTick(s);
   maybeGenerateEvent(s);
   contractsTick(s);   // the papers you sent back come back with an answer

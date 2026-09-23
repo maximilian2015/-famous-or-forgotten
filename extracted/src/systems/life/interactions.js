@@ -9,7 +9,7 @@ import { rint, chance, pick } from '../../engine/rng.js';
 import { uid } from '../../engine/id.js';
 import { addTimeline } from '../../engine/timeline.js';
 import { onCooldown, markUsed } from '../../engine/cooldown.js';
-import { homeBond, canRaiseChild, HOUSING } from '../../engine/economy.js';
+import { homeBond, canRaiseChild, HOUSING, spent } from '../../engine/economy.js';
 import { askFamilyForMoney } from './family.js';
 import { proposeMarriage, tryForBaby, WANTS } from './dating.js';
 import { bondGain, contactAge } from './relationships.js';
@@ -120,7 +120,7 @@ export const INTERACTIONS = [
     },
     when: () => true,
     run: ({ s, p, cost }) => {
-      s.cash -= cost;
+      s.cash -= cost; spent(s, 'people', cost);
       // Generosity is worth something and it is not worth everything: the extra a fortune
       // buys you tops out fast, and applyBond's resistance takes most of the rest.
       const lavish = Math.min(6, Math.round(Math.log10(Math.max(1, cost / 300)) * 4));

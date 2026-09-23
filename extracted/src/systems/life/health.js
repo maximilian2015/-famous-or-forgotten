@@ -3,7 +3,7 @@ import { inCareer } from '../../engine/stage.js';
 import { rint, chance, pick } from '../../engine/rng.js';
 import { addTimeline } from '../../engine/timeline.js';
 import { die } from './mortality.js';
-import { homeIllness } from '../../engine/economy.js';
+import { homeIllness, spent } from '../../engine/economy.js';
 import { staffIllness } from './money.js';
 const clamp = (v) => Math.max(0, Math.min(100, v));
 
@@ -177,7 +177,7 @@ export function seeDoctor(s) {
   if (!s.illness) { s.lastEvent = 'The doctor finds nothing to treat.'; return s; }
   const cost = treatmentCost(s, s.illness);
   if ((s.cash || 0) < cost) { s.lastEvent = `Treatment costs €${cost.toLocaleString()} and you don't have it. It keeps eating at you.`; return s; }
-  s.cash -= cost;
+  s.cash -= cost; spent(s, 'trouble', cost);
   const was = s.illness.name;
   s.health = clamp((s.health || 0) + (s.illness.serious ? rint(10, 16) : rint(5, 9)));
   s.illness = null;
@@ -244,7 +244,7 @@ export function buyPills(s, key, qty = 1) {
   const p = PILLS[key]; if (!p) return s;
   const cost = priceOf(s, key) * qty;
   if ((s.cash || 0) < cost) { s.lastEvent = `That costs €${cost.toLocaleString()} and you're short.`; return s; }
-  s.cash -= cost;
+  s.cash -= cost; spent(s, 'trouble', cost);
   (s.meds = s.meds || {})[key] = (s.meds[key] || 0) + qty;
   s.lastEvent = `Bought ${p.label.toLowerCase()} — €${cost.toLocaleString()}.`;
   return s;

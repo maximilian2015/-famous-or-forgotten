@@ -4,7 +4,7 @@ import { Avatar } from './Avatar.jsx';
 import { lookOf, companionOf } from '../../systems/life/appearance.js';
 import { fameTier, isForgotten } from '../../systems/meta/status.js';
 import { yourRank } from '../../systems/world/world.js';
-import { HOUSING } from '../../engine/economy.js';
+import { HOUSING, ledger } from '../../engine/economy.js';
 import { THINGS, HOME_PRICE, owns } from '../../systems/life/money.js';
 import { LABELS, labelInfo, activeLabels, scoreOf, STRONG_AT, ACTIVE_AT } from '../../systems/meta/typecast.js';
 import { apparentAge, height, weightKg } from '../../systems/life/face.js';
@@ -77,6 +77,17 @@ export function Passport({ g, onClose, onRoom }) {
       {row('In the bank', money(g.cash || 0), (g.cash || 0) < 0 ? theme.bad : theme.text)}
       {row('Worth, all in', money(worth))}
       {row('Earned in your life', money(earned))}
+      {/* Maxi: "I am paid twenty or thirty million a picture and I still have fifty-five —
+          check where it goes." The statement. See engine/economy.js. */}
+      {(() => { const L = ledger(g); if (!L.rows.length) return null; return (<>
+        {row('Paid before the cut', money(L.gross), theme.muted)}
+        <div style={{ fontSize: 10.5, fontWeight: 900, letterSpacing: '.08em', textTransform: 'uppercase', color: theme.muted, margin: '8px 0 2px' }}>Where it went</div>
+        {L.rows.map((r) => (<div key={r.id} style={{ display: 'flex', justifyContent: 'space-between', gap: 12, padding: '4px 0', fontSize: 12 }}>
+          <span style={{ color: theme.muted }}>{r.label}</span>
+          <span style={{ fontWeight: 700, color: theme.bad }}>−{money(r.amount)}</span>
+        </div>))}
+        {L.unaccounted > 1000 && <div style={{ display: 'flex', justifyContent: 'space-between', gap: 12, padding: '4px 0', fontSize: 12 }}><span style={{ color: theme.muted }}>Lived on, day to day</span><span style={{ fontWeight: 700, color: theme.bad }}>−{money(L.unaccounted)}</span></div>}
+      </>); })()}
       {row('Lives', home)}
       {head('The work')}
       {row('Credits', `${(g.filmography || []).length}${hits ? ` · ${hits} hit${hits === 1 ? '' : 's'}` : ''}`)}

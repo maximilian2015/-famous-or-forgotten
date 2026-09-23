@@ -21,7 +21,7 @@ import { setRespect, fameTier } from '../meta/status.js';
 
 import { rint, chance } from '../../engine/rng.js';
 import { addTimeline } from '../../engine/timeline.js';
-import { HOUSING, HOUSING_ORDER } from '../../engine/economy.js';
+import { HOUSING, HOUSING_ORDER, spent } from '../../engine/economy.js';
 import { applyBond } from './bonds.js';
 import { inCareer } from '../../engine/stage.js';
 
@@ -45,7 +45,7 @@ export function buyHome(s) {
   const fit = canBuyHome(s);
   if (!fit.ok) { s.lastEvent = fit.why; return s; }
   const h = HOUSING[s.housing];
-  s.cash -= fit.price;
+  s.cash -= fit.price; spent(s, 'bought', fit.price);
   // Selling the old one back gets you most of it — you are moving, not being repossessed.
   if (s.owns && HOME_PRICE[s.owns]) { const back = Math.round(HOME_PRICE[s.owns] * 0.92); s.cash += back; }
   s.owns = s.housing;
@@ -163,7 +163,7 @@ export function buyThing(s, id) {
   const fit = canBuyThing(s, id);
   if (!fit.ok) { s.lastEvent = fit.why; return s; }
   const t = THINGS[id];
-  s.cash -= t.price;
+  s.cash -= t.price; spent(s, 'bought', t.price);
   (s.things = s.things || {})[id] = { paid: t.price, since: (s.year || 0) };
   if (t.looks) s.looks = clamp((s.looks || 0) + t.looks);
   if (t.respect) setRespect(s, (s.respect || 0) + t.respect);
@@ -223,7 +223,7 @@ export function support(s, id) {
   const p = (s.family || []).find((x) => x.id === id);
   const fit = canSupport(s, p);
   if (!fit.ok) { s.lastEvent = fit.why || 'Not now.'; return s; }
-  s.cash -= fit.cost;
+  s.cash -= fit.cost; spent(s, 'people', fit.cost);
   p.supported = true;
   // It genuinely changes their life, and it genuinely does not fix everything.
   if (p.job === 'unemployed') p.job = 'retired';
@@ -250,7 +250,7 @@ export function backChild(s, id) {
   const k = (s.family || []).find((x) => x.id === id);
   const fit = canBack(s, k);
   if (!fit.ok) { s.lastEvent = fit.why || 'Not now.'; return s; }
-  s.cash -= fit.cost;
+  s.cash -= fit.cost; spent(s, 'people', fit.cost);
   k.backed = (k.backed || 0) + 1;
   k.talent = clamp((k.talent || 0) + rint(7, 13));
   applyBond(s, k, rint(3, 7));
@@ -291,7 +291,7 @@ function surpriseBill(s) {
   if ((s.fame || 0) < 20 || (s.cash || 0) < 2000 || !chance(7)) return;
   const [who, what] = BILLS[Math.floor(Math.random() * BILLS.length)];
   const amt = Math.max(600, Math.round((s.cash || 0) * (0.02 + Math.random() * 0.05)));
-  s.cash -= amt;
+  s.cash -= amt; spent(s, 'trouble', amt);
   addTimeline(s, `€${amt.toLocaleString()} to ${who} — ${what}.`, true);
 }
 export function moneyTick(s) {

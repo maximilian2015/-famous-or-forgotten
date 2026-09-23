@@ -350,6 +350,15 @@ function open(s, rel) {
   // airs; a prestige season drops at midnight. Maxi: "for a soap there is no premiere — a
   // TV set, the sound of the show, a new soap starting season one on television."
   credit.tv = !film;
+  // Opening night is the month everybody is talking about it. What it turns out to be worth
+  // is settled later, at the close (closeRun); this is the noise, not the verdict.
+  {
+    const loud = { blockbuster: 62, feature: 44, prestige: 46, recurring: 34, indie: 26, festival: 22, episode: 10, small: 12 }[rel.scale] || 22;
+    const carried = rel.tier === 'supporting' ? 0.55 : 1;
+    const good = (rel.rating || 0) >= 78 ? 1.2 : (rel.rating || 0) >= 60 ? 1 : 0.7;
+    const burst = Math.round(loud * carried * good);
+    if (burst >= 12) addHype(s, burst, 'hit');
+  }
   const tvKind = rel.scale === 'recurring' ? 'soap' : rel.scale === 'prestige' ? 'prestige' : 'episode';
   s.lastEvent = fest
     ? (fest.result === 'prize' ? `"${rel.title}" took the prize at ${fest.name}. Your phone has not stopped.` : `"${rel.title}" was bought at ${fest.name}. A small release, but a release.`)
@@ -439,7 +448,8 @@ function closeRun(s, credit, r) {
   if (r.worldHit) addHype(s, 85, 'hit');
   else if (verdict === 'smash') addHype(s, 70, 'hit');
   else if (verdict === 'profitable' || r.rating >= 80) addHype(s, r.tier === 'supporting' ? 30 : 50, 'hit');
-  else if (!film && credit.renewal === 'renewed' && r.tier !== 'supporting') addHype(s, 40, 'hit');
+  else if (!film && (verdict === 'watched' || credit.renewal === 'renewed')) addHype(s, r.tier === 'supporting' ? 26 : (credit.renewal === 'renewed' ? 48 : 40), 'hit');
+  else if (!film && verdict === 'seen' && r.tier !== 'supporting') addHype(s, 22, 'hit');
   else if (verdict === 'bomb') flopHype(s, r.tier);
   if (verdict === 'smash') fame += 8;
   else if (verdict === 'profitable') fame += 3;

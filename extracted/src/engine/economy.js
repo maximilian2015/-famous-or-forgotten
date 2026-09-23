@@ -109,7 +109,8 @@ export function wealthTax(s) {
   return Math.round(tax);
 }
 export function applyMonthly(s) {
-  const c = monthlyCosts(s); if (c.total > 0) s.cash -= c.total;
+  const c = monthlyCosts(s);
+  if (c.total > 0) { s.cash -= c.total; spent(s, 'living', c.total - c.team); spent(s, 'team', c.team); }
   // Where you sleep is a monthly drip in both directions — a bad room takes from you.
   if (s.hasApartment) {
     const h = home(s);
@@ -186,7 +187,35 @@ export function relevanceDrift(s) {
 export function markReleased(s) { s._idleMonths = 0; }
 export function applyYearly(s) {
   const tax = wealthTax(s);
-  if (tax > 0) { s.cash -= tax; addTimeline(s, `Wealth levy: the state taxed your idle fortune €${tax.toLocaleString()} this year. Money that sits still shrinks — put it to work.`, true); }
+  if (tax > 0) { s.cash -= tax; spent(s, 'levy', tax); addTimeline(s, `Wealth levy: the state taxed your idle fortune €${tax.toLocaleString()} this year. Money that sits still shrinks — put it to work.`, true); }
+}
+// Where it went. Every euro that leaves is filed under one of these, so the passport can
+// answer the only question a rich actor actually has. Maxi: "check how much goes where."
+export const LEDGER = {
+  agent: 'Your agent’s cut',
+  tax: 'Income tax',
+  levy: 'The wealth levy',
+  living: 'Rent, food, the gym, insurance',
+  team: 'Staff and the upkeep on things',
+  bought: 'What you bought',
+  people: 'Given to people',
+  trouble: 'Lawyers, doctors, and the rest',
+};
+export const LEDGER_ORDER = ['tax', 'agent', 'living', 'team', 'bought', 'people', 'trouble', 'levy'];
+export function spent(s, cat, amount) {
+  if (!(amount > 0)) return 0;
+  (s.spentLife = s.spentLife || {})[cat] = (s.spentLife[cat] || 0) + Math.round(amount);
+  return amount;
+}
+// The statement: everything that left, biggest first, and what is still in the bank.
+export function ledger(s) {
+  const rows = LEDGER_ORDER.map((id) => ({ id, label: LEDGER[id], amount: (s.spentLife || {})[id] || 0 }))
+    .filter((r) => r.amount > 0).sort((a, b) => b.amount - a.amount);
+  const out = rows.reduce((n, r) => n + r.amount, 0);
+  const earned = s.earnedLife || 0;
+  // What you were paid before the agent and the taxman — the number an actor quotes.
+  const gross = earned + ((s.spentLife || {}).agent || 0) + ((s.spentLife || {}).tax || 0);
+  return { gross, earned, rows, out, kept: s.cash || 0, unaccounted: Math.max(0, earned - out - (s.cash || 0)) };
 }
 export function earn(s, amount, note) {
   s.cash = (s.cash || 0) + amount; s.incomeYear = (s.incomeYear || 0) + amount; s.earnedLife = (s.earnedLife || 0) + amount;

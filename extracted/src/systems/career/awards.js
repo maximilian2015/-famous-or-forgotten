@@ -163,10 +163,23 @@ export function pickWinner(nominees) {
 // life and never saw the night, because it only ever happened when he was nominated.
 export const EVERY = 1;
 export function isSeasonYear(year) { return year % EVERY === 0; }
+// Maxi: "the Askers in March like the real thing, and the nominations announced in
+// September, so you can see whether your film and you are in them." So the season is a
+// season: the lists come out in September and judge the twelve months behind them, and
+// then everybody waits until March with it hanging over them. NOMS_MONTH is September,
+// SEASON_LENGTH the six months to the night.
+export const NOMS_MONTH = 8, SEASON_LENGTH = 6;
 export function eligibleWork(s, year) {
-  const from = year - (EVERY - 1);
+  // The twelve months ending with the announcement — a film that opened last October is in
+  // this season, and one that opened last August was in the last one.
+  const now = (s.year || 0) * 12 + (s.month || 0);
+  const from = now - 12;
+  // A credit knows the month its run closed. Anything old enough not to (or a fixture in a
+  // test) falls back to the calendar year, which is the best the record can do.
+  const inWindow = (c) => (c.closedAt != null ? c.closedAt > from && c.closedAt <= now : (c.year || 0) >= (s.year || 0) - 1);
   return [...(s.filmography || []), ...(s.discography || [])]
-    .filter((c) => c.year >= from && c.year <= year && !c.minor && (c.rating || 0) >= FLOOR);
+    // A film still in cinemas is in the season — the lists and the run overlap, as they do.
+    .filter((c) => !c.minor && (c.rating || 0) >= FLOOR && inWindow(c));
 }
 
 function categoryFor(c) {
@@ -204,8 +217,9 @@ function fieldFor(s, year, category, you, taken) {
 // Called once a year. Decides what, if anything, you are up for — and what everybody
 // else is, because the night happens whether or not your name is read out.
 export function runNominations(s) {
-  if (!isSeasonYear(s.year || 0)) return null;
-  const year = (s.year || 0) - 1;         // the season judges the year just gone
+  if ((s.month || 0) !== NOMS_MONTH) return null;
+  if (s.awards && s.awards.pending && s.awards.pending.length) return null;   // one season at a time
+  const year = (s.year || 0);             // the season is named for the year the lists come out
   const work = eligibleWork(s, year);
   s.awards = s.awards || { losses: 0, wins: [], nominations: [], pending: null, history: [] };
   if (!work.length) return theirNight(s, year);
@@ -247,7 +261,7 @@ export function runNominations(s) {
     const field = fieldFor(s, year, n.category, you, taken);
     const odds = oddsFor(field);
     return { category: n.category, branch: n.branch, title: n.credit.title, creditYear: n.credit.year, year,
-      field, odds, yourOdds: odds[0], due: (s.year || 0) * 12 + (s.month || 0) + rint(2, 4) };
+      field, odds, yourOdds: odds[0], due: (s.year || 0) * 12 + (s.month || 0) + SEASON_LENGTH };
   });
   // The races you are not in still happen that night.
   const due = pending[0].due;
@@ -259,6 +273,12 @@ export function runNominations(s) {
   }
   for (const p of pending) for (const n of p.field) { if (n.them && n.id) { const a = actorById(s, n.id); if (a) a.noms = (a.noms || 0) + 1; } }
 
+  // The credit wears the nomination from the day the lists come out. Maxi wanted to SEE it.
+  for (const p of pending) {
+    if (p.theirs || !p.title) continue;
+    const c = [...(s.filmography || []), ...(s.discography || [])].find((x) => x.title === p.title);
+    if (c) c.nominated = (c.nominated || 0) + 1;
+  }
   s.awards.pending = pending;
   s.awards.nominations = (s.awards.nominations || []).concat(pending.map((p) => ({ title: p.title, category: p.category, year })));
   addHype(s, 45, 'award');   // the season: your name on the lists (meta/hype.js)
@@ -283,7 +303,7 @@ export function runNominations(s) {
 // still held; you find out who won like everybody else does.
 function theirNight(s, year) {
   const pending = [];
-  const due = (s.year || 0) * 12 + (s.month || 0) + rint(2, 4);
+  const due = (s.year || 0) * 12 + (s.month || 0) + SEASON_LENGTH;
   for (const cat of ['lead', 'supporting', 'picture']) {
     const taken = new Set(pending.map((p) => p.field.map((n) => n.work)).flat());
     const field = fieldFor(s, year, cat, null, taken);
@@ -304,6 +324,23 @@ function recordTheirWin(s, p, winner) {
 }
 
 // Runs monthly. The ceremony lands a couple of months after the nominations.
+// The season as it stands, for the main screen: what you are up for, against whom, and
+// how long until the night. Null when there is no season running.
+export function theSeason(s) {
+  const p = ((s.awards || {}).pending) || [];
+  const yours = p.filter((x) => !x.theirs && x.title);
+  if (!yours.length) return null;
+  const now = (s.year || 0) * 12 + (s.month || 0);
+  const due = yours[0].due;
+  return {
+    monthsToNight: Math.max(0, due - now),
+    rows: yours.map((x) => ({
+      category: (CATEGORIES.find((c) => c.id === x.category) || {}).label || x.category,
+      title: x.title, odds: Math.round(x.yourOdds || 0), buzz: buzzOf(x.yourOdds || 0),
+      against: (x.field || []).filter((n) => n.them).slice(0, 3).map((n) => n.name),
+    })),
+  };
+}
 export function ceremonyTick(s) {
   const a = s.awards;
   if (!a || !a.pending || !a.pending.length) return s;

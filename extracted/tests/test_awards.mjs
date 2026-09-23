@@ -9,7 +9,7 @@ let fails = 0;
 const ok = (n, c, e = '') => { if (!c) { fails++; console.log('FAIL  ' + n + (e ? ' :: ' + e : '')); } else console.log('ok    ' + n); };
 const st = (over) => ({ version: 'x', ageY: 34, stage: 'career', dream: 'actor', name: 'Iris Kane',
   cash: 500000, fame: 55, peakFame: 55, respect: 55, mental: 70, health: 85, quote: 1000000,
-  filmography: [], discography: [], timeline: [], year: 2062, month: 0, alive: true,
+  filmography: [], discography: [], timeline: [], year: 2062, month: 8, alive: true,
   awards: { losses: 0, wins: [], nominations: [], pending: null, history: [] }, ...over });
 const work = (over) => ({ title: 'The Quiet Hours', role: 'Lead', type: 'Feature Film', genre: 'Drama',
   scale: 'feature', tier: 'lead', prestigeScore: 70, rating: 88, year: 2061, salary: 900000, ...over });
@@ -212,7 +212,8 @@ function lifetime(acting, meter, scale, genre) {
   let gap = 0;
   for (let m = 0; m < 30 * 12; m++) {
     // The world publishes its year first — that is where the other four nominees come from.
-    s.month++; if (s.month > 11) { s.month = 0; s.year++; s.ageY++; closeYear(s, s.year - 1); runNominations(s); }
+    s.month++; if (s.month > 11) { s.month = 0; s.year++; s.ageY++; closeYear(s, s.year - 1); }
+    if (s.month === 8) runNominations(s);
     if (!s.production && ++gap >= 14) {
       gap = 0;
       startProduction(s, { id: 'x', projectTitle: 'P' + m, role: 'Lead', type: 'Feature Film',
