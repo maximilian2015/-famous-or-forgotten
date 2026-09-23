@@ -96,6 +96,7 @@ for (let i = 0; i < N; i++) {
     // a night out now and then
     if (Math.random() < 0.3) { const ev = (t.events || []).find((e) => EV.isInvited(t, e) && EV.isTonight(t, e)); if (ev && (t.ap || 0) >= 30) { EV.attendEvent(t, ev.id); saw('a night out'); for (let h = 0; h < 5 && t.night && !t.night.done; h++) NI.nightAct(t, 'move'); t.night = null; } }
     t = advanceMonth(t);
+    // answered before the record is read, or everything an answer writes is missed
     for (const mail of [...(t.inbox || [])]) if (['agent', 'show'].includes(mail.tag)) { if (mail.tag === 'show') saw('booked on a show'); EM.emailAct(t, mail.id, 0); }
     // what the month left on the record
     for (const e of (t.timeline || []).slice(0, Math.max(1, (t.timeline || []).length - tl0))) {
@@ -113,6 +114,28 @@ for (let i = 0; i < N; i++) {
       if (/took up its option/.test(x)) saw('the network took its option');
       if (/is called "/.test(x)) saw('a rename landed');
       if (/opened at .* without you|went out without you/.test(x)) saw('it opened without you');
+      // the older half of the game, which nothing has counted until now
+      if (/Asker nominations:/.test(x)) saw('an Asker nomination');
+      if (/won (Best Picture|the Asker)|Asker for/i.test(x)) saw('an Asker won');
+      if (/collapsed —/.test(x)) saw('a picture collapsed');
+      if (/is on hold|stopped. |frozen/i.test(x)) saw('a picture froze');
+      if (/went to the festival|at w+ Festival|festival/i.test(x)) saw('a festival');
+      if (/is your agent now/.test(x)) saw('signed an agent');
+      if (/moved you up:/.test(x)) saw('the agent moved you up a desk');
+      if (/has stopped returning your calls/.test(x)) saw('dropped by the agent');
+      if (/Married |Started seeing |Divorced /.test(x)) saw('a life outside the work');
+      if (/Welcomed a new baby/.test(x)) saw('a child');
+      if (/burnout|signed off/i.test(x)) saw('burnout');
+      if (/rehab|a clinic/i.test(x)) saw('rehab');
+      if (/Bought |Moved into|moved to a/i.test(x)) saw('bought something');
+      if (/world hit|the whole world/i.test(x)) saw('a world hit');
+      if (/tour|junket|press tour/i.test(x)) saw('a press tour');
+      if (/renewed for season/.test(x)) saw('a season renewed');
+      if (/was not renewed|cancelled/i.test(x)) saw('a show cancelled');
+      if (/written out/.test(x)) saw('written out of a show');
+      if (/telling people you were difficult/.test(x)) saw('a rumour');
+      if (/list is out: you were #/.test(x)) saw('overtaken on the list');
+      if (/box office poison/.test(x)) saw('box office poison');
       if (/A post of yours went everywhere/.test(x)) saw('something went viral');
     }
     if (HY.hypeSource(t)) saw('hype:' + HY.hypeSource(t));
@@ -129,6 +152,24 @@ for (let i = 0; i < N; i++) {
   for (const k of Object.keys(t._storyLog || {})) saw('story ran:' + k, (t._storyLog[k] || []).length);
   const f = FA.factions(t); saw('faction spread', Math.max(...f.map((x) => x.score)) - Math.min(...f.map((x) => x.score)));
   const amb = AM.ambitionProgress(t); if (amb) { saw('ambition read'); if (amb.met) saw('ambition met'); }
+  // The older half, read off the finished life — a rare line is unreliable to fish out of
+  // the timeline, but the state it left behind is not.
+  const aw = t.awards || {}; const films = (t.filmography || []).filter((c) => !c.minor);
+  saw('Asker nominations', (aw.nominations || []).length);
+  saw('Askers won', (aw.wins || []).length);
+  saw('world hits', t.worldHits || 0);
+  saw('films that went to a festival', films.filter((c) => c.festival).length);
+  saw('festival prizes', films.filter((c) => c.festival && c.festival.result === 'prize').length);
+  saw('seasons of television', films.filter((c) => c.episodes && c.scale !== 'episode').length);
+  saw('pictures that collapsed', (t._collapsed || 0) || ((t.frozen || []).length));
+  saw('burnouts', t.burnouts || 0);
+  saw('ever had an agent', t.agent || t._agentCool ? 1 : 0);
+  saw('best rung the agent reached', t.agent ? 1 : 0);
+  saw('moved out of a rented room', t.housing && t.housing !== 'room' ? 1 : 0);
+  saw('a partner at the end', t.partner || (t.family || []).some((x) => x.relation === 'Spouse' && x.alive) ? 1 : 0);
+  saw('children', (t.family || []).filter((x) => x.relation === 'Child').length);
+  saw('the drink noticed', (t.drink && t.drink.level) >= 18 ? 1 : 0);
+  saw('died before the end', t.alive ? 0 : 1);
 }
 
 const group = (title, keys) => {
@@ -147,6 +188,7 @@ group('Kinds of paper (career/contract.js)', ['clause:fee', 'clause:schedule', '
 group('Franchises (career/franchise.js)', ['potential:built', 'potential:open', 'potential:closed', 'a sequel made', 'a sequel died in development', 'a dead sequel on the shelf', 'a cult classic', 'a cult classic on the shelf']);
 group('The set (career/production.js, naming.js)', ['stance set', 'stance did the month', 'stance could not be afforded', 'named a project', 'a rename landed']);
 group('The board (meta/goals.js, ambition.js, factions.js)', ['goal:fame', 'goal:respect', 'goal:ambition', 'goal:aaa', 'goal:agent', 'goal:room', 'goal:poison', 'goal:comeback', 'goal:risk', 'ambition read', 'ambition met']);
+group('The older half, read off the finished life', ['Asker nominations', 'Askers won', 'world hits', 'films that went to a festival', 'festival prizes', 'seasons of television', 'pictures that collapsed', 'burnouts', 'ever had an agent', 'moved out of a rented room', 'a partner at the end', 'children', 'the drink noticed', 'died before the end', 'a season renewed', 'a show cancelled', 'a rumour', 'overtaken on the list', 'box office poison', 'a night out', 'turned a paper down', 'walked off a set']);
 console.log(`\nfaction spread, average high-to-low: ${(seen('faction spread') / N).toFixed(0)} points`);
 const dead = Object.keys(hits).length;
 console.log(`${dead} distinct things happened across ${N} lives.`);

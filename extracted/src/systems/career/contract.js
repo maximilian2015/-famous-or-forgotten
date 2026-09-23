@@ -426,6 +426,14 @@ export function signContract(s, id) {
   }
   addTimeline(s, `Signed for ${title}.`);
   acceptOffer(s, id);
+  // Refused — burnt out, in a clinic, a face still healing. It waits like any held part
+  // and starts itself the month you can work again (startSigned, below).
+  if ((s.offers || []).some((x) => x.id === id)) {
+    o.waitsForWrap = true; o.deadline = 99;
+    if (!o.startAt) o.startAt = now;
+    addTimeline(s, `${title} waits: nobody can put you on a set this month.`);
+    return s;
+  }
   const started = sets(s).find((p) => p.offerId === id);
   if (started && started.prepLeft > 0) s.lastEvent = `Signed. ${started.prep} month${started.prep === 1 ? '' : 's'} of preparation before the first day of "${title}".`;
   return s;
@@ -441,8 +449,11 @@ export function startSigned(s) {
   const due = (s.offers || []).filter((x) => x.signed && (x.startAt || 0) <= now).sort((a, b) => (a.startAt || 0) - (b.startAt || 0));
   for (const o of due) {
     if (!canTakeSet(s, o).ok) continue;
-    o.waitsForWrap = false;
     acceptOffer(s, o.id);
+    // It only stops waiting when it actually started. acceptOffer refuses a month you
+    // cannot be insured on a set, and clearing the flag first stranded the paper for good.
+    if (!(s.offers || []).some((x) => x.id === o.id)) continue;
+    o.waitsForWrap = true;
   }
   return s;
 }

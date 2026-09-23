@@ -415,6 +415,11 @@ export function setFame(s, value) {
   const v = Math.max(0, Math.min(100, value || 0));
   const cur = s.fame || 0;
   s.fame = v <= cur ? v : Math.min(v, Math.max(cur, fameCeiling(s)));
+  // The high-water mark belongs here, at the one place fame is written. It used to be
+  // settled once a month at the end of the tick, so anything a player did between ticks —
+  // a day's work, a sofa, a night — left fame standing above its own peak until the next
+  // month caught up, and isForgotten, the Icon floor and the standing combos all read it.
+  if (s.fame > (s.peakFame || 0)) s.peakFame = s.fame;
   return s.fame;
 }
 

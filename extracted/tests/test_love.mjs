@@ -224,7 +224,9 @@ function marry(s, style = 'registry', prenup = false) {
     L.datingYear(s);
     if (!s.partner) left++;
   }
-  ok('and somebody you have neglected for a year does', left >= 25, `${left} of 60`);
+  // Sixty draws of a coin that lands a bit under half: twenty-five was inside the noise and
+  // failed about one run in eight. Twenty still separates it cleanly from the two above.
+  ok('and somebody you have neglected for a year does', left >= 20, `${left} of 60`);
 }
 {
   // drinking through a marriage is the fastest way to end one
