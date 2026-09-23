@@ -2367,6 +2367,16 @@ function CreditsList({ g, credits, label }) {
               <div style={{ fontSize: 11.5, color: INK.signed, margin: '3px 0 2px' }}>
                 {away === 0 ? 'Cameras any month now' : `Cameras in ${count(away, 'month')}`}{o.prep ? ` · ${o.prep} mo preparation first` : ''}
               </div>
+              {/* They hold a part two months past the date on the paper and then they cast
+                  somebody else. If you are not going to make it, the card says so. */}
+              {(() => { const MONS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+                const dies = (o.startAt || 0) + 2;
+                if (!o.startAt || canTakeSet(g, o).ok || dies < now) return null;
+                const late = start > dies;
+                return (<div style={{ fontSize: 11, color: late ? theme.bad : theme.gold, lineHeight: 1.4, marginBottom: 2 }}>
+                  {late ? `⚠ They cast somebody else in ${MONS[dies % 12]} — you are not free until ${MONS[start % 12]}.`
+                    : `They hold it until ${MONS[dies % 12]}.`}
+                </div>); })()}
               <div style={{ fontSize: 11.5, color: theme.muted }}>{o.role}{o.genre ? ` · ${o.genre}` : ''}</div>
             </div>
           </div>);

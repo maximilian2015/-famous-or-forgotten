@@ -295,6 +295,17 @@ export function contractsTick(s) {
   // still not free two months after they expected you, they stop waiting and recast. The
   // shaky picture you stayed on is what cost you the one they were holding.
   for (const o of [...(s.offers || [])]) {
+    // One month before they give up: the phone call you get in real life.
+    if (o.signed && !canTakeSet(s, o).ok && (o.startAt || 0) + 1 === now && o._warned !== now) {
+      o._warned = now;
+      const t0 = String(o.projectTitle || 'it').replace('⭐ ', '');
+      const until = (canTakeSet(s, o).until || s.production || {}).title || 'the set you are on';
+      addTimeline(s, `${studioOf(o)} asked when you will be free for "${t0}". They will not hold it past ${MON[(o.startAt + 2) % 12]} — you are still on "${until}".`, true);
+      s.lastEvent = `Business affairs rang about "${t0}". They have held it since ${MON[(o.startAt || now) % 12]} and they will hold it one more month. After that they cast somebody else, and you are still on "${until}".`;
+      sendMail(s, { from: `${studioOf(o)} · business affairs`, subj: `"${t0}" — one more month`, tag: 'contract', kind: 'contract',
+        body: `We have held ${t0} since ${MON[(o.startAt || now) % 12]}. We can hold it through ${MON[(o.startAt + 2) % 12]} and no longer. If you are not free by then we will have to cast elsewhere, which none of us wants.`,
+        cta: [{ label: 'Understood', fx: {}, reply: 'Understood. It does not make you free.' }] });
+    }
     if (!o.signed || (o.startAt || 0) + 2 > now || canTakeSet(s, o).ok) continue;
     const title = String(o.projectTitle || 'it').replace('⭐ ', '');
     s.offers = s.offers.filter((x) => x.id !== o.id);
