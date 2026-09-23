@@ -2299,7 +2299,7 @@ function CreditsList({ g, credits, label }) {
           return (<div key={o.id} style={{ display: 'flex', gap: 11, padding: '9px 2px', borderBottom: `1px solid ${theme.line}`, opacity: .85 }}>
             <Poster title={title} type={o.type} genre={o.genre} director={o.director} size={46} />
             <div style={{ flex: 1, minWidth: 0 }}>
-              <div style={{ fontSize: 13.5, fontWeight: 800, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{title}</div>
+              <TitleLine g={g} kind="offer" id={o.id} title={title} size={13.5} />
               <div style={{ fontSize: 11.5, color: INK.signed, margin: '3px 0 2px' }}>
                 {away === 0 ? 'Cameras any month now' : `Cameras in ${count(away, 'month')}`}{o.prep ? ` · ${o.prep} mo preparation first` : ''}
               </div>

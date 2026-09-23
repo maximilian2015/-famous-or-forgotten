@@ -2,6 +2,7 @@ import { rename, canRename, whyNot, renameable, TITLE_MAX } from '../src/systems
 import { startProduction, productionTick } from '../src/systems/career/production.js';
 import { scheduleRelease, releaseTick, runTick } from '../src/systems/career/release.js';
 import { maybeContinue } from '../src/systems/career/franchise.js';
+import { signContract, startSigned } from '../src/systems/career/contract.js';
 
 let fails = 0;
 const ok = (n, c, e = '') => { if (!c) { fails++; console.log('FAIL  ' + n + (e ? ' :: ' + e : '')); } else console.log('ok    ' + n); };
@@ -22,6 +23,24 @@ const run = (s, n) => { for (let i = 0; i < n; i++) { s.month += 1; if (s.month 
   s.filmography = [{ title: 'Old Thing', year: 2048 }];
   ok('you cannot make two of the same name', /already made something/.test(whyNot(s, 'set', p.id, 'old thing')));
   ok('but keeping its own name is fine', whyNot(s, 'set', p.id, 'The Weight of Water') === null);
+}
+// ── the paper you signed, before cameras ───────────────────────────────────────
+{
+  const s = st(); const now = s.year * 12 + s.month;
+  s.offers = [offer({ id: 'sg', kind: 'sequel', part: 2, signed: true, waitsForWrap: true, startAt: now + 5, projectTitle: '⭐ Golden Echo II' })];
+  ok('a signed paper is renameable', renameable(s).some((x) => x.kind === 'offer' && x.what === 'signed'), JSON.stringify(renameable(s)));
+  rename(s, 'offer', 'sg', 'The Long Way Down');
+  ok('renamed, and the studio keeps its star', s.offers[0].projectTitle === '⭐ The Long Way Down' && s.offers[0].named);
+  // and when the cameras roll, the set carries the name you gave it
+  s.offers[0].startAt = now; s.offers[0].waitsForWrap = false;
+  startSigned(s);
+  ok('the shoot starts under your name', (s.productions[0] || {}).title === 'The Long Way Down', (s.productions[0] || {}).title);
+  // renaming the set moves the paper too, when both exist
+  const u = st(); u.offers = [offer({ id: 'o9' })];
+  signContract(u, 'o9');
+  const p = u.productions[0];
+  rename(u, 'set', p.id, 'Second Thoughts');
+  ok('paper and set stay one project', p.title === 'Second Thoughts' && (!u.offers.length || u.offers[0].projectTitle === 'Second Thoughts'));
 }
 // ── in post, and never after it opens ──────────────────────────────────────────
 {
