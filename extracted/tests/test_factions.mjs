@@ -1,0 +1,18 @@
+import { factions, FACTION_ORDER } from '../src/systems/meta/factions.js';
+let fails = 0;
+const ok = (n, c, e = '') => { if (!c) { fails++; console.log('FAIL  ' + n + (e ? ' :: ' + e : '')); } else console.log('ok    ' + n); };
+const st = (over) => ({ version: 'x', name: 'Mira Vale', ageY: 30, stage: 'career', dream: 'actor', fame: 40, respect: 20, scandal: 0, media: 0, year: 2050, month: 2, timeline: [], filmography: [], people: [], peakFame: 40, ...over });
+const by = (s, id) => factions(s).find((f) => f.id === id);
+ok('six of them, each with a line', factions(st()).length === 6 && FACTION_ORDER.every((id) => by(st(), id).line));
+const loved = st({ filmography: [{ title: 'A', rating: 88, verdict: 'smash', year: 2049 }, { title: 'B', rating: 84, verdict: 'profitable', year: 2048 }] });
+const panned = st({ filmography: [{ title: 'A', rating: 30, verdict: 'bomb', year: 2049 }, { title: 'B', rating: 35, verdict: 'bomb', year: 2048 }] });
+ok('the critics read the ratings', by(loved, 'critics').score > 70 && by(panned, 'critics').score < 40);
+ok('the audience reads the money', by(loved, 'audience').score > 75 && by(panned, 'audience').score < 30);
+const mixed = st({ filmography: [{ title: 'A', rating: 40, verdict: 'smash', year: 2049 }] });
+ok('the public’s favourite and the critics’ punchline at once', by(mixed, 'audience').score > by(mixed, 'critics').score + 30);
+ok('the studios read the insurers', by(st({ poisonUntil: 99999999 }), 'studios').score < by(st(), 'studios').score - 20);
+ok('the press reads the tabloid kind', by(st({ media: 50, hypeSource: 'scandal' }), 'press').score < by(st({ media: 50, hypeSource: 'hit' }), 'press').score - 25);
+ok('the directors read the phone', by(st({ people: [{ role: 'Film Director', relationship: 70 }, { role: 'Film Director', relationship: 60 }] }), 'directors').score > by(st({ grudges: [{ who: 'X', until: 99999999 }] }), 'directors').score + 30);
+ok('the fans read the hit and the hashtag', by(loved, 'fans').score > by(st({ timeline: [{ text: 'Fans are furious: "X" is going ahead without you.' }] }), 'fans').score + 30);
+console.log(fails ? `\n${fails} FAILED` : '\nall passed');
+process.exit(fails ? 1 : 0);

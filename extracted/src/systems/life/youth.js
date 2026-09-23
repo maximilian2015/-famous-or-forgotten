@@ -10,7 +10,7 @@ export const YOUTH_EVENTS = [
   // little and the Legacy page answers it at the end — did you get what you wanted, which
   // is a different question from whether you got a lot. See meta/ambition.js.
   { age: 10, id: 'dreamChoice', build: () => ({ speaker: "A daydream that won't leave", text: `You're ten, and you've decided what you want to be when you grow up. It's all you think about. Which dream grabs you?`,
-    choices: AMBITION_ORDER.map((id) => ({ label: `${AMBITIONS[id].label} — ${AMBITIONS[id].want}`, fx: AMBITIONS[id].fx, set: { dream: 'actor', ambition: id },
+    choices: AMBITION_ORDER.map((id) => ({ label: AMBITIONS[id].label, hint: AMBITIONS[id].want, fx: AMBITIONS[id].fx, set: { dream: 'actor', ambition: id },
       reply: { star: 'Films. The big ones. You start watching them differently — studying faces, not just stories, and the size of the name on the poster.',
         serious: 'The stage, and the films that feel like it. Two hours a night with nowhere to hide, and you cannot imagine wanting anything else.',
         tv: 'A show. The same faces every week, in every house. You want to be one of the faces.',

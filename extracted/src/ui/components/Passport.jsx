@@ -11,6 +11,7 @@ import { apparentAge, height, weightKg } from '../../systems/life/face.js';
 import { band as drinkBand, dependent } from '../../systems/life/drink.js';
 import { strainBand } from '../../systems/life/strain.js';
 import { ambitionProgress } from '../../systems/meta/ambition.js';
+import { factions } from '../../systems/meta/factions.js';
 
 // Who you are, on one card. Maxi: "when you press your little person — when you were
 // born, how old you are and how old you look, height, weight, where you live, status,
@@ -57,6 +58,13 @@ export function Passport({ g, onClose, onRoom }) {
       {g.quote > 0 && row('Your quote', money(g.quote))}
       {g.agent && g.agent.level > 0 && row('Agent', g.agent.name)}
       {ambitionProgress(g) && row('Wanted, at ten', `${ambitionProgress(g).label} · ${ambitionProgress(g).met ? 'got it' : `${Math.round(ambitionProgress(g).progress * 100)}%`}`, ambitionProgress(g).met ? theme.gold : undefined)}
+      {/* Who thinks what: six standings read off the life, none of them kept. See meta/factions.js. */}
+      {head('Who thinks what')}
+      {factions(g).map((f) => (<div key={f.id} style={{ padding: '5px 0', borderBottom: `1px solid ${theme.line}` }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline' }}><span style={{ fontSize: 12.5, fontWeight: 800, color: f.score >= 70 ? theme.gold : f.score < 35 ? theme.bad : theme.text }}>{f.label}</span><span style={{ fontSize: 11, color: theme.muted }}>{f.score}</span></div>
+        <div style={{ height: 3, background: 'rgba(255,255,255,.08)', borderRadius: 2, margin: '4px 0 3px' }}><div style={{ width: `${f.score}%`, height: '100%', background: f.score >= 70 ? theme.gold : f.score < 35 ? theme.bad : theme.accent, borderRadius: 2 }} /></div>
+        <div style={{ fontSize: 11, color: theme.muted, lineHeight: 1.4 }}>{f.line}</div>
+      </div>))}
       {/* Public image: the label the business has for you, and how firmly. See meta/typecast.js. */}
       {head('Public image')}
       {activeLabels(g).length === 0 && <div style={{ fontSize: 12, color: theme.muted, padding: '4px 0 8px', lineHeight: 1.5 }}>No label yet. Three parts of a kind and the business finds a word for you — and the parts that fit it come easier.</div>}
