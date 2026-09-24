@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from 'react';
 import { openStoryRoom, pushTake, trendNote } from './systems/career/story.js';
-import { useGame, dispatch, newLife, exportSave, importSave } from './state/store.js';
+import { useGame, dispatch, newLife, exportSave, importSave, getState } from './state/store.js';
 import { advanceTime, stepIsYear, advanceUntilSomething } from './engine/time.js';
 import { rentApartment, STAGE_LABEL } from './systems/life/stages.js';
 import { runAction, availableActions } from './systems/career/actions.js';
@@ -372,6 +372,8 @@ function ComboCard({ g }) {
 function SettingsRow() {
   const [open, setOpen] = useState(false);
   const [saves, setSaves] = useState(false);
+  const [pasting, setPasting] = useState(false);
+  const [pasted, setPasted] = useState('');
   const [note, setNote] = useState('');
   const [, bump] = useState(0);
   const on = soundOn();
@@ -410,6 +412,27 @@ function SettingsRow() {
           }} />
         </label>
       </div>
+      {/* A download is blocked wherever the game is opened from something that is not a
+          file — a hosted link, an app viewer. Text always travels, so the same life goes
+          through the clipboard as well. */}
+      <div style={{ display: 'flex', gap: 7, marginTop: 7 }}>
+        <button onClick={() => {
+            const t = JSON.stringify(getState());
+            if (navigator.clipboard && navigator.clipboard.writeText) {
+              navigator.clipboard.writeText(t).then(() => setNote('Copied. Paste it wherever you want to carry on.'))
+                .catch(() => setNote('Could not reach the clipboard here.'));
+            } else setNote('Could not reach the clipboard here.');
+          }}
+          style={{ flex: 1, border: '1px solid ' + theme.line, borderRadius: 10, padding: '9px 8px', fontSize: 11.5, fontWeight: 800, cursor: 'pointer', background: theme.panel, color: theme.text }}>Copy this life</button>
+        <button onClick={() => setPasting(!pasting)}
+          style={{ flex: 1, border: '1px solid ' + theme.line, borderRadius: 10, padding: '9px 8px', fontSize: 11.5, fontWeight: 800, cursor: 'pointer', background: theme.panel, color: theme.text }}>Paste a life</button>
+      </div>
+      {pasting && (<div style={{ marginTop: 7 }}>
+        <textarea value={pasted} onChange={(e) => setPasted(e.target.value)} placeholder="Paste the copied life here"
+          style={{ width: '100%', height: 72, background: theme.bg, border: '1px solid ' + theme.line, borderRadius: 10, padding: 8, color: theme.text, fontSize: 11, fontFamily: 'inherit', resize: 'vertical' }} />
+        <button onClick={() => { const why = importSave(pasted.trim()); setNote(why || 'Loaded. Carry on.'); if (!why) { setPasting(false); setPasted(''); } }}
+          style={{ width: '100%', marginTop: 6, border: 'none', borderRadius: 10, padding: '9px 8px', fontSize: 12, fontWeight: 800, cursor: 'pointer', background: 'linear-gradient(135deg,' + theme.accent2 + ',' + theme.accent + ')', color: '#fff' }}>Load it</button>
+      </div>)}
       {note && <div style={{ fontSize: 11.5, color: /not|could not/.test(note) ? theme.bad : theme.good, marginTop: 8 }}>{note}</div>}
     </div>)}
     {open && (<div className="fof-in" style={{ display: 'grid', gap: 7, marginTop: 8 }}>
