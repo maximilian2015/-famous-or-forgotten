@@ -6,7 +6,7 @@ import { fameTier, isForgotten } from '../../systems/meta/status.js';
 import { yourRank } from '../../systems/world/world.js';
 import { HOUSING, ledger } from '../../engine/economy.js';
 import { THINGS, HOME_PRICE, owns } from '../../systems/life/money.js';
-import { LABELS, labelInfo, activeLabels, scoreOf, STRONG_AT, ACTIVE_AT } from '../../systems/meta/typecast.js';
+import { LABELS, labelInfo, activeLabels, scoreOf, STRONG_AT, ACTIVE_AT, tendency } from '../../systems/meta/typecast.js';
 import { apparentAge, height, weightKg } from '../../systems/life/face.js';
 import { band as drinkBand, dependent } from '../../systems/life/drink.js';
 import { strainBand } from '../../systems/life/strain.js';
@@ -68,6 +68,12 @@ export function Passport({ g, onClose, onRoom }) {
       {/* Public image: the label the business has for you, and how firmly. See meta/typecast.js. */}
       {head('Public image')}
       {activeLabels(g).length === 0 && <div style={{ fontSize: 12, color: theme.muted, padding: '4px 0 8px', lineHeight: 1.5 }}>No label yet. Three parts of a kind and the business finds a word for you — and the parts that fit it come easier.</div>}
+      {/* What they are starting to think, before there is a word for it. meta/typecast.js */}
+      {(() => { const t = tendency(g); if (!t) return null; return (<div style={{ padding: '5px 0', borderBottom: `1px solid ${theme.line}` }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline' }}><span style={{ fontSize: 13, fontWeight: 800, color: theme.muted }}>{t.label}</span><span style={{ fontSize: 10.5, color: theme.muted }}>not yet a word</span></div>
+        <div style={{ height: 4, background: 'rgba(255,255,255,.08)', borderRadius: 2, margin: '5px 0 4px' }}><div style={{ width: `${Math.min(100, (t.score / t.need) * 100)}%`, height: '100%', background: theme.muted, borderRadius: 2 }} /></div>
+        <div style={{ fontSize: 11, color: theme.muted, lineHeight: 1.45 }}>{t.line}. {t.need - t.score <= 1 ? 'One more like the last one and it sticks.' : 'Keep taking them and it sticks.'}</div>
+      </div>); })()}
       {activeLabels(g).map((id) => (<div key={id} style={{ padding: '5px 0', borderBottom: `1px solid ${theme.line}` }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline' }}><span style={{ fontSize: 13, fontWeight: 800, color: scoreOf(g, id) >= STRONG_AT ? theme.gold : theme.text }}>{labelInfo(id).label}</span><span style={{ fontSize: 10.5, color: theme.muted }}>{scoreOf(g, id) >= STRONG_AT ? 'what you are to them' : 'a word they use'}</span></div>
         <div style={{ height: 4, background: 'rgba(255,255,255,.08)', borderRadius: 2, margin: '5px 0 4px' }}><div style={{ width: `${Math.min(100, scoreOf(g, id) * 10)}%`, height: '100%', background: scoreOf(g, id) >= STRONG_AT ? theme.gold : theme.accent, borderRadius: 2 }} /></div>

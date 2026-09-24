@@ -90,7 +90,10 @@ function untilAsked(s, cap = 30) {
     const before = s.partner.relationship;
     s = advanceMonth(s);
     if (s.partner && s.partner.relationship > before) jumped = true;
+    // The screen line can be overwritten by anything else that lands the same month (a
+    // brand calling, an offer); the timeline is where a month's news actually keeps.
     if (/stopped checking the recycling/.test(s.lastEvent || '')) said = true;
+    if ((s.timeline || []).some((x) => /Six months dry/.test(x.text))) said = true;
   }
   ok('keeping it keeps them', !!s.partner, 'they left anyway');
   ok('and one month of it goes the other way', jumped, 'the bond only ever fell');

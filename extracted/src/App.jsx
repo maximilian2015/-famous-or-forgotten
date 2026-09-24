@@ -32,6 +32,7 @@ import { resolveScene, sceneState } from './systems/career/scenes.js';
 import { RhythmLine, HoldZone, KeySequence, QuickPick } from './ui/components/SceneGames.jsx';
 import { priceLine } from './systems/meta/price.js';
 import { hype, hypeSource, hypeLine, SOURCES, hypeReach, hypeDemand, hypePrice, showsThisYear } from './systems/meta/hype.js';
+import { tendency } from './systems/meta/typecast.js';
 import { addPrestigeListing } from './systems/career/castings.js';
 import { TimingBar } from './ui/components/TimingBar.jsx';
 import { GridRisk } from './ui/components/GridRisk.jsx';
@@ -147,7 +148,13 @@ export default function App() {
             {/* The film next to your name — the latest hit, and it changes when there is a new one. */}
             {(() => { const k = inCareer(g) ? knownFor(g) : null; return k ? <div style={{ fontSize: 10, color: k.hit ? theme.gold : theme.muted, marginTop: 2, fontWeight: 700 }}>{k.hit ? '★ ' : ''}Known for "{k.title}" · {k.why}</div> : null; })()}
             {/* The label the business has for you — two at most, the strong ones in gold. Tap the figure for the rest. */}
-            {activeLabels(g).length > 0 && <div style={{ fontSize: 10, marginTop: 2, fontWeight: 700, color: theme.muted }}>{activeLabels(g).slice(0, 2).map((id, i) => <span key={id} style={{ color: isStrong(g, id) ? theme.gold : theme.muted }}>{i ? ' · ' : ''}{labelInfo(id).label}</span>)}</div>}
+            {activeLabels(g).length > 0
+              ? <div style={{ fontSize: 10, marginTop: 2, fontWeight: 700, color: theme.muted }}>{activeLabels(g).slice(0, 2).map((id, i) => <span key={id} style={{ color: isStrong(g, id) ? theme.gold : theme.muted }}>{i ? ' · ' : ''}{labelInfo(id).label}</span>)}</div>
+              : (() => { const t = tendency(g); return t ? <div style={{ fontSize: 10, marginTop: 2, fontWeight: 600, color: theme.muted, opacity: .75 }}>becoming {t.label.toLowerCase()}</div> : null; })()}
+            {/* Being talked about, on the face of it rather than one tap inside the fame tile. */}
+            {hype(g) >= 20 && <div style={{ fontSize: 10, marginTop: 2, fontWeight: 700, color: hypeSource(g) === 'scandal' ? '#ff8d9e' : theme.accent }}>
+              hype {Math.round(hype(g))}{hypeSource(g) ? ' · ' + SOURCES[hypeSource(g)].label : ''}
+            </div>}
           </div>
         </div>
         <div style={{ textAlign: 'right' }}>
@@ -197,9 +204,8 @@ export default function App() {
           <Stat label="Respect" value={g.respect} sub="tap ›" onClick={() => setShowRespect(true)} />
         </div>
         {g.lastEvent && <Card style={{ marginBottom: 14, borderColor: 'rgba(255,209,102,.35)' }}><div style={{ fontSize: 13.5, lineHeight: 1.5, whiteSpace: 'pre-line' }}>{g.lastEvent}</div></Card>}
-        {inCareer(g) && <RiskCard g={g} />}
+        {inCareer(g) && <StandingCard g={g} />}
         {inCareer(g) && <StoriesCard g={g} />}
-        {inCareer(g) && <GoalsCard g={g} />}
         {g.illness && (<Card style={{ marginBottom: 14, borderColor: 'rgba(255,90,122,.5)' }}>
           <div style={{ fontSize: 11, fontWeight: 900, letterSpacing: '.08em', textTransform: 'uppercase', color: theme.bad, marginBottom: 5 }}>🤒 {g.illness.name}{g.illness.serious ? ' · serious' : ''}</div>
           <div style={{ fontSize: 12, color: theme.muted, lineHeight: 1.5, marginBottom: 9 }}>
@@ -1263,56 +1269,50 @@ function CheckpointModal({ g }) {
 }
 // What you are working toward, and the one next thing that would move each. Three at a
 // time, the urgent ones first. See systems/meta/goals.js.
-function GoalsCard({ g }) {
-  const list = goals(g);
-  if (!list.length) return null;
-  return (<Card style={{ marginBottom: 14 }}>
-    <div style={{ fontSize: 11, fontWeight: 900, letterSpacing: '.09em', textTransform: 'uppercase', color: theme.muted, marginBottom: 7 }}>What you are working toward</div>
-    <div style={{ display: 'grid', gap: 9 }}>
-      {list.map((x) => (<div key={x.id}>
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', gap: 10 }}>
-          <div style={{ fontSize: 13, fontWeight: 800, color: x.urgent ? theme.bad : theme.text }}>{x.label}</div>
-          {x.now && <div style={{ fontSize: 11, color: x.urgent ? theme.bad : theme.muted, flex: 'none' }}>{x.now}</div>}
-        </div>
-        {x.progress != null && <div style={{ height: 4, background: 'rgba(255,255,255,.08)', borderRadius: 2, margin: '5px 0 4px' }}><div style={{ width: `${Math.round(x.progress * 100)}%`, height: '100%', background: x.urgent ? theme.bad : theme.accent, borderRadius: 2 }} /></div>}
-        <div style={{ fontSize: 11.5, color: theme.muted, lineHeight: 1.45, marginTop: x.progress != null ? 0 : 3 }}>→ {x.next}</div>
-      </div>))}
-    </div>
+// Where you stand: what is biting, and what you are climbing toward, in one card. Every
+// row carries the one next thing that moves it, and when that thing is an action the game
+// has, the row does it. See meta/risk.js, meta/goals.js and meta/price.js.
+function StandingCard({ g }) {
+  const risks = liveRisks(g).slice(0, 2);
+  const price = priceLine(g);
+  const board = goals(g).slice(0, 2);
+  if (!risks.length && !price && !board.length) return null;
+  const canRest = availableActions(g).some((x) => x.id === 'rest');
+  const canQuiet = availableActions(g).some((x) => x.id === 'quiet');
+  // The two pieces of advice the game can carry out for you.
+  const actionFor = (fix) => (/month with nothing on the calendar|month off/i.test(fix) && canRest ? ['rest', 'Take the month off']
+    : /out of sight/i.test(fix) && canQuiet ? ['quiet', 'Go out of sight'] : null);
+  const row = (key, label, tone, detail, fix) => {
+    const act = fix ? actionFor(fix) : null;
+    return (<div key={key} style={{ padding: '6px 0', borderTop: key === 'first' ? 'none' : `1px solid ${theme.line}` }}>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', gap: 10 }}>
+        <div style={{ fontSize: 12.5, fontWeight: 800, color: tone }}>{label}</div>
+        {detail && <div style={{ fontSize: 10.5, color: theme.muted, flex: 'none' }}>{detail}</div>}
+      </div>
+      {fix && <div style={{ fontSize: 11.5, color: theme.muted, lineHeight: 1.45, marginTop: 2 }}>→ {fix}</div>}
+      {act && <button onClick={() => dispatch(runAction, act[0])} style={{ marginTop: 5, border: 'none', borderRadius: 9, padding: '6px 11px', fontSize: 11.5, fontWeight: 800, cursor: 'pointer', background: 'rgba(255,209,102,.18)', color: theme.gold }}>{act[1]} · {COST.careerAction} energy</button>}
+    </div>);
+  };
+  let first = true;
+  const mark = () => { const k = first ? 'first' : ''; first = false; return k; };
+  return (<Card style={{ marginBottom: 14, borderColor: risks.some((r) => r.level === 2) ? 'rgba(255,90,122,.4)' : theme.line }}>
+    <div style={{ fontSize: 11, fontWeight: 900, letterSpacing: '.09em', textTransform: 'uppercase', color: theme.muted, marginBottom: 4 }}>Where you stand</div>
+    {risks.map((r) => row(mark() + r.id, r.label, r.level === 2 ? theme.bad : theme.gold, r.level === 2 ? 'about to bite' : 'worth watching', r.fix))}
+    {price && row(mark() + 'price', price.label, theme.text, 'the price of the name', price.fix)}
+    {board.map((x) => (<div key={x.id} style={{ padding: '6px 0', borderTop: `1px solid ${theme.line}` }}>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', gap: 10 }}>
+        <div style={{ fontSize: 12.5, fontWeight: 800 }}>{x.label}</div>
+        {x.now && <div style={{ fontSize: 10.5, color: theme.muted, flex: 'none' }}>{x.now}</div>}
+      </div>
+      {x.progress != null && <div style={{ height: 3, background: 'rgba(255,255,255,.08)', borderRadius: 2, margin: '4px 0 3px' }}><div style={{ width: `${Math.round(x.progress * 100)}%`, height: '100%', background: theme.accent, borderRadius: 2 }} /></div>}
+      <div style={{ fontSize: 11.5, color: theme.muted, lineHeight: 1.45 }}>→ {x.next}</div>
+    </div>))}
   </Card>);
 }
 // Worth watching. Every story the world can run on you (trouble.js) has a warning here
 // first, for a month or more, with what would fix it. Nothing lands out of a clear sky —
 // Maxi: a crisis you could not see coming is a dice roll, not difficulty. Empty months
 // show nothing; a careful life has a clean main screen.
-function RiskCard({ g }) {
-  const risks = liveRisks(g);
-  const price = priceLine(g);
-  if (!risks.length && !price) return null;
-  const hot = risks.some((r) => r.level === 2);
-  return (<Card style={{ marginBottom: 14, borderColor: hot ? 'rgba(255,90,122,.5)' : 'rgba(255,209,102,.3)' }}>
-    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', marginBottom: 6 }}>
-      <div style={{ fontSize: 11, fontWeight: 900, letterSpacing: '.09em', textTransform: 'uppercase', color: hot ? theme.bad : theme.gold }}>Worth watching</div>
-      <div style={{ fontSize: 10.5, color: theme.muted }}>{hot ? 'about to bite' : 'nothing has happened yet'}</div>
-    </div>
-    {/* What the name itself costs — not a risk you took, a bill that comes with the face.
-        See meta/price.js. */}
-    {price && <div style={{ marginBottom: 8, paddingBottom: 8, borderBottom: `1px solid ${theme.line}` }}>
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline' }}><div style={{ fontSize: 12.5, fontWeight: 800 }}>{price.label}</div><div style={{ fontSize: 10.5, color: theme.muted }}>the price of the name</div></div>
-      <div style={{ fontSize: 11.5, color: theme.muted, lineHeight: 1.45 }}>{price.line}</div>
-      <div style={{ fontSize: 11, color: theme.muted, marginTop: 2 }}>→ {price.fix}</div>
-    </div>}
-    <div style={{ display: 'grid', gap: 7 }}>
-      {risks.map((r) => (<div key={r.id} style={{ display: 'grid', gridTemplateColumns: '10px 1fr', gap: 8, alignItems: 'start' }}>
-        <div style={{ width: 8, height: 8, borderRadius: 4, marginTop: 4, background: r.level === 2 ? theme.bad : theme.gold, boxShadow: r.level === 2 ? `0 0 8px ${theme.bad}` : 'none' }} />
-        <div>
-          <div style={{ fontSize: 12.5, fontWeight: 800 }}>{r.label}</div>
-          <div style={{ fontSize: 11.5, color: theme.muted, lineHeight: 1.45 }}>{r.line}</div>
-          <div style={{ fontSize: 11, color: r.level === 2 ? theme.text : theme.muted, marginTop: 2 }}>→ {r.fix}</div>
-        </div>
-      </div>))}
-    </div>
-  </Card>);
-}
 // The career stories that are running (stories.js): a title and where it stands. The
 // beats arrive as the same modal a life dilemma uses; this is the thread between them.
 function StoriesCard({ g }) {

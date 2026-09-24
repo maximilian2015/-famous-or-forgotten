@@ -109,6 +109,22 @@ export function typecastYear(s) {
   return s;
 }
 
+// What the business is starting to think, before it has a word for it. Reads the highest
+// score that is not yet a label, so the meter is visible from the first film rather than
+// appearing out of nowhere at the third.
+export function tendency(s) {
+  const t = typecastOf(s);
+  const active = new Set(t.active || []);
+  let best = null;
+  for (const [id, v] of Object.entries(t.scores || {})) {
+    if (active.has(id) || v < 1) continue;
+    if (!best || v > best.score) best = { id, score: v };
+  }
+  if (!best) return null;
+  const info = labelInfo(best.id);
+  return { id: best.id, label: info.label, score: Math.round(best.score * 10) / 10, need: ACTIVE_AT,
+    line: `${Math.round((best.score / ACTIVE_AT) * 100)}% of the way to being called ${info.label.toLowerCase()}` };
+}
 // Does a part fit the labels you carry? +1 on type, −1 against, 0 when the label has no view.
 // The strength of the label scales it (castings.js fieldFactor, refreshCastingPool).
 export function typeFit(s, c) {
