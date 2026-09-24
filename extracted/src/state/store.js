@@ -84,6 +84,32 @@ export function dispatch(fn, ...args) {
 }
 export function newLife(opts) { setState(freshLife(opts)); }
 export function resetSave() { localStorage.removeItem(KEY); setState(freshLife()); }
+
+// ── carrying a life between places ────────────────────────────────────────────
+// A save is the whole state and nothing else, so exporting it is exactly what is in
+// storage and importing it is a normalise away from being playable.
+export function exportSave() {
+  const s = getState();
+  const name = String(s.name || 'life').replace(/[^\w ]+/g, '').trim().replace(/\s+/g, '-') || 'life';
+  const stamp = `${s.name ? '' : ''}${s.ageY || 0}-${s.year || 0}`;
+  const blob = new Blob([JSON.stringify(s)], { type: 'application/json' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url; a.download = `famous-${name}-${stamp}.json`;
+  document.body.appendChild(a); a.click(); a.remove();
+  setTimeout(() => URL.revokeObjectURL(url), 2000);
+  return `famous-${name}-${stamp}.json`;
+}
+// Returns null on success, or a sentence saying what was wrong with the file.
+export function importSave(text) {
+  let raw;
+  try { raw = JSON.parse(text); } catch (e) { return 'That is not a save file — it is not even JSON.'; }
+  if (!looksLikeState(raw)) return 'That file is not one of this game’s saves.';
+  const next = normalize(raw);
+  if (!looksLikeState(next)) return 'That save could not be read. It may be from a much older version.';
+  setState(next);
+  return null;
+}
 function persist() { try { localStorage.setItem(KEY, JSON.stringify(state)); } catch (e) {} }
 function load() { try { const r = localStorage.getItem(KEY); return r ? JSON.parse(r) : null; } catch (e) { return null; } }
 

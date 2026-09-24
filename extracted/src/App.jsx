@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from 'react';
 import { openStoryRoom, pushTake, trendNote } from './systems/career/story.js';
-import { useGame, dispatch, newLife } from './state/store.js';
+import { useGame, dispatch, newLife, exportSave, importSave } from './state/store.js';
 import { advanceTime, stepIsYear, advanceUntilSomething } from './engine/time.js';
 import { rentApartment, STAGE_LABEL } from './systems/life/stages.js';
 import { runAction, availableActions } from './systems/career/actions.js';
@@ -371,6 +371,8 @@ function ComboCard({ g }) {
 // out of the save on purpose — both should survive starting a new life.
 function SettingsRow() {
   const [open, setOpen] = useState(false);
+  const [saves, setSaves] = useState(false);
+  const [note, setNote] = useState('');
   const [, bump] = useState(0);
   const on = soundOn();
   return (<div style={{ marginTop: 20 }}>
@@ -381,7 +383,35 @@ function SettingsRow() {
       <button data-sfx="toggle" onClick={() => { setSound(!on); bump((n) => n + 1); }}
         style={{ width: 52, background: 'none', border: `1px solid ${theme.line}`, borderRadius: 11, padding: '9px 0',
           color: on ? theme.accent : theme.muted, fontSize: 15, cursor: 'pointer' }}>{on ? '🔊' : '🔇'}</button>
+      <button onClick={() => setSaves(!saves)} title="Carry this life to another place"
+        style={{ width: 52, background: 'none', border: `1px solid ${theme.line}`, borderRadius: 11, padding: '9px 0',
+          color: theme.muted, fontSize: 15, cursor: 'pointer' }}>💾</button>
     </div>
+    {/* A life lives in the storage of wherever the game was opened from, and every address
+        has its own. This is how it travels — and the only backup the game has. */}
+    {saves && (<div className="fof-in" style={{ marginTop: 8, border: `1px solid ${theme.line}`, borderRadius: 12, padding: 11 }}>
+      <div style={{ fontSize: 11.5, color: theme.muted, lineHeight: 1.5, marginBottom: 9 }}>
+        Your life is saved where you opened the game from. Open it somewhere else — a link, another
+        computer — and that place starts empty. Save the file here and load it there.
+      </div>
+      <div style={{ display: 'flex', gap: 7 }}>
+        <button onClick={() => { const f = exportSave(); setNote(`Saved ${f}`); }}
+          style={{ flex: 1, border: 'none', borderRadius: 10, padding: '10px 8px', fontSize: 12, fontWeight: 800, cursor: 'pointer',
+            background: `linear-gradient(135deg,${theme.accent2},${theme.accent})`, color: '#fff' }}>Save this life to a file</button>
+        <label style={{ flex: 1, textAlign: 'center', border: `1px solid ${theme.line}`, borderRadius: 10, padding: '10px 8px',
+          fontSize: 12, fontWeight: 800, cursor: 'pointer', color: theme.text, background: theme.panel }}>
+          Load a life from a file
+          <input type="file" accept="application/json,.json" style={{ display: 'none' }} onChange={(e) => {
+            const file = e.target.files && e.target.files[0]; if (!file) return;
+            const r = new FileReader();
+            r.onload = () => { const why = importSave(String(r.result || '')); setNote(why || 'Loaded. Carry on.'); };
+            r.onerror = () => setNote('That file could not be read.');
+            r.readAsText(file); e.target.value = '';
+          }} />
+        </label>
+      </div>
+      {note && <div style={{ fontSize: 11.5, color: /not|could not/.test(note) ? theme.bad : theme.good, marginTop: 8 }}>{note}</div>}
+    </div>)}
     {open && (<div className="fof-in" style={{ display: 'grid', gap: 7, marginTop: 8 }}>
       {THEME_ORDER.map((id) => { const sk = THEMES[id], active = skinId() === id;
         return (<button key={id} onClick={() => { setSkin(id); setOpen(false); }} style={{ textAlign: 'left', cursor: 'pointer',
