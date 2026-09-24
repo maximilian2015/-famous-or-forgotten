@@ -70,19 +70,19 @@ export const TAKES = {
     id: 'straight', label: 'Play it as written',
     blurb: 'You say nothing. It is a perfectly good script and somebody else has already thought about it.',
     said: 'Nobody had to be talked into anything. You shot the film that was on the page.',
-    prestige: 2, bump: 0, appeal: 1, swing: 0, apart: 0, push: 0,
+    prestige: 1, bump: 0, appeal: 1, swing: 0, apart: 0, push: 0,
   },
   bigger: {
     id: 'bigger', label: 'Make it bigger',
     blurb: 'Open it up. More of everything, fewer of the quiet bits. It will sell, and nobody will remember it.',
     said: 'They opened it up. Twice the scale, half the film, and a trailer that plays.',
-    prestige: -21, bump: -8, appeal: 2.05, swing: 2, apart: -3, push: 24,
+    prestige: -7, bump: -8, appeal: 2.05, swing: 2, apart: -3, push: 24,
   },
   about: {
     id: 'about', label: 'Make it about something',
     blurb: 'Slow it down and let it be about the thing underneath. This is how people win awards and lose money.',
     said: 'You argued it down to the thing underneath, and they let you.',
-    prestige: 19, bump: 8, appeal: 0.5, aim: 'Drama', swing: 3, apart: 2, push: 32,
+    prestige: 6, bump: 8, appeal: 0.5, aim: 'Drama', swing: 3, apart: 2, push: 32,
   },
   strange: {
     id: 'strange', label: 'Do the strange thing',
@@ -90,7 +90,7 @@ export const TAKES = {
     said: 'You talked them into the strange version. Everyone on that set knew it could go either way.',
     // 15 before the rating scale was compressed above 86. This take exists to be the widest
     // swing in the game, and compressing the top quietly took a chunk of that away.
-    prestige: 9, bump: 1, appeal: 0.85, swing: 19, apart: 11, push: 42,
+    prestige: 3, bump: 1, appeal: 0.85, swing: 19, apart: 11, push: 42,
   },
 };
 export const TAKE_ORDER = ['straight', 'bigger', 'about', 'strange'];

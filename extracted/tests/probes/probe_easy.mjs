@@ -73,6 +73,7 @@ for (let i = 0; i < N; i++) {
     }
     maxCash = Math.max(maxCash, t.cash || 0);
     if (!t.alive) { bump('died'); break; }
+    if (m % 12 === 11) { bump('mental sum', Math.round(t.mental||0)); bump('mental years'); if ((t.mental||0) < 55) bump('years mental under 55'); if ((t.mental||0) >= 95) bump('years mental pinned at 95+'); }
     if (m % 60 === 59) { const y = Math.floor(m / 60) + 1; (by5[y] = by5[y] || []).push({ fame: Math.round(t.fame || 0), resp: Math.round(t.respect || 0), cash: Math.round((t.cash || 0) / 1e6 * 10) / 10, acting: Math.round(t.acting || 0), credits: (t.filmography || []).filter((c) => !c.minor).length, askers: ((t.awards && t.awards.wins) || []).length }); }
   }
   bump('lives');
@@ -94,6 +95,7 @@ for (let i = 0; i < N; i++) {
 }
 const med = (a) => { const b = [...a].sort((x, y) => x - y); return b[Math.floor(b.length / 2)]; };
 console.log(`${N} perfect lives, 45 years. Per life: ` + ['reads', 'a flop', 'a lead that bombed', 'fell ill', 'burnout', 'a scandal', 'a director who went cold', 'walked off', 'lost a part they would not hold', 'a year without work', 'fame went down (months)', 'standing went down (months)', 'in debt (months)', 'Askers won', 'nominations', 'box office poison', 'a rumour that stuck', 'a story in the papers', 'overtaken'].map((k) => `${k} ${((tally[k] || 0) / N).toFixed(1)}`).join(' · '));
+console.log('mental: average ' + ((tally['mental sum']||0)/(tally['mental years']||1)).toFixed(0) + ' · years under 55: ' + ((tally['years mental under 55']||0)/N).toFixed(1) + ' · years pinned at 95+: ' + ((tally['years mental pinned at 95+']||0)/N).toFixed(1));
 console.log('films per life: ' + ['films','hits','films built for it','films that end','sequels made','sequels that died'].map((k)=>k+' '+((tally[k]||0)/N).toFixed(1)).join(' · '));
 console.log('stories per life: ' + Object.keys(tally).filter((k) => k.startsWith('story: ')).map((k) => k.slice(7) + ' ' + (tally[k] / N).toFixed(1)).join(' · '));
 console.log(`never once: ` + ['box office poison', 'a rumour that stuck', 'a story in the papers', 'overtaken', 'died', 'in debt (months)', 'burnout', 'walked off'].filter((k) => !tally[k]).join(', '));

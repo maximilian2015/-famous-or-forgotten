@@ -46,10 +46,10 @@ function born(over) {
   ok('the room is named as a drain', r.down.some((l) => l.id === 'home' && l.per < 0), JSON.stringify(r.down.map((l) => l.id)));
   const shoot = born({ production: { title: 'Q', monthsLeft: 3, months: 6, meter: 40, scale: 'feature', crew: [{ name: 'A', bond: 50 }] } });
   const sr = MD.mentalReport(shoot);
-  // A shoot does not take mental every month — it fills strain. It has to be NAMED, because
-  // a player looking at a falling number needs to know the shoot is not the reason, and it
-  // must NOT be counted, or the panel would promise a drop that never comes.
-  ok('a shoot is named but not counted as a drain', sr.notes.some((l) => l.id === 'shoot') && !sr.down.some((l) => l.id === 'shoot'),
+  // A shoot takes something every month now — the hours and the waiting, scaled by how you
+  // are taking it and how worn you already are (production.js). It has to be NAMED and
+  // COUNTED, or the panel promises a month that does not happen.
+  ok('a shoot is named and counted as a drain', sr.down.some((l) => l.id === 'shoot' && l.per < 0),
     JSON.stringify({ notes: sr.notes.map((l) => l.id), down: sr.down.map((l) => l.id) }));
   {
     const before = shoot.mental, t2 = advanceMonth(shoot);

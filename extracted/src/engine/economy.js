@@ -114,7 +114,11 @@ export function applyMonthly(s) {
   // Where you sleep is a monthly drip in both directions — a bad room takes from you.
   if (s.hasApartment) {
     const h = home(s);
-    if (h.mental) s.mental = Math.max(0, Math.min(100, (s.mental || 0) + h.mental));
+    // Comfort saturates. A good address lifts you out of a bad place and then stops lifting —
+    // it used to give its full two and a half points a month for ever, unopposed, which is
+    // why an A-lister in a penthouse sat on a hundred for thirty years. Maxi: "mental never
+    // falls, living well means it is never in play."
+    if (h.mental) { const room = h.mental > 0 ? Math.max(0, 1 - (s.mental || 0) / 100) : 1; s.mental = Math.max(0, Math.min(100, (s.mental || 0) + h.mental * room)); }
     if (h.health) s.health = Math.max(0, Math.min(100, (s.health || 0) + h.health));
   }
   // Diet and gym work in months, not clicks — slow drifts you only notice over years.
@@ -122,8 +126,23 @@ export function applyMonthly(s) {
     const diet = s.diet || 'cook';
     if (diet === 'fast') s.health = Math.max(0, (s.health || 100) - 0.4);
     if (diet === 'cook' && (s.health || 0) < 85) s.health = Math.min(85, (s.health || 0) + 0.15);
-    if (diet === 'fine') { if ((s.health || 0) < 95) s.health = Math.min(95, (s.health || 0) + 0.4); s.mental = Math.min(100, (s.mental || 0) + 0.5); }
+    if (diet === 'fine') { if ((s.health || 0) < 95) s.health = Math.min(95, (s.health || 0) + 0.4); s.mental = Math.min(100, (s.mental || 0) + 0.5 * Math.max(0, 1 - (s.mental || 0) / 100)); }
     if (s.gym) { if ((s.looks || 0) < 78) s.looks = Math.min(78, (s.looks || 0) + 0.5); if ((s.health || 0) < 92) s.health = Math.min(92, (s.health || 0) + 0.2); }
+  }
+  // What the month takes out of you, against what the house and the food put back. Being
+  // wrecked and being in the papers are both a weight you carry into every room.
+  if (inCareer(s)) {
+    const worn = Math.max(0, (s.strain || 0) - 60) / 38;        // running on empty wears
+    const press = Math.max(0, (s.scandal || 0) - 15) / 95;      // and so does being a story
+    const drop = worn + press;
+    if (drop > 0) s.mental = Math.max(0, (s.mental || 0) - drop);
+    // And a month with nothing on the calendar gives something back. It is the whole reason
+    // a month off is a decision rather than a waste.
+    // The same list the rest of the game means by 'on a set' — engine/sets.js, and the
+    // legacy single-production shape that old saves and fixtures still carry.
+    const all = (s.productions && s.productions.length) ? s.productions : (s.production ? [s.production] : []);
+    const onSet = all.some((p) => !(p.prepLeft > 0) && !p.paused);
+    if (!onSet && (s.mental || 0) < 92) s.mental = Math.min(92, (s.mental || 0) + 1.1);
   }
   checkInsolvency(s);
 }

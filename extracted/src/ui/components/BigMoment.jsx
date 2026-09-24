@@ -291,6 +291,7 @@ export function BigMoment({ moment, look, onClose }) {
       : moment.id === 'nomination' ? 'nominated'
       : moment.id === 'ceremony' ? (good && !moment.quiet ? 'asker' : 'applause')
       : moment.id === 'yearbook' ? 'good'
+      : moment.id === 'nominations' ? (moment.count ? 'nominated' : 'tv')
       : moment.id === 'contract' ? (moment.walked ? 'flop' : 'offer')
       : moment.id === 'booked' ? 'offer'
       : moment.id === 'shutdown' ? 'flop'
@@ -351,6 +352,23 @@ export function BigMoment({ moment, look, onClose }) {
       {moment.id === 'contract' && moment.lines && (
         <div style={{ margin: '0 0 12px', textAlign: 'left' }}>
           {moment.lines.map((l, i) => (<div key={i} style={{ fontSize: 12, padding: '6px 10px', borderRadius: 8, background: theme.panel2, border: `1px solid ${theme.line}`, marginBottom: 5, color: / — no$/.test(l) ? theme.bad : / — agreed$/.test(l) ? theme.good : theme.gold }}>{l}</div>))}
+        </div>
+      )}
+      {/* The September lists: five names a category, yours marked. Maxi asked to see
+          whether his film and his name were in them — see systems/career/awards.js. */}
+      {moment.id === 'nominations' && moment.lists && (
+        <div style={{ margin: '0 0 12px', textAlign: 'left' }}>
+          {moment.lists.map((r, i) => (
+            <div key={i} style={{ marginBottom: 10 }}>
+              <div style={{ fontSize: 10.5, fontWeight: 900, letterSpacing: '.09em', textTransform: 'uppercase', color: r.youIn ? theme.gold : theme.muted, marginBottom: 4 }}>{r.label}</div>
+              {r.names.map((n, k) => (
+                <div key={k} style={{ fontSize: 12, padding: '4px 9px', borderRadius: 7, marginBottom: 3, lineHeight: 1.4,
+                  background: n.you ? 'rgba(255,209,102,.14)' : 'transparent',
+                  border: `1px solid ${n.you ? 'rgba(255,209,102,.45)' : 'transparent'}`,
+                  color: n.you ? theme.gold : theme.muted, fontWeight: n.you ? 800 : 600 }}>
+                  {n.you ? '★ ' : ''}{n.name}{n.work ? <span style={{ opacity: .75 }}> — {n.work}</span> : null}
+                </div>))}
+            </div>))}
         </div>
       )}
       {(moment.id === 'nomination' || moment.id === 'ceremony') && moment.lines && (

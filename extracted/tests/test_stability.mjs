@@ -205,7 +205,10 @@ function playOut(stability, runs = 3000) {
     out.cash += s.cash;
     if (!s.releases.length) { out.never++; continue; }
     const r = s.releases[0].rating;
-    if (r >= 85) out.hit++; else if (r >= 55) out.ok++; else out.flop++;
+    // The game's own word for it: a Flop is under fifty (production.js status). The band
+    // used to be 55, which sat above the median once the script became the spine of the
+    // rating and turned this into a coin toss.
+    if (r >= 85) out.hit++; else if (r >= 50) out.ok++; else out.flop++;
   }
   return out;
 }

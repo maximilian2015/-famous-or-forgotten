@@ -41,18 +41,27 @@ export function mentalReport(s) {
   if ((s.rentMissed || 0) > 0) push(line('rent', 'Rent you could not cover', -3, 'A letter came, and then another one.'));
 
   // ── the work ──
-  // A shoot does NOT take mental every month — checked, and it does not. What it fills is
-  // the other meter, and that one ends in a collapse that takes sixteen points at once.
-  // Saying "the shoot is costing you 1.5 a month" would have been a nice-sounding invention,
-  // and a player would have planned around it.
+  // A shoot takes something every month now, and how much depends on how you are taking it
+  // (production.js STANCES). Maxi: "mental never falls, living well means it is never in
+  // play" — it was true, and this is the half of the balance that was missing.
   if (s.production) {
     const all = s.productions && s.productions.length ? s.productions : [s.production];
     const fills = all.reduce((n, p) => n + monthlyStrain(p, s.strain || 0), 0);
     const band = strainBand(s.strain || 0);
-    push(line('shoot', `Shooting ${s.production.title}`, 0,
-      `Not taking your head directly — it is filling the other meter, at ${Math.round(fills * 10) / 10} a month. `
-      + `You are ${band.label.toLowerCase()}, and it is a collapse that costs you sixteen at once.`));
+    const cost = all.reduce((n, p) => {
+      const st = p.stance === 'allin' ? 1.3 : p.stance === 'coast' ? 0.3 : 0.7;
+      const big = p.scale === 'blockbuster' || p.scale === 'prestige' ? 1.25 : 1;
+      const worn = 0.45 + Math.min(1.1, (s.strain || 0) / 90);
+      return n + st * big * worn * (1 + Math.max(0, all.length - 1) * 0.4);
+    }, 0);
+    push(line('shoot', all.length > 1 ? `${all.length} sets at once` : `Shooting ${s.production.title}`, -Math.round(cost * 10) / 10,
+      `The hours and the waiting. It is also filling the other meter at ${Math.round(fills * 10) / 10} a month — `
+      + `you are ${band.label.toLowerCase()}, and that one ends in a collapse that costs sixteen at once.`));
+  } else {
+    push(line('off', 'Nothing on the calendar', 1.1, 'A month that is yours. It is the only thing that puts it back without a doctor.'));
   }
+  if ((s.strain || 0) > 60) push(line('worn', 'Running on empty', -Math.round((Math.max(0, (s.strain || 0) - 60) / 38) * 10) / 10, 'Tired in a way a weekend does not fix.'));
+  if ((s.scandal || 0) > 15) push(line('press', 'In the papers', -Math.round((Math.max(0, (s.scandal || 0) - 15) / 95) * 10) / 10, 'Being a story is a weight you carry into every room.'));
   const slots = jobSlots(s);
   if (slots > 1) push(line('job', s.job ? `${s.job.title} at ${s.job.employer}` : 'The day job', -1, 'The grind wears, and it wears quietly.'));
   if (s.burnout && s.burnout.left > 0) {

@@ -26,9 +26,12 @@ for (let i = 1; i < HOUSING_ORDER.length; i++) {
 ok('paying more is always better', monotonic, detail.join(','));
 
 // a rented room actively costs you
+// A month off gives a little back (economy.js), so the room's drain shows against a
+// better address rather than against the number you started the month on.
 const room = st('room'); const m0 = room.mental, h0 = room.health;
-applyMonthly(room);
-ok('a rented room drains mental', room.mental < m0, `${m0} -> ${room.mental}`);
+const flat = st('flat');
+applyMonthly(room); applyMonthly(flat);
+ok('a rented room costs you against a real one', room.mental < flat.mental, `room ${room.mental} vs flat ${flat.mental}`);
 ok('a rented room drains health', room.health < h0, `${h0} -> ${room.health}`);
 const pent = st('penthouse'); const pm = pent.mental;
 applyMonthly(pent);

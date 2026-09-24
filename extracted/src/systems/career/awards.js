@@ -218,7 +218,14 @@ function fieldFor(s, year, category, you, taken) {
 // else is, because the night happens whether or not your name is read out.
 export function runNominations(s) {
   if ((s.month || 0) !== NOMS_MONTH) return null;
-  if (s.awards && s.awards.pending && s.awards.pending.length) return null;   // one season at a time
+  // One season at a time — but a season whose night has already been and gone is not a
+  // season, it is a leftover, and it used to block every list after it for the rest of the
+  // life. Maxi: "September, and no nominations window, why?"
+  if (s.awards && s.awards.pending && s.awards.pending.length) {
+    const now0 = (s.year || 0) * 12 + (s.month || 0);
+    if ((s.awards.pending[0].due || 0) > now0) return null;
+    s.awards.pending = null;
+  }
   const year = (s.year || 0);             // the season is named for the year the lists come out
   const work = eligibleWork(s, year);
   s.awards = s.awards || { losses: 0, wins: [], nominations: [], pending: null, history: [] };
@@ -296,11 +303,36 @@ export function runNominations(s) {
       ? `${pending.length} nominations. The phone has not stopped since six this morning.`
       : `Nominated for ${labels[0]}. Whatever else happens now, that stays after your name.`,
   });
+  // …and then the lists themselves, behind your own news.
+  showLists(s, pending);
   return pending;
 }
 
 // The season you are not in. The three races are drawn from the world and the night is
 // still held; you find out who won like everybody else does.
+// The September lists, as the player sees them: five names a category, yours marked.
+// Maxi asked to SEE whether his film and his name were in them, and a year he was not in
+// showed him nothing at all — which is not how a nomination morning works.
+function showLists(s, pending) {
+  const rows = ['lead', 'supporting', 'picture'].map((cat) => {
+    const p = (pending || []).find((x) => x.category === cat);
+    if (!p) return null;
+    const label = (CATEGORIES.find((c) => c.id === cat) || {}).label || cat;
+    const names = (p.field || []).slice(0, 5).map((n) => ({
+      name: cat === 'picture' ? (n.work || n.name) : n.name,
+      work: cat === 'picture' ? null : n.work,
+      you: !n.them,
+    }));
+    return { label, names, youIn: names.some((n) => n.you) };
+  }).filter(Boolean);
+  const mine = rows.filter((r) => r.youIn).length;
+  showMoment(s, {
+    id: 'nominations', kind: mine ? 'good' : 'plain', title: 'The nominations',
+    lists: rows, count: mine,
+    body: mine ? `${mine === 1 ? 'One' : String(mine)} of them has your name in it. The night is in March.`
+      : 'Not this year. The lists are read in September and the night is in March, and between the two everybody pretends not to be counting.',
+  });
+}
 function theirNight(s, year) {
   const pending = [];
   const due = (s.year || 0) * 12 + (s.month || 0) + SEASON_LENGTH;
@@ -311,6 +343,7 @@ function theirNight(s, year) {
   }
   for (const p of pending) for (const n of p.field) { if (n.them && n.id) { const a = actorById(s, n.id); if (a) a.noms = (a.noms || 0) + 1; } }
   s.awards.pending = pending;
+  showLists(s, pending);
   return null;
 }
 // A rival who wins is a rival who is more famous tomorrow. Written on the year's entry so

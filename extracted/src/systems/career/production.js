@@ -400,6 +400,19 @@ function tickSet(s, p) {
     lead.bond = clamp(lead.bond - rint(6, 10));
     if (p.drunkMonths === 1) addTimeline(s, `Forty people waited two hours for you this month. ${lead.name} did not say anything, which was worse.`, true);
   }
+  // A month on a set costs something of you, and how much depends on how you are taking
+  // it (STANCES). Nothing here used to touch mental at all, so an actor could shoot back to
+  // back for forty years in a penthouse and never once feel it.
+  {
+    const st = p.stance === 'allin' ? 1.3 : p.stance === 'coast' ? 0.3 : 0.7;
+    const big = p.scale === 'blockbuster' || p.scale === 'prestige' ? 1.25 : 1;
+    const many = 1 + Math.max(0, sets(s).length - 1) * 0.4;
+    // Rested, the work is fine. It is the work on top of the work that costs you, which is
+    // why a month off is the answer and not a luxury.
+    const worn = 0.45 + Math.min(1.1, (s.strain || 0) / 90);
+    p._mentalCost = Math.round(st * big * many * worn * 10) / 10;
+    s.mental = clamp((s.mental || 50) - p._mentalCost);
+  }
   p.monthsLeft -= 1;
   // You are paid while you work. A fourteen-month blockbuster that only paid on wrap
   // would starve you out of your flat long before the premiere.
@@ -467,8 +480,15 @@ function wrapProduction(s, p) {
   // so an actor at 88 who rehearsed every month made a Hit 36 times in 60 and the WORST
   // film they could physically produce was a 7.5. No actor alive has that record. You take
   // a part expecting a hit and it comes out as nothing, and the reason is almost never you.
-  const floor = 20 + skill * 0.30;                // you never embarrass yourself — that is all
-  const craft = (p.meter - 40) * 0.45;            // how the shoot actually went — can go negative
+  // Maxi, after a career of nothing but hits: "every film is always a hit, there are no
+  // obstacles, nothing in the game is hard." Measured, he was right: a master on a bad
+  // script had a median of 73 and flopped four times in a hundred, because the actor set
+  // the floor — twenty plus a third of the skill — and the script was worth a fifth of its
+  // own number. That is backwards. The script is the spine and the actor is the swing:
+  // nobody has ever acted a bad film into a good one, and the best performance of the year
+  // can sit inside something nobody will watch twice.
+  const floor = 22;                               // a professional never embarrasses themselves
+  const craft = (skill - 50) * 0.20 + (p.meter - 45) * 0.32;   // what YOU add, either way
   // The swing. A locked studio picture comes out roughly as good as it was always going
   // to be; a project held together with tape can be the film of the year or nothing at
   // all. This is why an indie is worth the gamble.
@@ -480,7 +500,7 @@ function wrapProduction(s, p) {
   // 10.0/10, and the distribution had a normal hump in the fifties and then a spike at the
   // ceiling. No film has ever scored ten. Everything past 86 is compressed instead —
   // see topOut below — so a great film and a masterpiece stop being the same number.
-  let rating = floor + craft - roughness(p.stability) - (p.drunkMonths || 0) * 1.6 + material * 0.18
+  let rating = floor + craft - roughness(p.stability) - (p.drunkMonths || 0) * 1.6 + material * 0.54
     + (s.looks - 40) * 0.08 + genreBonus(s, p.genre) + rint(-16, 12) + volatileSwing(p.stability)
     + ratingShift(p) + (swingShift(p) ? rint(-swingShift(p), swingShift(p)) : 0);
   // And then the material has the last word. Nobody has ever acted a bad script into a good

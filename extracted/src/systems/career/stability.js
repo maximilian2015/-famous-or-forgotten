@@ -62,7 +62,10 @@ export function feeFactor(stability) {
 // The part itself. This is the only currency a broke production has, and it has to be
 // worth crossing the room for.
 export function riskPrestige(stability) {
-  return Math.round(Math.max(0, 88 - (stability ?? 88)) * 0.45);
+  // Matched against roughness below. The pair has to be rebalanced whenever the script's
+  // weight in the rating changes — it went from a fifth to a half when the script became
+  // the spine (production.js), so this came down by the same factor.
+  return Math.round(Math.max(0, 88 - (stability ?? 88)) * 0.15);
 }
 // No money also means no days, no reshoots, no post. The finished thing is rougher.
 // The two are a matched pair on purpose: shaky money buys you a better part and takes the
