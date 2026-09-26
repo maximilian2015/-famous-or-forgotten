@@ -29,6 +29,8 @@ const TW = await import(P + 'systems/life/town.js');
 const DR = await import(P + 'systems/life/drink.js');
 const OF = await import(P + 'systems/career/offers.js');
 const CO = await import(P + 'systems/career/collab.js');
+const CH = await import(P + 'systems/career/chapter.js');
+const SC = await import(P + 'systems/career/script.js');
 
 const N = +(process.argv[2] || 12), YEARS = 45;
 const hits = {};
@@ -78,6 +80,22 @@ for (let i = 0; i < N; i++) {
       break;
     }
     K.refreshCastingPool(t);
+    // where the next one goes — and whether anybody pays to remind people it exists
+    for (const o of [...(t.offers || [])]) {
+      if (!CH.continues(o) || o.signed) continue;
+      if (o.character) saw('a continuation knows who you play');
+      if (!o.direction) {
+        const list = CH.directionsFor(t, o).filter((d) => d.open);
+        const pick = list[Math.floor(Math.random() * list.length)];
+        if (pick) { CH.chooseDirection(t, o.id, pick.id); saw('chose where it goes'); saw('direction:' + pick.id); }
+      }
+      const rm = CH.remindersFor(t, o);
+      if (rm) {
+        saw('offered a campaign after a long gap');
+        const can = rm.options.filter((x) => x.open);
+        if (can.length) { CH.buyReminder(t, o.id, can[Math.floor(Math.random() * can.length)].id); if (o.remind) saw('bought one'); }
+      }
+    }
     // the papers
     for (const o of [...(t.offers || [])]) {
       if (o.signed) { if (o.kind === 'renewal' && /took up its option/.test(o.note || '')) saw('the network took its option'); continue; }
@@ -155,7 +173,12 @@ for (let i = 0; i < N; i++) {
       if (/never found the money/.test(x)) saw('a collaboration died in development');
       if (/got it made\./.test(x)) saw('a collaboration got financed');
       if (/passed on making something with you/.test(x)) saw('they passed');
+      if (/went where you said it should go, and it worked/.test(x)) saw('your idea worked');
+      if (/went where you said it should go, and it did not/.test(x)) saw('your idea did not');
     }
+    // The papers are not the record: a press piece never reaches the timeline, so it has
+    // to be read where it lives.
+    for (const pc of (t.press || [])) { if (pc.at === (t.year * 12 + t.month) && /is coming back — /.test(pc.head || '')) saw('a return made the news'); }
     if (HY.hypeSource(t)) saw('hype:' + HY.hypeSource(t));
     for (const r of RK.liveRisks(t)) saw('risk:' + r.id);
     for (const g of GO.goals(t)) saw('goal:' + g.id.split(':')[0]);
@@ -166,7 +189,13 @@ for (let i = 0; i < N; i++) {
   saw('lives');
   for (const id of TC.activeLabels(t)) saw('label:' + id);
   if (onlyGenre && TC.activeLabels(t).includes('g:' + onlyGenre)) saw('a one-genre life got the genre label');
-  for (const c of (t.filmography || []).filter((x) => !x.minor)) { if (c.potential) saw('potential:' + c.potential); if (c.sequelDead) saw('a dead sequel on the shelf'); if ((c.part || 1) > 1) saw('a sequel made'); if (c.cult) saw('a cult classic on the shelf'); }
+  for (const c of (t.filmography || []).filter((x) => !x.minor)) {
+    if (c.character) saw('credits that know who you played');
+    if (c.openViewers && c.endViewers) { saw('seasons measured end to end'); if (c.endViewers > c.openViewers) saw('a season that grew'); else if (c.endViewers < c.openViewers * 0.8) saw('a season that lost them'); }
+    if (c.direction) saw('a season you steered');
+    if (c.direction === 'mine') { saw('a season you pitched'); if ((c.rating || 0) < 68) saw('a pitch of yours that missed'); }
+    if (c.remind) saw('a season you sold back to people');
+    if (c.potential) saw('potential:' + c.potential); if (c.sequelDead) saw('a dead sequel on the shelf'); if ((c.part || 1) > 1) saw('a sequel made'); if (c.cult) saw('a cult classic on the shelf'); }
   for (const k of Object.keys(t._storyLog || {})) saw('story ran:' + k, (t._storyLog[k] || []).length);
   const f = FA.factions(t); saw('faction spread', Math.max(...f.map((x) => x.score)) - Math.min(...f.map((x) => x.score)));
   const amb = AM.ambitionProgress(t); if (amb) { saw('ambition read'); if (amb.met) saw('ambition met'); }
@@ -206,6 +235,7 @@ group('Kinds of paper (career/contract.js)', ['clause:fee', 'clause:schedule', '
 group('Franchises (career/franchise.js)', ['potential:built', 'potential:open', 'potential:closed', 'a sequel made', 'a sequel died in development', 'a dead sequel on the shelf', 'a cult classic', 'a cult classic on the shelf']);
 group('The set (career/production.js, naming.js)', ['stance set', 'stance did the month', 'stance could not be afforded', 'named a project', 'a rename landed']);
 group('Collaborations (career/collab.js)', ['asked somebody to collaborate', 'they said yes', 'they passed', 'a collaboration died in development', 'a collaboration got financed']);
+group('The story of it (career/script.js, chapter.js)', ['a continuation knows who you play', 'credits that know who you played', 'chose where it goes', ...CH.DIRECTION_ORDER.map((d) => 'direction:' + d), 'direction:mine', 'a season you steered', 'a season you pitched', 'a pitch of yours that missed', 'your idea worked', 'your idea did not', 'seasons measured end to end', 'a season that grew', 'a season that lost them', 'offered a campaign after a long gap', 'bought one', 'a season you sold back to people', 'a return made the news']);
 group('The board (meta/goals.js, ambition.js, factions.js)', ['goal:fame', 'goal:respect', 'goal:ambition', 'goal:aaa', 'goal:agent', 'goal:room', 'goal:poison', 'goal:comeback', 'goal:risk', 'ambition read', 'ambition met']);
 group('The older half, read off the finished life', ['Asker nominations', 'Askers won', 'world hits', 'films that went to a festival', 'festival prizes', 'seasons of television', 'pictures that collapsed', 'burnouts', 'ever had an agent', 'moved out of a rented room', 'a partner at the end', 'children', 'the drink noticed', 'died before the end', 'a season renewed', 'a show cancelled', 'a rumour', 'overtaken on the list', 'box office poison', 'a night out', 'turned a paper down', 'walked off a set']);
 console.log(`\nfaction spread, average high-to-low: ${(seen('faction spread') / N).toFixed(0)} points`);

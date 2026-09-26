@@ -10,6 +10,7 @@ import { startProduction } from './production.js';
 import { rollStability } from './stability.js';
 import { canWork } from '../life/strain.js';
 import { newTitle } from '../world/titles.js';
+import { spent } from '../../engine/economy.js';
 import { storyOfferFactor, noteRefusal, noteSequelLoss } from '../meta/stories.js';
 import { hypeDemand, hype, hypeSource, hypeBrands } from '../meta/hype.js';
 import { isStrong, activeLabels, labelInfo } from '../meta/typecast.js';
@@ -67,6 +68,7 @@ export function runCampaign(s, id) {
   const cost = campaignCost(o);
   if ((s.cash || 0) < cost) { s.lastEvent = `A campaign for "${o.projectTitle.replace('⭐ ', '')}" would cost €${cost.toLocaleString()} — you can't cover it right now.`; return s; }
   s.cash = (s.cash || 0) - cost;
+  spent(s, 'career', cost);   // it comes out of your pocket; the statement should say so
   o.campaign = true;
   s.lastEvent = `You greenlit a marketing push for "${o.projectTitle.replace('⭐ ', '')}" — €${cost.toLocaleString()}. Should help if it lands.`;
   addTimeline(s, `Ran a campaign for ${o.projectTitle.replace('⭐ ', '')}.`);

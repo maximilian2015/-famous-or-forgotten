@@ -77,6 +77,9 @@ export function ContractRoom({ g, onClose }) {
         <div style={{ height: 1, background: P.ink, margin: '12px 0 16px' }} />
         <div style={{ fontFamily: FONT_DISPLAY, fontSize: 21, lineHeight: 1.15 }}>Actor’s contract</div>
         <div style={{ fontSize: 12, fontWeight: 700, color: P.accent, marginTop: 4 }}>“{title}” · {o.role}</div>
+        {/* The part, on the paper, where a part belongs. career/script.js */}
+        {o.character && <div style={{ fontSize: 11.5, marginTop: 3 }}>as <b>{o.character.name}</b> — {o.character.what}</div>}
+        {o.premise && <div style={{ fontSize: 11, color: P.muted, marginTop: 4, lineHeight: 1.5, fontStyle: 'italic' }}>{o.premise}</div>}
         <div style={{ fontSize: 12, marginTop: 6 }}>{g.name} × {studio}</div>
         <div style={{ height: 1, background: P.line, margin: '12px 0 4px' }} />
 

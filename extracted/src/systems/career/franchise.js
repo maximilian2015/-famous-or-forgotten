@@ -117,7 +117,8 @@ export function seriesRoot(title) {
 function previousViewers(s, root, season) {
   if (season < 2) return null;
   const prev = (s.filmography || []).find((c) => (c.season || (c.job && c.job.season)) === season - 1 && seriesRoot((c.job && c.job.seriesTitle) || c.title) === root);
-  return prev && prev.viewers > 0 ? prev.viewers : null;
+  // The number a network renews on is the one at the END of the season.
+  return prev ? (prev.endViewers > 0 ? prev.endViewers : (prev.viewers > 0 ? prev.viewers : null)) : null;
 }
 function previousRating(s, title, season) {
   if (!season || season < 2) return null;
@@ -363,7 +364,8 @@ export function maybeContinue(s, credit, p, force = false) {
     // Always build from the name of the SHOW, never from last season's project title.
     const root = seriesRoot(p.seriesTitle || p.title);
     const prevV = previousViewers(s, root, season);
-    const odds = renewalOdds(credit.rating, season, p.type, credit.viewers != null ? credit.viewers : null, prevV);
+    const finale = credit.endViewers > 0 ? credit.endViewers : credit.viewers;
+    const odds = renewalOdds(credit.rating, season, p.type, finale != null ? finale : null, prevV);
     if (!force && !chance(odds)) {
       credit.renewal = season >= seasonCap(p.type) ? 'capped' : 'cancelled';
       if (season > 1) addTimeline(s, `"${root}" was not renewed after ${season} season${season === 1 ? '' : 's'}.`, true);
@@ -408,9 +410,13 @@ export function maybeContinue(s, credit, p, force = false) {
       stability: Math.max(82, p.stability || 82),
       projectTitle: `${root} · season ${nextSeason}`, role: p.role, type: p.type, genre: p.genre,
       episodes, episodeFee, salary: episodeFee * episodes, baseSalary: p.baseSalary || p.salary,
+      // The arc decides the material — it always did, and the line below this one used to
+      // overwrite it two properties later, so the shape of a show never meant anything.
       prestigeScore: seasonMaterial(p.prestigeScore || 50, nextSeason, arc), arc,
       months: tvMonths(p.type, p.scale, episodes),
-      prestigeScore: Math.min(96, (p.prestigeScore || 45) + rint(2, 7)), tier: p.tier || 'lead',
+      tier: p.tier || 'lead',
+      // Same person, same show. career/script.js
+      character: p.character || null, premise: p.premise || null,
       fame: p.tier === 'tentpole' ? 9 : 5, deadline: rint(2, 3), waitsForWrap: true,   // your own show waits for you
       note: underOption
         ? `The network took up its option: season ${nextSeason}, five per cent more, as the paper said.${nextSeason === 3 ? ' The whole cast is asking for the market rate; the paper lets you ask too.' : ''}${(p.exitAfter || 0) && nextSeason > (p.exitAfter || 0) ? ' Your exit clause is live — you can leave this one without a word said against you.' : ''}`
@@ -448,6 +454,8 @@ export function maybeContinue(s, credit, p, force = false) {
     salary, baseSalary: first, months: Math.max(2, Math.round((p.months || 5) * (0.95 + Math.random() * 0.25))),
     prestigeScore: sequelMaterial(p.prestigeScore || 50, nextPart, arc), arc,
     tier: p.tier || 'lead', fame: p.tier === 'tentpole' ? 9 : 5, deadline: rint(2, 3), waitsForWrap: true,   // and so does your own sequel
+    // The same person, still. A sequel that renamed your character was a sequel to nothing.
+    character: p.character || null, premise: p.premise || null, seriesTitle: seriesRoot(p.title),
     note: obliged
       ? 'You signed for this one. The fee is the fee you agreed to years ago.'
       : credit.verdict === 'smash'

@@ -13,6 +13,7 @@ import { setFame, setRespect } from './status.js';
 import { OUTLETS } from '../world/names.js';
 import { slotNorm } from '../career/franchise.js';
 import { budgetFor } from '../career/release.js';
+import { continues, gapOf, GAP_YEARS } from '../career/chapter.js';
 
 const MON = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
 const clamp = (v) => Math.max(0, Math.min(100, v));
@@ -150,7 +151,7 @@ function runPieces(s) {
         const want = c.genre === hotGenreOf(s) ? `The Friday crowd wants ${String(c.genre).toLowerCase()} this month, which is the wind at its back.` : `The Friday crowd wants ${hotGenreOf(s).toLowerCase()} this month; a ${String(c.genre || 'drama').toLowerCase()} has a fight on its hands.`;
         add(r >= 65 ? 'praise' : r >= 50 ? 'news' : 'pan', r >= 65 ? `First reviews: "${c.title}" lands` : r >= 50 ? `First reviews: "${c.title}" divides` : `First reviews: "${c.title}" gets a kicking`, `${crit} ${want}`, { about: c.title, kind: 'you', react: r < 50 });
       } else if (!film && (s.fame || 0) >= 12 && c.scale !== 'episode') {
-        add('news', `"${c.title}": the first night's numbers`, `${c.viewers || 0}m watched the first episode against the ${slotNormOf(c.type)}m the slot wants. ${(c.viewers || 0) >= slotNormOf(c.type) ? 'The network is pleased, in the way a network is pleased: quietly, and with a memo.' : (c.viewers || 0) >= slotNormOf(c.type) * 0.7 ? 'Soft. Not a disaster — the kind of number that makes a network wait a week before saying anything.' : 'Well under. Somebody at the network has already started a conversation about the slot.'}`, { about: c.title, kind: 'you' });
+        add('news', `"${c.title}": the first night's numbers`, `${c.openViewers || c.viewers || 0}m watched the first episode against the ${slotNormOf(c.type)}m the slot wants. ${(c.viewers || 0) >= slotNormOf(c.type) ? 'The network is pleased, in the way a network is pleased: quietly, and with a memo.' : (c.viewers || 0) >= slotNormOf(c.type) * 0.7 ? 'Soft. Not a disaster — the kind of number that makes a network wait a week before saying anything.' : 'Well under. Somebody at the network has already started a conversation about the slot.'}`, { about: c.title, kind: 'you' });
       }
     }
     // a month in: the producers' number, or the network's mood
@@ -245,6 +246,30 @@ function hotGenreOf(s) { const G = ['Drama', 'Thriller', 'Comedy', 'Sci-Fi', 'Ro
 function slotNormOf(type) { return slotNorm(type); }
 
 // Monthly, at the end of the tick, after everything that writes to the timeline.
+// Maxi: "when there is a three-year gap between seasons there should be some buzz in the
+// news." A thing coming back after years away IS the story — for a week, before anybody
+// has seen a frame of it. Written once per returning title. See career/chapter.js.
+function returnPieces(s) {
+  const out = [];
+  const fn = first(s);
+  s._backTalk = s._backTalk || {};
+  for (const o of (s.offers || [])) {
+    if (!continues(o)) continue;
+    const g = gapOf(s, o);
+    if (!g || g.years < GAP_YEARS) continue;
+    const key = String(o.projectTitle || o.id);
+    if (s._backTalk[key]) continue;
+    s._backTalk[key] = stamp(s);
+    const what = o.kind === 'renewal' ? `season ${o.season}` : `part ${o.part}`;
+    const good = g.rating >= 70;
+    out.push({ tone: good ? 'praise' : 'news', kind: 'you', about: o.projectTitle,
+      head: `"${g.title}" is coming back — ${g.years} years on`,
+      body: good
+        ? `Nobody expected it and everybody wants it. ${g.years} years after "${g.title}", there is a ${what}, and ${fn} is in it. The clips are going round again this week; whether anybody still cares by the time it is on is the question the first night answers.`
+        : `There is a ${what} of "${g.title}", ${g.years} years later, with ${fn} back in it. The response is polite. A thing nobody was asking for has to work twice as hard to be noticed at all.` });
+  }
+  return out;
+}
 export function pressTick(s) {
   // The month just lived and the one before it: what you did is stamped with the old month
   // (you walked off in June), what the tick did with the new one (the picture opened in
@@ -254,7 +279,7 @@ export function pressTick(s) {
   const done = new Set(s._pressDone || []);
   const lines = (s.timeline || []).filter((e) => keys.has(e.when) && !done.has(e.when + '|' + e.text)).map((e) => e.text);
   // What happened (three at most), the run and the set (two), and the business (one).
-  const raw = [...piecesFor(s, lines).map((p) => ({ kind: 'you', ...p })), ...runPieces(s).slice(0, 2), ...setPieces(s).slice(0, 1), ...worldPieces(s)];
+  const raw = [...piecesFor(s, lines).map((p) => ({ kind: 'you', ...p })), ...returnPieces(s).slice(0, 1), ...runPieces(s).slice(0, 2), ...setPieces(s).slice(0, 1), ...worldPieces(s)];
   const pieces = raw.map((p, i) => ({ id: `pr${now}_${i}`, at: now, outlet: outletFor(p.tone), acted: false, ...p }));
   s._pressDone = [...(s.timeline || []).filter((e) => keys.has(e.when)).map((e) => e.when + '|' + e.text), ...(s._pressDone || [])].slice(0, 60);
   s._pressScandal = s.scandal || 0;

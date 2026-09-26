@@ -2,6 +2,7 @@ import { useSyncExternalStore } from 'react';
 import { createInitialState } from './initialState.js';
 import { beginLife } from '../systems/life/origin.js';
 import { ensureAppearance } from '../systems/life/appearance.js';
+import { dressOffers } from '../systems/career/script.js';
 const KEY = 'fof_react_save';
 const CURRENT_VERSION = 'r0.8b';
 
@@ -80,7 +81,14 @@ export function useGame() { return useSyncExternalStore(subscribe, getState, get
 function looksLikeState(v) { return !!v && typeof v === 'object' && typeof v.version === 'string' && typeof v.ageY === 'number'; }
 export function dispatch(fn, ...args) {
   const next = fn(state, ...args);
-  setState(looksLikeState(next) ? { ...next } : { ...state });
+  const out = looksLikeState(next) ? { ...next } : { ...state };
+  // Every offer on the table says who you would be playing and what it is about. The
+  // monthly tick does this too, but a part can appear between two months — a favour called
+  // in, a paper pushed by somebody in a room — and an offer with no part on it is the same
+  // hole this was written to close. See career/script.js; it costs nothing when there is
+  // nothing to do.
+  dressOffers(out);
+  setState(out);
 }
 export function newLife(opts) { setState(freshLife(opts)); }
 export function resetSave() { localStorage.removeItem(KEY); setState(freshLife()); }

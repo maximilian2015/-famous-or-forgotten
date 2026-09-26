@@ -18,6 +18,7 @@ import { fameTier } from '../meta/status.js';
 import { personName, namesInUse } from '../world/names.js';
 import { holdsAGrudge } from '../meta/stories.js';
 import { rollPotential } from './franchise.js';
+import { dirBump, dirSwing, pitchAftermath } from './chapter.js';
 import { sets, addSet, removeSet, setById, canTakeSet, slotsFree, MAX_SETS, SET_RESPECT } from '../../engine/sets.js';
 export { sets, canTakeSet, slotsFree, MAX_SETS, SET_RESPECT };
 const clamp = (v) => Math.max(0, Math.min(100, v));
@@ -142,7 +143,12 @@ export function startProduction(s, offer) {
     crew: makeCrew(s, scaleOfOffer(offer)), meter: 20,
     // What it is about, and which version of it you end up shooting. See story.js — the
     // argument happens on day one and the room decides whether you are listened to.
-    premise: makePremise(), take: null, takeWon: false,
+    // What the paper said it was about and who you would be. Rolled at the offer now
+    // (career/script.js), so you are not signing a genre and a fee — and kept, so season
+    // four is about the same person as season one.
+    premise: offer.premise || makePremise(), character: offer.character || null, take: null, takeWon: false,
+    // Where you said it should go, and whether anybody was paid to remind people it exists.
+    direction: offer.direction || null, remind: offer.remind || null,
     // Franchise material, or a story that ends. Rolled once, here, and kept — see franchise.js.
     potential: offer.potential || rollPotential(scaleOfOffer(offer), offer.genre),
   };
@@ -502,7 +508,8 @@ function wrapProduction(s, p) {
   // see topOut below — so a great film and a masterpiece stop being the same number.
   let rating = floor + craft - roughness(p.stability) - (p.drunkMonths || 0) * 1.6 + material * 0.54
     + (s.looks - 40) * 0.08 + genreBonus(s, p.genre) + rint(-16, 12) + volatileSwing(p.stability)
-    + ratingShift(p) + (swingShift(p) ? rint(-swingShift(p), swingShift(p)) : 0);
+    + ratingShift(p) + (swingShift(p) ? rint(-swingShift(p), swingShift(p)) : 0)
+    + dirBump(p) + (dirSwing(p) ? rint(-dirSwing(p), dirSwing(p)) : 0);
   // And then the material has the last word. Nobody has ever acted a bad script into a good
   // film — an actor at 88 who rehearsed every month used to make a Hit 36 times in 60 and
   // the WORST thing they could physically produce was a 7.5, whatever they were handed.
@@ -549,6 +556,10 @@ function wrapProduction(s, p) {
   // fame, box office and the score all arrive on premiere night, not on the last
   // day of shooting. See systems/career/release.js.
   credit.premise = p.premise; credit.take = p.takeWon ? p.take : null;
+  // Who you were in it, and where you said it should go. Both follow the part into the
+  // next season's brief — see career/script.js and career/chapter.js.
+  credit.character = p.character || null; credit.direction = p.direction || null;
+  pitchAftermath(s, credit, p);
   scheduleRelease(s, credit, p);
   addGenreXP(s, p.genre, rating);
   // Whatever the monthly instalments did not cover — rounding, and the offers that were

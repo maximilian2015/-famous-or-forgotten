@@ -219,8 +219,11 @@ export const LEDGER = {
   bought: 'What you bought',
   people: 'Given to people',
   trouble: 'Lawyers, doctors, and the rest',
+  // Money you put into your own work: the Asker push, a campaign to remind people a thing
+  // is coming back. It was leaving the account and appearing on no line of the statement.
+  career: 'Campaigns and pushes of your own',
 };
-export const LEDGER_ORDER = ['tax', 'agent', 'living', 'team', 'bought', 'people', 'trouble', 'levy'];
+export const LEDGER_ORDER = ['tax', 'agent', 'living', 'team', 'bought', 'career', 'people', 'trouble', 'levy'];
 export function spent(s, cat, amount) {
   if (!(amount > 0)) return 0;
   (s.spentLife = s.spentLife || {})[cat] = (s.spentLife[cat] || 0) + Math.round(amount);

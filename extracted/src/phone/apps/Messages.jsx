@@ -1,5 +1,7 @@
 import { useEffect } from 'react';
 import { theme } from '../../ui/theme.js';
+import { partLine, sizeLine } from '../../systems/career/script.js';
+import { continues, briefFor, directionsFor, chooseDirection, remindersFor, buyReminder, thingName } from '../../systems/career/chapter.js';
 import { smsReply, smsReadAll } from '../../systems/social/sms.js';
 import { dispatch } from '../../state/store.js';
 import { canTakeSet } from '../../engine/sets.js';
@@ -78,6 +80,11 @@ export function Messages({ g }) {
             : o.via === 'agent' || agent ? `${agent || 'Your agent'} · your agent brought it` : 'A producer'}
         </div>
         <div style={{ fontSize: 13 }}>{o.projectTitle} — {o.role} · {o.type}</div>
+        {/* Maxi: "write down who they are proposing you play and a couple of lines of the
+            plot." career/script.js puts both on every offer, wherever it came from. */}
+        {o.character && <div style={{ fontSize: 12, fontWeight: 800, color: theme.text, marginTop: 5 }}>You: {partLine(o)}</div>}
+        {o.character && <div style={{ fontSize: 10.5, color: theme.muted, marginTop: 1 }}>{sizeLine(o)}</div>}
+        {o.premise && <div style={{ fontSize: 11.5, color: theme.muted, marginTop: 4, lineHeight: 1.5, fontStyle: 'italic' }}>{o.premise}</div>}
         {/* A returning show or a sequel should read as the same thing coming back. */}
         {o.note && <div style={{ fontSize: 11.5, color: theme.gold, marginTop: 5, lineHeight: 1.45 }}>{o.note}</div>}
         <div style={{ fontSize: 11.5, color: theme.muted, marginTop: 5 }}>
@@ -94,6 +101,40 @@ export function Messages({ g }) {
         {o.tier !== 'supporting' && !o.campaign && <button onClick={() => dispatch(runCampaign, o.id)} style={{ ...btn(''), width: '100%', marginTop: 8 }}>🏆 Asker campaign · €{cost.toLocaleString()}</button>}
         {o.tier !== 'supporting' && !o.campaign && <div style={{ fontSize: 10.5, color: theme.muted, marginTop: 5, lineHeight: 1.45 }}>A "for your consideration" push when it comes out: the studio's awards people work your name for the season. Better odds of a nomination if the film is any good — nothing if it is not. Paid now, out of your own pocket.</div>}
         {o.campaign && <div style={{ fontSize: 10.5, color: theme.gold, marginTop: 8 }}>🏆 Asker campaign paid — the push runs when it comes out.</div>}
+        {/* A season or a part that continues something: the brief, and where it goes.
+            career/chapter.js */}
+        {continues(o) && !o.signed && (() => {
+          const b = briefFor(g, o); if (!b) return null;
+          const list = directionsFor(g, o);
+          return (<div style={{ marginTop: 9, background: 'rgba(158,116,255,.07)', border: `1px solid ${theme.line}`, borderRadius: 12, padding: 10 }}>
+            <div style={{ fontSize: 10.5, fontWeight: 900, letterSpacing: '.08em', textTransform: 'uppercase', color: theme.accent, marginBottom: 5 }}>The brief · where {thingName(o).toLowerCase()} goes</div>
+            <div style={{ fontSize: 11.5, lineHeight: 1.5 }}>{b.who}</div>
+            <div style={{ fontSize: 11.5, color: theme.muted, lineHeight: 1.5, marginTop: 4 }}>{b.where}</div>
+            <div style={{ fontSize: 10.5, color: theme.muted, marginTop: 7, marginBottom: 4 }}>{b.settled ? 'You said where it goes. You can still change your mind until the paper goes back.' : 'Approve it, or tell them where it should go instead.'}</div>
+            {list.map((d) => (<button key={d.id} disabled={!d.open} onClick={() => dispatch(chooseDirection, o.id, d.id)}
+              style={{ display: 'block', width: '100%', textAlign: 'left', marginTop: 5, cursor: d.open ? 'pointer' : 'default',
+                border: `1px solid ${d.chosen ? theme.accent : theme.line}`, borderRadius: 10, padding: '7px 9px',
+                background: d.chosen ? 'rgba(158,116,255,.18)' : 'transparent', color: d.open ? theme.text : theme.muted, opacity: d.open ? 1 : .55 }}>
+              <div style={{ fontSize: 11.5, fontWeight: 800 }}>{d.chosen ? '◆ ' : ''}{d.yours ? '★ ' : ''}{d.label}</div>
+              <div style={{ fontSize: 10.5, color: theme.muted, lineHeight: 1.4, marginTop: 2 }}>{d.open ? d.blurb : d.why}</div>
+            </button>))}
+          </div>);
+        })()}
+        {/* Years away, and it was good: somebody has to remind people it exists. */}
+        {continues(o) && !o.signed && (() => {
+          const rm = remindersFor(g, o); if (!rm) return null;
+          return (<div style={{ marginTop: 9, background: 'rgba(255,209,102,.07)', border: `1px solid rgba(255,209,102,.3)`, borderRadius: 12, padding: 10 }}>
+            <div style={{ fontSize: 10.5, fontWeight: 900, letterSpacing: '.08em', textTransform: 'uppercase', color: theme.gold, marginBottom: 5 }}>📣 {rm.years} years away</div>
+            <div style={{ fontSize: 11.5, color: theme.muted, lineHeight: 1.5 }}>{rm.line}</div>
+            {rm.options.map((r) => (<button key={r.id} disabled={!r.open} onClick={() => dispatch(buyReminder, o.id, r.id)}
+              style={{ display: 'block', width: '100%', textAlign: 'left', marginTop: 6, cursor: r.open ? 'pointer' : 'default',
+                border: `1px solid ${r.chosen ? theme.gold : theme.line}`, borderRadius: 10, padding: '7px 9px',
+                background: r.chosen ? 'rgba(255,209,102,.18)' : 'transparent', color: r.open || r.chosen ? theme.text : theme.muted, opacity: r.open || r.chosen ? 1 : .55 }}>
+              <div style={{ fontSize: 11.5, fontWeight: 800 }}>{r.chosen ? '◆ ' : ''}{r.label}{r.cost ? ` · €${r.cost.toLocaleString()}` : r.ap ? ` · ${r.ap} energy` : ''}</div>
+              <div style={{ fontSize: 10.5, color: theme.muted, lineHeight: 1.4, marginTop: 2 }}>{r.chosen ? r.line : r.open ? r.blurb : r.why}</div>
+            </button>))}
+          </div>);
+        })()}
         {big && <div style={{ fontSize: 10.5, color: theme.muted, marginTop: 8 }}>This one shoots — {o.months} months on a set, with real choices on it.</div>}
         <div style={{ display: 'flex', gap: 7, marginTop: 9 }}>
           {big

@@ -16,6 +16,7 @@ import { markReleased } from '../../engine/economy.js';
 import { hotGenre, GENRES } from '../meta/news.js';
 import { maybeContinue } from './franchise.js';
 import { appealShift } from './story.js';
+import { dirAppeal, remindLift, holdFactor, retentionLine } from './chapter.js';
 import { comebackFloor } from '../meta/standing.js';
 import { paid } from './agent.js';
 import { reviewsFor } from '../world/critics.js';
@@ -131,7 +132,9 @@ function previousAudience(s, rel) {
   const prev = [...(s.filmography || []), ...(s.discography || [])]
     .find((c) => c.season === rel.season - 1
       && String(c.title || '').replace(/(\s*·\s*season\s+\d+)+\s*$/i, '').trim() === root);
-  return prev && prev.viewers > 0 ? prev.viewers : null;
+  // What the last season finished on is what this one starts from: the people still
+  // watching in week ten are the people who come back in September.
+  return prev ? (prev.endViewers > 0 ? prev.endViewers : (prev.viewers > 0 ? prev.viewers : null)) : null;
 }
 
 // Did it make its money back? This is what the industry actually remembers.
@@ -165,7 +168,11 @@ export function scheduleRelease(s, credit, p) {
     // Who was on the poster with you, if it was somebody. See production.js makeCrew.
     with: p.with || null, withId: p.withId || null, withFame: p.withFame || 0, withIcon: !!p.withIcon,
     // What the version you shot does to the box office, and the line it was pitched on.
-    appealMod: appealShift(p), premise: p.premise || credit.premise || null, take: credit.take || null,
+    appealMod: appealShift(p) * dirAppeal(p), premise: p.premise || credit.premise || null, take: credit.take || null,
+    // Where you said it should go and whether anybody was paid to remind people it exists.
+    // Both decide what the first night looks like, and one of them decides who is still
+    // there at the last. See career/chapter.js.
+    direction: p.direction || null, remind: p.remind || null, character: p.character || credit.character || null,
     joined: !!p.joined, audience: p.audience || 0,
     due: (s.year || 0) * 12 + (s.month || 0) + wait, wait,
     // Whether the thing gets a second season or a sequel is decided on the numbers, so
@@ -270,8 +277,18 @@ function open(s, rel) {
   // has seen it. Maxi: "the system remembers it was a good picture and gives benefits."
   const known = ((rel.part || 1) > 1 || (rel.season || 0) > 1) ? 1.12 : 1;
   if (fest && fest.result === 'unsold') rel.finalGross = 0;
-  else if (film) rel.finalGross = Math.round(boxOfficeFor(s, rel) * tourMultiplier(rel) * known);
-  else rel.viewers = Math.max(0.1, Math.round(viewersFor(s, rel) * tourMultiplier(rel) * known * 10) / 10);   // millions, one decimal — rounding to a whole made a bad soap draw nobody
+  else if (film) rel.finalGross = Math.round(boxOfficeFor(s, rel) * tourMultiplier(rel) * known * remindLift(rel));
+  else {
+    // Maxi: "how are seasons measured — how many watched at the start and how many at the
+    // end, and then they decide whether to renew?" Two numbers, not one. The first night
+    // is what the name, the last season and any campaign bought you. What happens between
+    // the first episode and the last IS the season, and it is the number the network
+    // decides on. See career/chapter.js holdFactor.
+    const open = Math.max(0.1, Math.round(viewersFor(s, rel) * tourMultiplier(rel) * known * remindLift(rel) * 10) / 10);
+    const end = Math.max(0.1, Math.round(open * holdFactor(rel.rating, rel) * 10) / 10);
+    rel.openViewers = open; rel.endViewers = end;
+    rel.viewers = Math.max(0.1, Math.round(((open + end) / 2) * 10) / 10);   // millions, one decimal — rounding to a whole made a bad soap draw nobody
+  }
   rel.boxOffice = 0;
   const verdict = verdictOf({ ...rel, boxOffice: rel.finalGross || 0 });
   const score = (rel.rating / 10).toFixed(1);
@@ -284,7 +301,9 @@ function open(s, rel) {
     part: rel.part > 1 ? rel.part : 0, episodes: rel.episodes,
     // In cinemas. Everything below is provisional until runTick closes it.
     running: true, weeks: 0, weeksTotal: runWeeks(rel, verdict), openedAt: (s.year || 0) * 12 + (s.month || 0),
-    boxOffice: 0, viewers: rel.viewers || 0, verdict: 'in cinemas', score: null,
+    boxOffice: 0, viewers: rel.viewers || 0, openViewers: rel.openViewers || 0, endViewers: rel.endViewers || 0,
+    direction: rel.direction || null, remind: rel.remind || null, character: rel.character || null,
+    verdict: 'in cinemas', score: null,
     // Carried for the Asker season: what kind of thing it was, and whether it was pushed.
     scale: rel.scale, tier: rel.tier, prestigeScore: rel.prestigeScore, director: rel.director || null,
     premise: rel.premise || null, take: rel.take || null, potential: rel.potential || null,
@@ -562,7 +581,9 @@ function closeRun(s, credit, r) {
   const bud = budgetFor({ scale: r.scale });
   const money = film
     ? `€${(credit.boxOffice / 1000000).toFixed(credit.boxOffice >= 100000000 ? 0 : 1)}m on a €${(bud / 1000000).toFixed(0)}m film, ${credit.weeksTotal} weeks`
-    : `${credit.viewers}m watching`;
+    : (credit.openViewers && credit.endViewers)
+      ? `${credit.openViewers}m for the first, ${credit.endViewers}m for the last`
+      : `${credit.viewers}m watching`;
   const score = credit.score.toFixed(1);
   const line = r.worldHit
     ? `🌍 "${credit.title}" is a phenomenon. ${score}/10 · ${money}.`
@@ -613,7 +634,10 @@ function closeRun(s, credit, r) {
     id: 'verdict', tv: film ? null : (r.scale === 'recurring' ? 'soap' : r.scale === 'prestige' ? 'prestige' : 'episode'), kind: r.rating >= 70 || verdict === 'smash' ? 'good' : 'bad',
     title: credit.title, score, money, verdict, reviews: credit.reviews, genre: credit.genre, scale: r.scale,
     // Television: the network's number against yours, and what it decided.
-    network: !film && r.scale !== 'episode' && credit.renewal ? networkLine(credit.type, credit.viewers, null, r.rating, credit.renewal) : null,
+    network: !film && r.scale !== 'episode' && credit.renewal ? networkLine(credit.type, credit.endViewers || credit.viewers, null, r.rating, credit.renewal) : null,
+    // How many were there on the first night and how many on the last. Maxi asked how a
+    // season is measured; this is the answer, on the night it is answered.
+    retention: !film && r.scale !== 'episode' ? retentionLine(credit.openViewers, credit.endViewers) : null,
     renewal: credit.renewal || null,
     body: r.worldHit
       ? 'Nobody expected this. It has stopped being a film and started being an event.'
