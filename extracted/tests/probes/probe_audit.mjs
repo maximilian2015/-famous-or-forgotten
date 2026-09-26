@@ -28,6 +28,7 @@ const NM = await import(P + 'systems/career/naming.js');
 const TW = await import(P + 'systems/life/town.js');
 const DR = await import(P + 'systems/life/drink.js');
 const OF = await import(P + 'systems/career/offers.js');
+const CO = await import(P + 'systems/career/collab.js');
 
 const N = +(process.argv[2] || 12), YEARS = 45;
 const hits = {};
@@ -49,7 +50,10 @@ for (let i = 0; i < N; i++) {
     // a career story's beat, answered at random
     if (t.pendingArc && t.pendingArc.story) { saw('story beat shown'); saw('beat:' + t.pendingArc.story + ':' + t.pendingArc.beat); AR.resolveArc(t, Math.floor(Math.random() * t.pendingArc.choices.length)); }
     t.pendingArc = null;
-    const tl0 = (t.timeline || []).length;
+    // The record is capped at 200 entries (engine/timeline.js), so counting by length
+    // silently reads one line a month for most of a life — which is how half of this census
+    // came out low. Hold the entry that was on top and read down to it instead.
+    const tlTop = (t.timeline || [])[0];
     for (const p of PR.sets(t)) if (!p.take) ST.pushTake(t, 'about');
     if (t.illness && (t.cash || 0) > H.treatmentCost(t, t.illness)) H.seeDoctor(t);
     if ((t.strain || 0) >= 80) A.runAction(t, 'rest');
@@ -63,6 +67,16 @@ for (let i = 0; i < N; i++) {
     if ((t.ap || 0) >= 12 && Math.random() < 0.3) { const was = HY.hypeSource(t); TW.goOut(t, 'post'); if (HY.hypeSource(t) === 'viral' && was !== 'viral') saw('something went viral'); }
     if (i % 4 === 0) { if (!Object.keys(t.bottles || {}).length && (t.cash || 0) > 500) DR.buyBottle(t, DR.BOTTLE_ORDER ? DR.BOTTLE_ORDER[1] : 'wine', 3); DR.drinkThrough(t); }
     if (PR.sets(t).length && Math.random() < 0.01) { PR.walkOffSet(t, PR.sets(t)[0].id, 'something bigger'); saw('walked off a set'); }
+    // ask somebody you know to make something with you — the thing that only exists if
+    // the player reaches for it (career/collab.js)
+    for (const p of (t.people || [])) {
+      if (!CO.canPropose(t, p).ok || Math.random() > 0.25) continue;
+      saw('asked somebody to collaborate');
+      const n0 = (t.collabs || []).length;
+      CO.propose(t, p.id);
+      if ((t.collabs || []).length > n0) saw('they said yes');
+      break;
+    }
     K.refreshCastingPool(t);
     // the papers
     for (const o of [...(t.offers || [])]) {
@@ -99,7 +113,8 @@ for (let i = 0; i < N; i++) {
     // answered before the record is read, or everything an answer writes is missed
     for (const mail of [...(t.inbox || [])]) if (['agent', 'show'].includes(mail.tag)) { if (mail.tag === 'show') saw('booked on a show'); EM.emailAct(t, mail.id, 0); }
     // what the month left on the record
-    for (const e of (t.timeline || []).slice(0, Math.max(1, (t.timeline || []).length - tl0))) {
+    const fresh = []; for (const e of (t.timeline || [])) { if (e === tlTop) break; fresh.push(e); }
+    for (const e of fresh) {
       const x = e.text;
       if (/^Worth watching — /.test(x)) saw('a risk warned');
       if (/The business has a word for you now/.test(x)) saw('a label landed');
@@ -137,6 +152,9 @@ for (let i = 0; i < N; i++) {
       if (/list is out: you were #/.test(x)) saw('overtaken on the list');
       if (/box office poison/.test(x)) saw('box office poison');
       if (/A post of yours went everywhere/.test(x)) saw('something went viral');
+      if (/never found the money/.test(x)) saw('a collaboration died in development');
+      if (/got it made\./.test(x)) saw('a collaboration got financed');
+      if (/passed on making something with you/.test(x)) saw('they passed');
     }
     if (HY.hypeSource(t)) saw('hype:' + HY.hypeSource(t));
     for (const r of RK.liveRisks(t)) saw('risk:' + r.id);
@@ -187,6 +205,7 @@ group('Hype v2 (meta/hype.js)', ['hype:hit', 'hype:award', 'hype:viral', 'hype:s
 group('Kinds of paper (career/contract.js)', ['clause:fee', 'clause:schedule', 'clause:exclusive', 'clause:prep', 'clause:backend', 'clause:option', 'clause:seasons', 'clause:exit', 'clause:payOrPlay', 'clause:merch', 'clause:points', 'asked for something', 'signed with season options', 'signed with an exit', 'signed pay-or-play', 'signed for merchandise', 'signed for points', 'the network took its option', 'pay-or-play paid out', 'merchandise paid out']);
 group('Franchises (career/franchise.js)', ['potential:built', 'potential:open', 'potential:closed', 'a sequel made', 'a sequel died in development', 'a dead sequel on the shelf', 'a cult classic', 'a cult classic on the shelf']);
 group('The set (career/production.js, naming.js)', ['stance set', 'stance did the month', 'stance could not be afforded', 'named a project', 'a rename landed']);
+group('Collaborations (career/collab.js)', ['asked somebody to collaborate', 'they said yes', 'they passed', 'a collaboration died in development', 'a collaboration got financed']);
 group('The board (meta/goals.js, ambition.js, factions.js)', ['goal:fame', 'goal:respect', 'goal:ambition', 'goal:aaa', 'goal:agent', 'goal:room', 'goal:poison', 'goal:comeback', 'goal:risk', 'ambition read', 'ambition met']);
 group('The older half, read off the finished life', ['Asker nominations', 'Askers won', 'world hits', 'films that went to a festival', 'festival prizes', 'seasons of television', 'pictures that collapsed', 'burnouts', 'ever had an agent', 'moved out of a rented room', 'a partner at the end', 'children', 'the drink noticed', 'died before the end', 'a season renewed', 'a show cancelled', 'a rumour', 'overtaken on the list', 'box office poison', 'a night out', 'turned a paper down', 'walked off a set']);
 console.log(`\nfaction spread, average high-to-low: ${(seen('faction spread') / N).toFixed(0)} points`);

@@ -139,6 +139,8 @@ ok('but not on twenty thousand euros', !ids(st(), 'f1').includes('setup'));
 // every declared action is reachable by somebody
 const reach = new Set([...onMum, ...onContact, ...keen, ...married, ...onKid, ...richMum,
   ...ids(st({ people: [{ ...contact(), relationship: 94 }] }), 'c1'),
+  // a contact who actually makes films — that is who you can propose something to
+  ...ids(st({ people: [{ ...contact(), role: 'Film Director', relationship: 94 }] }), 'c1'),
   ...ids(st({ family: [{ ...mum(), relationship: 90 }] }), 'f1')]);
 const unreachable = INTERACTIONS.map((a) => a.id).filter((id) => !reach.has(id));
 ok('no dead entries in the menu', unreachable.length === 0, unreachable.join(','));

@@ -16,6 +16,8 @@ import { bondGain, contactAge } from './relationships.js';
 import { genderOfName } from '../world/names.js';
 import { applyBond } from './bonds.js';
 import { canSupport, support, canBack, backChild, supportCost, backingCost } from './money.js';
+import { canPropose, propose, kindFor } from '../career/collab.js';
+import { inCareer } from '../../engine/stage.js';
 
 const clamp = (v) => Math.max(0, Math.min(100, v));
 const first = (p) => String(p.name || '').split(' ')[0];
@@ -248,6 +250,15 @@ export const INTERACTIONS = [
       }
       return `${first(p)} said they would see what they could do. They will not.`;
     } },
+
+  // Making something together, which is not the same as asking somebody for a part or
+  // pitching a stranger at a party. See career/collab.js: a yes is a project in
+  // development, and development is where most of them die.
+  { id: 'collab', group: 'practical', label: 'Ask them to make something with you', blurb: 'Your idea, their weight — and two years to find the money', ap: COST.ask,
+    applies: ({ s, kind, p }) => kind === 'contact' && !!kindFor(p) && inCareer(s),
+    when: ({ s, p }) => canPropose(s, p).ok,
+    lockedWhy: ({ s, p }) => canPropose(s, p).why,
+    run: ({ s, p }) => { propose(s, p.id); return s.lastEvent; } },
 
   // ── mean ────────────────────────────────────────────────────────────────────
   { id: 'argue', group: 'mean', label: 'Pick a fight', blurb: 'Say the thing you have been holding', ap: COST.apology,

@@ -76,6 +76,7 @@ import { HOME_PRICE, canBuyHome, buyHome, sellHome, STAFF, STAFF_ORDER, hasStaff
   THINGS, THING_ORDER, owns, canBuyThing, buyThing, sellThing, resaleOf, upkeepBill,
   supportCost, canSupport, support, backingCost, canBack, backChild, livingBelow } from './systems/life/money.js';
 import { interactionsFor, interact, findPerson, GROUPS } from './systems/life/interactions.js';
+import { kindFor, canPropose, odds as collabOdds, why as collabWhy, liveCollabs, KINDS } from './systems/career/collab.js';
 import { relBand } from './systems/life/bonds.js';
 import { BigMoment } from './ui/components/BigMoment.jsx';
 import { stabilityBand } from './systems/career/stability.js';
@@ -205,6 +206,7 @@ export default function App() {
         </div>
         {g.lastEvent && <Card style={{ marginBottom: 14, borderColor: 'rgba(255,209,102,.35)' }}><div style={{ fontSize: 13.5, lineHeight: 1.5, whiteSpace: 'pre-line' }}>{g.lastEvent}</div></Card>}
         {inCareer(g) && <StandingCard g={g} />}
+        {inCareer(g) && <CollabCard g={g} />}
         {inCareer(g) && <StoriesCard g={g} />}
         {g.illness && (<Card style={{ marginBottom: 14, borderColor: 'rgba(255,90,122,.5)' }}>
           <div style={{ fontSize: 11, fontWeight: 900, letterSpacing: '.08em', textTransform: 'uppercase', color: theme.bad, marginBottom: 5 }}>🤒 {g.illness.name}{g.illness.serious ? ' · serious' : ''}</div>
@@ -1309,6 +1311,23 @@ function StandingCard({ g }) {
     </div>))}
   </Card>);
 }
+// The things you and somebody you know decided to make, waiting on money. Most of them
+// will die there; that is what development is. See systems/career/collab.js.
+function CollabCard({ g }) {
+  const list = liveCollabs(g);
+  if (!list.length) return null;
+  return (<Card style={{ marginBottom: 14 }}>
+    <div style={{ fontSize: 11, fontWeight: 900, letterSpacing: '.09em', textTransform: 'uppercase', color: theme.muted, marginBottom: 4 }}>Making something together</div>
+    {list.map((c, i) => (<div key={c.id} style={{ padding: '6px 0', borderTop: i ? `1px solid ${theme.line}` : 'none' }}>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', gap: 10 }}>
+        <div style={{ fontSize: 12.5, fontWeight: 800 }}>"{c.title}"</div>
+        <div style={{ fontSize: 10.5, color: theme.muted, flex: 'none' }}>{c.monthsOut <= 1 ? 'any week now' : `~${c.monthsOut} mo`}</div>
+      </div>
+      <div style={{ fontSize: 11.5, color: theme.muted, lineHeight: 1.45, marginTop: 2 }}>with {c.name} · {c.what}</div>
+    </div>))}
+    <div style={{ fontSize: 10.5, color: theme.muted, marginTop: 5, lineHeight: 1.45 }}>In development. Nobody has paid for it yet, and most of these never get paid for.</div>
+  </Card>);
+}
 // Worth watching. Every story the world can run on you (trouble.js) has a warning here
 // first, for a month or more, with what would fix it. Nothing lands out of a clear sky —
 // Maxi: a crisis you could not see coming is a dice roll, not difficulty. Empty months
@@ -1918,6 +1937,31 @@ function PersonSheet({ g, id, onClose }) {
           </div>
         </div>
       </div>
+      {/* Making something together. Maxi: "what about collaborations?" The card says what
+          the two of you would be making, how likely they are to say yes and why — the
+          button itself is down in the practical group with everything else. career/collab.js */}
+      {(() => {
+        const k = kindFor(p); if (!k) return null;
+        const mine = liveCollabs(g).find((c) => c.who === p.id);
+        if (mine) return (<Card style={{ margin: '12px 0', borderColor: 'rgba(95,206,138,.34)' }}>
+          <div style={{ fontSize: 11, fontWeight: 900, letterSpacing: '.08em', textTransform: 'uppercase', color: theme.good }}>In development together</div>
+          <div style={{ fontSize: 14, fontWeight: 800, marginTop: 3 }}>"{mine.title}"</div>
+          <div style={{ fontSize: 11.5, color: theme.muted, lineHeight: 1.5, marginTop: 3 }}>{mine.genre} · {mine.what}. {mine.monthsOut <= 1 ? 'They are hearing from the money any week now.' : `Somebody is still trying to pay for it — ${mine.monthsOut} months of drafts and phone calls.`}</div>
+          <div style={{ fontSize: 11, color: theme.muted, marginTop: 4, lineHeight: 1.45 }}>Most things in development never get made. If it does, the paper comes to Messages with both your names on it.</div>
+        </Card>);
+        const fit = canPropose(g, p);
+        const o = collabOdds(g, p);
+        return (<Card style={{ margin: '12px 0', borderColor: fit.ok ? 'rgba(158,116,255,.34)' : theme.line }}>
+          <div style={{ fontSize: 11, fontWeight: 900, letterSpacing: '.08em', textTransform: 'uppercase', color: theme.muted }}>What you two could make</div>
+          <div style={{ fontSize: 12.5, fontWeight: 800, marginTop: 3 }}>{k.what(p)}</div>
+          <div style={{ fontSize: 11.5, color: theme.muted, lineHeight: 1.5, marginTop: 3 }}>{k.blurb}</div>
+          {fit.ok
+            ? (<><div style={{ fontSize: 12, fontWeight: 800, marginTop: 6, color: o >= 45 ? theme.good : o >= 20 ? theme.gold : theme.muted }}>{o}% they say yes</div>
+                {!!collabWhy(g, p).length && <div style={{ fontSize: 10.5, color: theme.muted, marginTop: 2, lineHeight: 1.4 }}>{collabWhy(g, p).join(' · ')}</div>}
+                <div style={{ fontSize: 11, color: theme.muted, marginTop: 4, lineHeight: 1.45 }}>Ask them under Practical below. Asking costs goodwill either way.</div></>)
+            : <div style={{ fontSize: 11.5, color: theme.gold, marginTop: 6, lineHeight: 1.45 }}>{fit.why}</div>}
+        </Card>);
+      })()}
       {/* The desk: what they are doing for you, what they take, and the door. */}
       {p.agent && (() => { const al = agentLine(g); if (!al) return null;
         return (<Card style={{ margin: '12px 0', borderColor: 'rgba(255,209,102,.3)' }}>
