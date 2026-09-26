@@ -99,11 +99,62 @@ export function grossFor({ scale, rating, genre, fame = 0, trend = false, appeal
   const gross = budget * PAR * qualityPull(rating) * (APPEAL[genre] || 1) * (appealMod ?? 1) * star * (trend ? 1.25 : 1) * luck();
   return Math.round(gross * 1000000);
 }
+// ── what the room thought ─────────────────────────────────────────────────────
+// Maxi: "not every film should be a success — it depends on you, the script, the shoot,
+// and how the audience takes it, like life. We can bring that in too."
+//
+// The first three were already in (production.js: your craft, the material, the set, the
+// stability, the argument you won on day one). The fourth was not. There was an audience
+// number, and it was 4 + rating/25 — a squashed copy of the critics that never left the
+// band 5.6 to 7.8. So the thing everybody in this business actually lives with could not
+// happen: the picture the critics buried and the country went to see, and the one that
+// swept the season and nobody bought a ticket for.
+//
+// The crowd and the column want different films, and they are only asked about the same
+// one. What they agree about is the middle — a competent picture is fine by everybody —
+// and they come apart at both ends.
+const CROWD = { Horror: 9, Comedy: 8, 'Sci-Fi': 6, Thriller: 4, Crime: 0, Romance: 0, Musical: -3, Drama: -7 };
+const CROWD_SCALE = { blockbuster: 9, feature: 3, recurring: 2, episode: 0, small: -3, indie: -6, prestige: -6, festival: -11 };
+export function audienceFor(s, rel) {
+  const r = rel.rating || 0;
+  // Half of the critics' opinion, flattened: they are kinder to a bad film and colder
+  // about a masterpiece, because they paid for a Friday night either way.
+  let v = 46 + (r - 50) * 0.55;
+  v += CROWD[rel.genre] ?? 0;
+  v += CROWD_SCALE[rel.scale] ?? 0;
+  // They came for you, and for whoever is on the poster with you.
+  v += Math.min(11, Math.max(s.fame || 0, (rel.withFame || 0) * 0.9) / 9);
+  // The version you argued for on day one is the whole trade, said plainly (story.js).
+  if (rel.take === 'bigger') v += 10;
+  if (rel.take === 'about') v -= 9;
+  if (rel.take === 'strange') v += rint(-18, 18);
+  // A season they have been with for years is a habit; they are gentle with it.
+  if ((rel.season || 0) > 2) v += 4;
+  return clamp(Math.round(v + rint(-9, 9)));
+}
+// When the two of them have seen different films, and which way round.
+export const SPLIT_AT = 18;
+export function splitLine(rating, audience) {
+  // A credit from before the room had its own opinion has no number, and "audience || 0"
+  // turned that into a forty-nine point gap: a bomb rated 4.9 was announced on the night
+  // as "the reviews are the best of your career".
+  if (audience == null || !Number.isFinite(audience)) return null;
+  const d = Math.round(audience - (rating || 0));
+  if (Math.abs(d) < SPLIT_AT) return null;
+  return d > 0
+    ? 'The reviews were not kind and nobody told the audience. They went anyway, and they are telling each other to go.'
+    : 'The reviews are the best of your career and the people who bought a ticket came out looking at their phones.';
+}
+
 export function boxOfficeFor(s, rel) {
   // The bigger name on the poster sells the tickets. A nobody opposite an icon opens like
   // an icon's film, mostly — which is the whole reason to want to be in one.
   const fame = Math.max(s.fame || 0, (rel.withFame || 0) * 0.85);
-  return grossFor({ scale: rel.scale, rating: rel.rating, genre: rel.genre, fame, trend: rel.genre === hotGenre(s), appealMod: rel.appealMod ?? 1 });
+  // Tickets are sold to the room, not to the column. Three quarters of what a picture
+  // takes is what the audience made of it; the reviews are the other quarter, which is
+  // about how much they are worth on an opening weekend.
+  const sells = rel.audience != null ? rel.audience * 0.75 + (rel.rating || 0) * 0.25 : rel.rating;
+  return grossFor({ scale: rel.scale, rating: sells, genre: rel.genre, fame, trend: rel.genre === hotGenre(s), appealMod: rel.appealMod ?? 1 });
 }
 export function viewersFor(s, rel) {
   const span = VIEWERS[rel.scale] || VIEWERS.episode;
@@ -281,6 +332,8 @@ function open(s, rel) {
   // A sequel or a later season opens on a name people know: a tenth more, before anybody
   // has seen it. Maxi: "the system remembers it was a good picture and gives benefits."
   const known = ((rel.part || 1) > 1 || (rel.season || 0) > 1) ? 1.12 : 1;
+  // What the room made of it. Asked before the money, because the money follows it.
+  rel.audience = audienceFor(s, rel);
   if (fest && fest.result === 'unsold') rel.finalGross = 0;
   else if (film) rel.finalGross = Math.round(boxOfficeFor(s, rel) * tourMultiplier(rel) * known * remindLift(rel));
   else {
@@ -290,7 +343,9 @@ function open(s, rel) {
     // the first episode and the last IS the season, and it is the number the network
     // decides on. See career/chapter.js holdFactor.
     const open = Math.max(0.1, Math.round(viewersFor(s, rel) * tourMultiplier(rel) * known * remindLift(rel) * 10) / 10);
-    const end = Math.max(0.1, Math.round(open * holdFactor(rel.rating, rel) * 10) / 10);
+    // A season people enjoy holds its audience whatever the column said about it.
+    const liked = 1 + ((rel.audience ?? rel.rating) - (rel.rating || 0)) / 260;
+    const end = Math.max(0.1, Math.round(open * holdFactor(rel.rating, rel) * liked * 10) / 10);
     rel.openViewers = open; rel.endViewers = end;
     rel.viewers = Math.max(0.1, Math.round(((open + end) / 2) * 10) / 10);   // millions, one decimal — rounding to a whole made a bad soap draw nobody
   }
@@ -307,6 +362,8 @@ function open(s, rel) {
     // In cinemas. Everything below is provisional until runTick closes it.
     running: true, weeks: 0, weeksTotal: runWeeks(rel, verdict), openedAt: (s.year || 0) * 12 + (s.month || 0),
     boxOffice: 0, viewers: rel.viewers || 0, openViewers: rel.openViewers || 0, endViewers: rel.endViewers || 0,
+    // What the room thought, which is not what the column thought. See audienceFor above.
+    audience: rel.audience != null ? rel.audience : null,
     direction: rel.direction || null, remind: rel.remind || null, character: rel.character || null,
     verdict: 'in cinemas', score: null,
     // Carried for the Asker season: what kind of thing it was, and whether it was pushed.
@@ -626,7 +683,7 @@ function closeRun(s, credit, r) {
 
   // What was written about it — kept on the credit for the filmography, shown tonight.
   credit.reviews = reviewsFor(s, { title: credit.title, rating: r.rating, genre: credit.genre, verdict, director: credit.director,
-    actorName: s.name, meter: r.meter, fellApart: r.fellApart, viaPartner: r.viaPartner, worldHit: r.worldHit, take: credit.take,
+    actorName: s.name, meter: r.meter, fellApart: r.fellApart, viaPartner: r.viaPartner, worldHit: r.worldHit, take: credit.take, audience: credit.audience,
     moment: (r.moments || [])[Math.floor(Math.random() * Math.max(1, (r.moments || []).length))] || null,
     costar: r.with, costarIcon: r.withIcon, comeback: !!credit.comeback, sequel: (credit.part || 0) > 1,
     lateShelf: /Character lead|matriarch|Elder|Grandparent/.test(credit.role || '') });
@@ -643,6 +700,8 @@ function closeRun(s, credit, r) {
     // How many were there on the first night and how many on the last. Maxi asked how a
     // season is measured; this is the answer, on the night it is answered.
     retention: !film && r.scale !== 'episode' ? retentionLine(credit.openViewers, credit.endViewers) : null,
+    // When the column and the room have seen different films. career/release.js splitLine
+    split: splitLine(r.rating, credit.audience),
     renewal: credit.renewal || null,
     body: r.worldHit
       ? 'Nobody expected this. It has stopped being a film and started being an event.'

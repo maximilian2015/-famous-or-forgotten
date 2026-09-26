@@ -200,7 +200,13 @@ export function gradeOf(rating) {
 }
 // What people who paid thought. Money is the honest vote: a smash is loved whatever the
 // papers said, a bomb is not, and the genre nudges it — nobody rates a horror like a drama.
-export function audienceScore(rating, verdict, genre) {
+// The room's own score out of ten. It used to be invented here as 4 + rating/25 — a
+// squashed copy of the critics that never left the band 5.6 to 7.8, so the audience and
+// the column could never disagree about anything. The number is decided by the release
+// now (career/release.js audienceFor) from what the crowd actually wants; this turns it
+// into the figure on the poster. An old save with no audience on the credit falls back.
+export function audienceScore(rating, verdict, genre, audience = null) {
+  if (audience != null) return Math.round(clamp(audience / 10, 1, 10) * 10) / 10;
   let v = 4 + rating / 25;
   if (verdict === 'smash') v += 1.4; else if (verdict === 'profitable') v += 0.6; else if (verdict === 'bomb') v -= 1.2;
   if (genre === 'Horror' || genre === 'Comedy') v += 0.3;
@@ -244,5 +250,5 @@ export function reviewsFor(s, ctx) {
     return { critic: c.name, outlet: c.outlet, stars, text: bits.map((b) => fill(b, full)).join(' ') };
   });
   const criticScore = Math.round((reviews.reduce((a, r) => a + r.stars, 0) / reviews.length) * 2 * 10) / 10;
-  return { grade: gradeOf(ctx.rating), audience: audienceScore(ctx.rating, ctx.verdict, ctx.genre), critics: criticScore, reviews };
+  return { grade: gradeOf(ctx.rating), audience: audienceScore(ctx.rating, ctx.verdict, ctx.genre, ctx.audience), critics: criticScore, reviews };
 }
