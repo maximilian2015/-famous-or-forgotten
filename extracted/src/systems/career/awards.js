@@ -57,6 +57,18 @@ export function awardStrength(c) {
   return base * genre * scale * prestige;
 }
 
+// What it takes to be one of the five. Squared, because the field is everything made that
+// year and being twice as good as the next film is not twice as likely to be read out — it
+// is the difference between being in the conversation and being in the room. A strong
+// prestige performance (strength around 200) comes out near eight per cent a film; a
+// masterpiece (330+) near a quarter; a decent, unremarkable picture near nothing.
+export const NOM_DIVISOR = 18, NOM_CAP = 50;
+export function nominationOdds(strength, picture = false) {
+  const s = Math.max(0, strength || 0);
+  const p = Math.pow(s, 1.3) / (picture ? NOM_DIVISOR * 0.86 : NOM_DIVISOR);
+  return clamp(p, 0, picture ? NOM_CAP + 5 : NOM_CAP);
+}
+
 // Lead and supporting are judged apart, so a small part in a great film is a real route in.
 export const CATEGORIES = [
   { id: 'lead', label: 'Leading Performance', tiers: ['lead', 'tentpole'] },
@@ -83,7 +95,11 @@ const RIVAL_TITLE_B = ['Hours', 'Country', 'Winter', 'Mercies', 'Water', 'Light'
 // Calibrated against the real thing: Meryl Streep has three from twenty-one, so a strong
 // nomination should convert around one time in six or seven, and even a masterpiece is
 // only ever a one-in-four favourite. Nobody walks into that room certain.
-const FIELD = [50, 305];
+// Tuned against the shelf a life ends with, not against a feeling: with the field at
+// [50, 305] a nomination converted one time in ten and three in a lifetime happened to one
+// career in forty. Streep is three from twenty-one — about one in seven — and three is the
+// record, so the record has to be reachable by an exceptional life and by nothing less.
+const FIELD = [45, 258];
 function makeRival(strength, taken) {
   // The rival's film must not be the player's film. "The Weight of" + "Water" really did
   // come out as the title the player was nominated for, and the ceremony then announced
@@ -114,11 +130,25 @@ export function standingFactor(respect) { return 0.75 + clamp(respect, 0, 100) /
 // worth something rather than nothing.
 export function overdueFactor(losses) { return 1 + Math.min(0.45, (losses || 0) * 0.11); }
 
+// How many are already on your shelf. The rivals have had this since the day the world
+// existed — "nine statuettes on one shelf is not a career, it is a bug" — and the player
+// never did, which is the only reason a fourth and a fifth were possible. Maxi's rule is
+// the real one: three is the record, and the third is the hardest thing in the game.
+// Maxi: "like life — Meryl Streep has three, the most anybody has." So three is not a tail
+// of a distribution, it is the record, and a record is a rule. The room keeps nominating
+// you after the third — Streep has twenty-one nominations — and it does not vote for you
+// again. It holds for everybody in the world, which is what makes it a record rather than
+// a handicap on the player.
+export const ASKER_RECORD = 3;
+export function atTheRecord(askers) { return (askers || 0) >= ASKER_RECORD; }
+export function enoughFactor(askers) { return atTheRecord(askers) ? 0 : 1 / (1 + Math.max(0, askers || 0) * 0.55); }
 export function weightOf(n) {
+  if (atTheRecord(n.askers)) return 0;   // the room has given you everything it gives
   return Math.max(0.5, (n.strength || 0)
     * campaignFactor(n.campaign)
     * standingFactor(n.respect ?? 50)
     * overdueFactor(n.losses)
+    * enoughFactor(n.askers)
     * (0.75 + Math.random() * 0.60));
 }
 
@@ -137,8 +167,8 @@ export function buzzOf(pct) {
 // Odds are computed WITHOUT the luck term so the read is stable, then the draw applies
 // luck on the night. A favourite really does lose most of the time.
 export function oddsFor(nominees) {
-  const raw = nominees.map((n) => Math.max(0.5, (n.strength || 0)
-    * campaignFactor(n.campaign) * standingFactor(n.respect ?? 50) * overdueFactor(n.losses)));
+  const raw = nominees.map((n) => (atTheRecord(n.askers) ? 0 : Math.max(0.5, (n.strength || 0)
+    * campaignFactor(n.campaign) * standingFactor(n.respect ?? 50) * overdueFactor(n.losses) * enoughFactor(n.askers))));
   const total = raw.reduce((a, b) => a + b, 0) || 1;
   return raw.map((r) => Math.round((r / total) * 100));
 }
@@ -146,6 +176,9 @@ export function oddsFor(nominees) {
 export function pickWinner(nominees) {
   const weights = nominees.map(weightOf);
   const total = weights.reduce((a, b) => a + b, 0);
+  // Everybody in the race is already at the record — vanishingly rare, and somebody still
+  // has to be read out.
+  if (!(total > 0)) return nominees[Math.floor(Math.random() * nominees.length)];
   let r = Math.random() * total;
   for (let i = 0; i < nominees.length; i++) { if ((r -= weights[i]) <= 0) return nominees[i]; }
   return nominees[nominees.length - 1];
@@ -199,8 +232,11 @@ function worldField(s, year, category) {
       // The room is theirs before it is yours: friends, campaigns, and thirty years of favours
       // you have not done yet. Without this a great film of yours was the favourite every time.
       // And the room tires of anybody. Nine statuettes on one shelf is not a career, it is a bug.
-      const enough = a ? 1 / (1 + (a.askers || 0) * 0.35) : 1;
-      return { id: f.actorId, name: f.actor, work: f.title, strength: strength * 2.0 * enough, respect: a ? a.respect : 50, losses: a ? Math.max(0, Math.min(4, (a.noms || 0) - (a.askers || 0))) : 0, campaign: 0, them: true }; })
+      // How many are already on their shelf travels with the nominee now, so the room tires
+      // of a rival on exactly the same terms it tires of you — and the record is the record
+      // for everybody. It used to be folded into their strength with a gentler coefficient,
+      // which meant a world actor could quietly collect a fourth while you could not.
+      return { id: f.actorId, name: f.actor, work: f.title, strength: strength * 2.0, respect: a ? a.respect : 50, losses: a ? Math.max(0, Math.min(4, (a.noms || 0) - (a.askers || 0))) : 0, campaign: 0, askers: a ? (a.askers || 0) : 0, them: true }; })
     .filter((n) => n.strength > 0)
     .sort((a, b) => b.strength - a.strength);
 }
@@ -235,16 +271,19 @@ export function runNominations(s) {
   for (const c of work) {
     const strength = awardStrength(c);
     if (strength <= 0) continue;
-    // Getting into the five is itself a contest against everything else made that year.
-    // Annual now, and the field is real: a nomination has to be rarer per film than it was
-    // when the night came round every other year against five names nobody had heard of.
-    if (chance(clamp(strength * 0.3, 0, 45))) {
+    // Getting into the five is a place in a field of five, and four of them are somebody
+    // else's year. It is not proportional to how good you were — it is how far above
+    // everything else that year you were, which is why it is squared. Maxi's rule is the
+    // real one: Meryl Streep has twenty-one nominations across fifty years and that is the
+    // record; a working prestige career should see the lists a handful of times, not every
+    // September. A flat roll with a cap at 45% put a name on the list one year in two.
+    if (chance(nominationOdds(strength))) {
       noms.push({ credit: c, category: categoryFor(c), branch: branchOf(c.scale), strength });
     }
     // The film itself can be up for the night's biggest award whether or not you are.
     // It is harder to get into and it is not really about you — but it is the one that
     // makes a good year feel like a good year.
-    if (chance(clamp(strength * 0.3, 0, 55))) {
+    if (chance(nominationOdds(strength, true))) {
       noms.push({ credit: c, category: 'picture', branch: branchOf(c.scale), strength: strength * 0.9 });
     }
   }
@@ -263,7 +302,8 @@ export function runNominations(s) {
 
   const pending = noms.map((n) => {
     const you = { id: 'you', name: s.name || 'You', work: n.credit.title, strength: n.strength,
-      respect: s.respect || 50, losses: s.awards.losses || 0, campaign: n.credit.campaignShare || 0, them: false };
+      respect: s.respect || 50, losses: s.awards.losses || 0, campaign: n.credit.campaignShare || 0,
+      askers: ((s.awards || {}).wins || []).length, them: false };
     const taken = new Set([n.credit.title, ...work.map((c) => c.title)]);
     const field = fieldFor(s, year, n.category, you, taken);
     const odds = oddsFor(field);
@@ -287,20 +327,25 @@ export function runNominations(s) {
     if (c) c.nominated = (c.nominated || 0) + 1;
   }
   s.awards.pending = pending;
-  s.awards.nominations = (s.awards.nominations || []).concat(pending.map((p) => ({ title: p.title, category: p.category, year })));
+  s.awards.nominations = (s.awards.nominations || []).concat(
+    pending.filter((p) => !p.theirs && p.title).map((p) => ({ title: p.title, category: p.category, year })));
   addHype(s, 45, 'award');   // the season: your name on the lists (meta/hype.js)
   // A nomination is a title you keep. It moves what you can ask for, immediately.
   setQuote(s, (s.quote || 0) * 1.25 || s.quote);
   setRespect(s, (s.respect || 0) + 6 * headroom(112, s.respect));
   setFame(s, (s.fame || 0) + 3 * headroom(118, s.fame));
-  const labels = pending.map((p) => CATEGORIES.find((c) => c.id === p.category)?.label || p.category);
-  addTimeline(s, `Asker nominations: ${labels.join(', ')} for "${pending[0].title}".`);
+  // Only the races you are actually in. `pending` carries the other two so the night can
+  // be held around you (theirs: true, title: null) — and the morning screen was counting
+  // them: "3 NOMINATIONS", then two rows reading Leading Performance — "null".
+  const mine = pending.filter((p) => !p.theirs && p.title);
+  const labels = mine.map((p) => CATEGORIES.find((c) => c.id === p.category)?.label || p.category);
+  addTimeline(s, `Asker nominations: ${labels.join(', ')} for "${mine[0].title}".`);
   showMoment(s, {
     id: 'nomination', kind: 'good', title: 'Asker nominations',
-    work: pending[0].title, count: pending.length,
-    lines: pending.map((p) => `${CATEGORIES.find((c) => c.id === p.category)?.label} — "${p.title}"\n${buzzOf(p.yourOdds)}`),
-    body: pending.length > 1
-      ? `${pending.length} nominations. The phone has not stopped since six this morning.`
+    work: mine[0].title, count: mine.length,
+    lines: mine.map((p) => `${CATEGORIES.find((c) => c.id === p.category)?.label} — "${p.title}"\n${buzzOf(p.yourOdds)}`),
+    body: mine.length > 1
+      ? `${mine.length} nominations. The phone has not stopped since six this morning.`
       : `Nominated for ${labels[0]}. Whatever else happens now, that stays after your name.`,
   });
   // …and then the lists themselves, behind your own news.

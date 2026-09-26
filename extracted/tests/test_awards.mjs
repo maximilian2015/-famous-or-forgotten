@@ -228,14 +228,24 @@ function lifetime(acting, meter, scale, genre) {
 // A hundred and fifty lives, not forty: the true mean sits at about three and the old
 // sample swung either side of the threshold, so a passing design failed roughly one run in
 // five and told nobody anything.
-function avgWins(...args) { let t = 0; for (let i = 0; i < 150; i++) t += lifetime(...args); return t / 150; }
-const masterDrama = avgWins(95, 92, 'indie', 'Drama');
+function runWins(...args) { const out = []; for (let i = 0; i < 150; i++) out.push(lifetime(...args)); return out; }
+const mean = (a) => a.reduce((n, x) => n + x, 0) / a.length;
+function avgWins(...args) { return mean(runWins(...args)); }
+// Maxi's rule, stated as the real thing rather than as a feeling: "Meryl Streep has three
+// in a lifetime, the most anybody has." So three is the RECORD — the mean for a master is
+// one or two and the ceiling across a hundred and fifty master careers is three. The old
+// threshold asked the mean to sit between 1.2 and 3.2, which is a different design: a mean
+// of three means half of all masters are above it, and four and five were being handed out.
+const masterRuns = runWins(95, 92, 'indie', 'Drama');
+const masterDrama = mean(masterRuns);
+const masterMost = Math.max(...masterRuns);
 const goodDrama = avgWins(85, 78, 'indie', 'Drama');
 const average = avgWins(72, 60, 'feature', 'Thriller');
-ok('even a lifetime of superb dramas tops out around three', masterDrama <= 3.2 && masterDrama >= 1.2, masterDrama.toFixed(1));
+ok('a lifetime of superb dramas averages one, sometimes two', masterDrama <= 2.2 && masterDrama >= 0.8, masterDrama.toFixed(1));
+ok('and three is the record — a hundred and fifty of them and nobody gets four', masterMost <= 3, 'most was ' + masterMost);
 ok('a good specialist gets one or two', goodDrama <= 2.4 && goodDrama >= 0.5, goodDrama.toFixed(1));
 ok('and an ordinary career gets none', average < 0.4, average.toFixed(2));
-console.log(`      Askers in a 30-year career — master/drama ${masterDrama.toFixed(1)}, good/drama ${goodDrama.toFixed(1)}, ordinary ${average.toFixed(2)}`);
+console.log(`      Askers in a 30-year career — master/drama ${masterDrama.toFixed(1)} (most ${masterMost}), good/drama ${goodDrama.toFixed(1)}, ordinary ${average.toFixed(2)}`);
 
 // Best Picture belongs to the producers — it is a good night, not your statuette.
 const pictureOnly = { category: 'picture', won: true, title: 'X', winner: 'You', work: 'X', odds: 40 };
