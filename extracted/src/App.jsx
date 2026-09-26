@@ -859,10 +859,15 @@ function MentalScreen({ g, onBack }) {
         cost="free" onClick={() => dispatch(usePills, 'sleeping')} />}
       <ActRow label="Get away on the boat" blurb="Two weeks where the phone does not work and nobody knows where you are."
         cost={`${COST.therapy} energy`} disabled={!away.ok} why={away.why} onClick={() => dispatch(getAway)} />
+      {/* The other way out. It lived inside the depression card, which does not render for
+          anybody who is merely on the floor — so the one thing an ordinary tired actor
+          actually reaches for was two taps inside the Shop and never mentioned. It belongs
+          on the page you open when your head is at thirty. systems/life/drink.js */}
+      <DrinkButton g={g} />
     </div>
     <div style={{ fontSize: 11.5, color: theme.muted, textAlign: 'center', padding: '16px 10px', lineHeight: 1.6 }}>
-      Resting properly is under Home, and the pills are in the Shop. A month off is the only
-      thing that pulls the strain down faster than time does.
+      Resting properly is under Home, and the pills and the bottles are in the Shop. A month
+      off is the only thing that pulls the strain down faster than time does.
     </div>
   </div>);
 }
@@ -1074,7 +1079,13 @@ function DepressionCard({ g }) {
 // says exactly what it is taking while it does.
 function DrinkButton({ g }) {
   const owed = owedSlots(g);
-  if (owed <= 0 && !drinkLevel(g)) return null;
+  // It used to appear only once the months were already being taken from you — a clinical
+  // diagnosis, or a drink problem you somehow already had. Nobody starts there. They start
+  // on a bad month: the head is on the floor, the shoot is grinding, and there is a bottle
+  // in the kitchen. Mental runs at about 26 across a working life, so that month is most of
+  // them, and the one honest way out of it was hidden two taps inside the Shop.
+  const hard = (g.mental || 100) < 45 || (g.strain || 0) >= 60;
+  if (owed <= 0 && !drinkLevel(g) && !hard) return null;
   const had = drankThisMonth(g);
   const lv = drinkLevel(g), b = drinkBand(g);
   const stocked = bottlesInHouse(g) > 0;
@@ -1084,11 +1095,17 @@ function DrinkButton({ g }) {
       <span style={{ fontSize: 10.5, color: theme.muted }}>craft −{(lv >= 78 ? 1.1 : lv >= 45 ? 0.7 : 0.35).toFixed(2)}/mo</span>
     </div>)}
     {lv > 0 && <div style={{ fontSize: 10.5, color: theme.muted, marginBottom: 6, lineHeight: 1.45 }}>{b.note}</div>}
+    {lv === 0 && <div style={{ fontSize: 10.5, color: theme.muted, marginBottom: 6, lineHeight: 1.45 }}>
+      A quiet evening on your own. It puts four points back on your head tonight and takes a
+      third of a point off the craft, every month, for as long as you keep doing it — and it climbs.
+    </div>}
     <button onClick={() => dispatch(drinkThrough)} disabled={had || !stocked}
       style={{ ...softBtn(had || !stocked), marginTop: 0, background: had || !stocked ? 'rgba(120,110,150,.15)' : 'rgba(255,209,102,.16)', color: had || !stocked ? '#6b6390' : theme.gold }}>
-      {had ? `You drank. The month is open — ${owed} Energy back.`
+      {had ? (owed > 0 ? `You drank. The month is open — ${owed} Energy back.` : 'You drank. The evening was easier than the day was.')
         : !stocked ? 'Nothing in the house · the Shop delivers'
-        : dependent(g) ? 'Drink — you have to now' : `Drink through it · opens ${owed} Energy`}
+        : dependent(g) ? 'Drink — you have to now'
+        : owed > 0 ? `Drink through it · opens ${owed} Energy`
+        : 'Drink through it · the evening lifts'}
     </button>
   </div>);
 }

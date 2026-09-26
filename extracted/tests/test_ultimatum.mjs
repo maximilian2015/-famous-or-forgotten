@@ -77,7 +77,10 @@ function untilAsked(s, cap = 30) {
   // break it next month
   K.drinkThrough(s); s = advanceMonth(s);
   ok('breaking it costs you the person', !s.partner, s.partner ? s.partner.name : 'gone');
-  ok('and the game stops to say so', (lastMoment(s) || {}).id === 'theyleft', (lastMoment(s) || {}).title);
+  // Among the month's moments, not the last of them: the same month can hold the September
+  // lists or anything else the world does, and which one is drawn last is not the claim.
+  const monthMoments = [s.bigMoment, ...(s.moments || [])].filter(Boolean);
+  ok('and the game stops to say so', monthMoments.some((m) => m.id === 'theyleft'), monthMoments.map((m) => m.id).join(', '));
 }
 {
   let s = untilAsked(life());

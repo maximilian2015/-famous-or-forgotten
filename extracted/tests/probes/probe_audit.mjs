@@ -67,7 +67,11 @@ for (let i = 0; i < N; i++) {
     if (!named) { const r = NM.renameable(t)[0]; if (r && NM.canRename(t, r.kind, r.id).ok && !NM.whyNot(t, r.kind, r.id, 'My Own Title')) { NM.rename(t, r.kind, r.id, 'My Own Title'); named = 1; saw('named a project'); } }
     // a life that is actually lived: a post, a drink, and now and then a set walked off
     if ((t.ap || 0) >= 12 && Math.random() < 0.3) { const was = HY.hypeSource(t); TW.goOut(t, 'post'); if (HY.hypeSource(t) === 'viral' && was !== 'viral') saw('something went viral'); }
-    if (i % 4 === 0) { if (!Object.keys(t.bottles || {}).length && (t.cash || 0) > 500) DR.buyBottle(t, DR.BOTTLE_ORDER ? DR.BOTTLE_ORDER[1] : 'wine', 3); DR.drinkThrough(t); }
+    // The cupboard: takeBottle leaves the key behind at zero, so {good: 0} has length 1 and
+    // this probe never restocked after the second month. Forty years dry, and the census
+    // read the whole drinking system — the bands, the dependence, the ultimatum, the clinic,
+    // the craft it takes a point at a time — as dead. drink.js has the right counter.
+    if (i % 4 === 0) { if (DR.bottlesInHouse(t) < 1 && (t.cash || 0) > 500) DR.buyBottle(t, 'good', 4); DR.drinkThrough(t); }
     if (PR.sets(t).length && Math.random() < 0.01) { PR.walkOffSet(t, PR.sets(t)[0].id, 'something bigger'); saw('walked off a set'); }
     // ask somebody you know to make something with you — the thing that only exists if
     // the player reaches for it (career/collab.js)
