@@ -181,6 +181,11 @@ export function scheduleRelease(s, credit, p) {
       title: p.title, seriesTitle: p.seriesTitle, role: p.role, type: p.type, genre: p.genre, salary: p.salary,
       months: p.months, episodes: p.episodes || 0, episodeFee: p.episodeFee || 0, baseSalary: p.baseSalary || p.salary, arc: p.arc || null,
       season: p.season || 0, part: p.part || 1, tier: p.tier, scale: p.scale, stability: p.stability,
+      // Who you played, what it was about, and where you said it should go. The next season
+      // and the next part are built from this object and nothing else — leaving these out
+      // meant season four was about a stranger with a new name, under a brief that said
+      // "is back". See career/script.js and career/chapter.js.
+      character: p.character || null, premise: p.premise || null, direction: p.direction || null,
       prestigeScore: p.prestigeScore, optioned: !!p.optioned, optionParts: p.optionParts || 0,
       // Whether there is a part two IN it at all — rolled when it was made (franchise.js).
       potential: p.potential || null,

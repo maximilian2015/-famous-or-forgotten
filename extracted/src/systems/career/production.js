@@ -1,7 +1,7 @@
 import { rint, chance, pick } from '../../engine/rng.js';
 import { COST, canAfford, spend, tooTired } from '../../engine/energy.js';
 import { uid } from '../../engine/id.js';
-import { setQuote, setRespect } from '../meta/status.js';
+import { setQuote, setRespect, setFame } from '../meta/status.js';
 import { addTimeline, showMoment } from '../../engine/timeline.js';
 import { inCareer } from '../../engine/stage.js';
 import { startRumour } from '../meta/trouble.js';
@@ -115,6 +115,9 @@ export function startProduction(s, offer) {
     id: uid(s, 'set'), offerId: offer.id, title: offer.projectTitle.replace('⭐ ', ''), role: offer.role, type: offer.type,
     genre: offer.genre, salary: offer.salary, months: offer.months, monthsLeft: offer.months,
     prestigeScore: offer.prestigeScore, tier: offer.tier, campaign: !!offer.campaign,
+    // The face of something is a job, not a picture. It still takes the months (offers.js
+    // gives a campaign over €2m two of them) — it does not take a premiere.
+    brand: offer.kind === 'brand',
     // What part one was paid. Every sequel raise is measured against THIS, not against
     // whatever the last one happened to earn. See systems/career/franchise.js.
     baseSalary: offer.baseSalary || offer.salary, arc: offer.arc || null,
@@ -560,7 +563,17 @@ function wrapProduction(s, p) {
   // next season's brief — see career/script.js and career/chapter.js.
   credit.character = p.character || null; credit.direction = p.direction || null;
   pitchAftermath(s, credit, p);
-  scheduleRelease(s, credit, p);
+  // A brand campaign has no opening night, no reviews and no box office. It was going
+  // through the whole release machine and landing in the filmography as a picture — and
+  // because offers.js gives a campaign two months once the fee passes €2m, the better the
+  // money the likelier you ended up with "Maison Cassel — a fragrance · Flop · 26".
+  if (p.brand) {
+    credit.minor = true;
+    credit.status = rating >= 70 ? 'Well-received' : 'Released';
+    const bucket = s.dream === 'singer' ? 'discography' : 'filmography';
+    (s[bucket] = s[bucket] || []).unshift(credit);
+    setFame(s, (s.fame || 0) + 2);
+  } else scheduleRelease(s, credit, p);
   addGenreXP(s, p.genre, rating);
   // Whatever the monthly instalments did not cover — rounding, and the offers that were
   // written before instalments existed.

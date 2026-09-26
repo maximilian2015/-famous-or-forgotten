@@ -129,6 +129,9 @@ function previousRating(s, title, season) {
 }
 
 const SEQUEL_WORDS = ['II', 'III', 'IV', 'V', 'VI'];
+// "Creepy Man III" -> "Creepy Man". One definition, used by the title maker and by the
+// search for which credit a dead sequel belongs to.
+const ROMAN = / +(II|III|IV|V|VI)$/;
 function sequelTitle(title, n) {
   const clean = String(title).replace(/\s+(II|III|IV|V|VI)$/, '');
   return `${clean} ${SEQUEL_WORDS[n - 2] || n}`;
@@ -309,8 +312,16 @@ export function laterOffersTick(s) {
   for (const x of due) {
     if (diesInDevelopment(s, x)) {
       const title = String(x.offer.projectTitle || '').replace('⭐ ', '');
+      // Whose credit says "the sequel was announced and never made"? The one it was a
+      // sequel TO — the part before it. Stripping the numeral found the ROOT of the
+      // franchise instead, so a dead part three put the note on part one, which had a
+      // sequel sitting right above it in the same list.
       const rootTitle = title.replace(/\s+(II|III|IV|V|VI)$/, '');
-      const src = (s.filmography || []).find((c) => c.title === rootTitle || c.title === title);
+      const mine = (s.filmography || []).filter((c) => !c.minor && seriesRoot(String(c.title || '')).replace(ROMAN, '') === rootTitle);
+      const want = (x.offer.part || 2) - 1;
+      const src = mine.find((c) => (c.part || 1) === want)
+        || mine.sort((b, c) => (c.part || 1) - (b.part || 1))[0]
+        || (s.filmography || []).find((c) => c.title === rootTitle || c.title === title);
       if (src) src.sequelDead = true;
       addTimeline(s, `"${title}" is dead. Three writers, a director who left, and a studio that stopped answering. It was never going to be made.`, true);
       s.lastEvent = `They are not making "${title}". Nobody says so out loud — the script goes round one more time, the director takes something else, and one day it is simply not on the schedule any more.`;

@@ -311,6 +311,11 @@ export function contractsTick(s) {
     s.offers = s.offers.filter((x) => x.id !== o.id);
     s.inbox = (s.inbox || []).filter((m) => m.offerId !== o.id);
     addTimeline(s, `${title}: they held it as long as they could. You were still on another set, and they recast.`, true);
+    // Losing your own season or your own sequel is the same loss however it happened, and
+    // the world has a whole story for it (stories.js recast): the fans, the director's
+    // letter, the bridge, and the thing opening without you. It was only ever started by
+    // a refusal — so the commonest way of losing one, a set that ran over, went unnoticed.
+    if (o.kind === 'sequel' || o.kind === 'renewal') noteSequelLoss(s, o, 'schedule');
     sendMail(s, { from: `${studioOf(o)} · business affairs`, subj: `Re: "${title}"`, tag: 'contract', kind: 'contract',
       body: `We held ${title} for you until ${MON[(o.startAt || now) % 12]} and two months beyond. With no release date from your current production we have had to cast elsewhere. We regret it.`,
       cta: [{ label: 'Delete', fx: {}, reply: 'They waited. Not forever.' }] });
@@ -343,6 +348,7 @@ export function contractsTick(s) {
       s.offers = s.offers.filter((x) => x.id !== o.id);
       s.inbox = (s.inbox || []).filter((m) => m.offerId !== o.id);
       addTimeline(s, `${title}: they could not hold the part. It went to somebody who was free.`, true);
+      if (o.kind === 'sequel' || o.kind === 'renewal') noteSequelLoss(s, o, 'schedule');
       (s.moments = s.moments || []).push({ id: 'contract', kind: 'bad', title, lines, body: 'They needed somebody in the chair on the first day, and you were on another set. The part went to somebody who was free.', walked: true });
       continue;
     }

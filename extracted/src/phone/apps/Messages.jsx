@@ -68,6 +68,13 @@ export function Messages({ g }) {
       // a paper, whatever the part. A supporting sequel used to get a bare Accept — Maxi:
       // "part two came as a yes/no button, no contract at all."
       const big = o.tier !== 'supporting' || (o.months || 0) >= 2; const onTrend = o.genre === trend; const cost = campaignCost(o);
+      // What they AGREED to, not what they opened with. contractsTick writes the number
+      // into the clause and it only reaches the offer at signature, so for the whole
+      // month between "we can confirm your points" and your pen the card was quoting
+      // the old fee. See systems/career/contract.js signContract.
+      const fc = ((o.contract && o.contract.clauses) || []).find((c) => c.id === "fee");
+      const unit = fc && fc.result && !o.signed ? fc.value : (o.perEpisode ? o.episodeFee : o.salary);
+      const total = o.episodes ? unit * o.episodes : unit;
       return (<div key={o.id} style={{ background: theme.panel2, border: `1px solid ${theme.line}`, borderRadius: 14, padding: 12 }}>
         <div style={{ fontSize: 11, fontWeight: 900, color: theme.accent, textTransform: 'uppercase', marginBottom: 4 }}>
           {o.kind === 'brand' ? `${o.from || 'A brand'} · they came to you`
@@ -88,7 +95,7 @@ export function Messages({ g }) {
         {/* A returning show or a sequel should read as the same thing coming back. */}
         {o.note && <div style={{ fontSize: 11.5, color: theme.gold, marginTop: 5, lineHeight: 1.45 }}>{o.note}</div>}
         <div style={{ fontSize: 11.5, color: theme.muted, marginTop: 5 }}>
-          {o.episodes ? `€${o.episodeFee.toLocaleString()}/ep × ${o.episodes} = €${o.salary.toLocaleString()}` : `€${o.salary.toLocaleString()}`} · {o.months} mo · {o.signed ? (o.waitsForWrap ? 'signed — starts when a set frees up' : 'signed') : o.contract && o.contract.sent ? 'the paper is with them' : o.waitsForWrap && !canTakeSet(g, o).ok ? 'they will wait for a free set' : `answer within ${o.deadline} mo`}
+          {o.episodes ? `€${unit.toLocaleString()}/ep × ${o.episodes} = €${total.toLocaleString()}` : `€${total.toLocaleString()}`}{fc && fc.result && !o.signed ? ` · agreed` : ``} · {o.months} mo · {o.signed ? (o.waitsForWrap ? 'signed — starts when a set frees up' : 'signed') : o.contract && o.contract.sent ? 'the paper is with them' : o.waitsForWrap && !canTakeSet(g, o).ok ? 'they will wait for a free set' : `answer within ${o.deadline} mo`}
         </div>
         <div style={{ display: 'flex', gap: 6, marginTop: 6, flexWrap: 'wrap' }}>
           {o.kind === 'renewal' && <span style={{ fontSize: 10.5, fontWeight: 800, padding: '3px 8px', borderRadius: 20, background: 'rgba(255,209,102,.18)', color: theme.gold }}>Season {o.season}</span>}

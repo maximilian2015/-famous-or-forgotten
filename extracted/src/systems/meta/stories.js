@@ -314,10 +314,14 @@ export function noteSequelLoss(s, o, how) {
   if (st) return;   // one at a time
   const source = (s.filmography || []).find((c) => !c.minor && (c.title === root || c.title === title)) || {};
   const director = source.director || personName(chance(50) ? 'female' : 'male', namesInUse(s));
-  setRespect(s, (s.respect || 0) - (how === 'passed' ? 3 : 2));
+  // Saying no costs most; not being free costs least — you did not refuse them, you were
+  // on another set. The fans do not draw that distinction, which is the point of the story.
+  setRespect(s, (s.respect || 0) - (how === 'passed' ? 3 : how === 'schedule' ? 1 : 2));
   s.scandal = clamp((s.scandal || 0) + 3);
-  addTimeline(s, o.kind === 'renewal' ? `Fans are furious: you are not coming back for season ${o.season} of "${root}".` : `Fans are furious: "${title}" is going ahead without you.`, true);
-  stories(s).push({ id: 'recast', beat: 'meeting', due: stamp(s) + 2, since: stamp(s), data: { title, root, kind: o.kind, part: o.part || 0, season: o.season || 0, scale: o.scale, director, how, offer: { ...o, contract: undefined, signed: false, sent: false } } });
+  addTimeline(s, how === 'schedule'
+    ? (o.kind === 'renewal' ? `Fans are furious: you could not free yourself for season ${o.season} of "${root}", and they are recasting.` : `Fans are furious: you were on another set and "${title}" is going ahead without you.`)
+    : (o.kind === 'renewal' ? `Fans are furious: you are not coming back for season ${o.season} of "${root}".` : `Fans are furious: "${title}" is going ahead without you.`), true);
+  stories(s).push({ id: 'recast', beat: 'meeting', due: stamp(s) + 2, since: stamp(s), data: { title, root, kind: o.kind, part: o.part || 0, season: o.season || 0, scale: o.scale, director, how, offer: { ...o, contract: undefined, signed: false, sent: false, waitsForWrap: false, startAt: 0, _warned: 0, deadline: 4 } } });
 }
 
 // ── the engine ───────────────────────────────────────────────────────────────────
