@@ -20,7 +20,10 @@ import { skillCap } from './actions.js';
 
 const clamp = (v, a = 0, b = 100) => Math.max(a, Math.min(b, v));
 const stamp = (s) => (s.year || 0) * 12 + (s.month || 0);
-const lead = (p) => ((p.crew || [])[0] || {});
+// Six lines on a day print this name. A set without a crew — an old save, a fixture, a
+// picture rebuilt by a migration — printed "undefined came over afterwards", which is the
+// kind of thing a player screenshots.
+const lead = (p) => { const c = ((p && p.crew) || [])[0]; return c && c.name ? c : { ...(c || {}), name: 'The director' }; };
 const dark = (g) => /Horror|Thriller|Crime/.test(g || '');
 const soft = (g) => /Romance|Drama|Musical/.test(g || '');
 
@@ -68,6 +71,27 @@ export const SCENES = {
     line: (p) => `Six minutes, eleven marks, forty people moving around you, and one mistake sends it back to the top.`,
     hint: 'The whole sequence, in order, first time.',
     when: (s, p) => p.scale === 'prestige' || p.scale === 'blockbuster' || p.scale === 'feature', weight: 2,
+    hard: true,
+  },
+  // The three thinking days. Everything above is reaction and precision; these are the
+  // work. Written per shoot from the picture itself — career/scenework.js.
+  order: {
+    game: 'chrono', label: 'Out of order',
+    line: (p) => `Nothing is being shot in the order it happens. Six scenes today, and only you have to hold which of them she already knows.`,
+    hint: 'Tick the scenes that come after she finds out.',
+    when: () => true, weight: 3,
+  },
+  reading: {
+    game: 'lines', label: 'Three lines are yours',
+    line: (p) => `The writer is on a plane and three lines are missing off the page. ${lead(p).name} says do what you think.`,
+    hint: 'There is no right line. There is one person saying all three.',
+    when: (s, p) => soft(p.genre) || p.scale === 'prestige' || p.scale === 'indie' || p.scale === 'festival', weight: 3,
+  },
+  why: {
+    game: 'motive', label: 'Why does she do it',
+    line: (p) => `${lead(p).name} will not roll until you answer one question, and then they will spend the day checking whether you meant it.`,
+    hint: 'Any answer is defensible. Only one of them is yours.',
+    when: (s, p) => p.tier !== 'supporting' || p.scale === 'prestige', weight: 3,
     hard: true,
   },
   night: {

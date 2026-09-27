@@ -30,6 +30,8 @@ import { rename as renameProject, canRename, whyNot, TITLE_MAX } from './systems
 import { goals } from './systems/meta/goals.js';
 import { resolveScene, sceneState } from './systems/career/scenes.js';
 import { RhythmLine, HoldZone, KeySequence, QuickPick } from './ui/components/SceneGames.jsx';
+import { Chronology, ScriptLines, Motive } from './ui/components/SceneLogic.jsx';
+import { chronologyFor, linesFor, motiveFor } from './systems/career/scenework.js';
 import { priceLine } from './systems/meta/price.js';
 import { hype, hypeSource, hypeLine, SOURCES, hypeReach, hypeDemand, hypePrice, showsThisYear } from './systems/meta/hype.js';
 import { tendency } from './systems/meta/typecast.js';
@@ -1884,6 +1886,9 @@ function SceneModal({ g }) {
   const done = (q) => { play(q >= 88 ? 'printed' : q < 25 ? 'blown' : 'tap'); setScore(Math.round(q)); setState('done'); };
   const finish = () => dispatch(resolveScene, score);
   const d = sc.difficulty || 1;
+  // The thinking days are written from the picture itself, so they need the set the scene
+  // belongs to — the modal had only the scene. career/scenework.js
+  const onSet = allSets(g).find((x) => x.id === sc.setId) || allSets(g)[0] || null;
   const lines = {
     Horror: ['It was in the house.', 'You said that already.', 'No — listen.', 'It is upstairs.', 'Do not turn round.', 'I said do not.', 'It knows my name.', 'It always did.'],
     Comedy: ['This is fine.', 'This is completely fine.', 'Nobody is panicking.', 'I am not panicking.', 'You are panicking.', 'That is the smoke alarm.', 'That is definitely the smoke alarm.', 'Right.'],
@@ -1899,6 +1904,9 @@ function SceneModal({ g }) {
     : sc.game === 'rhythm' ? <RhythmLine difficulty={d} lines={lines} onResult={done} />
     : sc.game === 'hold' ? <HoldZone difficulty={d} seconds={6} onResult={done} />
     : sc.game === 'keys' ? <KeySequence difficulty={d} onResult={done} />
+    : sc.game === 'chrono' ? <Chronology difficulty={d} {...chronologyFor(g, onSet, d)} onResult={done} />
+    : sc.game === 'lines' ? <ScriptLines difficulty={d} {...linesFor(g, onSet, d)} onResult={done} />
+    : sc.game === 'motive' ? <Motive difficulty={d} {...motiveFor(g, onSet, d)} onResult={done} />
     : <QuickPick difficulty={d} prompt={`"${sc.director} has not called cut. Your co-star is looking at you."`} options={opts} onResult={done} />;
   return (<div style={{ maxWidth: 440, margin: '0 auto', minHeight: '100vh', color: theme.text, padding: 16, display: 'flex', flexDirection: 'column', justifyContent: 'center', fontFamily: FONT }}>
     <div style={{ fontSize: 11, fontWeight: 900, letterSpacing: '.1em', textTransform: 'uppercase', color: theme.gold, marginBottom: 8 }}>🎬 {sc.title} · {sc.label}</div>
