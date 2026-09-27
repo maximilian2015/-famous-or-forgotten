@@ -10,6 +10,7 @@ import { startProduction } from './production.js';
 import { rollStability } from './stability.js';
 import { canWork } from '../life/strain.js';
 import { newTitle } from '../world/titles.js';
+import { refusedOnType } from '../meta/typecast.js';
 import { spent } from '../../engine/economy.js';
 import { storyOfferFactor, noteRefusal, noteSequelLoss } from '../meta/stories.js';
 import { hypeDemand, hype, hypeSource, hypeBrands } from '../meta/hype.js';
@@ -212,6 +213,8 @@ export function declineOffer(s, id) {
   }
   if (o.kind === 'sequel' || o.kind === 'renewal') noteSequelLoss(s, o, o.story === 'recast' ? 'meeting' : 'passed');
   else if (o.tier !== 'supporting' && o.via !== 'casting') noteRefusal(s, o);
+  // And saying no to the box is how you get out of it — see meta/typecast.js refusedOnType.
+  refusedOnType(s, o);
   // Walking out of a season the network holds an option on is walking out of a contract.
   if (o.kind === 'renewal' && o.optioned) {
     setRespect(s, (s.respect || 0) - 6);

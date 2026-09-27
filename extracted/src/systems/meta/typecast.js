@@ -38,6 +38,27 @@ export const GENRE_LABEL = {
 };
 export function genreKey(g) { return 'g:' + g; }
 export function genreOf(id) { return String(id || '').startsWith('g:') ? id.slice(2) : null; }
+// The genre they have decided you are, if there is one. Maxi: "when you carry a label a
+// lot of that genre comes to you, and the way out is the young blood and the top
+// directors." Both halves of that need this.
+export function boxedInto(s) {
+  let best = null, top = 0;
+  for (const id of activeLabels(s)) {
+    const g = genreOf(id);
+    if (!g) continue;
+    const v = scoreOf(s, id);
+    if (v > top) { top = v; best = g; }
+  }
+  return best;
+}
+// Nothing dominates: you play everything and the business has no word for you. That is a
+// standing of its own, and the one every character actor wants.
+export function isUniversal(s) {
+  const t = typecastOf(s);
+  const genres = Object.keys(t.scores || {}).filter((id) => genreOf(id));
+  if (genres.length < 3) return false;
+  return !boxedInto(s) && genres.filter((id) => scoreOf(s, id) >= 1.5).length >= 3;
+}
 // What a label is called and what it costs you — the static ones, and the genre one.
 export function labelInfo(id) {
   const g = genreOf(id);
@@ -56,6 +77,33 @@ export function hasLabel(s, id) { return activeLabels(s).includes(id); }
 export function isStrong(s, id) { return scoreOf(s, id) >= STRONG_AT; }
 
 export function typecastBump(s, id, by) { bump(s, id, by); relabel(s); return s; }
+// Saying no to the box. Maxi: "how do they get out of it in life?" Two ways, and the game
+// only had one. The first is the director who sees something else, which is the board.
+// The second is the one McConaughey actually did: he turned down the romantic comedies —
+// all of them, for about two years, at fifteen million a picture — and waited until the
+// offers changed. It is the most expensive thing an actor can do and it is the only move
+// that works without anybody's permission.
+//
+// So a refusal that is ON your type wears the label down, and a refusal that is against it
+// does nothing, because turning down the one part that would have got you out is not a
+// stand, it is a mistake.
+export function refusedOnType(s, o) {
+  if (!o || o.tier === 'supporting') return s;
+  const fit = typeFit(s, { genre: o.genre, scale: o.scale, type: o.type, perEpisode: !!o.perEpisode });
+  if (fit < 0.5) return s;
+  const t = typecastOf(s);
+  let moved = null;
+  for (const id of activeLabels(s)) {
+    const g = genreOf(id);
+    const onIt = g ? g === o.genre : true;
+    if (!onIt) continue;
+    const was = scoreOf(s, id);
+    t.scores[id] = Math.max(0, was - 0.9);
+    if (t.scores[id] < was) moved = id;
+  }
+  if (moved) relabel(s);
+  return s;
+}
 function bump(s, id, by) {
   const t = typecastOf(s);
   t.scores[id] = Math.max(0, Math.min(10, (t.scores[id] || 0) + by));
@@ -143,7 +191,10 @@ export function typeFit(s, c) {
     if (id === 'child') v += scale === 'blockbuster' || scale === 'feature' ? -w(id) * 0.5 : 0;
     // The genre box: your own genre reads easy, everything else reads as a stretch.
     const mine = genreOf(id);
-    if (mine) v += genre === mine ? w(id) : genre ? -w(id) * 0.45 : 0;
+    // It was 0.45 against a threshold of 0.5, so a genre box — the one everybody actually
+    // means by typecasting — could never turn a part away. Measured: the board at five
+    // comedies was the board at none.
+    if (mine) v += genre === mine ? w(id) : genre ? -w(id) * 0.8 : 0;
   }
   return Math.max(-1.5, Math.min(1.5, v));
 }

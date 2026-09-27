@@ -23,7 +23,7 @@ import { sendMail } from '../meta/email.js';
 import { newTitle } from '../world/titles.js';
 import { seasonCap, slotNorm, tvMonths } from './franchise.js';
 import { rumourFactor } from '../meta/trouble.js';
-import { typeFit, typeFactor, typecastAfterDayWork, strongLabels, isStrong } from '../meta/typecast.js';
+import { typeFit, typeFactor, typecastAfterDayWork, strongLabels, isStrong, activeLabels, boxedInto } from '../meta/typecast.js';
 import { storyCastFactor, hiding } from '../meta/stories.js';
 import { hypeReach, hypeBrands } from '../meta/hype.js';
 export { tvMonths, TV_PACE } from './franchise.js';
@@ -285,8 +285,10 @@ export function refreshCastingPool(s, force, extra = 0) {
     if (maxFame != null && reach(s) > maxFame) continue;
     // A strong label moves the board: the parts against it are sent to you less often, and
     // the ones on it more. See meta/typecast.js.
-    const genre = pick(GENRES);
-    if (strongLabels(s).length) { const tf = typeFit(s, { genre, scale, type, perEpisode }); if (tf <= -0.5 && chance(45)) continue; }
+    // The box. Once the business has a word for you, most of what it sends is more of the
+    // same — that is the whole of what typecasting IS, and the board did not do it at all.
+    const box = boxedInto(s);
+    const genre = box && chance(44) ? box : pick(GENRES);
     // And a board that is all locked is not a board. A shelf of two rows drew two series
     // regulars at 'fame 25' for an Unknown at 0 — every line locked. One rung above your
     // reach can show (something to aim at); anything further up does not exist for you yet.
@@ -354,6 +356,28 @@ export function refreshCastingPool(s, force, extra = 0) {
     // the most popular and the icons, or world-scale projects." That is the half of a
     // star's decision this game never had — you chose a part, never a person.
     const helmer = directorFor(s, scale, genre);
+    // A label turns things away. Gated on ACTIVE labels, not strong ones — a label is a
+    // label, and waiting for a score of five meant it almost never applied at all.
+    if (activeLabels(s).length) {
+      const tf = typeFit(s, { genre, scale, type, perEpisode });
+      // The way out, and Maxi named it: "you look for the young blood and the cream of the
+      // directors if you want to get away from the type." A first feature and one of the
+      // five are the two people in this business who will look at a comic actor and see
+      // something else. Nothing they send is filtered by your box.
+      const seesOther = !!helmer && (bandOf(helmer) === 'new' || isOneOfTheFive(s, helmer));
+      if (tf <= -0.5 && !seesOther && chance(52)) continue;
+    }
+    // A label turns things away. Gated on ACTIVE labels, not strong ones — a label is a
+    // label, and waiting for a score of five meant it almost never applied at all.
+    if (activeLabels(s).length) {
+      const tf = typeFit(s, { genre, scale, type, perEpisode });
+      // The way out, and Maxi named it: "you look for the young blood and the cream of the
+      // directors if you want to get away from the type." A first feature and one of the
+      // five are the two people in this business who will look at a comic actor and see
+      // something else. Nothing they send is filtered by your box.
+      const seesOther = !!helmer && (bandOf(helmer) === 'new' || isOneOfTheFive(s, helmer));
+      if (tf <= -0.5 && !seesOther && chance(52)) continue;
+    }
     const takeHome = perEpisode ? rate * episodes : rate;
     const worth = quoteFor(s, 'film_studio') || quoteFor(s, 'film_indie') || 0;
     const picky = Math.max(0, Math.min(1, (reach(s) - 35) / 65));
