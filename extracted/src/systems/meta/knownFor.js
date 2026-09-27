@@ -37,6 +37,31 @@ function whyOf(s, c) {
   if (rankOf(s, c) <= 10) return '#' + rankOf(s, c) + ' of ' + c.year;
   return scoreOf(c).toFixed(1) + '/10';
 }
+// Everything the business would call a hit, biggest first. Maxi: "make Known for tappable
+// and show her hits — not one, the really popular and big-grossing ones, and what she
+// actually became famous for, so we understand who she is and not just what she did last."
+// The line on the front is the LATEST big thing, which is the right line for a front; this
+// is the shelf behind it, and the two answer different questions.
+export function theHits(s) {
+  const all = [...(s.filmography || []), ...(s.discography || [])].filter((c) => !minor(c) && !c.running);
+  return all
+    .map((c) => ({ c, w: hitWeight(c, s) }))
+    .filter((x) => x.w > 0)
+    .sort((a, b) => b.w - a.w || (b.c.boxOffice || 0) - (a.c.boxOffice || 0) || scoreOf(b.c) - scoreOf(a.c))
+    .map((x) => ({
+      title: x.c.title, year: x.c.year, role: x.c.role, genre: x.c.genre, weight: x.w,
+      why: whyOf(s, x.c), score: scoreOf(x.c), boxOffice: x.c.boxOffice || 0,
+      band: x.w >= 5 ? 'The one the whole world saw' : x.w >= 4 ? 'The one that won'
+        : x.w >= 3 ? 'The one that printed money' : x.w >= 2 ? 'A real hit' : 'It worked',
+    }));
+}
+// And the ones that are still brought up. A career is both shelves.
+export function theFlops(s) {
+  const all = [...(s.filmography || []), ...(s.discography || [])].filter((c) => !minor(c) && !c.running);
+  return all.filter((c) => isFlop(c))
+    .sort((a, b) => scoreOf(a) - scoreOf(b))
+    .map((c) => ({ title: c.title, year: c.year, genre: c.genre, score: scoreOf(c), verdict: c.verdict || null }));
+}
 // Known for the biggest thing of the last four years — a tie goes to the newer one. Older
 // than that, the most recent hit there ever was; never a hit, the best thing you did.
 export function knownFor(s) {

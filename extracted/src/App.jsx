@@ -20,7 +20,7 @@ import { COST, canAfford } from './engine/energy.js';
 import { EnergyBar } from './ui/components/EnergyBar.jsx';
 import { FAVOURS, FAVOUR_ORDER, canUse, costOf, asksLeft, ASKS_A_YEAR, canSmooth, smoothOver, canPushSequel, pushSequel, vouchFor, canOpenShelf, openShelf } from './systems/career/favours.js';
 import { sequelDue } from './systems/career/franchise.js';
-import { knownFor, isHit, isFlop } from './systems/meta/knownFor.js';
+import { knownFor, isHit, isFlop, theHits, theFlops } from './systems/meta/knownFor.js';
 import { townOpen, townFor, goOut } from './systems/life/town.js';
 import { LABELS, labelInfo, activeLabels, isStrong } from './systems/meta/typecast.js';
 import { liveRisks } from './systems/meta/risk.js';
@@ -104,6 +104,7 @@ export default function App() {
   const [showHealth, setShowHealth] = useState(false);
   const [showMental, setShowMental] = useState(false);
   const [showFame, setShowFame] = useState(false);
+  const [showHits, setShowHits] = useState(false);
   const [showRespect, setShowRespect] = useState(false);
   const [openPerson, setOpenPerson] = useState(null);
   const [showRoom, setShowRoom] = useState(false);
@@ -120,6 +121,7 @@ export default function App() {
   if (showHealth) return <HealthScreen g={g} onBack={() => setShowHealth(false)} />;
   if (showMental) return <MentalScreen g={g} onBack={() => setShowMental(false)} />;
   if (showFame) return <FameScreen g={g} onBack={() => setShowFame(false)} />;
+  if (showHits) return <HitsScreen g={g} onBack={() => setShowHits(false)} />;
   if (showRespect) return <RespectScreen g={g} onBack={() => setShowRespect(false)} />;
   if (g.bigMoment) return <BigMoment moment={g.bigMoment} look={lookOf(g)} onClose={() => dispatch(clearBigMoment)} />;
   if (g.depression?.pending) return <CheckpointModal g={g} />;
@@ -147,7 +149,12 @@ export default function App() {
               {companionOf(g) ? `with ${companionOf(g).person.name.split(' ')[0]} · ${companionOf(g).married ? 'married' : 'together'}` : g.city}
             </div>
             {/* The film next to your name — the latest hit, and it changes when there is a new one. */}
-            {(() => { const k = inCareer(g) ? knownFor(g) : null; return k ? <div style={{ fontSize: 10, color: k.hit ? theme.gold : theme.muted, marginTop: 2, fontWeight: 700 }}>{k.hit ? '★ ' : ''}Known for "{k.title}" · {k.why}</div> : null; })()}
+            {(() => { const k = inCareer(g) ? knownFor(g) : null; if (!k) return null;
+              const more = theHits(g).length + theFlops(g).length > 1;
+              return (<div onClick={more ? () => setShowHits(true) : undefined}
+                style={{ fontSize: 10, color: k.hit ? theme.gold : theme.muted, marginTop: 2, fontWeight: 700, cursor: more ? 'pointer' : 'default' }}>
+                {k.hit ? '★ ' : ''}Known for "{k.title}" · {k.why}{more ? ' ›' : ''}
+              </div>); })()}
             {/* The label the business has for you — two at most, the strong ones in gold. Tap the figure for the rest. */}
             {activeLabels(g).length > 0
               ? <div style={{ fontSize: 10, marginTop: 2, fontWeight: 700, color: theme.muted }}>{activeLabels(g).slice(0, 2).map((id, i) => <span key={id} style={{ color: isStrong(g, id) ? theme.gold : theme.muted }}>{i ? ' · ' : ''}{labelInfo(id).label}</span>)}</div>
@@ -869,6 +876,40 @@ function MentalScreen({ g, onBack }) {
       Resting properly is under Home, and the pills and the bottles are in the Shop. A month
       off is the only thing that pulls the strain down faster than time does.
     </div>
+  </div>);
+}
+
+// What you are known for, which is not the same as what you did last. The line on the
+// front carries the newest big thing; this is the shelf behind it. Maxi: "so we understand
+// who she is and not by the most recent." A career is both columns — the hits people name
+// and the ones they still bring up. See systems/meta/knownFor.js.
+function HitsScreen({ g, onBack }) {
+  const hits = theHits(g), flops = theFlops(g);
+  const money = (n) => (n >= 1e9 ? `€${(n / 1e9).toFixed(2)}bn` : n >= 1e6 ? `€${Math.round(n / 1e6)}m` : null);
+  return (<div style={{ minHeight: '100vh', background: `linear-gradient(180deg, ${theme.bg}, ${theme.bgDeep})`, padding: 16, paddingBottom: 110 }}>
+    <button onClick={onBack} style={{ background: 'rgba(158,116,255,.16)', border: 'none', borderRadius: 10, padding: '7px 12px', fontSize: 12.5, fontWeight: 800, cursor: 'pointer', color: '#d9cffa', marginBottom: 14 }}>‹ Back</button>
+    <div style={{ fontSize: 20, fontWeight: 900, marginBottom: 2 }}>What you are known for</div>
+    <div style={{ fontSize: 11.5, color: theme.muted, marginBottom: 14, lineHeight: 1.5 }}>
+      {hits.length ? `${hits.length} thing${hits.length === 1 ? '' : 's'} the business would call a hit. The name on the front is the newest of them; this is the whole shelf.`
+        : 'Nothing anybody would call a hit yet. The work is on the shelf; it has not landed.'}
+    </div>
+    {hits.map((h, i) => (<Card key={h.title + i} style={{ marginBottom: 8, borderColor: h.weight >= 3 ? 'rgba(255,209,102,.4)' : theme.line }}>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', gap: 10 }}>
+        <div style={{ fontSize: 14, fontWeight: 800 }}>{h.weight >= 3 ? '★ ' : ''}{h.title}</div>
+        <div style={{ fontSize: 11, color: theme.muted, flex: 'none' }}>{h.year}</div>
+      </div>
+      <div style={{ fontSize: 11, fontWeight: 800, color: h.weight >= 3 ? theme.gold : theme.accent, marginTop: 3 }}>{h.band}</div>
+      <div style={{ fontSize: 11.5, color: theme.muted, marginTop: 2, lineHeight: 1.45 }}>
+        {h.role}{h.genre ? ` · ${h.genre}` : ''} · {h.score.toFixed(1)}/10{money(h.boxOffice) ? ` · ${money(h.boxOffice)}` : ''}
+      </div>
+    </Card>))}
+    {!!flops.length && (<>
+      <div style={{ fontSize: 13, fontWeight: 900, letterSpacing: '.06em', textTransform: 'uppercase', color: theme.muted, margin: '18px 0 6px' }}>And the ones they bring up</div>
+      {flops.slice(0, 6).map((fl, i) => (<div key={fl.title + i} style={{ display: 'flex', justifyContent: 'space-between', gap: 10, padding: '7px 2px', borderBottom: `1px solid ${theme.line}` }}>
+        <div style={{ fontSize: 12.5 }}>{fl.title} <span style={{ color: theme.muted, fontSize: 11 }}>{fl.year}</span></div>
+        <div style={{ fontSize: 11.5, color: theme.bad, flex: 'none' }}>{fl.score.toFixed(1)}{fl.verdict === 'bomb' ? ' · bomb' : ''}</div>
+      </div>))}
+    </>)}
   </div>);
 }
 
