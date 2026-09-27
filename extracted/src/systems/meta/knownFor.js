@@ -42,12 +42,22 @@ function whyOf(s, c) {
 // actually became famous for, so we understand who she is and not just what she did last."
 // The line on the front is the LATEST big thing, which is the right line for a front; this
 // is the shelf behind it, and the two answer different questions.
-export function theHits(s) {
+// Maxi: "there should be FEW works — the biggest grossing, the most expensive. Not every
+// project that worked. It is the cream."  So weight 1 — a solid picture that did its job —
+// does not belong on this wall; it belongs in the filmography, where it already is. Only
+// what the business would name unprompted: the world hit, the Asker, the smash, the one in
+// the year's top ten. Five at the most, because a career has about that many.
+export const CREAM_AT = 2, CREAM_MAX = 5;
+export function theHits(s, limit = CREAM_MAX) {
   const all = [...(s.filmography || []), ...(s.discography || [])].filter((c) => !minor(c) && !c.running);
-  return all
+  const ranked = all
     .map((c) => ({ c, w: hitWeight(c, s) }))
     .filter((x) => x.w > 0)
-    .sort((a, b) => b.w - a.w || (b.c.boxOffice || 0) - (a.c.boxOffice || 0) || scoreOf(b.c) - scoreOf(a.c))
+    .sort((a, b) => b.w - a.w || (b.c.boxOffice || 0) - (a.c.boxOffice || 0) || scoreOf(b.c) - scoreOf(a.c));
+  // The cream, and never an empty wall: if nothing has reached that shelf yet, the one
+  // best thing stands in for it, which is the honest answer to "what are you known for".
+  const cream = ranked.filter((x) => x.w >= CREAM_AT);
+  return (cream.length ? cream : ranked.slice(0, 1)).slice(0, limit)
     .map((x) => ({
       title: x.c.title, year: x.c.year, role: x.c.role, genre: x.c.genre, weight: x.w,
       why: whyOf(s, x.c), score: scoreOf(x.c), boxOffice: x.c.boxOffice || 0,
@@ -60,6 +70,7 @@ export function theFlops(s) {
   const all = [...(s.filmography || []), ...(s.discography || [])].filter((c) => !minor(c) && !c.running);
   return all.filter((c) => isFlop(c))
     .sort((a, b) => scoreOf(a) - scoreOf(b))
+    .slice(0, 3)
     .map((c) => ({ title: c.title, year: c.year, genre: c.genre, score: scoreOf(c), verdict: c.verdict || null }));
 }
 // Known for the biggest thing of the last four years — a tie goes to the newer one. Older

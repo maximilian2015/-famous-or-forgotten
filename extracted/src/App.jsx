@@ -121,7 +121,6 @@ export default function App() {
   if (showHealth) return <HealthScreen g={g} onBack={() => setShowHealth(false)} />;
   if (showMental) return <MentalScreen g={g} onBack={() => setShowMental(false)} />;
   if (showFame) return <FameScreen g={g} onBack={() => setShowFame(false)} />;
-  if (showHits) return <HitsScreen g={g} onBack={() => setShowHits(false)} />;
   if (showRespect) return <RespectScreen g={g} onBack={() => setShowRespect(false)} />;
   if (g.bigMoment) return <BigMoment moment={g.bigMoment} look={lookOf(g)} onClose={() => dispatch(clearBigMoment)} />;
   if (g.depression?.pending) return <CheckpointModal g={g} />;
@@ -137,6 +136,9 @@ export default function App() {
   if (confirmEnd) return <EndLifeModal onCancel={() => setConfirmEnd(false)} onConfirm={() => { import('./systems/meta/legacy.js').then(m => { m.enshrine(g); newLife(); setConfirmEnd(false); setOpenPerson(null); setScreen('life'); }); }} />;
   return (
     <div style={{ maxWidth: 440, margin: '0 auto', minHeight: '100vh', background: 'transparent', color: theme.text, padding: 16, paddingBottom: 90, fontFamily: FONT }}>
+      {/* Not a screen you navigate to — a window over the life. Maxi: "it should be a
+          pop-up, not a page, and a smaller font so all the work fits without scrolling." */}
+      {showHits && <HitsPopup g={g} onClose={() => setShowHits(false)} />}
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 14 }}>
         <div style={{ display: 'flex', alignItems: 'flex-end', gap: 9 }}>
           <HeaderFigures g={g} onOpen={() => setShowPassport(true)} />
@@ -883,36 +885,29 @@ function MentalScreen({ g, onBack }) {
 // front carries the newest big thing; this is the shelf behind it. Maxi: "so we understand
 // who she is and not by the most recent." A career is both columns — the hits people name
 // and the ones they still bring up. See systems/meta/knownFor.js.
-function HitsScreen({ g, onBack }) {
+function HitsPopup({ g, onClose }) {
   const hits = theHits(g), flops = theFlops(g);
   const money = (n) => (n >= 1e9 ? `€${(n / 1e9).toFixed(2)}bn` : n >= 1e6 ? `€${Math.round(n / 1e6)}m` : null);
-  return (<div style={{ minHeight: '100vh', background: `linear-gradient(180deg, ${theme.bg}, ${theme.bgDeep})`, padding: 16, paddingBottom: 110 }}>
-    <button onClick={onBack} style={{ background: 'rgba(158,116,255,.16)', border: 'none', borderRadius: 10, padding: '7px 12px', fontSize: 12.5, fontWeight: 800, cursor: 'pointer', color: '#d9cffa', marginBottom: 14 }}>‹ Back</button>
-    <div style={{ fontSize: 20, fontWeight: 900, marginBottom: 2 }}>What you are known for</div>
-    <div style={{ fontSize: 11.5, color: theme.muted, marginBottom: 14, lineHeight: 1.5 }}>
-      {hits.length ? `${hits.length} thing${hits.length === 1 ? '' : 's'} the business would call a hit. The name on the front is the newest of them; this is the whole shelf.`
-        : 'Nothing anybody would call a hit yet. The work is on the shelf; it has not landed.'}
+  const row = (t, year, mid, right, tone, star) => (
+    <div key={t + year} style={{ display: 'flex', alignItems: 'baseline', gap: 6, padding: '3.5px 0', borderBottom: `1px solid ${theme.line}` }}>
+      <span style={{ fontSize: 11.5, fontWeight: 800, color: tone, flex: '0 1 auto', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{star ? '★ ' : ''}{t}</span>
+      <span style={{ fontSize: 9.5, color: theme.muted, flex: 'none' }}>{year}</span>
+      <span style={{ fontSize: 10, color: theme.muted, flex: 1, textAlign: 'right', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{mid}</span>
+      <span style={{ fontSize: 10, color: tone, flex: 'none', fontWeight: 700 }}>{right}</span>
+    </div>);
+  return (<div onClick={onClose} style={{ position: 'fixed', inset: 0, zIndex: 70, background: 'rgba(6,4,14,.72)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 16 }}>
+    <div onClick={(e) => e.stopPropagation()} style={{ width: '100%', maxWidth: 360, maxHeight: '82vh', overflowY: 'auto', background: theme.panel, border: `1px solid ${theme.line}`, borderRadius: 16, padding: '14px 14px 12px', boxShadow: '0 18px 50px rgba(0,0,0,.55)' }}>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', marginBottom: 8 }}>
+        <div style={{ fontSize: 14, fontWeight: 900 }}>What you are known for</div>
+        <button onClick={onClose} style={{ background: 'none', border: 'none', color: theme.muted, fontSize: 16, cursor: 'pointer', lineHeight: 1, padding: 0 }}>×</button>
+      </div>
+      {!hits.length && <div style={{ fontSize: 11, color: theme.muted, lineHeight: 1.5 }}>Nothing anybody would call a hit yet.</div>}
+      {hits.map((h) => row(h.title, h.year, h.band, money(h.boxOffice) || h.score.toFixed(1), h.weight >= 3 ? theme.gold : theme.text, h.weight >= 3))}
+      {!!flops.length && <div style={{ fontSize: 9.5, fontWeight: 900, letterSpacing: '.08em', textTransform: 'uppercase', color: theme.muted, margin: '9px 0 2px' }}>And the ones they bring up</div>}
+      {flops.slice(0, 8).map((fl) => row(fl.title, fl.year, fl.verdict === 'bomb' ? 'bomb' : 'ignored', fl.score.toFixed(1), theme.bad, false))}
     </div>
-    {hits.map((h, i) => (<Card key={h.title + i} style={{ marginBottom: 8, borderColor: h.weight >= 3 ? 'rgba(255,209,102,.4)' : theme.line }}>
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', gap: 10 }}>
-        <div style={{ fontSize: 14, fontWeight: 800 }}>{h.weight >= 3 ? '★ ' : ''}{h.title}</div>
-        <div style={{ fontSize: 11, color: theme.muted, flex: 'none' }}>{h.year}</div>
-      </div>
-      <div style={{ fontSize: 11, fontWeight: 800, color: h.weight >= 3 ? theme.gold : theme.accent, marginTop: 3 }}>{h.band}</div>
-      <div style={{ fontSize: 11.5, color: theme.muted, marginTop: 2, lineHeight: 1.45 }}>
-        {h.role}{h.genre ? ` · ${h.genre}` : ''} · {h.score.toFixed(1)}/10{money(h.boxOffice) ? ` · ${money(h.boxOffice)}` : ''}
-      </div>
-    </Card>))}
-    {!!flops.length && (<>
-      <div style={{ fontSize: 13, fontWeight: 900, letterSpacing: '.06em', textTransform: 'uppercase', color: theme.muted, margin: '18px 0 6px' }}>And the ones they bring up</div>
-      {flops.slice(0, 6).map((fl, i) => (<div key={fl.title + i} style={{ display: 'flex', justifyContent: 'space-between', gap: 10, padding: '7px 2px', borderBottom: `1px solid ${theme.line}` }}>
-        <div style={{ fontSize: 12.5 }}>{fl.title} <span style={{ color: theme.muted, fontSize: 11 }}>{fl.year}</span></div>
-        <div style={{ fontSize: 11.5, color: theme.bad, flex: 'none' }}>{fl.score.toFixed(1)}{fl.verdict === 'bomb' ? ' · bomb' : ''}</div>
-      </div>))}
-    </>)}
   </div>);
 }
-
 function ActRow({ label, blurb, cost, disabled, why, onClick }) {
   return (<button onClick={disabled ? undefined : onClick} disabled={disabled}
     data-sfx={disabled ? 'denied' : 'nav'}
