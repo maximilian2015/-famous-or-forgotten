@@ -69,13 +69,13 @@ const clamp = (v) => Math.max(0, Math.min(100, v));
 const POOLS = {
   actor: {
     tv: [
-      ['Soap Opera', 'Recurring', [3, 5], [22, 44], 'tv_daytime', 'recurring'],
+      ['Soap Opera', 'Recurring', [3, 5], [22, 44], 'tv_daytime', 'recurring', 0, 1, 74],
       // A guest spot is a week's work at a guest's rate, not a season at a regular's. Maxi:
       // "one episode, three months of shooting, €20k an episode — that does not add up."
       // The months follow the episodes now (below), and the share is a guest's share.
       ['Drama Series', 'Guest role', [1, 2], [2, 4], 'tv_network', 'episode', 0, 0.2, 62],
       ['Crime Series', 'Episode', [1, 1], [1, 3], 'tv_network', 'episode', 0, 0.22, 62],
-      ['Network Drama', 'Series regular', [5, 8], [10, 16], 'tv_network', 'recurring', 25],
+      ['Network Drama', 'Series regular', [5, 8], [10, 16], 'tv_network', 'recurring', 25, 1, 84],
       ['Prestige Series', 'Season lead', [7, 10], [8, 10], 'tv_prestige', 'prestige', 55],
       // Opens late. It pays in standing, and it is the shelf that replaces the one that closes.
       ['Prestige Series', 'The matriarch', [6, 9], [6, 9], 'tv_prestige', 'prestige', 30, 0.8],
@@ -106,7 +106,7 @@ const POOLS = {
     day: [
       ['Brand Campaign', 'Face', [1, 1], 'ad', 'oneoff', 15],
       ['Commercial', 'Actor', [1, 1], 'ad', 'oneoff', 0, 0.35],
-      ['Magazine Cover', 'The cover', [1, 1], 'ad', 'oneoff', 40, 0.3],
+      ['Magazine Cover', 'The cover', [1, 1], 'ad', 'oneoff', 40, 0.3, 92],
       ['Awards Show', 'Presenting', [1, 1], 'ad', 'oneoff', 58, 0.45],
       ['Fashion House', 'The face of it', [1, 1], 'ad', 'oneoff', 66, 1.4],
       ['Theatre Run', 'Stage', [2, 2], 'gig', 'small', 0, 4],
@@ -191,8 +191,17 @@ export function boardSize(s) {
   // board at all — it feels like the game ran out. A working actor's agent sends over a
   // stack every week. Eight to eighteen gives every shelf two at the bottom and four or
   // five at the top, which is what a stack looks like.
-  const standing = Math.min(1, reach(s) / 78);
-  let base = 8 + Math.round(standing * 10);             // 8 at nobody, 18 at the top
+  // Maxi: "they do not need many films." A board that keeps growing is a conveyor belt,
+  // and filtering the cheap work off it only made every card bigger — the same number of
+  // jobs at a higher fee, which is how a median career came out at €1.26bn. The stack is
+  // a working actor's, not a star's: it rises while you are climbing, because that is when
+  // an agent sends everything, and it falls away at the top, because by then there are
+  // four real projects a year in the whole business that would have you and you hear about
+  // all of them. Fewer cards, bigger cards, and a year where nothing worth doing comes.
+  const r = reach(s);
+  const climbing = Math.min(1, r / 62);                 // 0 at nobody, 1 by Star
+  const arrived = Math.max(0, Math.min(1, (r - 68) / 42));  // 0 until Star, 1 at the very top
+  let base = Math.round(8 + climbing * 9 - arrived * 12);   // 8 · 17 at Star · 5 at the top
   // Nobody sends a script to the answer to a trivia question. A name that fell is sent LESS
   // than a newcomer, because a newcomer is a blank page and a has-been is a story everyone
   // already knows the ending of. See isForgotten in systems/meta/status.js.
@@ -290,6 +299,17 @@ export function refreshCastingPool(s, force, extra = 0) {
     const cut = (share || 1) * (/^film/.test(medium) ? (SCALE_MONEY[scale] || 1) : 1);   // a theatre run is priced as a gig already
     const quoted = Math.round(quoteFor(s, medium) * cut);
     if (quoted <= 0) continue;
+    // Maxi: "stars shoot once a year not because they have no time — their fees are
+    // enormous, they are very picky, and they do not need many films." Both halves of that
+    // are on the supply side, and neither was here: the board GREW with standing, eight
+    // things at nobody and eighteen at the top, and the cheapest card an Icon with a
+    // seventy-million quote was sent paid three hundred and thirty thousand. An agent does
+    // not forward that. They do not mention it.
+    //
+    // So: a job paying under a tenth of what you are worth is not sent — unless the
+    // material is the reason to take it, which is the one case where a name really does
+    // work for nothing. Measured against what you are worth NOW, not the best fee you ever
+    // got, so a career that falls gets the small work back, as it does.
     const episodes = perEpisode ? rint(eps[0], eps[1]) : 0;
     // A guest spot shoots for as long as its episodes take: one or two is a week or so
     // inside a month, three or four is two.
@@ -312,6 +332,24 @@ export function refreshCastingPool(s, force, extra = 0) {
     // Television: which season, and — for a show that is already on — what it is drawing.
     const season = perEpisode ? seasonFor(type, scale) : 0;
     const audience = season > 1 ? showAudience(type) : 0;
+    // Maxi: "stars shoot once a year not because they have no time — their fees are
+    // enormous, they are very picky, and they do not need many films." Both halves of that
+    // are on the supply side, and neither was here: the board GREW with standing, eight
+    // things at nobody and eighteen at the top, and the cheapest card an Icon with a
+    // seventy-million quote was sent paid three hundred and thirty thousand. An agent does
+    // not forward that; they do not mention it.
+    //
+    // Pickiness is earned, so the floor RISES with the name — a newcomer takes whatever is
+    // going and by the top nothing under a few million reaches you. Measured against what
+    // you are worth NOW, so a career that falls gets the small work back, as it does. The
+    // one exception is the whole reason a name ever works for nothing: the material.
+    // Tested on the fee the player is actually shown, not on the band it was drawn from —
+    // the two are a factor of ten apart on a small part.
+    const takeHome = perEpisode ? rate * episodes : rate;
+    const worth = quoteFor(s, 'film_studio') || quoteFor(s, 'film_indie') || 0;
+    const picky = Math.max(0, Math.min(1, (reach(s) - 35) / 65));
+    const material = scale === 'festival' || scale === 'prestige' || (scale === 'indie' && /Lead/i.test(role || ''));
+    if (worth > 0 && picky > 0 && takeHome < worth * 0.25 * picky && !material) continue;
     s.castingPool.push({
       id: uid(s, 'cast'), title: title, type, role, shelf, scale, medium,
       share: cut,   // negotiation needs it to know the top of YOUR band for this part

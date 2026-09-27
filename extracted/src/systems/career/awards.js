@@ -62,7 +62,7 @@ export function awardStrength(c) {
 // is the difference between being in the conversation and being in the room. A strong
 // prestige performance (strength around 200) comes out near eight per cent a film; a
 // masterpiece (330+) near a quarter; a decent, unremarkable picture near nothing.
-export const NOM_DIVISOR = 18, NOM_CAP = 50;
+export const NOM_DIVISOR = 15.5, NOM_CAP = 52;
 export function nominationOdds(strength, picture = false) {
   const s = Math.max(0, strength || 0);
   const p = Math.pow(s, 1.3) / (picture ? NOM_DIVISOR * 0.86 : NOM_DIVISOR);
