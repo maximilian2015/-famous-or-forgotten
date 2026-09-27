@@ -119,9 +119,38 @@ export function episodeRate(baseRate, typicalEpisodes, actualEpisodes) {
 }
 export const MEDIA = Object.keys(QUOTE);
 
+// The year of the thing they remember you for — the best work on the shelf. Kept off the
+// state deliberately: it is not a number the game needs to store, it is a fact about the
+// filmography, and it moves the day you make something better.
+function rememberedFrom(s) {
+  let year = 0, best = -1;
+  for (const c of (s.filmography || [])) {
+    if (c.minor) continue;
+    if ((c.rating || 0) > best) { best = c.rating || 0; year = c.year || 0; }
+  }
+  return year || (s.year || 0);
+}
+// What the NAME is worth, which is not the same as what the fame is worth.
+//
+// Maxi: "and if you are a forgotten legend, what is the fee? We need careers like Lindsay
+// Lohan's." Measured: an Asker winner who carried a 92-rated tentpole, fallen to fame 10,
+// was offered €40k for an indie — while a newcomer who has never done anything was offered
+// €54k for the same part. The band was read off current fame alone, so falling did not
+// make you cheap, it made you a stranger, and a stranger with a worse board.
+//
+// A room that knows your name does not pay you a newcomer's fee. It is a discount and a
+// large one — most of the way down — but never all of it, and it fades over about fifteen
+// years, because there is a point at which they genuinely do not remember.
+export function pricedAt(s) {
+  const now = s.fame || 0, was = s.peakFame || 0;
+  if (was <= now + 5) return now;
+  const years = Math.max(0, (s.year || 0) - rememberedFrom(s));
+  const fade = Math.max(0, 1 - years / 15);
+  return now + (was - now) * 0.4 * fade;
+}
 export function quoteBand(s, medium) {
   const row = QUOTE[medium] || QUOTE.gig;
-  return row[fameTier(s.fame).id] || null;
+  return row[fameTier(pricedAt(s)).id] || null;
 }
 // What YOU are worth in this medium right now — rolled inside the band, so two jobs
 // at the same standing are not the same money. Television returns a per-episode fee;
