@@ -2478,6 +2478,18 @@ function CreditRow({ group, g }) {
         {c.director ? ' · ' : ''}{c.role}
         {c.with ? <span> · with <span style={{ color: c.withIcon ? theme.gold : theme.text, fontWeight: 700 }}>{c.with}</span></span> : null}
       </div>
+      {/* What the network decided. Maxi, playing: "the season ended in 2075 and I am at the
+          end of 2076 — is this a bug or what?" It was not a bug: the decision is made when
+          the run closes (60 of 60 seasons in a probe, about seven months after the wrap)
+          and the filmography never said a word about it. A show's fate lives on the credit
+          now, where you go looking for it. See career/franchise.js maybeContinue. */}
+      {c.renewal && (<div style={{ fontSize: 11, fontWeight: 700, margin: '4px 0 2px',
+        color: c.renewal === 'renewed' ? theme.good : c.renewal === 'capped' ? theme.muted : theme.bad }}>
+        {c.renewal === 'renewed' ? `📺 Renewed for season ${(c.season || 1) + 1}`
+          : c.renewal === 'writtenOut' ? `📺 Renewed for season ${(c.season || 1) + 1} — without you. Your character was written out.`
+          : c.renewal === 'capped' ? `📺 It ended here. ${c.season || 1} season${(c.season || 1) === 1 ? '' : 's'}, and the format ran its course.`
+          : `📺 Not renewed.${c.endViewers ? ` It finished on ${c.endViewers}m.` : ''}`}
+      </div>)}
       {/* The studio said no. A name in the room can push — favours.js. */}
       {c.sequelDead && <div style={{ fontSize: 11, color: theme.muted, margin: '4px 0 2px', fontWeight: 700 }}>📝 The sequel was announced and never made. Three writers, a director who left, and a studio that stopped answering.</div>}
       {(() => { const sq = sequelDue(g, c.title); if (!sq) return null; const MONS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];

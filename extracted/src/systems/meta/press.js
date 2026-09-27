@@ -14,6 +14,7 @@ import { OUTLETS } from '../world/names.js';
 import { slotNorm } from '../career/franchise.js';
 import { budgetFor } from '../career/release.js';
 import { continues, gapOf, GAP_YEARS } from '../career/chapter.js';
+import { aftermathPieces } from './aftermath.js';
 
 const MON = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
 const clamp = (v) => Math.max(0, Math.min(100, v));
@@ -279,7 +280,11 @@ export function pressTick(s) {
   const done = new Set(s._pressDone || []);
   const lines = (s.timeline || []).filter((e) => keys.has(e.when) && !done.has(e.when + '|' + e.text)).map((e) => e.text);
   // What happened (three at most), the run and the set (two), and the business (one).
-  const raw = [...piecesFor(s, lines).map((p) => ({ kind: 'you', ...p })), ...returnPieces(s).slice(0, 1), ...runPieces(s).slice(0, 2), ...setPieces(s).slice(0, 1), ...worldPieces(s)];
+  // What the business says about what you already made: the post-mortem, the meme, the
+  // question, the year a thing spends coming back, and the week a show ends. Two a month
+  // at most — the feed is a newspaper, not a timeline. See meta/aftermath.js.
+  const after = aftermathPieces(s);
+  const raw = [...piecesFor(s, lines).map((p) => ({ kind: 'you', ...p })), ...returnPieces(s).slice(0, 1), ...after.slice(0, 2), ...runPieces(s).slice(0, 2), ...setPieces(s).slice(0, 1), ...worldPieces(s)];
   const pieces = raw.map((p, i) => ({ id: `pr${now}_${i}`, at: now, outlet: outletFor(p.tone), acted: false, ...p }));
   s._pressDone = [...(s.timeline || []).filter((e) => keys.has(e.when)).map((e) => e.when + '|' + e.text), ...(s._pressDone || [])].slice(0, 60);
   s._pressScandal = s.scandal || 0;
