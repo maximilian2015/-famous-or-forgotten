@@ -19,6 +19,7 @@ import { personName, namesInUse } from '../world/names.js';
 import { holdsAGrudge } from '../meta/stories.js';
 import { rollPotential } from './franchise.js';
 import { dirBump, dirSwing, pitchAftermath } from './chapter.js';
+import { youngAfterCredit } from './youngblood.js';
 import { sets, addSet, removeSet, setById, canTakeSet, slotsFree, MAX_SETS, SET_RESPECT } from '../../engine/sets.js';
 export { sets, canTakeSet, slotsFree, MAX_SETS, SET_RESPECT };
 const clamp = (v) => Math.max(0, Math.min(100, v));
@@ -152,6 +153,9 @@ export function startProduction(s, offer) {
     premise: offer.premise || makePremise(), character: offer.character || null, take: null, takeWon: false,
     // Where you said it should go, and whether anybody was paid to remind people it exists.
     direction: offer.direction || null, remind: offer.remind || null,
+    // Whose first film this is. The payoff is not the review — it is the phone call years
+    // from now, when they are somebody. career/youngblood.js
+    youngId: offer.youngId || null,
     // Franchise material, or a story that ends. Rolled once, here, and kept — see franchise.js.
     potential: offer.potential || rollPotential(scaleOfOffer(offer), offer.genre),
   };
@@ -563,6 +567,7 @@ function wrapProduction(s, p) {
   // next season's brief — see career/script.js and career/chapter.js.
   credit.character = p.character || null; credit.direction = p.direction || null;
   pitchAftermath(s, credit, p);
+  youngAfterCredit(s, credit, p);
   // A brand campaign has no opening night, no reviews and no box office. It was going
   // through the whole release machine and landing in the filmography as a picture — and
   // because offers.js gives a campaign two months once the fee passes €2m, the better the

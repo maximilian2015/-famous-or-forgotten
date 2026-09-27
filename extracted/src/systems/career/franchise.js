@@ -6,6 +6,7 @@ import { uid } from '../../engine/id.js';
 import { rint, chance, pick } from '../../engine/rng.js';
 import { addTimeline } from '../../engine/timeline.js';
 import { quoteBand } from '../meta/status.js';
+import { priceYoungReturn } from './youngblood.js';
 
 // How long a format can plausibly run. Daytime soaps run for decades; prestige
 // streaming shows are written to end. This is the ceiling, not the expectation —
@@ -328,7 +329,7 @@ export function laterOffersTick(s) {
       continue;
     }
     const ahead = Math.max(0, x.due - now);
-    const o = { ...x.offer, expires: now + rint(3, 6), via: x.offer.via || 'studio', from: 'the studio', deadline: ahead > 2 ? 3 : (x.offer.deadline || 2) };
+    const o = priceYoungReturn(s, { ...x.offer, expires: now + rint(3, 6), via: x.offer.via || 'studio', from: x.offer.from || 'the studio', deadline: ahead > 2 ? 3 : (x.offer.deadline || 2) });
     if (ahead > 1) o.startAt = x.due;   // the studio's date, on the paper
     (s.offers = s.offers || []).push(o);
     // A sequel is "they want you back"; a studio that saw you at a festival is something else.
