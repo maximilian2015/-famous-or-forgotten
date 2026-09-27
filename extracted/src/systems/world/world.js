@@ -10,6 +10,7 @@
 // lists would be nonsense — a year's top ten has to compare like with like.
 import { rint, chance, pick } from '../../engine/rng.js';
 import { fameTier } from '../meta/status.js';
+import { ensureDirectors } from './directors.js';
 import { grossFor } from '../career/release.js';
 import { personName, namesInUse, OUTLETS } from './names.js';
 import { newTitle } from './titles.js';
@@ -53,6 +54,7 @@ export function ensureWorld(s) {
     }
   }
   s.world = { actors, critics: makeCritics(taken), years: {}, seeded: s.year || 2026 };
+  ensureDirectors(s);   // the people who decide what a film is — systems/world/directors.js
   return s.world;
 }
 export function actorById(s, id) { return ((s.world && s.world.actors) || []).find((a) => a.id === id) || null; }

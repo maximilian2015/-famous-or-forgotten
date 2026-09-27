@@ -20,8 +20,11 @@ function yourFilms(s, year) {
       gross: c._rel ? (c._rel.finalGross || 0) : (c.boxOffice || 0), actor: s.name, actorId: 'you', you: true, with: c.with || null, withId: c.withId || null }));
 }
 
+import { directorsYear } from './directors.js';
 export function closeYear(s, year) {
   const w = ensureWorld(s);
+  directorsYear(s);   // the roster ages, retires and re-reads itself on what it made
+
   if (w.years[year]) return w.years[year];
   const theirs = worldYear(s, year);
   const yours = yourFilms(s, year);

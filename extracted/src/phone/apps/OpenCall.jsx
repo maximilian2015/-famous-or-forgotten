@@ -197,6 +197,13 @@ export function OpenCall({ g, ocTab, setOcTab, teenMode }) {
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 8, marginTop: 4 }}>
             <div style={{ fontSize: 11, color: theme.muted, minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
               {c.role} · {c.type} · <span style={{ color: onTrend ? theme.good : theme.muted }}>{c.genre}{onTrend ? ' ↑' : ''}</span> · {c.months > 1 ? `${c.months} mo` : c.perEpisode ? 'a few days' : 'one day'}
+              </div>
+              {/* Who is directing it. Maxi: "the agent only brings the top directors." A part is
+                  half a decision without the person behind the camera. systems/world/directors.js */}
+              {c.director && <div style={{ fontSize: 11, color: c.directorTop ? theme.gold : theme.muted, marginTop: 2, fontWeight: c.directorTop ? 800 : 600 }}>
+                {c.directorTop ? "★ " : ""}{c.director}{c.directorTop ? " — one of the five" : c.directorBand === "strong" ? " — a name" : c.directorBand === "new" ? " — their first film" : ""}
+              </div>}
+              <div style={{ display: "none" }}>
               {band && <span style={{ color: bandCol }}> · {band.label.toLowerCase()}</span>}
             </div>
             {/* Television says which season it is — a new show, or one that is already on. */}

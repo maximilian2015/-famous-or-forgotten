@@ -12,6 +12,8 @@ import { startProduction } from './production.js';
 import { canTakeSet } from '../../engine/sets.js';
 import { facePenalty } from '../life/face.js';
 import { quoteFor, episodeRate, setFame, setRespect, isForgotten } from '../meta/status.js';
+import { directorFor, isOneOfTheFive, ensureDirectors, bandOf } from '../world/directors.js';
+import { ensureWorld } from '../world/world.js';
 import { reachFromStanding, prestigeShut, insuranceShut, roomHasHeard, boardThinned } from '../meta/standing.js';
 import { rollStability, feeFactor, riskPrestige } from './stability.js';
 import { askerStanding } from './awards.js';
@@ -227,6 +229,9 @@ export function rerollBoard(s) {
 
 export function refreshCastingPool(s, force, extra = 0) {
   s.castingPool = s.castingPool || [];
+  // The roster of directors hangs off the world, so the world has to be there first —
+  // refreshCastingPool can run before anything else has touched it. world/directors.js
+  ensureWorld(s); ensureDirectors(s);
   const now = (s.year || 0) * 12 + (s.month || 0);
   // Throw out anything whose window has closed BEFORE deciding there is nothing to do.
   // The early return was above this line, so a full board never expired anything and the
@@ -345,11 +350,19 @@ export function refreshCastingPool(s, force, extra = 0) {
     // one exception is the whole reason a name ever works for nothing: the material.
     // Tested on the fee the player is actually shown, not on the band it was drawn from —
     // the two are a factor of ten apart on a small part.
+    // Who is directing it. Maxi: "the agent only brings the top directors, the best and
+    // the most popular and the icons, or world-scale projects." That is the half of a
+    // star's decision this game never had — you chose a part, never a person.
+    const helmer = directorFor(s, scale, genre);
     const takeHome = perEpisode ? rate * episodes : rate;
     const worth = quoteFor(s, 'film_studio') || quoteFor(s, 'film_indie') || 0;
     const picky = Math.max(0, Math.min(1, (reach(s) - 35) / 65));
     const material = scale === 'festival' || scale === 'prestige' || (scale === 'indie' && /Lead/i.test(role || ''));
     if (worth > 0 && picky > 0 && takeHome < worth * 0.25 * picky && !material) continue;
+    // And at the top, a picture without a name behind it does not reach you at all. Once
+    // you are A-list your agent is not ringing about somebody's first feature — unless it
+    // is the kind of material a name works for nothing on, which is the same exception.
+    if (picky >= 0.6 && helmer && (bandOf(helmer) === 'new' || bandOf(helmer) === 'working') && !material && /^(feature|blockbuster)$/.test(scale)) continue;
     s.castingPool.push({
       id: uid(s, 'cast'), title: title, type, role, shelf, scale, medium,
       share: cut,   // negotiation needs it to know the top of YOUR band for this part
@@ -357,6 +370,9 @@ export function refreshCastingPool(s, force, extra = 0) {
       months, episodes, perEpisode, episodeFee: perEpisode ? rate : 0,
       salary: perEpisode ? rate * episodes : rate,        // the whole fee, paid across the shoot
       season, audience,
+      // The person, and whether they are one of the five. career/world/directors.js
+      director: helmer ? helmer.name : null, directorId: helmer ? helmer.id : null,
+      directorBand: helmer ? helmer.band : null, directorTop: !!(helmer && isOneOfTheFive(s, helmer)),
       genre, minFame: minFame || 0,
       _expires: (s.year || 0) * 12 + (s.month || 0) + rint(2, 4),
     });
