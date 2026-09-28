@@ -148,6 +148,32 @@ Reading for it is slow. Measuring is fast. The method:
 
 ---
 
+## Working with the other assistant on this repository
+
+Another assistant (Claude) works on this same repository from a different machine and a
+different clone. The two of you cannot see each other's conversations. **This repository is
+the only thing you share**, so anything you want looked at has to be in it.
+
+The protocol:
+
+1. Work on a branch. Name it for the task: `audit/ui-guards`, `fix/contract-option`.
+2. **Never push to `main`.** Everything gets read before it lands, including the findings —
+   the last audit had four real bugs in it and one of them was reported narrower than it
+   actually was, so the review is not a formality.
+3. Push the branch. If you have no credentials and no `gh`, say so plainly and write the
+   work as a patch file at the repo root instead (`git format-patch` or
+   `git diff > audit-ui-guards.patch`), commit **that** to a branch, or tell the owner the
+   exact command to run. Do not silently keep the work in a sandbox nobody else can reach:
+   a finding that only exists in your local copy does not exist.
+4. Put your probe in `extracted/tests/probes/` and commit it with the branch. A finding
+   without a reproduction that someone else can run is not a finding.
+5. In the branch's commit message, say what you changed, what you measured before and
+   after, and the result of `node tests/run_all.mjs` and `node build-singlefile.mjs`.
+
+Note on the test suite: `test_story`, `test_awards`, `test_franchise` and `test_health`
+sit on random thresholds and fail roughly one run in twenty. If one of those is your only
+failure, run the suite again before reporting it.
+
 ## Reporting
 
 For each finding: **the file and line, the cause in one sentence, and how to reproduce it** —
