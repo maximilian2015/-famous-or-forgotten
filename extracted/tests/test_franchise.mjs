@@ -1,5 +1,6 @@
 import { maybeContinue, sequelGap, laterOffersTick, renewalOdds, sequelOdds, seasonRaise, seasonBase, performanceFactor, trendFactor, sequelRaise, seasonCap, SEASON_CAP } from '../src/systems/career/franchise.js';
 import * as F2 from '../src/systems/career/franchise.js';
+import { bubbleTick, onTheBubble } from '../src/systems/career/bubble.js';
 import { startProduction, productionTick } from '../src/systems/career/production.js';
 import { releaseTick } from '../src/systems/career/release.js';
 
@@ -65,15 +66,42 @@ ok('season three says the cast is renegotiating', /renegotiat/i.test(s3.next.not
 
 // cancellation is written down
 const cancelled = st(); let wasCancelled = false;
-for (let i = 0; i < 200 && !wasCancelled; i++) { cancelled.timeline = []; const r = maybeContinue(cancelled, { rating: 20, title: 'Late River' }, series({ season: 3 })); if (!r) wasCancelled = true; }
-ok('a cancellation goes in the diary', /not renewed/.test(JSON.stringify(cancelled.timeline)), JSON.stringify(cancelled.timeline.slice(-1)));
+// A soap rated 20 sits at 40% — a soap is a habit and the network takes its time — so it
+// goes on the bubble rather than being settled on the day (career/bubble.js). The diary
+// line lands when somebody finally decides, which is the whole point of the change.
+for (let i = 0; i < 200 && !wasCancelled; i++) {
+  cancelled.timeline = []; cancelled.bubbles = []; cancelled._bubbleDone = [];
+  const r = maybeContinue(cancelled, { rating: 20, title: 'Late River' }, series({ season: 3 }));
+  if (r) continue;
+  for (let m = 0; m < 10 && (cancelled.bubbles || []).length; m++) {
+    cancelled.month++; if (cancelled.month > 11) { cancelled.month = 0; cancelled.year++; }
+    bubbleTick(cancelled);
+  }
+  if (/not renewed|not coming back/.test(JSON.stringify(cancelled.timeline))) wasCancelled = true;
+}
+ok('a cancellation goes in the diary', wasCancelled, JSON.stringify(cancelled.timeline.slice(-1)));
 
 // a show can actually run its whole life
+// A middling season does not get an answer on the day it ends any more — it goes on the
+// bubble for a few months while the network sits on it and the people who watched it
+// start shouting (career/bubble.js). Driving maybeContinue alone now reads every one of
+// those as a cancellation, so the harness has to let the months pass, the way the game does.
+function settle(s, p, credit) {
+  let next = maybeContinue(s, credit, p);
+  if (next) return next;
+  for (let m = 0; m < 10 && (s.bubbles || []).length; m++) {
+    s.month++; if (s.month > 11) { s.month = 0; s.year++; }
+    bubbleTick(s);
+  }
+  const done = (s._bubbleDone || []).find((b) => b.decided === 'renewed');
+  s._bubbleDone = [];
+  return done ? maybeContinue(s, credit, done.job, true) : null;
+}
 function runShow(rating, type = 'Network Drama', viewers = null) {
   let p = series({ type }); let seasons = 1;
   for (let guard = 0; guard < 30; guard++) {
     const s = st();
-    const next = maybeContinue(s, { rating, title: p.title, viewers }, p);
+    const next = settle(s, p, { rating, title: p.title, viewers, type, season: p.season || seasons });
     if (!next) break;
     seasons = next.season;
     p = series({ type, season: next.season, episodes: next.episodes, episodeFee: next.episodeFee, salary: next.salary, months: next.months });

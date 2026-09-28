@@ -22,6 +22,7 @@ import { FAVOURS, FAVOUR_ORDER, canUse, costOf, asksLeft, ASKS_A_YEAR, canSmooth
 import { sequelDue } from './systems/career/franchise.js';
 import { knownFor, isHit, isFlop, theHits, theFlops } from './systems/meta/knownFor.js';
 import { boxedInto, isUniversal } from './systems/meta/typecast.js';
+import { liveBubbles, backTheCampaign, canBack as canBackShow, BACK_COST } from './systems/career/bubble.js';
 import { townOpen, townFor, goOut } from './systems/life/town.js';
 import { LABELS, labelInfo, activeLabels, isStrong } from './systems/meta/typecast.js';
 import { liveRisks } from './systems/meta/risk.js';
@@ -218,6 +219,7 @@ export default function App() {
         </div>
         {g.lastEvent && <Card style={{ marginBottom: 14, borderColor: 'rgba(255,209,102,.35)' }}><div style={{ fontSize: 13.5, lineHeight: 1.5, whiteSpace: 'pre-line' }}>{g.lastEvent}</div></Card>}
         {inCareer(g) && <StandingCard g={g} />}
+        {inCareer(g) && <BubbleCard g={g} />}
         {inCareer(g) && <CollabCard g={g} />}
         {inCareer(g) && <StoriesCard g={g} />}
         {g.illness && (<Card style={{ marginBottom: 14, borderColor: 'rgba(255,90,122,.5)' }}>
@@ -1402,6 +1404,39 @@ function StandingCard({ g }) {
       {x.progress != null && <div style={{ height: 3, background: 'rgba(255,255,255,.08)', borderRadius: 2, margin: '4px 0 3px' }}><div style={{ width: `${Math.round(x.progress * 100)}%`, height: '100%', background: theme.accent, borderRadius: 2 }} /></div>}
       <div style={{ fontSize: 11.5, color: theme.muted, lineHeight: 1.45 }}>→ {x.next}</div>
     </div>))}
+  </Card>);
+}
+// A season nobody has decided about. Maxi: "they do not decide straight away, and the
+// player should hear it from the news first — and with fifteen million watching, the fans
+// should be insisting. Petitions?" The one move an actor has is to say something, and it
+// is worth most when there is already something to say it about. See career/bubble.js.
+function BubbleCard({ g }) {
+  const list = liveBubbles(g);
+  if (!list.length) return null;
+  return (<Card style={{ marginBottom: 14, borderColor: 'rgba(255,209,102,.3)' }}>
+    <div style={{ fontSize: 11, fontWeight: 900, letterSpacing: '.09em', textTransform: 'uppercase', color: theme.gold, marginBottom: 4 }}>Nobody has decided</div>
+    {list.map((b, i) => {
+      const fit = canBackShow(g, b);
+      return (<div key={b.id} style={{ padding: '6px 0', borderTop: i ? `1px solid ${theme.line}` : 'none' }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', gap: 10 }}>
+          <div style={{ fontSize: 12.5, fontWeight: 800 }}>"{b.root}" · season {(b.season || 1) + 1}</div>
+          <div style={{ fontSize: 10.5, color: theme.muted, flex: 'none' }}>{b.monthsLeft <= 1 ? 'any week now' : `~${b.monthsLeft} mo`}</div>
+        </div>
+        <div style={{ fontSize: 11.5, color: theme.muted, lineHeight: 1.45, marginTop: 2 }}>{b.line}</div>
+        <div style={{ fontSize: 11, color: b.odds >= 70 ? theme.good : b.odds >= 45 ? theme.gold : theme.bad, marginTop: 3, fontWeight: 700 }}>{b.mood}</div>
+        {b.backed
+          ? <div style={{ fontSize: 10.5, color: theme.muted, marginTop: 4 }}>You said your piece. Saying it twice is a different story.</div>
+          : <button onClick={() => dispatch(backTheCampaign, b.id)} disabled={!fit.ok}
+              style={{ marginTop: 5, border: 'none', borderRadius: 9, padding: '6px 11px', fontSize: 11.5, fontWeight: 800,
+                cursor: fit.ok ? 'pointer' : 'default', background: fit.ok ? 'rgba(255,209,102,.18)' : 'rgba(120,110,150,.15)', color: fit.ok ? theme.gold : '#6b6390' }}>
+              Say something about it · {BACK_COST} energy
+            </button>}
+      </div>);
+    })}
+    <div style={{ fontSize: 10.5, color: theme.muted, marginTop: 5, lineHeight: 1.45 }}>
+      Whether a network has ever changed its mind because an actor posted about it is a question
+      everybody in this business argues about and nobody wins.
+    </div>
   </Card>);
 }
 // The things you and somebody you know decided to make, waiting on money. Most of them

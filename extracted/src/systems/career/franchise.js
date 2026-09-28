@@ -7,6 +7,7 @@ import { rint, chance, pick } from '../../engine/rng.js';
 import { addTimeline } from '../../engine/timeline.js';
 import { quoteBand } from '../meta/status.js';
 import { priceYoungReturn } from './youngblood.js';
+import { onTheBubble, hangIt, takeDecided } from './bubble.js';
 
 // How long a format can plausibly run. Daytime soaps run for decades; prestige
 // streaming shows are written to end. This is the ceiling, not the expectation —
@@ -304,6 +305,18 @@ function diesInDevelopment(s, x) {
   const waited = Math.max(0, x.due - (x.since || x.due));
   return chance(waited >= 60 ? 45 : waited >= 36 ? 32 : 22);
 }
+// A bubble that came good is a renewal like any other — built from the job it was hanging
+// on, the month the network finally said yes rather than the month the season ended.
+export function resolveBubbles(s) {
+  for (const b of takeDecided(s)) {
+    if (b.decided !== 'renewed') continue;
+    const credit = (s.filmography || []).find((c) => c.title === b.title);
+    if (!credit || !b.job) continue;
+    const next = maybeContinue(s, credit, b.job, true);
+    if (next) (s.offers = s.offers || []).push(next);
+  }
+  return s;
+}
 export function laterOffersTick(s) {
   const now = (s.year || 0) * 12 + (s.month || 0);
   const lead = (x) => (x.offer && x.offer.kind === 'sequel' ? SEQUEL_LEAD : 0);
@@ -378,6 +391,12 @@ export function maybeContinue(s, credit, p, force = false) {
     const prevV = previousViewers(s, root, season);
     const finale = credit.endViewers > 0 ? credit.endViewers : credit.viewers;
     const odds = renewalOdds(credit.rating, season, p.type, finale != null ? finale : null, prevV);
+    // Maxi: "they do not decide straight away, and the player should hear it from the news
+    // first — and with fifteen million watching, the fans should be asking for a second
+    // season. Petitions?" A season that is neither obviously dead nor obviously safe goes
+    // on the bubble for a few months instead of being settled on one silent roll. See
+    // career/bubble.js — the campaign, and what your own name is worth on it.
+    if (!force && season < seasonCap(p.type) && onTheBubble(odds)) { hangIt(s, credit, p, odds); return null; }
     if (!force && !chance(odds)) {
       credit.renewal = season >= seasonCap(p.type) ? 'capped' : 'cancelled';
       if (season > 1) addTimeline(s, `"${root}" was not renewed after ${season} season${season === 1 ? '' : 's'}.`, true);

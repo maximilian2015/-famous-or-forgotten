@@ -21,7 +21,8 @@ import { productionTick, setsTick, stanceTick } from '../systems/career/producti
 import { maybeScene } from '../systems/career/scenes.js';
 import { releaseTick, runTick, cultTick } from '../systems/career/release.js';
 import { frozenTick } from '../systems/career/stability.js';
-import { laterOffersTick } from '../systems/career/franchise.js';
+import { laterOffersTick, resolveBubbles } from '../systems/career/franchise.js';
+import { bubbleTick } from '../systems/career/bubble.js';
 import { submissionsTick, refreshCastingPool } from '../systems/career/castings.js';
 import { runNominations, ceremonyTick } from '../systems/career/awards.js';
 import { closeYear } from '../systems/world/yearbook.js';
@@ -107,6 +108,8 @@ export function advanceMonth(state) {
   // 'moving_out' and the sweep stopped running, so their listings sat there expired.
   if ((s.castingPool || []).length) refreshCastingPool(s);
   frozenTick(s);     // and anything that stopped might find its money again
+  bubbleTick(s);      // and somewhere a network finally decides about a show it has been sitting on
+  resolveBubbles(s);  // and the ones that came good become papers
   laterOffersTick(s); // and a sequel announced years ago finally has a script
   if (inCareer(s)) runNominations(s);   // the lists come out in September, and judge the year behind them
   ceremonyTick(s);   // and the night itself is the following March
