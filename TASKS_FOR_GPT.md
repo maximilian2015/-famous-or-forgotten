@@ -1,3 +1,12 @@
+> **СТАРОЕ — не для Codex.** Этот файл описывает передачу игры архивом в веб-чат и
+> отстал на несколько недель. Агенту, который получил репозиторий, нужен `CODEX.md`
+> в корне.
+
+> **STALE — not for an agent working in this repository.** This file describes handing
+> the game over as a zip attachment and is weeks out of date. Read `CODEX.md` instead.
+
+---
+
 # Задачи для ChatGPT — по порядку
 
 Делай сверху вниз. Не переходи к следующей, пока предыдущая не собирается и не работает.
