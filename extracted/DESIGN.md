@@ -222,6 +222,33 @@ player; the agent does *not* move the ladder (measured with bots signing the let
   the morning after on set) — **Maxi wants to redesign these as a system and discuss it
   first.** Do not rework without him.
 
+## 10a. Systems added after this document was first written
+
+This bible was written on 2026-09-13 and sections 1–10 describe the game as it was then.
+Everything below was built after. Where this document and the code disagree, the code is
+right.
+
+| File | What it is |
+|---|---|
+| `career/collab.js` | Making something with somebody you know. Most of them die in development, which is what development is. |
+| `career/chapter.js` | Seasons and sequels as story: a brief, three or four directions, and an A-lister can pitch which one. Also the 3-year gap and what a marketing push buys. |
+| `career/bubble.js` | A network does not decide the same week. A season hangs for a few months, the fans campaign, and the campaign moves **buyers**, not the network — so a cancelled show can move house, get a finale special, or become a film years later. |
+| `career/scenework.js` | The content of the thinking days: what is out of order, what the missing lines are, why she does it. |
+| `career/youngblood.js` | Actors and directors on the way up. Working with one breaks a typecast and pays off years later. |
+| `world/directors.js` | A real register of directors — the great four, the strong, the working, the new — and the rule that an agent only brings the top five, world-scale projects, or icon-level series. |
+| `meta/aftermath.js` | What is said after: post-mortems, memes, the wait, the ending. Feeds the News app. |
+| `social/posting.js` | The account. Followers are the only reach nobody has to give you; you cannot out-post your own fame; one post a month, and reading the replies costs you rather than the day. |
+| `life/regard.js` | The second relationship axis: what somebody thinks of your **work**, which dinner never moves. Doors are on this, not on closeness. |
+
+Two rules from this batch that are easy to break by accident:
+
+- **`bubble.js` duplicates the slot and season-cap tables** rather than importing them from
+  `franchise.js`, because `franchise.js` imports `bubble.js`. Same for the TV pace table.
+  There is a comment saying so. If those numbers move in one place they must move in both.
+- **Closeness and regard are separate ledgers on purpose.** Nothing in `interactions.js`
+  may write `p.regard`, ever. It moves in `regard.js` only: working together, the slow
+  drift toward your standing, and a scandal.
+
 ## 11. Deliberately hard — not bugs
 
 - The first fifteen films of any career are bad (craft starts at 18). Standing sits near
