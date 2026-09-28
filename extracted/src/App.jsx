@@ -33,7 +33,8 @@ import { goals } from './systems/meta/goals.js';
 import { resolveScene, sceneState } from './systems/career/scenes.js';
 import { RhythmLine, HoldZone, KeySequence, QuickPick } from './ui/components/SceneGames.jsx';
 import { Chronology, ScriptLines, Motive } from './ui/components/SceneLogic.jsx';
-import { chronologyFor, linesFor, motiveFor } from './systems/career/scenework.js';
+import { FrameCheck, FindTheLight, TheAssembly, WhoSaysIt, TakeSheet } from './ui/components/ScenePuzzles.jsx';
+import { chronologyFor, linesFor, motiveFor, assemblyFor, readFor } from './systems/career/scenework.js';
 import { priceLine } from './systems/meta/price.js';
 import { hype, hypeSource, hypeLine, SOURCES, hypeReach, hypeDemand, hypePrice, showsThisYear } from './systems/meta/hype.js';
 import { tendency } from './systems/meta/typecast.js';
@@ -1980,6 +1981,11 @@ function SceneModal({ g }) {
     : sc.game === 'chrono' ? <Chronology difficulty={d} {...chronologyFor(g, onSet, d)} onResult={done} />
     : sc.game === 'lines' ? <ScriptLines difficulty={d} {...linesFor(g, onSet, d)} onResult={done} />
     : sc.game === 'motive' ? <Motive difficulty={d} {...motiveFor(g, onSet, d)} onResult={done} />
+    : sc.game === 'frame' ? <FrameCheck difficulty={d} onResult={done} />
+    : sc.game === 'light' ? <FindTheLight difficulty={d} onResult={done} />
+    : sc.game === 'cut' ? <TheAssembly difficulty={d} {...assemblyFor(g, onSet, d)} onResult={done} />
+    : sc.game === 'pairs' ? <WhoSaysIt difficulty={d} {...readFor(g, onSet, d)} onResult={done} />
+    : sc.game === 'nono' ? <TakeSheet difficulty={d} onResult={done} />
     : <QuickPick difficulty={d} prompt={`"${sc.director} has not called cut. Your co-star is looking at you."`} options={opts} onResult={done} />;
   return (<div style={{ maxWidth: 440, margin: '0 auto', minHeight: '100vh', color: theme.text, padding: 16, display: 'flex', flexDirection: 'column', justifyContent: 'center', fontFamily: FONT }}>
     <div style={{ fontSize: 11, fontWeight: 900, letterSpacing: '.1em', textTransform: 'uppercase', color: theme.gold, marginBottom: 8 }}>🎬 {sc.title} · {sc.label}</div>
@@ -1994,7 +2000,10 @@ function SceneModal({ g }) {
             <div style={{ fontSize: 12, color: theme.muted, letterSpacing: '.08em', textTransform: 'uppercase', fontWeight: 800 }}>out of a hundred</div>
           </div>
           <div style={{ fontSize: 14, lineHeight: 1.6, textAlign: 'center', marginBottom: 6 }}>
-            {score >= 88 ? `They printed the first one. ${sc.director} came over afterwards, which they do not do.`
+            {/* The same line exists in career/scenes.js and was guarded there; this is the
+                card on the screen, which reads the name off the scene rather than the set and
+                printed "undefined came over afterwards" when the scene did not carry one. */}
+            {score >= 88 ? `They printed the first one. ${sc.director || ((onSet && onSet.crew && onSet.crew[0] && onSet.crew[0].name) || 'The director')} came over afterwards, which they do not do.`
               : score >= 70 ? 'Three takes and it was there. A good day, and everybody knew it.'
               : score >= 45 ? 'You got it in the end. Nobody will remember the day either way.'
               : score >= 25 ? 'It never quite landed. They have enough to cut around it.'

@@ -10,12 +10,15 @@ const month = (s) => { s.month++; if (s.month > 11) { s.month = 0; s.year++; } }
 // ── every scene is a whole scene ───────────────────────────────────────────────
 {
   const s = st(); const p = shoot(s);
-  ok('eleven of them, each with a game and a line', SCENE_IDS.length === 11 && SCENE_IDS.every((id) => SCENES[id].game && SCENES[id].label && SCENES[id].hint && SCENES[id].line(p)));
+  ok('sixteen of them, each with a game and a line', SCENE_IDS.length === 16 && SCENE_IDS.every((id) => SCENES[id].game && SCENES[id].label && SCENES[id].hint && SCENES[id].line(p)));
   const games = new Set(SCENE_IDS.map((id) => SCENES[id].game));
-  ok('nine different mechanics between them', games.size === 9, [...games].join(','));
+  ok('fourteen different mechanics between them', games.size === 14, [...games].join(','));
   // Maxi: "propose some minigames, interesting and hard, logical ones — maybe those are
-  // what is missing." Six of the nine are reaction and precision; these three are a thought.
-  ok('and three of them are a thought, not a reflex', ['chrono', 'lines', 'motive'].every((gm) => games.has(gm)));
+  // what is missing." Six of the fourteen are reaction and precision. Three are a thought
+  // about the work, and five are a puzzle that IS the job — the boom in the shot, the key
+  // light, the assembly, the table read, the take sheet.
+  ok('three of them are a thought, not a reflex', ['chrono', 'lines', 'motive'].every((gm) => games.has(gm)));
+  ok('and five are a puzzle', ['frame', 'light', 'cut', 'pairs', 'nono'].every((gm) => games.has(gm)));
 }
 // ── the genre decides what the shoot throws at you ─────────────────────────────
 {

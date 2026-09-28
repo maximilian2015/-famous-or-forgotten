@@ -94,6 +94,40 @@ export const SCENES = {
     when: (s, p) => p.tier !== 'supporting' || p.scale === 'prestige', weight: 3,
     hard: true,
   },
+  // The five that are a puzzle. Maxi asked for game-shaped ones on top of the thinking
+  // days — "like minesweeper or battleship" — and the rule is the same: the mechanic has
+  // to BE the job. See ui/components/ScenePuzzles.jsx.
+  boom: {
+    game: 'frame', label: 'Something in the shot',
+    line: (p) => `The operator has been through the setups and there is a boom, or a cable, or somebody's reflection in more of them than anybody wants to admit.`,
+    hint: 'A clean setup says how many around it are spoiled. Flag the spoiled ones.',
+    when: () => true, weight: 3,
+  },
+  key: {
+    game: 'light', label: 'Find your light',
+    line: (p) => `${lead(p).name} has lit it and will not tell you where to stand. From in here you cannot see it at all.`,
+    hint: 'Stand somewhere. They will say how far off you are.',
+    when: () => true, weight: 3,
+  },
+  assembly: {
+    game: 'cut', label: 'In the cutting room',
+    line: (p) => `They have let you see the assembly. It is nearly right and two of the shots are the wrong way round, and everybody can feel it and nobody can say which.`,
+    hint: 'Swap two at a time. You do not get many.',
+    when: (s, p) => p.scale === 'prestige' || p.scale === 'indie' || p.scale === 'festival' || p.tier !== 'supporting', weight: 2,
+  },
+  read: {
+    game: 'pairs', label: 'The table read',
+    line: (p) => `Everybody round one table for the first time. Two of the lines on the page are almost the same sentence.`,
+    hint: 'Match every line to whoever says it.',
+    when: () => true, weight: 3,
+  },
+  sheet: {
+    game: 'nono', label: 'The take sheet',
+    line: (p) => `Twenty-five takes and a script supervisor's notes that say how many good ones ran together, and nothing else.`,
+    hint: 'The numbers are runs of good takes, by row and by column.',
+    when: (s, p) => p.scale !== 'episode' && p.scale !== 'oneoff', weight: 2,
+    hard: true,
+  },
   night: {
     game: 'timing', label: 'The night shoot',
     line: (p) => `Third night in a row. It is four in the morning, the rain machine is on, and nobody has said a kind word since Tuesday.`,

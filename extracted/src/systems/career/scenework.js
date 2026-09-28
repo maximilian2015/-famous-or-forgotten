@@ -96,3 +96,47 @@ export function motiveFor(s, p, difficulty = 1) {
     motives: four, beats: rows,
   };
 }
+
+// ── the assembly, and the table read ──────────────────────────────────────────
+// Two of the five puzzles need writing; the other three are a grid and a number. Both are
+// generated from the picture so the same shoot never hands you the same day twice.
+const SHOTS = [
+  ['She comes through the door and stops.', 'He does not look up.', 'She says his name.',
+   'He puts the glass down.', 'Neither of them says anything.', 'She leaves the key on the table.'],
+  ['The car pulls in.', 'She checks the mirror and does not get out.', 'A light goes on upstairs.',
+   'She gets out.', 'The door is already open.', 'He is standing in the hall.'],
+  ['The phone rings.', 'She lets it.', 'It rings again.', 'She answers it and says nothing.',
+   'She writes something down.', 'She puts her coat on.'],
+  ['He is asleep in the chair.', 'She turns the television off.', 'He wakes and says he was watching it.',
+   'She says she knows.', 'He asks what time it is.', 'She does not tell him.'],
+];
+export function assemblyFor(s, p, difficulty = 1) {
+  return { shots: pick(SHOTS) };
+}
+
+// The trap is the pair of lines that are almost the same. That is the one that goes wrong
+// on the day, every time, and it is the one this is about.
+const READS = [
+  { who: ['Iris', 'The brother', 'The lawyer'], lines: [
+    ['Iris', '"I am not asking you again."'],
+    ['The brother', '"I am not going to ask you again."'],
+    ['The lawyer', '"Then we are finished here."'],
+  ] },
+  { who: ['The mother', 'The son', 'The neighbour'], lines: [
+    ['The mother', '"You could have told me."'],
+    ['The son', '"You could have asked me."'],
+    ['The neighbour', '"Everyone on this street knew."'],
+  ] },
+  { who: ['The detective', 'The witness', 'The brother'], lines: [
+    ['The detective', '"Say it again, slowly."'],
+    ['The witness', '"I have said it. Slowly."'],
+    ['The brother', '"She was with me all night."'],
+  ] },
+];
+export function readFor(s, p, difficulty = 1) {
+  const r = pick(READS);
+  const rows = r.lines.map(([who, line]) => ({ who, line }));
+  // a fourth pair at the harder end, so the sheet is not always three
+  if (difficulty > 1.2) rows.push({ who: 'The stranger', line: '"Nobody asked you."' });
+  return { pairs: rows };
+}
