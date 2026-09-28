@@ -21,7 +21,11 @@ const farm = st(); const p = farm.family[0];
 const gains = [];
 for (let i = 0; i < 5; i++) gains.push(applyBond(farm, p, 10));
 ok('repeat attention is worth less each time', gains[0] > gains[1] && gains[1] > gains[2] && gains[3] <= gains[2], gains.join(','));
-ok('but never nothing', gains[4] >= 1, gains.join(','));
+// It used to be "never nothing" — every touch was floored at +1 no matter how hard the
+// damping fought it, so six different actions in an afternoon were six guaranteed points.
+// Turning up is worth something ONCE a month; the fifth thing you do that month is worth
+// what it is actually worth, which is nothing. life/bonds.js applyBond
+ok('turning up counts, the fifth time does not', gains[0] >= 1 && gains[4] === 0, gains.join(','));
 const total = gains.reduce((a, b) => a + b, 0);
 ok('five clicks are worth far less than five separate months', total < 10 * 5 * 0.6, 'total ' + total);
 // a new month resets the repeat budget. (It is not identical to the first gain —
@@ -62,9 +66,18 @@ const seen = st({ family: [mum({ relationship: 80 })] });
 applyBond(seen, seen.family[0], 1);
 bondsTick(seen);
 ok('people you did see do not', seen.family[0].relationship >= 80);
+// This used to say "one quiet month is forgiven", and the forgiveness was the bug: lastSeen
+// was reset by ANY interaction, so one five-energy chat made somebody immune to the whole
+// month's drift. There was no middle — everybody was pinned at 100 or rotting to zero. Now
+// the drift runs every month on everybody and what you give them is what fights it.
 const recent = st({ family: [mum({ relationship: 80, lastSeen: 2030 * 12 })] });
 recent.month = 1; bondsTick(recent);
-ok('one quiet month is forgiven', recent.family[0].relationship === 80);
+ok('a quiet month costs something, even a small one', recent.family[0].relationship < 80 && recent.family[0].relationship >= 76, String(recent.family[0].relationship));
+// And the point of the curve: one real interaction a month roughly holds a person where
+// they are. That is the whole design in one line.
+const held = st({ family: [mum({ relationship: 50 })] });
+for (let m = 0; m < 24; m++) { applyBond(held, held.family[0], 3.5); held.month = (held.month + 1) % 12; if (!held.month) held.year++; bondsTick(held); }
+ok('one interaction a month holds somebody steady', held.family[0].relationship >= 50, String(held.family[0].relationship));
 // industry fades faster than blood
 function drift(kind) {
   const s = kind === 'contact'

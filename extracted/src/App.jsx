@@ -84,6 +84,7 @@ import { HOME_PRICE, canBuyHome, buyHome, sellHome, STAFF, STAFF_ORDER, hasStaff
 import { interactionsFor, interact, findPerson, GROUPS } from './systems/life/interactions.js';
 import { kindFor, canPropose, odds as collabOdds, why as collabWhy, liveCollabs, KINDS } from './systems/career/collab.js';
 import { relBand } from './systems/life/bonds.js';
+import { regardOf, regardBand, regardNote, whyClosed, opensDoors } from './systems/life/regard.js';
 import { BigMoment } from './ui/components/BigMoment.jsx';
 import { stabilityBand } from './systems/career/stability.js';
 import { strainBand, burnedOut, unreliable, depressed, seeSomebody } from './systems/life/strain.js';
@@ -2105,6 +2106,16 @@ function PersonRow({ g, p, sub, onOpen }) {
       <div style={{ fontSize: 11, fontWeight: 700, color: band.tone === 'bad' ? theme.bad : theme.accent }}>
         {band.label} · {Math.round(p.relationship || 0)} · tap to talk ›
       </div>
+      {/* The second ledger. What they think of your WORK, which dinner has never moved —
+          and the sentence underneath only appears when the two disagree, because that is
+          the only time it is worth a line. See systems/life/regard.js. */}
+      {p.industryWeight > 0 && (() => { const rb = regardBand(regardOf(p)); const note = regardNote(p);
+        return (<>
+          <div style={{ fontSize: 11, fontWeight: 700, marginTop: 2, color: rb.tone === 'bad' ? theme.bad : rb.tone === 'good' ? theme.gold : theme.muted }}>
+            🎬 {rb.label}
+          </div>
+          {note && <div style={{ fontSize: 10.5, color: theme.muted, marginTop: 1, lineHeight: 1.4 }}>{note}</div>}
+        </>); })()}
     </div>
   </Card>);
 }

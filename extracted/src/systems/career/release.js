@@ -12,6 +12,7 @@ import { rint, chance, pick } from '../../engine/rng.js';
 import { setQuote, setFame, setRespect, quoteFor } from '../meta/status.js';
 import { newTitle } from '../world/titles.js';
 import { addTimeline, showMoment } from '../../engine/timeline.js';
+import { regardAfterWorking } from '../life/regard.js';
 import { markReleased } from '../../engine/economy.js';
 import { hotGenre, GENRES } from '../meta/news.js';
 import { maybeContinue } from './franchise.js';
@@ -216,6 +217,9 @@ export function scheduleRelease(s, credit, p) {
     meter: p.meter || 0, viaPartner: p.viaPartner || null, fellApart: !!p.fellApart, backend: p.backend || 0, merch: p.merch || 0, potential: p.potential || null,
     // The days that came out right (career/scenes.js) — the critics name one of them.
     moments: (p.moments || []).slice(0, 3),
+    // The people you actually know who were on it. They get their own opinion of the work
+    // at the end of the run, and theirs outweighs anything they read. life/regard.js
+    crewKnown: (p.crew || []).filter((c) => c && c.knownId).map((c) => c.name),
     // Who was on the poster with you, if it was somebody. See production.js makeCrew.
     with: p.with || null, withId: p.withId || null, withFame: p.withFame || 0, withIcon: !!p.withIcon,
     // What the version you shot does to the box office, and the line it was pitched on.
@@ -421,7 +425,7 @@ function open(s, rel) {
     // Read by closeRun and by the critics. These were read off _rel and never written to it,
     // so a carried set and a part got over dinner were both invisible once the run closed.
     meter: rel.meter || 0, viaPartner: rel.viaPartner || null, fellApart: !!rel.fellApart, backend: rel.backend || 0, merch: rel.merch || 0, potential: rel.potential || null,
-    moments: rel.moments || [],
+    moments: rel.moments || [], crewKnown: rel.crewKnown || [],
     with: rel.with || null, withIcon: !!rel.withIcon };
   // BY ID, never by reference. A save is JSON, and JSON.parse hands back a fresh object for
   // every entry — so a list holding the credit itself pointed at a copy the moment anybody
@@ -509,6 +513,9 @@ function closeRun(s, credit, r) {
   credit.running = false;
   credit.closedAt = (s.year || 0) * 12 + (s.month || 0);   // so the phone knows somebody saw it this month
   credit.meterAtClose = r.meter || 0;                        // the papers ask whose film it was (meta/press.js)
+  // And the people who were on it decide what they think of you as an actor. This is worth
+  // years of the slow drift in either direction, and it is the only thing that is.
+  regardAfterWorking(s, r.crewKnown || [], credit.rating || 50, r.meter || 0);
   delete credit._rel;
   credit.boxOffice = r.finalGross || 0;
   // Belt and braces. `r` comes off the credit and is gone the moment a run closes, so if

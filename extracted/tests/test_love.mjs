@@ -40,7 +40,11 @@ function getTogether(s, wants = 'family') {
   for (let i = 0; i < 14 && !s.partner; i++) {
     const inPool = (s.datingPool || [])[0];
     if (inPool && (inPool.relationship || 0) < 38) inPool.relationship = 38;
+    // A month between attempts. This used to run all fourteen dates inside one month and
+    // lean on the old floor that made every repeat worth at least a point — which is
+    // exactly the "keep clicking" the damping is there to stop. life/bonds.js
     L.goOnDate(s, 'home', 'suit'); s._cool = {};
+    s.month = (s.month + 1) % 12; if (!s.month) s.year++;
   }
   return s.partner;
 }

@@ -14,6 +14,7 @@ import { maybeYouthEvent } from '../systems/life/youth.js';
 import { familyYear } from '../systems/life/family.js';
 import { allowanceTick } from '../systems/life/origin.js';
 import { bondsTick } from '../systems/life/bonds.js';
+import { regardTick } from '../systems/life/regard.js';
 import { datingYear } from '../systems/life/dating.js';
 import { childhoodTick, adoptionTick } from '../systems/life/children.js';
 import { spotlightYear } from '../systems/social/spotlight.js';
@@ -146,6 +147,7 @@ export function advanceMonth(state) {
   workTick(s);
   applyMonthly(s);
   bondsTick(s);      // people you did not call drift away
+  regardTick(s);     // and everybody's opinion of your work creeps toward what the trade says
   childhoodTick(s);  // and a childhood spent watching you leave for a set counts double
   adoptionTick(s);   // and somewhere an office is still reading about your life
   healthTick(s);

@@ -24,10 +24,13 @@ export function relBand(v) { const n = Number(v) || 0; return BANDS.find((b) => 
 // How fast someone forgets you when you do not turn up. Blood is slowest, the
 // industry is fastest — a casting director who has not heard from you in a year
 // does not remember you fondly, they do not remember you.
-const FADE = { parent: 0.7, spouse: 1.1, child: 0.8, sibling: 1.1, grandparent: 0.9, partner: 1.6,
+// These were set against a drift that only ever touched people you ignored completely.
+// It runs on everybody now, so they come down — otherwise one chat a month cannot hold
+// anybody and the cliff is just pointing the other way.
+const FADE = { parent: 0.45, spouse: 0.7, child: 0.5, sibling: 0.7, grandparent: 0.6, partner: 1.0,
   // Somebody you were married to and are not any more drifts fastest of anyone, because
   // neither of you has a reason to ring and both of you know it.
-  ex: 2.0, contact: 2.4 };
+  ex: 1.3, contact: 1.5 };
 
 // Repeat attention in the same month is worth less each time. This is the whole
 // answer to "you can just keep clicking".
@@ -43,7 +46,12 @@ export function applyBond(s, p, raw) {
   p.lastSeen = now;
   // Going up gets harder the higher you already are; going down never does.
   const resistance = raw > 0 ? 1 - Math.max(0, (p.relationship || 0)) / 150 : 1;
-  const applied = raw > 0 ? Math.max(1, Math.round(raw * factor * resistance)) : Math.round(raw);
+  // The floor belongs to the FIRST thing you do in a month: turning up is always worth
+  // something. It used to apply to all of them, so six different actions in one afternoon
+  // were six guaranteed points no matter how hard the damping and the resistance were
+  // fighting it — which is exactly the "just keep clicking" the damping exists to stop.
+  const moved = raw * factor * resistance;
+  const applied = raw > 0 ? (p.touched === 1 ? Math.max(1, Math.round(moved)) : Math.round(moved)) : Math.round(raw);
   const before = p.relationship || 0;
   p.relationship = clampRel(before + applied);
   return p.relationship - before;
@@ -56,10 +64,19 @@ export function applyBond(s, p, raw) {
 // You did not. Going BELOW these takes an actual argument.
 const FLOOR = { parent: 25, child: 30, sibling: 15, spouse: 20, grandparent: 15, partner: 10, ex: 0, contact: -10 };
 
+// Maxi: "relationships are at zero, they are very weak in the game." Measured, and the
+// cause was worse than weak — it was a cliff instead of a curve. lastSeen was reset by ANY
+// interaction, so one five-energy chat cancelled the whole month's drift. A person you
+// touched once was immune; a person you did not touch fell 50 -> 20 in a year and 0 in
+// three. There was no middle at all: everybody was pinned at 100 or rotting toward zero,
+// and with ten people in your phone you cannot touch them all, so most of them rotted.
+//
+// So the drift runs every month on everybody, and what you give them is what fights it.
+// One chat a month roughly holds a contact where they are; two builds. And it gets harder
+// the closer you already are — the fade scales with closeness, so 80 costs more to hold
+// than 30 does, which is the soft ceiling the game was missing and is also just true.
 function fadeOne(s, p, rel, now) {
   if (p.lastSeen === undefined) { p.lastSeen = now; return null; }
-  const missed = now - p.lastSeen;
-  if (missed < 2) return null;                       // one quiet month is nothing
   const cur = p.relationship || 0;
   if (cur <= 0) return null;                          // it cannot fade below indifference on its own
   const floor = FLOOR[rel] ?? 0;

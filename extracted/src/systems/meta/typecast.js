@@ -8,6 +8,7 @@
 // and fade by a little every year, so a label is what you have been doing lately, not what
 // you did once. Three is a label; five is a strong one, and a strong one moves the board.
 import { addTimeline } from '../../engine/timeline.js';
+import { regardScandal } from '../life/regard.js';
 
 export const LABELS = {
   romantic: { label: 'Romantic lead', blurb: 'The face they put opposite somebody. Romance and the softer dramas come to you; the dark parts do not.' },
@@ -144,7 +145,10 @@ export function typecastAfterDayWork(s, c) {
   return s;
 }
 // A story in the papers that was about you and not the work (trouble.js, night.js).
-export function typecastScandal(s, by = 1) { if ((s.fame || 0) >= 20) { bump(s, 'scandal', by); relabel(s); } return s; }
+// The one place the whole game agrees a scandal has happened, so it is also where every
+// person you know quietly revises their opinion of you as a professional. Nobody says
+// anything. life/regard.js
+export function typecastScandal(s, by = 1) { if ((s.fame || 0) >= 20) { bump(s, 'scandal', by); relabel(s); } regardScandal(s, by); return s; }
 
 // The years: every label fades unless you keep earning it; the child star is set once, at
 // eighteen, and only a grown-up career takes it off.

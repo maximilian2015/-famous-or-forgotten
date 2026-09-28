@@ -1,5 +1,6 @@
 import { COST, canAfford, spend, tooTired } from '../../engine/energy.js';
 import { uid } from '../../engine/id.js';
+import { startingRegard, regardOf, OPENS_AT } from './regard.js';
 import { rint, chance, pick } from '../../engine/rng.js';
 import { addTimeline } from '../../engine/timeline.js';
 import { personName, namesInUse } from '../world/names.js';
@@ -27,7 +28,9 @@ export function makePerson(s, forceRole) {
   // face drawn for them is the face the name says. Maxi: "Piet is a man and it drew a woman."
   const gender = chance(50) ? 'female' : 'male';
   return { id: uid(s, 'p'), name: personName(gender, namesInUse(s)), gender, born: (s.year || 2040) - Math.max(22, (s.ageY || 30) + rint(-6, 20)),
-    role: spec.role, industryWeight: rint(spec.weight[0], spec.weight[1]), relationship: rint(20, 40), unlocks: spec.unlocks, met: `${s.year}` };
+    role: spec.role, industryWeight: rint(spec.weight[0], spec.weight[1]), relationship: rint(20, 40),
+    // What they think of your WORK, which dinner does not move. See life/regard.js.
+    regard: startingRegard(s), unlocks: spec.unlocks, met: `${s.year}` };
 }
 export function meetPerson(s) {
   const fameBonus = (s.fame || 0) >= 55;
@@ -56,7 +59,9 @@ export function deepenRelationship(s, id) {
   const gain = bondGain(s, p);
   const wasBelow = (p.relationship || 0) < 60;
   p.relationship = clamp(p.relationship + gain); s.mental = clamp(s.mental - 1);
-  const nowOpens = p.unlocks === 'aaa' && p.industryWeight >= 80 && p.relationship >= 60 && wasBelow;
+  // It used to be closeness alone: buy somebody enough dinners and their studio opened.
+  // Now the meeting is closeness and the part is regard — they have to rate you. regard.js
+  const nowOpens = p.unlocks === 'aaa' && p.industryWeight >= 80 && p.relationship >= 60 && wasBelow && regardOf(p) >= OPENS_AT;
   const outOfLeague = (p.industryWeight || 30) - (s.fame || 0) > 45;
   s.lastEvent = nowOpens
     ? `You and ${p.name} are close now. "I've got a project you'd be perfect for," they say. A door just opened.`
