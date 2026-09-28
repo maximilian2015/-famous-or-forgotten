@@ -215,7 +215,18 @@ export function resolveScene(s, quality) {
   (p._sceneLog = p._sceneLog || []).push({ id: sc0.id, label: sc.label, q: Math.round(q) });
   const d = lead(p);
   // The picture. A good day is worth more than a month of turning up; a bad one costs.
-  const swing = q >= 88 ? rint(12, 18) : q >= 70 ? rint(7, 11) : q >= 45 ? rint(2, 5) : q >= 25 ? -rint(2, 5) : -rint(6, 11);
+  let swing = q >= 88 ? rint(12, 18) : q >= 70 ? rint(7, 11) : q >= 45 ? rint(2, 5) : q >= 25 ? -rint(2, 5) : -rint(6, 11);
+  // Maxi: "once players get good at these, will every film be great?" He was right to ask.
+  // Measured: a master with the best script, nailing every day, was hitting 76 per cent of
+  // the time — and the same actor playing the days badly hit 15. Sixty-one points of hit
+  // rate on three minigames is too much of the film.
+  //
+  // So a good day is worth most on a picture that needs one. The third time you get it in
+  // one, the film is already as good as it is going to be — you cannot keep making it
+  // better, and everybody who has been on a set that was working knows that. A bad day
+  // always costs full price, because that is also true.
+  const room = clamp(1 - Math.max(0, (p.meter || 20) - 55) / 60, 0.3, 1);
+  if (swing > 0) swing = Math.max(1, Math.round(swing * room));
   p.meter = clamp((p.meter || 20) + swing);
   p._workedMonth = stamp(s);
   if (d && d.name) d.bond = clamp((d.bond || 50) + (q >= 80 ? rint(4, 8) : q >= 50 ? rint(1, 3) : -rint(3, 7)));

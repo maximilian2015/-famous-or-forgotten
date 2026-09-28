@@ -1425,6 +1425,9 @@ function BubbleCard({ g }) {
         </div>
         <div style={{ fontSize: 11.5, color: theme.muted, lineHeight: 1.45, marginTop: 2 }}>{b.line}</div>
         <div style={{ fontSize: 11, color: b.odds >= 70 ? theme.good : b.odds >= 45 ? theme.gold : theme.bad, marginTop: 3, fontWeight: 700 }}>{b.mood}</div>
+        {/* The honest line. A campaign barely touches the network above; what it moves is
+            this one, and this one is what has ever saved a show. See career/bubble.js. */}
+        <div style={{ fontSize: 11, color: (b.shopped || 0) >= 30 ? theme.gold : theme.muted, marginTop: 2, lineHeight: 1.45 }}>{b.elsewhere}</div>
         {b.backed
           ? <div style={{ fontSize: 10.5, color: theme.muted, marginTop: 4 }}>You said your piece. Saying it twice is a different story.</div>
           : <button onClick={() => dispatch(backTheCampaign, b.id)} disabled={!fit.ok}
@@ -1435,8 +1438,9 @@ function BubbleCard({ g }) {
       </div>);
     })}
     <div style={{ fontSize: 10.5, color: theme.muted, marginTop: 5, lineHeight: 1.45 }}>
-      Whether a network has ever changed its mind because an actor posted about it is a question
-      everybody in this business argues about and nobody wins.
+      A network has never once changed its mind because an actor posted. What the noise does is
+      tell every other buyer that the audience is already assembled and currently free — which
+      is how a cancelled show ends up somewhere else, with fewer episodes and less money.
     </div>
   </Card>);
 }
@@ -2528,8 +2532,10 @@ function CreditRow({ group, g }) {
           and the filmography never said a word about it. A show's fate lives on the credit
           now, where you go looking for it. See career/franchise.js maybeContinue. */}
       {c.renewal && (<div style={{ fontSize: 11, fontWeight: 700, margin: '4px 0 2px',
-        color: c.renewal === 'renewed' ? theme.good : c.renewal === 'capped' ? theme.muted : theme.bad }}>
+        color: c.renewal === 'renewed' || c.renewal === 'moved' ? theme.good : c.renewal === 'capped' || c.renewal === 'finale' ? theme.muted : theme.bad }}>
         {c.renewal === 'renewed' ? `📺 Renewed for season ${(c.season || 1) + 1}`
+          : c.renewal === 'moved' ? `📺 Cancelled, and then saved. Somebody else bought it for season ${(c.season || 1) + 1} — a shorter order and less money, and it is still on.`
+          : c.renewal === 'finale' ? `📺 Cancelled, and then given an ending: one special, two hours, and everybody came back for it.`
           : c.renewal === 'writtenOut' ? `📺 Renewed for season ${(c.season || 1) + 1} — without you. Your character was written out.`
           : c.renewal === 'capped' ? `📺 It ended here. ${c.season || 1} season${(c.season || 1) === 1 ? '' : 's'}, and the format ran its course.`
           : `📺 Not renewed.${c.endViewers ? ` It finished on ${c.endViewers}m.` : ''}`}

@@ -8,6 +8,7 @@ import { TAKES } from '../../systems/career/story.js';
 import { HOUSING } from '../../engine/economy.js';
 import { COMBOS, comboOf } from '../../systems/meta/standing.js';
 import { FAVOURS, FAVOUR_ORDER } from '../../systems/career/favours.js';
+import { POSTS, natural, fmtFollowers } from '../../systems/social/posting.js';
 
 // The bible. Every rule the game runs on, in one place, off the screens where it was
 // taking up room. Maxi: "the explanations are everywhere and they take a lot of space —
@@ -20,6 +21,7 @@ import { FAVOURS, FAVOUR_ORDER } from '../../systems/career/favours.js';
 const SECTIONS = [
   ['fame', 'Fame', '★'], ['respect', 'Respect', '◆'], ['combo', 'Fame × Respect', '✕'], ['doors', 'The two doors', '🚪'],
   ['set', 'On set', '🎬'], ['money', 'Money', '€'], ['press', 'The press', '🗞'], ['phone', 'The phone', '📱'],
+  ['social', 'Followers', '✨'],
 ];
 
 const money = (n) => (n >= 1e6 ? '€' + (n / 1e6).toFixed(n >= 1e7 ? 0 : 1) + 'm' : '€' + Math.round(n / 1000) + 'k');
@@ -43,6 +45,7 @@ export function Guide({ g }) {
     {sec === 'doors' && <DoorsGuide />}
     {sec === 'set' && <SetGuide />}
     {sec === 'money' && <MoneyGuide />}
+    {sec === 'social' && <SocialGuide g={g} />}
     {sec === 'press' && <PressGuide />}
     {sec === 'phone' && <PhoneGuide />}
   </div>);
@@ -182,6 +185,49 @@ function PhoneGuide() {
       'A producer, a studio executive, somebody who knows everyone. Rare on purpose',
       'Close enough to them (60) and the tentpoles open the way a hit would — and once in a while there is a dinner, and somebody at it is casting a studio picture. Whatever your fame says',
       'Everybody on that set knows how you got the part. The director starts ten points colder, and you have a shoot to prove it wrong']} />
+  </div>);
+}
+
+// Spotlight. The numbers come out of systems/social/posting.js, like everything else here.
+function SocialGuide({ g }) {
+  const ladder = [30, 50, 70, 90].map((fame) => [fame, fmtFollowers(natural({ fame, media: 0 }))]);
+  return (<div>
+    <H>What followers are for</H>
+    <P>
+      Followers are the only reach in this game nobody has to give you. A film has to come out, a journalist has
+      to write it, an Academy has to vote — followers are yours. What they buy is the part of them your fame does
+      not already account for: get well above your own level and the agent brings you more (up to nine points of
+      reach, and no further — an audience does not make you a film star), the brands pay up to sixty per cent more,
+      and a campaign to save a cancelled show actually reaches a buyer.
+    </P>
+    <Rung label="Where fame alone puts you" min="it climbs faster than fame does" lines={ladder.map(([fame, n]) => `fame ${fame} — about ${n} followers`)} />
+    <H>You cannot out-post your own fame</H>
+    <P>
+      Every month the number walks back toward what your career justifies — a seventh of the way up, a fifth of the
+      way down. So a viral week is a loan. Post every single month for five years and you end up exactly where the
+      work put you, with the scandal you collected on the way. The only way to keep a following is to keep being
+      worth one.
+    </P>
+    <H>One post a month</H>
+    <P>
+      More than that and it stops being a decision. What is on the menu depends on what is happening to you: there
+      is nothing to answer when nobody is saying anything, and nothing to break out of until a label has stuck.
+    </P>
+    <Rung label="What you can post" min={`${Object.keys(POSTS).length} kinds`} lines={Object.values(POSTS).map((p) => `${p.label} — ${p.cost} energy. ${p.hint}`)} />
+    <H>What it costs</H>
+    <P>
+      The photographs are counted: nobody loses standing for one, and the fourth is a different sentence about you.
+      A joke lands about three times in five and the other two are a scandal. An opinion is good for your standing
+      and one time in four it is a story, and a brand that was about to sign simply stops answering. A year of
+      saying nothing at all is worth two points of standing, because somebody always writes the piece about how you
+      do not post.
+    </P>
+    <H>Reading the replies</H>
+    <P>
+      Free, no energy, once a month, and the only action in the game whose entire effect is on you. It is worth
+      knowing what people actually think. It costs up to eight points of your head when what they think is unkind,
+      and once you are in a scandal it is always unkind.
+    </P>
   </div>);
 }
 

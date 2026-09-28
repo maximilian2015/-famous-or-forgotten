@@ -1,0 +1,184 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<title>Узловая — пять вариантов салона</title>
+<style>
+body{margin:0;background:#1c2028;color:#eef1f5;font:15px/1.4 system-ui,-apple-system,"Segoe UI",Roboto,sans-serif}
+main{max-width:980px;margin:0 auto;padding:20px}
+h1{font-size:22px;margin:0 0 6px}
+p.lead{color:#98a2b3;margin:0 0 24px}
+section{margin-bottom:34px}
+h2{font-size:18px;margin:0 0 4px}
+h2 span{display:inline-block;background:#f5b84a;color:#1c2028;border-radius:999px;padding:0 10px;margin-right:8px}
+p.d{color:#98a2b3;margin:0 0 10px;font-size:14px}
+canvas{display:block;background:#2f3540;border-radius:14px;width:100%;max-width:940px}
+</style>
+</head>
+<body>
+<main>
+<h1>Пять вариантов салона</h1>
+<p class="lead">Везде одни и те же пассажиры: вагон 1 — все места заняты и пятеро стоят, вагон 2 — половина мест свободна. Цвет одежды — город назначения. Скажи номер.</p>
+
+<section><h2><span>1</span>Разрез сбоку</h2>
+<p class="d">Как сейчас, но подробнее: дальний ряд сидит лицом к нам, ближний — спиной (видны макушки над спинками), в проходе поручни, стоячие держатся за них. Окна, лампы, багажная полка.</p>
+<canvas id="c1" width="940" height="260"></canvas></section>
+
+<section><h2><span>2</span>Вид сверху — план мест</h2>
+<p class="d">Схема, как при покупке билета: кресла 2+2 у стен, проход посередине, люди — макушки с плечами. Точнее всех показывает, сколько свободно, но меньше «жизни».</p>
+<canvas id="c2" width="940" height="260"></canvas></section>
+
+<section><h2><span>3</span>Электричка — вид из прохода</h2>
+<p class="d">Будто стоишь в вагоне: лавки друг напротив друга, окна с пейзажем, полки, стоячие ближе к нам и держатся за поручень. Самый «настоящий» и уютный вариант.</p>
+<canvas id="c3" width="940" height="260"></canvas></section>
+
+<section><h2><span>4</span>Табло — пиктограммы</h2>
+<p class="d">Строго и чисто, как схема загруженности в метро: кресла-квадратики, человечки-значки, пунктиром — сколько ещё влезет стоя, внизу полоска заполненности. Читается мгновенно.</p>
+<canvas id="c4" width="940" height="260"></canvas></section>
+
+<section><h2><span>5</span>Изометрия — 3D-игрушка</h2>
+<p class="d">Вагон в разрезе под углом, объёмные кресла и фигурки, как в мобильных менеджерах. Самый «игровой» вид, хорошо смотрится в движении.</p>
+<canvas id="c5" width="940" height="260"></canvas></section>
+</main>
+<script>
+'use strict';
+// ---------- одни и те же пассажиры для всех вариантов ----------
+const TRAIN='#d9534f';
+const C={berezovka:'#e8a33d',seversk:'#3f8ae0',ozersk:'#2fb37a',kamenka:'#8b5cf6'};
+const SK=['#f1d3b3','#e0b08a','#c68e63','#8d5a3b'];
+const P=(c,s)=>({color:C[c],skin:SK[s%4]});
+const CARS=[
+ {seats:[P('berezovka',0),P('seversk',1),P('seversk',2),P('kamenka',3),P('ozersk',1),P('berezovka',2),P('seversk',0),P('ozersk',3)],
+  stand:[P('kamenka',2),P('ozersk',0),P('seversk',3),P('berezovka',1),P('kamenka',0)]},
+ {seats:[P('ozersk',3),P('kamenka',0),P('berezovka',1),null,P('seversk',2),null,null,P('ozersk',1)],stand:[]},
+];
+let ctx;
+const clamp=(v,a,b)=>Math.max(a,Math.min(b,v));
+function rr(x,y,w,h,r){r=Math.min(r,w/2,h/2);ctx.beginPath();ctx.moveTo(x+r,y);ctx.lineTo(x+w-r,y);ctx.quadraticCurveTo(x+w,y,x+w,y+r);ctx.lineTo(x+w,y+h-r);ctx.quadraticCurveTo(x+w,y+h,x+w-r,y+h);ctx.lineTo(x+r,y+h);ctx.quadraticCurveTo(x,y+h,x,y+h-r);ctx.lineTo(x,y+r);ctx.quadraticCurveTo(x,y,x+r,y);ctx.closePath();}
+function fillRR(x,y,w,h,r,c){ctx.fillStyle=c;rr(x,y,w,h,r);ctx.fill();}
+function circle(x,y,r,c){ctx.fillStyle=c;ctx.beginPath();ctx.arc(x,y,r,0,Math.PI*2);ctx.fill();}
+function text(s,x,y,c,font,align){ctx.fillStyle=c;ctx.font=font;ctx.textAlign=align||'center';ctx.textBaseline='middle';ctx.fillText(s,x,y);}
+function shade(hex,amt){const n=parseInt(hex.slice(1),16);const r=clamp((n>>16)+amt,0,255),g=clamp(((n>>8)&255)+amt,0,255),b=clamp((n&255)+amt,0,255);return '#'+((r<<16)|(g<<8)|b).toString(16).padStart(6,'0');}
+
+// ---------- 1. разрез сбоку ----------
+function drawSide(c,x0,y0,car,W){ctx=c;
+  fillRR(x0,y0+6,W,238,14,'#efe9dc');ctx.strokeStyle='#b7ab98';ctx.lineWidth=2;rr(x0,y0+6,W,238,14);ctx.stroke();
+  fillRR(x0+8,y0+10,W-16,14,6,'#f8f4ea');for(let i=0;i<4;i++)fillRR(x0+40+i*(W-80)/3-16,y0+13,32,7,3,'#fff1b8');   // потолок и лампы
+  for(let i=0;i<4;i++){const wx=x0+22+i*(W-44)/4+6,ww=(W-44)/4-12;const gr=ctx.createLinearGradient(0,y0+30,0,y0+68);gr.addColorStop(0,'#bfe0f2');gr.addColorStop(.62,'#dcedf5');gr.addColorStop(.63,'#9fb572');gr.addColorStop(1,'#7f9a58');
+    fillRR(wx,y0+30,ww,38,5,gr);ctx.strokeStyle='#a89e8c';ctx.lineWidth=2;rr(wx,y0+30,ww,38,5);ctx.stroke();}
+  ctx.fillStyle='#9a9083';ctx.fillRect(x0+18,y0+74,W-36,2);for(let i=0;i<9;i++)ctx.fillRect(x0+30+i*(W-60)/8,y0+74,2,8);   // багажная полка
+  ctx.fillStyle='#cfc4ae';ctx.fillRect(x0+6,y0+138,W-12,72);ctx.fillStyle='#b9ad95';ctx.fillRect(x0+6,y0+172,W-12,2);   // пол
+  [0.34,0.66].forEach(k=>{ctx.fillStyle='#8c8f96';ctx.fillRect(x0+k*W-2,y0+24,4,186);});   // поручни-стойки
+  const pitch=(W-60)/4;
+  for(let s=0;s<4;s++){const sx=x0+30+(s+.5)*pitch,sy=y0+138;   // дальний ряд — лицом к нам
+    fillRR(sx-22,sy-56,44,56,7,shade(TRAIN,10));fillRR(sx-22,sy-20,44,20,5,shade(TRAIN,60));
+    const q=car.seats[s];if(q){fillRR(sx-14,sy-38,28,30,6,q.color);circle(sx,sy-48,10,q.skin);}}
+  car.stand.forEach((q,i)=>{const x=x0+W/2+(i-(car.stand.length-1)/2)*34,y=y0+196;   // стоячие в проходе
+    ctx.strokeStyle='#333';ctx.lineWidth=3;ctx.beginPath();ctx.moveTo(x-5,y-18);ctx.lineTo(x-5,y);ctx.moveTo(x+5,y-18);ctx.lineTo(x+5,y);ctx.stroke();
+    fillRR(x-13,y-52,26,36,6,q.color);circle(x,y-62,10.5,q.skin);
+    ctx.strokeStyle=q.color;ctx.lineWidth=5;ctx.lineCap='round';ctx.beginPath();ctx.moveTo(x+8,y-46);ctx.lineTo(x+16,y-72);ctx.stroke();});
+  for(let s=4;s<8;s++){const sx=x0+30+((s-4)+.5)*pitch,sy=y0+244;   // ближний ряд — спиной к нам
+    const q=car.seats[s];if(q){circle(sx,sy-64,10,q.skin);fillRR(sx-15,sy-58,30,14,5,q.color);}
+    fillRR(sx-22,sy-54,44,50,7,shade(TRAIN,0));fillRR(sx-18,sy-52,36,10,4,shade(TRAIN,40));}
+  fillRR(x0+4,y0+80,10,130,3,'#6b6156');fillRR(x0+W-14,y0+80,10,130,3,'#6b6156');   // двери в торцах
+}
+
+// ---------- 2. вид сверху ----------
+function drawTop(c,x0,y0,car,W){ctx=c;
+  const cy=y0+125;
+  fillRR(x0+10,y0+30,W-20,190,26,'#f3efe6');ctx.strokeStyle='#3a3f4a';ctx.lineWidth=4;rr(x0+10,y0+30,W-20,190,26);ctx.stroke();
+  [x0+40,x0+W-40].forEach(dx=>{ctx.fillStyle='#f3efe6';ctx.fillRect(dx-20,y0+26,40,8);ctx.fillRect(dx-20,y0+216,40,8);ctx.fillStyle='#8c8f96';ctx.fillRect(dx-20,y0+28,40,3);ctx.fillRect(dx-20,y0+219,40,3);
+    text('вход',dx,y0+14,'#8a93a3','600 11px system-ui');});   // двери — разрывы в стенах
+  ctx.fillStyle='#e6dfd0';ctx.fillRect(x0+70,cy-26,W-140,52);   // проход
+  const seatXs=[x0+90,x0+142,x0+W-186,x0+W-134];
+  const seat=(sx,top,q)=>{const sy=top?y0+50:y0+160;
+    fillRR(sx,sy,44,44,8,shade(TRAIN,60));
+    if(top)fillRR(sx,sy-6,44,12,5,shade(TRAIN,0));else fillRR(sx,sy+38,44,12,5,shade(TRAIN,0));
+    if(q){ctx.beginPath();ctx.ellipse(sx+22,sy+22,19,12,0,0,Math.PI*2);ctx.fillStyle=q.color;ctx.fill();circle(sx+22,sy+22,9,q.skin);}};
+  for(let i=0;i<4;i++){seat(seatXs[i],true,car.seats[i]);seat(seatXs[i],false,car.seats[4+i]);}
+  car.stand.forEach((q,i)=>{const x=x0+W/2+(i-(car.stand.length-1)/2)*36,y=cy+(i%2?7:-7);ctx.beginPath();ctx.ellipse(x,y,17,11,0,0,Math.PI*2);ctx.fillStyle=q.color;ctx.fill();circle(x,y,8.5,q.skin);});
+  text('▲ по ходу поезда',x0+W/2,y0+240,'#8a93a3','600 11px system-ui');
+}
+
+// ---------- 3. электричка ----------
+function drawElektrichka(c,x0,y0,car,W){ctx=c;
+  fillRR(x0,y0+6,W,238,10,'#e6d9bf');ctx.strokeStyle='#b7ab98';ctx.lineWidth=2;rr(x0,y0+6,W,238,10);ctx.stroke();
+  ctx.fillStyle='#f4efe2';ctx.fillRect(x0+4,y0+8,W-8,18);for(let i=0;i<5;i++)circle(x0+50+i*(W-100)/4,y0+17,6,'#fff0b0');   // потолок, лампы
+  const bays=4,bw=(W-40)/bays,floorY=y0+215;
+  for(let i=0;i<bays;i++){const bx=x0+20+i*bw,wx=bx+10,ww=bw-20;
+    ctx.fillStyle='#9a9083';ctx.fillRect(wx-4,y0+46,ww+8,3);ctx.fillRect(wx,y0+40,2,6);ctx.fillRect(wx+ww-2,y0+40,2,6);   // багажная полка
+    const gr=ctx.createLinearGradient(0,y0+56,0,y0+120);gr.addColorStop(0,'#b9dcf0');gr.addColorStop(.55,'#e2eef5');gr.addColorStop(.56,'#8fae5a');gr.addColorStop(1,'#6f8f45');
+    fillRR(wx,y0+56,ww,64,4,gr);
+    for(let k=0;k<3;k++){const tx=wx+14+k*(ww-28)/2;circle(tx,y0+88,7,'#5f8a3c');ctx.fillStyle='#5a4632';ctx.fillRect(tx-1,y0+88,2,8);}   // деревца за окном
+    ctx.strokeStyle='#8f8474';ctx.lineWidth=3;rr(wx,y0+56,ww,64,4);ctx.stroke();
+    const bench=(bxL,dir)=>{fillRR(bxL,floorY-42,46,16,4,'#8b5a3c');fillRR(dir>0?bxL:bxL+34,floorY-96,12,60,4,'#7a4b30');fillRR(bxL+8,floorY-26,30,8,2,'#5a3a24');};
+    const b1=bx+4,b2=bx+bw-50;bench(b1,1);bench(b2,-1);
+    const sit=(q,bxL,dir)=>{if(!q)return;const hx=bxL+(dir>0?18:28),fy=floorY-42;
+      fillRR(dir>0?hx-4:hx-24,fy-9,28,11,4,shade(q.color,-25));   // бедро вперёд
+      fillRR(dir>0?hx+16:hx-26,fy,10,24,3,'#2f2f2f');   // голень вниз
+      fillRR(hx-11,fy-46,22,40,6,q.color);circle(hx,fy-56,11,q.skin);};
+    sit(car.seats[i*2],b1,1);sit(car.seats[i*2+1],b2,-1);}
+  ctx.fillStyle='#b9b0a0';ctx.fillRect(x0+4,floorY,W-8,26);ctx.fillStyle='#e9c94a';ctx.fillRect(x0+4,floorY+21,W-8,3);   // пол
+  ctx.fillStyle='#8c8f96';ctx.fillRect(x0+10,y0+112,W-20,4);   // поручень для стоячих
+  car.stand.forEach((q,i)=>{const x=x0+W/2+(i-(car.stand.length-1)/2)*44,y=y0+240;   // стоячие — ближе, крупнее
+    ctx.strokeStyle='#2b2b2b';ctx.lineWidth=5;ctx.beginPath();ctx.moveTo(x-6,y-30);ctx.lineTo(x-6,y);ctx.moveTo(x+6,y-30);ctx.lineTo(x+6,y);ctx.stroke();
+    fillRR(x-16,y-84,32,56,8,q.color);circle(x,y-97,13,q.skin);
+    ctx.strokeStyle=q.color;ctx.lineWidth=7;ctx.lineCap='round';ctx.beginPath();ctx.moveTo(x+10,y-74);ctx.lineTo(x+22,y-122);ctx.stroke();circle(x+23,y-126,5,q.skin);});
+}
+
+// ---------- 4. табло ----------
+function drawIcons(c,x0,y0,car,W){ctx=c;
+  fillRR(x0,y0+4,W,242,16,'#242a36');
+  ctx.strokeStyle='#dfe5ee';ctx.lineWidth=3;rr(x0+20,y0+22,W-40,170,18);ctx.stroke();
+  for(const k of [0.22,0.5,0.78]){ctx.beginPath();ctx.arc(x0+k*W,y0+202,8,0,Math.PI*2);ctx.stroke();}
+  for(let i=0;i<6;i++){ctx.strokeStyle='#6b7382';ctx.lineWidth=2;rr(x0+36+i*(W-72)/6+6,y0+30,(W-72)/6-12,12,3);ctx.stroke();}
+  const seatIcon=(sx,sy,q)=>{if(q){fillRR(sx,sy,44,44,8,q.color);circle(sx+22,sy+15,7.5,'#fff');ctx.fillStyle='#fff';ctx.beginPath();ctx.moveTo(sx+9,sy+40);ctx.quadraticCurveTo(sx+9,sy+24,sx+22,sy+24);ctx.quadraticCurveTo(sx+35,sy+24,sx+35,sy+40);ctx.closePath();ctx.fill();}
+    else{ctx.strokeStyle='#4a5364';ctx.lineWidth=2;rr(sx,sy,44,44,8);ctx.stroke();fillRR(sx+12,sy+11,20,14,3,'#3a4250');fillRR(sx+10,sy+24,24,8,3,'#3a4250');}};
+  const pitch=(W-80)/4;
+  for(let i=0;i<4;i++){seatIcon(x0+40+i*pitch+pitch/2-22,y0+52,car.seats[i]);seatIcon(x0+40+i*pitch+pitch/2-22,y0+136,car.seats[4+i]);}
+  for(let i=0;i<6;i++){const x=x0+W/2+(i-2.5)*36,y=y0+118,q=car.stand[i];
+    if(q){circle(x,y-12,6.5,q.color);fillRR(x-8,y-4,16,20,5,q.color);}
+    else{ctx.setLineDash([3,3]);ctx.strokeStyle='#4a5364';ctx.lineWidth=1.5;ctx.beginPath();ctx.arc(x,y-12,6.5,0,Math.PI*2);ctx.stroke();rr(x-8,y-4,16,20,5);ctx.stroke();ctx.setLineDash([]);}}
+  const n=car.seats.filter(Boolean).length+car.stand.length,cap=14;
+  fillRR(x0+40,y0+218,W-80,10,5,'#3a4250');fillRR(x0+40,y0+218,(W-80)*n/cap,10,5,n>=12?'#ff6b6b':n>=9?'#f5b84a':'#4ade80');
+  text(`${car.seats.filter(Boolean).length} сидят · ${car.stand.length} стоят · ${n}/${cap}`,x0+W/2,y0+239,'#dfe5ee','700 12px system-ui');
+}
+
+// ---------- 5. изометрия ----------
+function drawIso(c,x0,y0,car,W){ctx=c;
+  fillRR(x0,y0+4,W,242,16,'#2f3540');
+  const s=18,L=14,Wd=5,Hh=3.4,ox=x0+160,oy=y0+74;
+  const P=(x,y,z)=>[ox+(x-y)*0.866*s,oy+(x+y)*0.5*s-z*s];
+  const face=(pts,col)=>{ctx.beginPath();pts.forEach((p,i)=>i?ctx.lineTo(p[0],p[1]):ctx.moveTo(p[0],p[1]));ctx.closePath();ctx.fillStyle=col;ctx.fill();};
+  const box=(ax,ay,az,bx,by,bz,col)=>{face([P(ax,ay,bz),P(bx,ay,bz),P(bx,by,bz),P(ax,by,bz)],shade(col,25));
+    face([P(ax,by,az),P(bx,by,az),P(bx,by,bz),P(ax,by,bz)],shade(col,-8));face([P(bx,ay,az),P(bx,by,az),P(bx,by,bz),P(bx,ay,bz)],shade(col,-40));};
+  face([P(0,0,0),P(L,0,0),P(L,Wd,0),P(0,Wd,0)],'#cfc4ae');   // пол
+  face([P(0,0,0),P(L,0,0),P(L,0,Hh),P(0,0,Hh)],'#efe9dc');   // дальняя стена
+  for(let i=0;i<4;i++){const a=1+i*3.2;face([P(a,0,1.6),P(a+2.4,0,1.6),P(a+2.4,0,2.9),P(a,0,2.9)],'#bfe0f2');}
+  face([P(0,0,0),P(0,Wd,0),P(0,Wd,Hh),P(0,0,Hh)],'#e2dbcc');face([P(0,1.6,0),P(0,3.4,0),P(0,3.4,2.6),P(0,1.6,2.6)],'#6b6156');   // торец с дверью
+  const items=[];
+  const seatAt=(x,y,facing)=>{items.push({d:x+y+0.5,draw:()=>box(x,y,0,x+1.3,y+1.1,0.55,shade(TRAIN,60))});
+    const by=facing>0?y:y+0.82;items.push({d:x+by+0.14,draw:()=>box(x,by,0,x+1.3,by+0.28,1.3,shade(TRAIN,0))});};
+  const person=(x,y,q,sitting)=>{items.push({d:x+y+0.45,draw:()=>{const z0=sitting?0.55:0,h=sitting?0.95:1.55;
+      const [ex,ey]=P(x+0.45,y+0.45,0);ctx.beginPath();ctx.ellipse(ex,ey,0.5*s,0.25*s,0,0,Math.PI*2);ctx.fillStyle='rgba(0,0,0,0.15)';ctx.fill();
+      box(x,y,z0,x+0.9,y+0.9,z0+h,q.color);
+      const [hx,hy]=P(x+0.45,y+0.45,z0+h+0.4);circle(hx,hy,0.4*s,q.skin);circle(hx-0.12*s,hy-0.12*s,0.12*s,'rgba(255,255,255,0.35)');}});};
+  for(let i=0;i<4;i++){const x=1.2+i*3.2;seatAt(x,0.3,1);if(car.seats[i])person(x+0.2,0.45,car.seats[i],true);
+    seatAt(x,Wd-1.4,-1);if(car.seats[4+i])person(x+0.2,Wd-1.3,car.seats[4+i],true);}
+  car.stand.forEach((q,i)=>{const x=2.2+i*2.3,y=2.05+(i%2?0.5:-0.3);person(x,y,q,false);});
+  items.sort((a,b)=>a.d-b.d).forEach(it=>it.draw());
+}
+
+// ---------- рисуем всё ----------
+const DRAW=[drawSide,drawTop,drawElektrichka,drawIcons,drawIso];
+function renderVariant(c,fn,y0){c.fillStyle='#2f3540';c.fillRect(0,y0,940,260);fn(c,10,y0+4,CARS[0],455);fn(c,475,y0+4,CARS[1],455);}
+DRAW.forEach((fn,i)=>{const cv=document.getElementById('c'+(i+1));renderVariant(cv.getContext('2d'),fn,0);});
+// склейка всех пяти в одну картинку (для отправки в чат): window.composite() → data URL
+const NAMES=['1. Разрез сбоку','2. Вид сверху — план мест','3. Электричка — вид из прохода','4. Табло — пиктограммы','5. Изометрия — 3D-игрушка'];
+window.composite=()=>{const cv=document.createElement('canvas');cv.width=960;cv.height=5*310+10;const c=cv.getContext('2d');c.fillStyle='#1c2028';c.fillRect(0,0,cv.width,cv.height);
+  DRAW.forEach((fn,i)=>{const y=10+i*310;c.fillStyle='#eef1f5';c.font='700 20px system-ui';c.textAlign='left';c.textBaseline='middle';c.fillText(NAMES[i],12,y+16);
+    c.save();c.translate(10,y+34);renderVariant(c,fn,0);c.restore();});
+  return cv.toDataURL('image/png');};
+</script>
+</body>
+</html>

@@ -50,6 +50,7 @@ import { storyTick, overtakenTick } from '../systems/meta/trouble.js';
 import { riskTick } from '../systems/meta/risk.js';
 import { storiesTick, grudgesTick } from '../systems/meta/stories.js';
 import { hypeTick } from '../systems/meta/hype.js';
+import { socialTick } from '../systems/social/posting.js';
 import { priceTick } from '../systems/meta/price.js';
 import { typecastYear } from '../systems/meta/typecast.js';
 
@@ -126,6 +127,7 @@ export function advanceMonth(state) {
   dressOffers(s);    // and everything on the table says who you would be playing and what it is about
   agentTick(s);      // the agent leaves the liability, or moves you up a desk
   hypeTick(s);       // being talked about fades: a tenth and a point a month
+  socialTick(s);     // and the followers walk back toward what your career actually justifies
   if ((s.cash || 0) < 0) s._debtMonths = (s._debtMonths || 0) + 1;   // the working life's one number (meta/ambition.js)
   priceTick(s);      // what the name costs: the people who stop ringing, and the quiet
   riskTick(s);       // what is worth watching, on the main screen a month before it bites

@@ -79,6 +79,10 @@ export function Messages({ g }) {
         <div style={{ fontSize: 11, fontWeight: 900, color: theme.accent, textTransform: 'uppercase', marginBottom: 4 }}>
           {o.kind === 'brand' ? `${o.from || 'A brand'} · they came to you`
             : o.kind === 'renewal' ? 'The network' : o.kind === 'sequel' ? 'The studio'
+            // The three things a campaign can actually get you. career/bubble.js
+            : o.kind === 'rescue' ? `${o.savedBy ? o.savedBy[0].toUpperCase() + o.savedBy.slice(1) : 'Somebody else'} · they are saving it`
+            : o.kind === 'finale' ? 'They found the money for an ending'
+            : o.kind === 'cultfilm' ? 'Years later · somebody finally opened the file'
             : o.via === 'casting' ? 'Casting · you read for this'
             : o.via === 'party' ? `${o.from || 'Somebody'} · you met at a party`
             : o.via === 'pitch' ? `${o.from || 'Somebody'} · your own picture, from your own sofa`

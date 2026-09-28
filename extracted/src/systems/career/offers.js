@@ -14,6 +14,7 @@ import { refusedOnType } from '../meta/typecast.js';
 import { spent } from '../../engine/economy.js';
 import { storyOfferFactor, noteRefusal, noteSequelLoss } from '../meta/stories.js';
 import { hypeDemand, hype, hypeSource, hypeBrands } from '../meta/hype.js';
+import { socialBrandLift } from '../social/posting.js';
 import { isStrong, activeLabels, labelInfo } from '../meta/typecast.js';
 import { canTakeSet } from '../../engine/sets.js';
 const clamp = (v) => Math.max(0, Math.min(100, v));
@@ -129,7 +130,9 @@ export function maybeBrandOffer(s) {
   const [what, mult] = pick(GOODS);
   const house = pick(HOUSES.filter((h) => !(s._brandsDone || []).includes(h))) || pick(HOUSES);
   // Their money is the ad band for your name, and a fragrance pays what a supermarket does not.
-  const fee = Math.round((quoteFor(s, 'ad') || 50000) * mult * (0.85 + Math.random() * 0.4));
+  // A brand campaign is priced on the audience you bring to it, and most of that audience
+  // is now a number on a profile. This is not a game mechanic; it is how the paper reads.
+  const fee = Math.round((quoteFor(s, 'ad') || 50000) * mult * (0.85 + Math.random() * 0.4) * socialBrandLift(s));
   const months = fee >= 2000000 ? 2 : 1;
   (s.offers = s.offers || []).push({
     id: uid(s, 'brd'), via: 'brand', kind: 'brand', from: house,
