@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef } from 'react';
 import { openStoryRoom, pushTake, trendNote } from './systems/career/story.js';
 import { useGame, dispatch, newLife, exportSave, importSave, getState } from './state/store.js';
-import { advanceTime, stepIsYear, advanceUntilSomething } from './engine/time.js';
+import { advanceTime, stepIsYear, advanceUntilSomething, liveUntilSomething, canSkip } from './engine/time.js';
 import { rentApartment, STAGE_LABEL } from './systems/life/stages.js';
 import { runAction, availableActions } from './systems/career/actions.js';
 import { acceptOffer, declineOffer } from './systems/career/offers.js';
@@ -289,6 +289,13 @@ export default function App() {
         </div>
         <Button kind="pri" sfx={stepIsYear(g) ? 'year' : 'month'} onClick={() => dispatch(advanceTime)}>{stepIsYear(g) ? '▶ Live one year' : '▶ Live one month'}</Button>
         {g.stage === 'child' && (g.ageY || 0) < 12 && <button onClick={() => dispatch(advanceUntilSomething)} style={{ width: '100%', marginTop: 8, border: `1px solid ${theme.line}`, borderRadius: 12, padding: '10px', fontSize: 12.5, fontWeight: 800, cursor: 'pointer', background: 'transparent', color: theme.muted }}>▶▶ Live until something happens</button>}
+        {/* The same button for the rest of it. A seven-month shoot was seven identical
+            presses; the months between two jobs were worse. Everything still runs — you are
+            simply not asked to press for a month in which nothing wanted you. engine/time.js */}
+        {g.stage !== 'child' && canSkip(g) && <button onClick={() => dispatch(liveUntilSomething)} style={{ width: '100%', marginTop: 8, border: `1px solid ${theme.line}`, borderRadius: 12, padding: '10px', fontSize: 12.5, fontWeight: 800, cursor: 'pointer', background: 'transparent', color: theme.muted }}>▶▶ Live until something happens</button>}
+        {g._skipped && g._skipped.months > 1 && <div style={{ fontSize: 11, color: theme.muted, textAlign: 'center', marginTop: 6, lineHeight: 1.5 }}>
+          {g._skipped.months} months went by{g._skipped.why ? ` and then ${SKIP_WHY[g._skipped.why] || 'something wanted you'}.` : ' and nothing wanted you at all, which is its own kind of news.'}
+        </div>}
         <div style={{ marginTop: 18 }}>
           <div style={{ fontSize: 11, fontWeight: 900, letterSpacing: '.09em', textTransform: 'uppercase', color: theme.muted, marginBottom: 8 }}>Timeline</div>
           {(g.timeline || []).slice(0, 8).map((e, i) => (<div key={i} style={{ fontSize: 12.5, color: e.bad ? theme.bad : theme.text, padding: '6px 0', borderBottom: `1px solid ${theme.line}` }}><span style={{ color: theme.muted, marginRight: 8 }}>{e.when}</span>{e.text}</div>))}
@@ -1411,6 +1418,20 @@ function StandingCard({ g }) {
 // player should hear it from the news first — and with fifteen million watching, the fans
 // should be insisting. Petitions?" The one move an actor has is to say something, and it
 // is worth most when there is already something to say it about. See career/bubble.js.
+const SKIP_WHY = {
+  'a day on set': 'they need you on set',
+  'an offer': 'something came in',
+  'a network decided': 'a network finally said something',
+  'the nominations': 'the nominations happened',
+  'it came out': 'it came out',
+  'the money': 'the money ran out',
+  moment: 'something happened',
+  stage: 'everything changed',
+  health: 'your health went somewhere you should look at',
+  mental: 'you stopped being all right',
+  life: 'it ended',
+};
+
 function BubbleCard({ g }) {
   const list = liveBubbles(g);
   if (!list.length) return null;

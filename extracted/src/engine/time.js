@@ -68,6 +68,62 @@ export function advanceUntilSomething(state) {
   return s;
 }
 
+// The same idea, for the rest of a life. Maxi, looking at a diagram of simulation time:
+// "the important thing is that it does not use the same resolution for interesting and
+// boring time." He was right, and the game only did it in childhood — a seven-month shoot
+// was seven identical presses, and the months in between two jobs were worse.
+//
+// So: run the months, and stop the moment anything wants you. Not "nothing happened" —
+// something wants you: a day on set, an offer, a network finally deciding, a moment on
+// screen, a year that turned, your health going somewhere you should look at. Everything
+// still RUNS; you simply are not asked to press the button for a month in which you had
+// nothing to do.
+//
+// It never skips more than a year at a time, so the player is never handed a stranger.
+export const SKIP_CAP = 12;
+function stopSignal(s, before) {
+  if (!s.alive) return 'life';
+  if (s.stage !== before.stage) return 'stage';
+  if (s.bigMoment || (s.moments || []).length || s.pendingArc) return 'moment';
+  if (s.scene) return 'a day on set';                                  // career/scenes.js
+  if ((s.offers || []).length > before.offers) return 'an offer';
+  if ((s.bubbles || []).length !== before.bubbles) return 'a network decided';
+  if (((s.awards || {}).pending || []).length !== before.noms) return 'the nominations';
+  if ((s.filmography || []).length !== before.credits) return 'it came out';
+  if ((s.cash || 0) < 0 && before.cash >= 0) return 'the money';
+  // Health and the head: only on the way DOWN, and only across a line worth stopping at.
+  for (const [k, line] of [['health', 40], ['mental', 35]]) {
+    if ((s[k] || 0) < line && (before[k] || 0) >= line) return k;
+  }
+  return null;
+}
+const fingerprint = (s) => ({
+  stage: s.stage, offers: (s.offers || []).length, bubbles: (s.bubbles || []).length,
+  noms: ((s.awards || {}).pending || []).length, credits: (s.filmography || []).length,
+  cash: s.cash || 0, health: s.health || 0, mental: s.mental || 0,
+});
+// Returns the state plus how far it went and what stopped it, so the screen can say so.
+export function liveUntilSomething(state, cap = SKIP_CAP) {
+  let s = state;
+  let months = 0, why = null;
+  for (let i = 0; i < cap; i++) {
+    const before = fingerprint(s);
+    s = advanceTime(s);
+    months++;
+    why = stopSignal(s, before);
+    if (why) break;
+  }
+  s = { ...s, _skipped: { months, why } };
+  return s;
+}
+// What the button is allowed to say before it is pressed. Nothing to skip THROUGH while a
+// day on set is waiting or something is already on screen.
+export function canSkip(s) {
+  if (!s || !s.alive) return false;
+  if (s.bigMoment || (s.moments || []).length || s.pendingArc || s.scene) return false;
+  return true;
+}
+
 export function advanceMonth(state) {
   const s = { ...state, timeline: [...(state.timeline || [])] };
   s.month += 1;
