@@ -23,6 +23,7 @@ import { sequelDue } from './systems/career/franchise.js';
 import { knownFor, isHit, isFlop, theHits, theFlops } from './systems/meta/knownFor.js';
 import { boxedInto, isUniversal } from './systems/meta/typecast.js';
 import { liveBubbles, backTheCampaign, canBack as canBackShow, BACK_COST } from './systems/career/bubble.js';
+import { openSeason, askerLine } from './systems/career/awards.js';
 import { townOpen, townFor, goOut } from './systems/life/town.js';
 import { LABELS, labelInfo, activeLabels, isStrong } from './systems/meta/typecast.js';
 import { liveRisks } from './systems/meta/risk.js';
@@ -167,6 +168,10 @@ export default function App() {
               ? <div style={{ fontSize: 10, marginTop: 2, fontWeight: 700, color: theme.muted }}>{activeLabels(g).slice(0, 2).map((id, i) => <span key={id} style={{ color: isStrong(g, id) ? theme.gold : theme.muted }}>{i ? ' · ' : ''}{labelInfo(id).label}</span>)}</div>
               : (() => { const t = tendency(g); return t ? <div style={{ fontSize: 10, marginTop: 2, fontWeight: 600, color: theme.muted, opacity: .75 }}>becoming {t.label.toLowerCase()}</div> : null; })()}
             {/* Being talked about, on the face of it rather than one tap inside the fame tile. */}
+            {/* Nominated, or a winner, said next to the name — which is where it is said in
+                life. career/awards.js askerLine */}
+            {(() => { const al = inCareer(g) ? askerLine(g) : null; if (!al) return null;
+              return <div style={{ fontSize: 10, marginTop: 2, fontWeight: 800, color: theme.gold, opacity: al.hot ? 1 : .8 }}>🏆 {al.text}</div>; })()}
             {hype(g) >= 20 && <div style={{ fontSize: 10, marginTop: 2, fontWeight: 700, color: hypeSource(g) === 'scandal' ? '#ff8d9e' : theme.accent }}>
               hype {Math.round(hype(g))}{hypeSource(g) ? ' · ' + SOURCES[hypeSource(g)].label : ''}
             </div>}
@@ -220,6 +225,7 @@ export default function App() {
         </div>
         {g.lastEvent && <Card style={{ marginBottom: 14, borderColor: 'rgba(255,209,102,.35)' }}><div style={{ fontSize: 13.5, lineHeight: 1.5, whiteSpace: 'pre-line' }}>{g.lastEvent}</div></Card>}
         {inCareer(g) && <StandingCard g={g} />}
+        {inCareer(g) && <SeasonCard g={g} />}
         {inCareer(g) && <BubbleCard g={g} />}
         {inCareer(g) && <CollabCard g={g} />}
         {inCareer(g) && <StoriesCard g={g} />}
@@ -1431,6 +1437,27 @@ const SKIP_WHY = {
   mental: 'you stopped being all right',
   life: 'it ended',
 };
+
+// The six months between the nominations and the night. They used to be silent.
+function SeasonCard({ g }) {
+  const season = openSeason(g);
+  if (!season || !season.nominations.length) return null;
+  return (<Card style={{ marginBottom: 14, borderColor: 'rgba(255,209,102,.38)' }}>
+    <div style={{ fontSize: 11, fontWeight: 900, letterSpacing: '.09em', textTransform: 'uppercase', color: theme.gold, marginBottom: 4 }}>
+      🏆 The Askers · {season.year}
+    </div>
+    {season.nominations.map((n, i) => (<div key={i} style={{ padding: '6px 0', borderTop: i ? `1px solid ${theme.line}` : 'none' }}>
+      <div style={{ fontSize: 12.5, fontWeight: 800 }}>{n.label}</div>
+      <div style={{ fontSize: 11.5, color: theme.muted, marginTop: 1 }}>for "{String(n.title).replace('⭐ ', '')}"</div>
+      <div style={{ fontSize: 11.5, color: theme.gold, marginTop: 3, fontWeight: 700 }}>{n.buzz}.</div>
+    </div>))}
+    <div style={{ fontSize: 10.5, color: theme.muted, marginTop: 6, lineHeight: 1.45 }}>
+      {season.monthsLeft <= 1
+        ? 'The night is this month. Everybody you know has an opinion about what you should say.'
+        : `${season.monthsLeft} months until the night. Between now and then it is lunches, panels, and the same four questions.`}
+    </div>
+  </Card>);
+}
 
 function BubbleCard({ g }) {
   const list = liveBubbles(g);

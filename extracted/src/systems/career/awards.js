@@ -152,6 +152,41 @@ export function weightOf(n) {
     * (0.75 + Math.random() * 0.60));
 }
 
+// ── the season, while it is happening ─────────────────────────────────────────
+// Maxi: "the Asker does not work — there was a nomination for the film and then nothing.
+// If you are nominated, or your picture is, it should be lit up next to you until the
+// night." He was right and it was not a bug in the maths: the nomination fired, the
+// ceremony fired six months later, and in between the game said nothing at all. Nothing
+// on any screen read s.awards.pending.
+//
+// Which is the opposite of how it works. From the morning the nominations are read out you
+// are an Asker nominee, it goes in front of your name in every introduction, and if you win
+// it stays there for the rest of your life. That is most of what the award IS.
+export function openSeason(s) {
+  const list = ((s.awards || {}).pending || []).filter((p) => !p.theirs);
+  if (!list.length) return null;
+  const now = (s.year || 0) * 12 + (s.month || 0);
+  const mine = list.filter((p) => p.title);              // your performance, your picture
+  return {
+    year: list[0].year,
+    monthsLeft: Math.max(0, (list[0].due || now) - now),
+    nominations: mine.map((p) => ({
+      title: p.title, category: p.category,
+      label: (CATEGORIES.find((c) => c.id === p.category) || {}).label || p.category,
+      odds: p.yourOdds || 0, buzz: buzzOf(p.yourOdds || 0),
+    })),
+  };
+}
+// The line that goes next to your name. A nominee while the season runs; a winner forever.
+export function askerLine(s) {
+  const wins = ((s.awards || {}).wins || []).length;
+  const season = openSeason(s);
+  const nominated = season && season.nominations.length;
+  if (nominated) return { text: wins ? `Asker winner · nominated again` : 'Asker nominee', hot: true };
+  if (wins) return { text: wins > 1 ? `${wins}-time Asker winner` : 'Asker winner', hot: false };
+  return null;
+}
+
 // How it is put to the player. A percentage is something you can do arithmetic against,
 // and that is exactly what ruins the night — nobody sitting in that room knows a number.
 // They know whether people have been saying their name. So the odds stay internal and
