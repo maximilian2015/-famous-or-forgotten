@@ -444,6 +444,10 @@ export function maybeContinue(s, credit, p, force = false) {
       // The arc decides the material — it always did, and the line below this one used to
       // overwrite it two properties later, so the shape of a show never meant anything.
       prestigeScore: seasonMaterial(p.prestigeScore || 50, nextSeason, arc), arc,
+    // What kind of thing this is — a machine that can run for years, or something that was
+    // always going to close. production.js rolls a fresh one when the offer does not carry
+    // it, so a show built to run could come back as a show that was always going to end.
+    potential: p.potential || null,
       months: tvMonths(p.type, p.scale, episodes),
       tier: p.tier || 'lead',
       // Same person, same show. career/script.js
@@ -484,6 +488,9 @@ export function maybeContinue(s, credit, p, force = false) {
     projectTitle: sequelTitle(p.title, nextPart), role: p.role, type: p.type, genre: p.genre,
     salary, baseSalary: first, months: Math.max(2, Math.round((p.months || 5) * (0.95 + Math.random() * 0.25))),
     prestigeScore: sequelMaterial(p.prestigeScore || 50, nextPart, arc), arc,
+    // Same for a sequel: in 400 runs of an outside audit, 47 sequels to a picture built as a
+    // franchise came back as one that closes, because the value was re-rolled here.
+    potential: p.potential || null,
     tier: p.tier || 'lead', fame: p.tier === 'tentpole' ? 9 : 5, deadline: rint(2, 3), waitsForWrap: true,   // and so does your own sequel
     // The same person, still. A sequel that renamed your character was a sequel to nothing.
     character: p.character || null, premise: p.premise || null, seriesTitle: seriesRoot(p.title),

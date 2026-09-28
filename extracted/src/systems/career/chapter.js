@@ -113,15 +113,18 @@ export function chooseDirection(s, offerId, id) {
   if (o.signed || (o.contract && o.contract.sent)) { s.lastEvent = 'The paper has gone. Whatever it is now, it is that.'; return s; }
   if (d.yours && !canPitch(s)) { s.lastEvent = pitchWhy(s); return s; }
   // Changing your mind is free until the paper goes back; the material moves with it.
-  const was = o.direction ? DIRECTIONS[o.direction] : null;
+  // Both of these are computed from what the thing was BEFORE you started choosing, so
+  // that changing your mind twice does not stack. The prestige did this from the first day;
+  // the arc did not, and `if (d.arc)` left the old one behind whenever the new direction
+  // had none — pick "Raise the stakes" and then "Turn it on its head" and it still climbed.
   const base = o._prestige0 != null ? o._prestige0 : (o._prestige0 = o.prestigeScore || 50);
+  if (o._arc0 === undefined) o._arc0 = o.arc || null;
   o.direction = id;
   o.prestigeScore = clamp(Math.round(base + d.prestige), 8, 96);
-  if (d.arc) o.arc = d.arc;
+  o.arc = d.arc || o._arc0;
   s.lastEvent = d.yours
     ? `You told them where it should go, and they wrote it down. ${d.line(thingName(o))}`
     : `${d.label}. ${d.line(thingName(o))}`;
-  if (was && was.id !== id) return s;
   return s;
 }
 export function directionOf(p) { return p && p.direction ? DIRECTIONS[p.direction] : null; }

@@ -162,6 +162,16 @@ export function draftContract(s, o) {
     fee.text += ` — the option's fee: what you signed for, plus five per cent a season`;
     fee.options = (o.marketFee || 0) > unit ? [{ id: 'market', label: `Renegotiate to the market rate — ${money(o.marketFee)} an episode${(o.season || 0) === 3 ? ' (the whole cast is asking)' : ''}`, value: o.marketFee, odds: (o.season || 0) === 3 ? 48 : 18 }] : [];
   }
+  // And the same for a sequel the studio optioned, which it was not. The renewal case
+  // above has been right since it was written; a film sequel carried the same `optioned`
+  // flag and nothing ever read it, so the one deal whose entire point is that the price was
+  // agreed in advance was quietly renegotiable — a six-million option became six-point-six
+  // for the second part and again for the third. That is the risk of signing an option, and
+  // the game was letting the player out of it. Found by an outside audit.
+  if (o.kind === 'sequel' && o.optioned && (o.part || 2) <= (o.optionParts || 3)) {
+    fee.text += ` — the option's fee: what you signed for on the first one, before anybody knew`;
+    fee.options = [];
+  }
   clauses.push(fee);
   // The dates — scheduleClause above. The exclusivity is rolled here because the dates depend on it.
   const ex = big && exclusiveFor(o);

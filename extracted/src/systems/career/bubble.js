@@ -36,7 +36,11 @@ import { COST, canAfford, spend, tooTired } from '../../engine/energy.js';
 // SEASON_CAP or tvMonths move over there, they move here too.
 const SLOT = { 'Soap Opera': 4, 'Network Drama': 2.6, 'Crime Series': 2.6, 'Drama Series': 2.6, 'Talent Series': 3, 'Music Show': 2, 'Prestige Series': 6 };
 const CAP = { 'Soap Opera': 20, 'Talent Series': 10, 'Crime Series': 8, 'Drama Series': 7, 'Network Drama': 6, 'Music Show': 6, 'Prestige Series': 5 };
-const PACE = { 'Soap Opera': 0.22, 'Talent Series': 0.3, 'Prestige Series': 0.5 };
+// Copied from franchise.js TV_PACE, and it has to be copied EXACTLY — this was written
+// from memory instead and got the soap wrong by a factor of two and left two types out, so
+// a rescued soap shot a fourteen-episode season in four months where the same show at the
+// original network took two. If TV_PACE changes, this changes with it.
+const PACE = { 'Soap Opera': 0.09, 'Network Drama': 0.38, 'Prestige Series': 0.5, 'Talent Series': 0.3, 'Music Show': 0.3 };
 const slotNorm = (t) => SLOT[t] || 2.6;
 const seasonCap = (t) => CAP[t] || 5;
 const monthsFor = (type, episodes) => Math.max(2, Math.min(10, Math.round(1 + episodes * (PACE[type] || 0.38))));
