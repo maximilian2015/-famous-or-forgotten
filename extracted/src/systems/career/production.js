@@ -12,6 +12,7 @@ import { scheduleRelease } from './release.js';
 import { rollStability, productionTrouble, volatileSwing, roughness } from './stability.js';
 import { makePremise, prestigeShift, ratingShift, swingShift, apartShift, appealShift } from './story.js';
 import { skillCap } from './actions.js';
+import { bandLift } from '../world/directors.js';
 import { coldStart } from '../meta/standing.js';
 import { activeActors, actorById } from '../world/world.js';
 import { fameTier } from '../meta/status.js';
@@ -119,6 +120,8 @@ export function startProduction(s, offer) {
     // The face of something is a job, not a picture. It still takes the months (offers.js
     // gives a campaign over €2m two of them) — it does not take a premiere.
     brand: offer.kind === 'brand',
+    // Kept on the shoot so the picture is judged with them on it. world/directors.js
+    directorBand: offer.directorBand || null, directorTop: !!offer.directorTop,
     // What part one was paid. Every sequel raise is measured against THIS, not against
     // whatever the last one happened to earn. See systems/career/franchise.js.
     baseSalary: offer.baseSalary || offer.salary, arc: offer.arc || null,
@@ -516,7 +519,12 @@ function wrapProduction(s, p) {
   let rating = floor + craft - roughness(p.stability) - (p.drunkMonths || 0) * 1.6 + material * 0.54
     + (s.looks - 40) * 0.08 + genreBonus(s, p.genre) + rint(-16, 12) + volatileSwing(p.stability)
     + ratingShift(p) + (swingShift(p) ? rint(-swingShift(p), swingShift(p)) : 0)
-    + dirBump(p) + (dirSwing(p) ? rint(-dirSwing(p), dirSwing(p)) : 0);
+    + dirBump(p) + (dirSwing(p) ? rint(-dirSwing(p), dirSwing(p)) : 0)
+    // And who actually directed it, which until now was worth precisely nothing. dirBump
+    // and dirSwing above are the STORY direction — raise the stakes, turn it on its head —
+    // and have never had anything to do with a director. The register existed, the name was
+    // on every listing, and the person making the picture had no effect on the picture.
+    + bandLift(p.directorBand, p.directorTop);
   // And then the material has the last word. Nobody has ever acted a bad script into a good
   // film — an actor at 88 who rehearsed every month used to make a Hit 36 times in 60 and
   // the WORST thing they could physically produce was a 7.5, whatever they were handed.

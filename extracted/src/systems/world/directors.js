@@ -86,6 +86,13 @@ export function directorFor(s, scale, genre) {
 }
 // What a director does to the film you make with them. This is the reason to want one:
 // it is the single biggest thing outside your own craft, the same way it is in life.
+// What a shoot can still know about them months later: which shelf they came off. A great
+// director is worth about as much to a picture as three good days on it; a first-timer is
+// a gamble that mostly does not come off, which is why they are cheap.
+const BAND_LIFT = { great: 6, strong: 3, working: 0, new: -2 };
+export function bandLift(band, top) {
+  return (BAND_LIFT[band] || 0) + (top ? 2 : 0);
+}
 export function directorLift(d) {
   if (!d) return 0;
   return Math.round(((d.standing || 0) - 52) * 0.16 * 10) / 10;   // about −5 to +7

@@ -571,6 +571,13 @@ function answerSubmission(s, sub) {
   const season = c.perEpisode ? (c.season || 1) : 0;
   (s.offers = s.offers || []).push({
     id: uid(s, 'off'), via: 'casting',
+    // Who is directing it. The listing has carried this since the register was written and
+    // the OFFER never did, so the name vanished between the audition and the first day:
+    // you read for a picture because of who was making it, won it, and a stranger turned
+    // up to direct. production.js line 166 has been reaching for offer.directorId all
+    // along and finding nothing. world/directors.js
+    director: c.director || null, directorId: c.directorId || null,
+    directorBand: c.directorBand || null, directorTop: !!c.directorTop,
     projectTitle: season > 1 ? `${c.title} · season ${season}` : c.title, role: c.role, type: c.type, genre: c.genre,
     salary: c.salary, months: c.months, tier: sc.tier, scale: c.scale,
     episodes: c.episodes, episodeFee: c.episodeFee, season, seriesTitle: c.perEpisode ? c.title : undefined,
