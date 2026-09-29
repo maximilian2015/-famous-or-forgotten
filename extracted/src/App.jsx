@@ -360,7 +360,9 @@ function OnSetNow({ g, p }) {
   const lead = (p.crew || [])[0];
   const stamp = (g.year || 0) * 12 + (g.month || 0);
   const worked = p._workedMonth === stamp;
-  const noEnergy = !canAfford(g, COST.rehearse);
+  // A lesson costs COST.train, not COST.rehearse. Between 15 and 19 energy the button was
+  // bright and the lesson refused. career/training.js
+  const noEnergy = !canAfford(g, COST.train);
   const b = lead ? lead.bond : 50;
   const mood = b >= 70 ? ['warm to you', '#4fc07f'] : b >= 45 ? ['fine with you', theme.muted] : b >= 26 ? ['cooling on you', '#f0b429'] : ['done with you', '#ff5a72'];
   const st = stanceOf(p);
@@ -880,7 +882,9 @@ function MentalScreen({ g, onBack }) {
         cost={`${COST.call} energy · free`} disabled={!call.ok} why={call.why} onClick={() => dispatch(callSomebody)} />
       <ActRow label="See somebody about it"
         blurb={scarred || g.depression ? 'The hour a month that is the only thing that actually moves this.' : 'An hour with a professional. Awkward, and it works.'}
-        cost={`${COST.therapy} energy · €260`} disabled={!canAfford(g, COST.therapy) || (g.cash || 0) < 260 || (!g.depression && !scarred)}
+        cost={`${COST.therapy} energy · €260`} disabled={!canAfford(g, COST.therapy) || (g.cash || 0) < 260 || (!g.depression && !scarred)
+          /* and once a month, which life/strain.js has always enforced and this never asked */
+          || (g.depression ? !!g.depression.sessionThisMonth : !!g._therapyThisMonth)}
         why={!g.depression && !scarred ? 'There is nothing to talk about right now.' : !canAfford(g, COST.therapy) ? 'Not enough energy left this month.' : 'You cannot cover it.'}
         onClick={() => dispatch(seeSomebody)} />
       {(g.meds || {}).sleeping > 0 && <ActRow label={`Take a sleeping pill · ${(g.meds || {}).sleeping} left`}
@@ -1607,7 +1611,7 @@ function PartySection({ g }) {
           <span style={{ fontSize: 10.5, fontWeight: 800, padding: '3px 7px', borderRadius: 7,
             background: risk > 45 ? 'rgba(255,106,138,.16)' : 'rgba(255,209,102,.14)', color: risk > 45 ? theme.bad : theme.gold }}>{risk}% police</span>
         </div>
-        <Button kind="pri" disabled={broke || noEnergy} onClick={() => { dispatch(throwParty, key); setOpen(false); }}>
+        <Button kind="pri" disabled={broke || noEnergy || onCooldown(g, 'party')} onClick={() => { dispatch(throwParty, key); setOpen(false); }}>
           {broke ? 'You cannot afford it' : noEnergy ? 'No energy left' : 'Open the door'}
         </Button>
       </Card>); })}
@@ -1842,7 +1846,7 @@ function HomeTab({ g, tier }) {
           {locked ? <div style={{ fontSize: 11.5, color: theme.muted, marginTop: 6 }}>🔒 Out of your league for now.</div>
             : !active && g.hasApartment && (<>
                 <div style={{ fontSize: 11, color: canAfford ? theme.muted : theme.bad, marginTop: 6 }}>Deposit €{deposit.toLocaleString()}{canAfford ? '' : ' — you cannot cover it'}</div>
-                <Button onClick={() => dispatch(setHousing, key)} style={{ marginTop: 8 }}>Move in</Button>
+                <Button onClick={() => dispatch(setHousing, key)} disabled={!canAfford} style={{ marginTop: 8 }}>Move in</Button>
               </>)}
         </div>); })}
     </div>
@@ -3072,7 +3076,7 @@ function StageBody({ g }) {
       {g.homeless
         ? `Take any job in your Phone — a room is €${HOUSING.room.cost} a month and nothing else is going to pay for it.`
         : `Get a job in your Phone first — rent is €${HOUSING.room.cost} every month, and nothing else is paying it.`}
-    </div>}<Button kind="pri" onClick={() => dispatch(rentApartment)}>Move into a rented room · €{HOUSING.room.cost}/mo</Button></div>;
+    </div>}<Button kind="pri" disabled={(g.cash || 0) < HOUSING.room.cost} onClick={() => dispatch(rentApartment)}>Move into a rented room · €{HOUSING.room.cost}/mo</Button></div>;
   return <div style={{ fontSize: 14, lineHeight: 1.55 }}>{careerNow(g)}</div>;
 }
 

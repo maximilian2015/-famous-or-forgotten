@@ -81,12 +81,14 @@ export function depressed(s) { return !!s.depression; }
 export function seeSomebody(s) {
   const inIt = !!s.depression, scarred = (s.scarred || 0) > 0;
   if (!inIt && !scarred) { s.lastEvent = 'There is nothing to talk about right now.'; return s; }
-  if (!canAfford(s, ENERGY_COST.gym)) { s.lastEvent = tooTired(s, ENERGY_COST.gym); return s; }
+  // The button has said "10 energy" since it was written and this took five, which is the
+  // same mistake a night at home had. The label is the design. Outside audit.
+  if (!canAfford(s, ENERGY_COST.therapy)) { s.lastEvent = tooTired(s, ENERGY_COST.therapy); return s; }
   if (inIt && s.depression.sessionThisMonth) { s.lastEvent = 'You have already been this month.'; return s; }
   if (!inIt && s._therapyThisMonth) { s.lastEvent = 'You have already been this month.'; return s; }
   const cost = 260;
   if ((s.cash || 0) < cost) { s.lastEvent = `An hour costs €${cost}. You do not have it this month.`; return s; }
-  s.cash -= cost; spend(s, ENERGY_COST.gym);
+  s.cash -= cost; spend(s, ENERGY_COST.therapy);
   s.mental = clamp((s.mental || 0) + rint(3, 7));
   if (inIt) {
     s.depression.sessionThisMonth = true;

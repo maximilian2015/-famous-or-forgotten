@@ -405,6 +405,11 @@ export function signContract(s, id) {
   const o = (s.offers || []).find((x) => x.id === id); if (!o) return s;
   const k = draftContract(s, o);
   if (k.sent) { s.lastEvent = 'It is with them. Wait for the answer.'; return s; }
+  // You cannot sign a paper with a clause still being argued. ContractRoom has disabled the
+  // button on exactly this since it was written; signContract never checked, so the rule
+  // lived in one place only and anything reaching the function another way walked past it.
+  const open = openTalks(o);
+  if (open.length) { s.lastEvent = `${open.length === 1 ? 'There is a clause' : `There are ${open.length} clauses`} still being argued. Settle it first, or send the paper back to them.`; return s; }
   const sched = k.clauses.find((c) => c.id === 'schedule');
   if (sched && sched.must && sched.result !== 'agreed') { s.lastEvent = 'They need to know when you can start. Ask them to hold it, or walk off what you are on — and send it.'; return s; }
   // The deal, and there is no way round it: a nobody shoots one thing at a time, and a

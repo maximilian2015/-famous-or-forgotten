@@ -36,6 +36,7 @@ import { maybeContinue, seriesRoot } from '../career/franchise.js';
 import { sendSms } from './sms.js';
 import { priceFactor } from '../life/face.js';
 import { HOUSING } from '../../engine/economy.js';
+import { COST, canAfford, spend, tooTired } from '../../engine/energy.js';
 const clamp = (v) => Math.max(0, Math.min(100, v));
 const first = (n) => String(n || '').split(' ')[0];
 const stamp = (s) => (s.year || 0) * 12 + (s.month || 0);
@@ -239,6 +240,11 @@ export function hostNight(s) {
   if (s._wentOut === st) { s.lastEvent = 'You have been out this month already. Next month.'; return s; }
   if ((s.hiding || 0) >= st) { s.lastEvent = 'You are out of sight this month. Nobody is coming over.'; return s; }
   if ((s.cash || 0) < fit.cost) { s.lastEvent = `A night like that costs €${fit.cost.toLocaleString()}. Not this month.`; return s; }
+  // The button has said "25 energy" since the day it was written and nothing ever took it,
+  // so hosting was the one night out in the game that was free. The label is the design; the
+  // missing spend was the bug. Found by an outside audit of every button against its system.
+  if (!canAfford(s, COST.party)) { s.lastEvent = tooTired(s, COST.party); return s; }
+  spend(s, COST.party);
   s.cash -= fit.cost; s._wentOut = st;
   (s._hosted = s._hosted || []).push(st); s._hosted = s._hosted.filter((t) => st - t < 12);
   const ev = { id: uid(s, 'ev'), tier: 'yours', venue: (HOUSING[s.housing] || {}).label || 'your place', host: s.name, hostId: null };

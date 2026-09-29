@@ -109,7 +109,8 @@ function Children({ g, spouse }) {
     <div style={{ fontSize: 11, fontWeight: 900, letterSpacing: '.09em', textTransform: 'uppercase', color: theme.muted, margin: '4px 0 7px' }}>
       Children {livingChildren(g).length ? `· ${livingChildren(g).length}` : ''}
     </div>
-    {spouse && <button onClick={() => dispatch(tryForBaby)} disabled={onCooldown(g, 'baby') || odds <= 0} style={btn(onCooldown(g, 'baby') || odds <= 0)}>
+    {/* life/children.js refuses without somewhere to put a child; the button did not ask. */}
+    {spouse && <button onClick={() => dispatch(tryForBaby)} disabled={onCooldown(g, 'baby') || odds <= 0 || !canRaiseChild(g)} style={btn(onCooldown(g, 'baby') || odds <= 0 || !canRaiseChild(g))}>
       {odds <= 0 ? 'Not on your own' : onCooldown(g, 'baby') ? 'Give it a month' : `Try for a baby · ${odds}%`}
     </button>}
     {note && <div style={{ fontSize: 11.5, color: odds <= 0 ? theme.bad : theme.gold, marginTop: 6, lineHeight: 1.45 }}>{note}</div>}
@@ -127,7 +128,7 @@ function Children({ g, spouse }) {
         </div>
       </div>
     ) : (
-      <button onClick={() => dispatch(applyToAdopt)} disabled={(g.cash || 0) < cost}
+      <button onClick={() => dispatch(applyToAdopt)} disabled={(g.cash || 0) < cost || !canRaiseChild(g) || livingChildren(g).length >= 5}
         style={{ ...btn((g.cash || 0) < cost), marginTop: 8, background: (g.cash || 0) < cost ? 'rgba(120,110,150,.15)' : 'rgba(158,116,255,.16)', color: (g.cash || 0) < cost ? '#6b6390' : '#d9cffa' }}>
         {(g.cash || 0) < cost ? `Adopt · €${cost.toLocaleString()}` : `Apply to adopt · €${cost.toLocaleString()} · ${adoptionOdds(g)}%`}
       </button>

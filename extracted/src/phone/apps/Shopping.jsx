@@ -57,7 +57,9 @@ function Pharmacy({ g, accent }) {
           {p.scales && cost > p.cost ? <span style={{ color: theme.bad }}> They quote you off what you have.</span> : ''}</div>
         <div style={{ display: 'flex', gap: 7 }}>
           <button onClick={() => dispatch(buyPills, key, 1)} disabled={broke} style={btnStyle(accent, 'pri', broke)}>{broke ? 'Too expensive' : 'Buy'}</button>
-          <button onClick={() => dispatch(usePills, key)} disabled={have <= 0 || useless} style={btnStyle(accent, '', have <= 0 || useless)}>{label}</button>
+          {/* life/health.js puts an antidepressant back when there is nothing to treat and
+              when you have already taken them this month. The shelf never asked either. */}
+          <button onClick={() => dispatch(usePills, key)} disabled={have <= 0 || useless || (key === 'antidep' && (!g.depression || g.depression.medsThisMonth))} style={btnStyle(accent, '', have <= 0 || useless || (key === 'antidep' && (!g.depression || g.depression.medsThisMonth)))}>{label}</button>
         </div>
       </div>); })}
   </div>);
@@ -145,7 +147,9 @@ function Salon({ g, accent }) {
       </div>); })}
     <div style={{ fontSize: 11, fontWeight: 900, letterSpacing: '.09em', textTransform: 'uppercase', color: theme.muted, margin: '14px 0 8px' }}>Colour · €60</div>
     <div style={{ ...card, display: 'flex', gap: 9, alignItems: 'center', flexWrap: 'wrap' }}>
-      {HAIR_COLORS.map((c) => (<div key={c} onClick={() => dispatch(setHairColour, c)} style={{ width: 28, height: 28, borderRadius: '50%', background: c, cursor: 'pointer',
+      {/* €60 a change, which life/appearance.js has always charged and the swatch never
+          checked — and the colour you already have does nothing at all. */}
+      {HAIR_COLORS.map((c) => (<div key={c} onClick={() => { if (c !== g.look?.hairColor && (g.cash || 0) >= 60) dispatch(setHairColour, c); }} style={{ width: 28, height: 28, borderRadius: '50%', background: c, opacity: c === g.look?.hairColor || (g.cash || 0) >= 60 ? 1 : .35, cursor: c !== g.look?.hairColor && (g.cash || 0) >= 60 ? 'pointer' : 'default',
         border: g.look?.hairColor === c ? `2px solid ${theme.gold}` : '2px solid rgba(255,255,255,.14)' }} />))}
     </div>
   </div>);

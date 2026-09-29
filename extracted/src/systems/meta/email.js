@@ -103,7 +103,10 @@ export function emailTick(s) {
     && !p.optioned && !p._optionAsked && (p.months - p.monthsLeft) >= 1 && chance(45)) {
     p._optionAsked = true;
     const bonus = Math.round((p.salary || 0) * 0.15);
-    push(s, { from: 'Business affairs', subj: `Option agreement — ${p.title}`, tag: 'option', kind: 'contract', title: p.title,
+    // By id as well as by title. The paper found the picture by name, so renaming a
+    // production between the letter arriving and signing it meant the money cleared, the
+    // letter vanished, and the option was never taken — the one thing the paper was for.
+    push(s, { from: 'Business affairs', subj: `Option agreement — ${p.title}`, tag: 'option', kind: 'contract', title: p.title, setId: p.id,
       body: `The studio would like an option on two further ${p.title} pictures at your current fee of €${(p.salary || 0).toLocaleString()}. €${bonus.toLocaleString()} on signature, now. If the picture performs, the sequels are made and your fee is the fee in this letter while everybody else's goes up. If it does not, nothing happens and you keep the money. It lapses at wrap.`,
       cta: [{ label: `Sign · €${bonus.toLocaleString()} now`, option: 'sign', pay: bonus, reply: `Signed. €${bonus.toLocaleString()} clears the same afternoon. Two more, at this fee, if they want them.` },
         { label: 'Refuse — keep the raise', option: 'refuse', reply: 'You pass. If there is a sequel you will be negotiating it like everybody else — which is the point.' }] });
@@ -158,11 +161,19 @@ export function emailAct(s, id, i) {
   const c = m.cta && m.cta[i]; if (!c) return s;
   let out = c, head = '';
   if (c.check) { const odds = 30 + (s[c.check.stat] || 0) * 0.5; const ok = chance(odds); out = ok ? (c.good || {}) : (c.bad || {}); head = ok ? '✅ ' : '❌ '; }
+  const sets = s.productions && s.productions.length ? s.productions : (s.production ? [s.production] : []);
+  // The picture the paper is about, found by id first and by title only for letters written
+  // before the id was stored on them. It used to be title alone, so renaming a production
+  // between the letter arriving and signing it meant the money cleared, the letter vanished,
+  // and the option was never taken — which is the only thing the letter was for.
+  const optioned = sets.find((p) => m.setId && p.id === m.setId) || sets.find((p) => p.title === m.title);
+  // And this has to come BEFORE the money, which is where it sat the first time I wrote it
+  // and the reason a test caught it: a paper about a picture that is gone paid out anyway.
+  if (c.option === 'sign' && !optioned) { s.lastEvent = 'That paper is about a picture that is not there any more. Nobody is going to countersign it.'; return s; }
   if (typeof out.pay === 'number' || typeof c.pay === 'number') s.cash = (s.cash || 0) + (out.pay || c.pay || 0);
   if (c.clear === 'rent') s.rentMissed = 0;
   if (c.sign === 'agent') signAgent(s, m.agentOffer);
-  const optioned = (s.productions && s.productions.length ? s.productions : (s.production ? [s.production] : [])).find((p) => p.title === m.title);
-  if (c.option === 'sign' && optioned) { optioned.optioned = true; optioned.optionParts = 3; addTimeline(s, `Signed an option on two more ${m.title} pictures at €${(optioned.salary || 0).toLocaleString()}.`); }
+  if (c.option === 'sign' && optioned) { optioned.optioned = true; optioned.optionParts = 3; addTimeline(s, `Signed an option on two more ${optioned.title} pictures at €${(optioned.salary || 0).toLocaleString()}.`); }
   if (c.option === 'refuse') addTimeline(s, `Refused the option on ${m.title}. Any sequel gets negotiated fresh.`);
   if (c.decline === 'agent') declineAgent(s);
   // The casting email IS the offer. Answering it here answers it in Messages too.

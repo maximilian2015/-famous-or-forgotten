@@ -203,7 +203,9 @@ export function smsTick(s) {
   const inside = [s.partner, ...(s.family || []).filter((f) => f.alive && f.relation === 'Spouse')].filter((p) => p && connected(p) && (p.relationship || 0) >= 60)[0];
   if (inside && !pending(s, 'room') && !cooling(s, 'room') && (s.offers || []).length < 2 && chance(4)) {
     push(s, { from: inside.name, pid: inside.id, tag: 'room', text: pick(ROOM),
-      replies: [{ label: 'Go', ap: 1, act: 'room', reply: 'You go. By dessert you have a part in a studio picture, and everybody at the table knows why.' }, { label: 'Not like this', rel: -2, mental: 2, reply: `${first(inside)}: "Suit yourself." They mean it kindly. Probably.` }] });
+      // smsReply turns any truthy ap into COST.sms, so the 1 here was a lie on the button:
+      // it showed "1 energy" and took ten. Write the number the game actually charges.
+      replies: [{ label: 'Go', ap: COST.sms, act: 'room', reply: 'You go. By dessert you have a part in a studio picture, and everybody at the table knows why.' }, { label: 'Not like this', rel: -2, mental: 2, reply: `${first(inside)}: "Suit yourself." They mean it kindly. Probably.` }] });
     coolDown(s, 'room', 9);
   }
   // Old texts you never answered stop being texts.
