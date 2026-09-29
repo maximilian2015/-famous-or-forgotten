@@ -250,7 +250,9 @@ export function alistKey(s) {
 }
 export function iconKey(s) {
   if ((s.worldHits || 0) > 0) return 'hit';
-  if (((s.awards && s.awards.wins) || []).length > 0) return 'asker';
+  // Performance wins only: a Best Picture the producers collected is not your key to this
+  // room. career/awards.js yourAskers
+  if (((s.awards && s.awards.wins) || []).some((w) => w.category !== 'picture')) return 'asker';
   return null;
 }
 // And the room has to have a chair. Fame is comparative now that there is a world: the

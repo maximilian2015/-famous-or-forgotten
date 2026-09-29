@@ -303,13 +303,24 @@ const FESTIVALS = ['Park City', 'the Lido', 'the Croisette', 'Locarno', 'Toronto
 // Measured before this was tuned: a nobody's festival film rates in the fifties, and at the
 // first numbers 111 of 117 went home unsold — a road nobody would take. Most still do go
 // home with nothing; a good one has a real chance, and a very good one is a coin toss.
-export function festivalOdds(rating) {
+// Maxi, looking at his own name above the title on a 7.2 at the Croisette and the words NO
+// BUYER underneath it: "what does no buyer mean if you are a star — where is the
+// inconsistency, haha." There it was: this took the rating and nothing else, so it had no
+// idea who was in the film. At 7.2 that is a forty-three per cent chance of going home
+// with nothing, for a picture with a name on the poster that somebody can sell a territory
+// on. A distributor buys the poster at least as much as the film — being the reason a small
+// picture finds a buyer is most of what a star is worth to one, and it is why they are cast.
+//
+// The jury is untouched, because a jury watches the film. Fame buys the deal, never the prize.
+export function festivalOdds(rating, star = 0, lead = true) {
   const prize = rating >= 84 ? 48 : rating >= 76 ? 32 : rating >= 68 ? 18 : rating >= 60 ? 8 : 2;
-  const sold = rating >= 76 ? 62 : rating >= 66 ? 48 : rating >= 56 ? 32 : rating >= 46 ? 16 : 5;
-  return { prize, sold };
+  const base = rating >= 76 ? 62 : rating >= 66 ? 48 : rating >= 56 ? 32 : rating >= 46 ? 16 : 5;
+  // Above the title it is the whole pitch; further down the poster it is a line in the deck.
+  const pull = (lead ? star : star * 0.35) * 0.75;
+  return { prize, sold: Math.max(0, Math.min(97, Math.round(base + pull))) };
 }
-function festivalResult(rating) {
-  const o = festivalOdds(rating);
+function festivalResult(rating, star = 0, lead = true) {
+  const o = festivalOdds(rating, star, lead);
   if (chance(o.prize)) return 'prize';
   return chance(o.sold) ? 'sold' : 'unsold';
 }
@@ -338,7 +349,7 @@ function open(s, rel) {
   // it, a buyer sells it a little, and no buyer means there is nothing to open.
   let fest = null;
   if (rel.scale === 'festival') {
-    fest = { name: pick(FESTIVALS), result: festivalResult(rel.rating) };
+    fest = { name: pick(FESTIVALS), result: festivalResult(rel.rating, s.fame || 0, rel.tier !== 'supporting') };
     if (fest.result === 'prize') { rel.appealMod = (rel.appealMod ?? 1) * 2.2; rel.rating = clamp(rel.rating + 3, 0, 96); }
     else if (fest.result === 'sold') rel.appealMod = (rel.appealMod ?? 1) * 1.3;
   }

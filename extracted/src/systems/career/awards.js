@@ -277,12 +277,26 @@ export function openSeason(s) {
   };
 }
 // The line that goes next to your name. A nominee while the season runs; a winner forever.
+// Best Picture belongs to the people who made the picture. Maxi: "it has to say Asker for
+// best movie." It does now, and the reason it matters is not the wording: every one of
+// these lists counted a Best Picture win as an award YOU had won. A film of yours taking
+// the biggest prize of the night made you an Asker winner, put a statuette against the
+// record that says three is a lifetime, and opened the door to Icon — for a prize the
+// producers collected while you clapped. Being IN it is worth a great deal and it is not
+// the same thing, and everybody in that room knows the difference.
+export function yourAskers(s) { return ((s.awards || {}).wins || []).filter((w) => w.category !== 'picture'); }
+export function pictureAskers(s) { return ((s.awards || {}).wins || []).filter((w) => w.category === 'picture'); }
+
 export function askerLine(s) {
-  const wins = ((s.awards || {}).wins || []).length;
+  const wins = yourAskers(s).length;
+  const pics = pictureAskers(s).length;
   const season = openSeason(s);
   const nominated = season && season.nominations.length;
   if (nominated) return { text: wins ? `Asker winner · nominated again` : 'Asker nominee', hot: true };
   if (wins) return { text: wins > 1 ? `${wins}-time Asker winner` : 'Asker winner', hot: false };
+  // You did not win one. A film you were in did, which is a different sentence and still
+  // one worth saying.
+  if (pics) return { text: pics > 1 ? `${pics} Best Picture winners` : 'In a Best Picture winner', hot: false };
   return null;
 }
 
@@ -437,7 +451,7 @@ export function runNominations(s) {
   const pending = noms.map((n) => {
     const you = { id: 'you', name: s.name || 'You', work: n.credit.title, strength: n.strength,
       respect: s.respect || 50, losses: s.awards.losses || 0, campaign: n.credit.campaignShare || 0,
-      askers: ((s.awards || {}).wins || []).length, them: false };
+      askers: yourAskers(s).length, them: false };
     const taken = new Set([n.credit.title, ...work.map((c) => c.title)]);
     const field = fieldFor(s, year, n.category, you, taken);
     const odds = oddsFor(field);
@@ -661,7 +675,9 @@ export function ceremonyTick(s) {
 // The doors an Asker opens. Read by the casting board — standing can substitute for fame,
 // which is the only route into prestige work that does not run through blockbusters.
 export function askerStanding(s) {
-  const wins = (s.awards?.wins || []).length;
+  const wins = yourAskers(s).length;
   const noms = (s.awards?.nominations || []).length;
-  return wins * 22 + Math.min(18, noms * 5);
+  // A Best Picture winner on your shelf is worth something to a casting office — less
+  // than one you carried home, more than nothing.
+  return wins * 22 + pictureAskers(s).length * 7 + Math.min(18, noms * 5);
 }

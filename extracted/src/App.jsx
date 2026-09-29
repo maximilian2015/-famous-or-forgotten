@@ -2705,7 +2705,10 @@ function CreditRow({ group, g }) {
           {/* Where it screened, and what happened there. See release.js, the festival. */}
           {c.festival && <span style={{ fontWeight: 900, letterSpacing: '.06em', color: c.festival.result === 'prize' ? theme.gold : c.festival.result === 'sold' ? theme.good : theme.muted }}>
             🎞️ {String(c.festival.name).replace(/^the /, '').toUpperCase()} · {c.festival.result === 'prize' ? 'PRIZE' : c.festival.result === 'sold' ? 'SOLD' : 'NO BUYER'}</span>}
-          {group.askers > 0 && <span style={{ fontWeight: 900, letterSpacing: '.06em', color: theme.gold }}>🏆 ASKER{group.askers > 1 ? ` ×${group.askers}` : ''}{group.askerPicture > 0 ? ' · BEST PICTURE' : ''}</span>}
+          {/* Two different prizes. One of them is yours and one of them is the film's, and a
+              credit that won only Best Picture must not read as an award you carried home. */}
+          {group.askers - group.askerPicture > 0 && <span style={{ fontWeight: 900, letterSpacing: '.06em', color: theme.gold }}>🏆 ASKER{group.askers - group.askerPicture > 1 ? ` ×${group.askers - group.askerPicture}` : ''}</span>}
+          {group.askerPicture > 0 && <span style={{ fontWeight: 900, letterSpacing: '.06em', color: theme.gold }}>🏆 ASKER FOR BEST PICTURE</span>}
           {/* Being up for one follows a picture around for ever too, and nothing said so. */}
           {group.askers === 0 && group.askerNoms > 0 && <span style={{ fontWeight: 900, letterSpacing: '.06em', color: theme.gold, opacity: .75 }}>🏆 ASKER NOMINEE{group.askerNoms > 1 ? ` ×${group.askerNoms}` : ''}</span>}
           {c.comeback > 0 && <span style={{ fontWeight: 900, letterSpacing: '.06em', color: theme.accent }}>↩ COMEBACK · AFTER {c.comeback} YEARS</span>}

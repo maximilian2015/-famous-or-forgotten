@@ -54,7 +54,10 @@ const st = (over) => ({ version: 'x', name: 'Mira Vale', ageY: 35, stage: 'caree
   ok('a star is asked to be the face of something', !!got, got && got.offers[0].projectTitle);
   const o = got.offers[0];
   ok('it is a real paper: a fee, months, a year of nobody else', o.salary > 100000 && o.months >= 1 && o.brandFor === 12 && o.kind === 'brand', JSON.stringify({ fee: o.salary, months: o.months }));
-  ok('and it says what it is', /want you to be the face of/.test(o.note));
+  // Two papers now: the ordinary one and the campaign that runs in one country only, which
+  // is worded differently because it IS a different deal. Both have to say what it is.
+  ok('and it says what it is', /want you (to be the face of|for)/.test(o.note), o.note.slice(0, 70));
+  if (o.abroad) ok('  and a foreign-only paper says where', o.note.includes(o.abroad), o.note.slice(0, 70));
   const before = got.offers.length;
   acceptOffer(got, o.id);
   ok('taking it locks the other brands out for a year', (got._brandUntil || 0) === got.year * 12 + got.month + 12 && got.offers.length < before);
