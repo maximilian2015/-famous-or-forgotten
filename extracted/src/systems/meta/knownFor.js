@@ -78,7 +78,13 @@ export function theFlops(s) {
 export function knownFor(s) {
   const all = [...(s.filmography || []), ...(s.discography || [])].filter((c) => !minor(c) && !c.running);
   const year = s.year || 0;
-  const recent = all.filter((c) => year - (c.year || 0) <= 4 && hitWeight(c, s) > 0)
+  // Four years is the right window for a hit: a blockbuster that did well in 2068 is not
+  // what anybody says about you in 2075. But Maxi: "if my film won an Asker it should say
+  // so, and it should become what I am known for." It should, and it should never stop.
+  // An Asker and a world hit are the two things that do not age — they are the sentence in
+  // front of your name for the rest of your life, so they stay in the running for ever and
+  // everything else has its four years. hitWeight scores both of those at 4 and above.
+  const recent = all.filter((c) => hitWeight(c, s) > 0 && (hitWeight(c, s) >= 4 || year - (c.year || 0) <= 4))
     .sort((a, b) => hitWeight(b, s) - hitWeight(a, s) || (b.year || 0) - (a.year || 0));
   const hit = recent[0] || all.find((c) => hitWeight(c, s) > 0);
   if (hit) return { title: hit.title, year: hit.year, hit: true, why: whyOf(s, hit) };

@@ -92,6 +92,14 @@ export function offersTick(s) {
     // A signed paper does not expire, and one that is with them is waiting on them, not you.
     if (o.signed || (o.contract && o.contract.sent)) { kept.push(o); continue; }
     // A brand that called for the story (stories.js) goes quiet when the story does.
+    // The morality clause, which every one of these contracts has and none of them mentions
+    // out loud. A brand leaves the morning your name is in the wrong kind of headline.
+    if (o.kind === 'brand' && (s.scandal || 0) >= 32) {
+      addTimeline(s, `${o.from || 'The brand'} stopped answering. Nobody will put in writing why.`, true);
+      s.inbox = (s.inbox || []).filter((m) => m.offerId !== o.id); continue;
+    }
+    // And they called because you were visible. Go invisible before you answer and they
+    // have already found somebody else.
     if (o.kind === 'brand' && hype(s) < 30) { addTimeline(s, 'The brand went quiet when you did. The campaign is off.'); s.inbox = (s.inbox || []).filter((m) => m.offerId !== o.id); continue; }
     o.deadline -= 1;
     if (o.deadline > 0) { kept.push(o); continue; }
@@ -115,7 +123,25 @@ export function offersTick(s) {
 // not a day in a studio at this level — it is two months of your year, a year of not being
 // able to sign with anybody else, and a sentence about you that you did not write.
 const HOUSES = ['Maison Cassel', 'Veldt & Sons', 'Aurum', 'Nordhavn', 'Casa Pirelli', 'Halden', 'Sable Frères', 'Iris Tokyo', 'Verano', 'Brennan Athletic'];
-const GOODS = [['a fragrance', 1.35], ['a watch', 1.2], ['a car', 1.15], ['a fashion house', 1.4], ['a bank', 0.85], ['an airline', 0.9], ['a phone', 1.1], ['a soft drink', 0.8], ['a sportswear line', 1.0], ['a supermarket', 0.55]];
+// Maxi: "the brand campaigns should work differently, and the fees should be different,
+// like in life." The money was already roughly a film fee, which is about right for a big
+// endorsement. What was missing is the half that actually matters: WHAT you are selling.
+// Every one of these paid on the same scale and cost the same nothing, so a fashion house
+// and a supermarket were the same decision with different words on them. They are not. A
+// fragrance or a couture house is a compliment and pays like one; a bank, a soft drink or
+// a supermarket pays less AND is a sentence people repeat about you.
+//
+// Third column: what it does to how seriously you are taken.
+const GOODS = [['a fragrance', 1.35, 1], ['a watch', 1.2, 0], ['a car', 1.15, 0], ['a fashion house', 1.4, 1],
+  ['a bank', 0.85, -2], ['an airline', 0.9, -1], ['a phone', 1.1, 0], ['a soft drink', 0.8, -1],
+  ['a sportswear line', 1.0, 0], ['a supermarket', 0.55, -3]];
+
+// The deal nobody at home will ever see. A campaign that runs in one country only pays a
+// great deal more and costs nothing at all, because the people whose opinion you are
+// worried about are not in that country. Half the serious actors of the last forty years
+// have taken one and there is a film about it.
+const ELSEWHERE = ['Japan', 'Korea', 'China', 'Brazil', 'the Gulf'];
+const ONLY_THERE = 22;
 export function maybeBrandOffer(s) {
   if (!inCareer(s)) return;
   const fame = s.fame || 0;
@@ -127,22 +153,31 @@ export function maybeBrandOffer(s) {
   p *= 1 + (s.looks || 50) / 200;
   p *= Math.max(0.3, 1 - (s.scandal || 0) / 120);
   if (!chance(p)) return;
-  const [what, mult] = pick(GOODS);
+  const [what, mult, standing] = pick(GOODS);
+  // One country only, once in five, and it changes both halves of the deal.
+  const abroad = chance(ONLY_THERE) ? pick(ELSEWHERE) : null;
   const house = pick(HOUSES.filter((h) => !(s._brandsDone || []).includes(h))) || pick(HOUSES);
   // Their money is the ad band for your name, and a fragrance pays what a supermarket does not.
   // A brand campaign is priced on the audience you bring to it, and most of that audience
   // is now a number on a profile. This is not a game mechanic; it is how the paper reads.
-  const fee = Math.round((quoteFor(s, 'ad') || 50000) * mult * (0.85 + Math.random() * 0.4) * socialBrandLift(s));
-  const months = fee >= 2000000 ? 2 : 1;
+  const fee = Math.round((quoteFor(s, 'ad') || 50000) * mult * (0.85 + Math.random() * 0.4) * socialBrandLift(s)
+    * (abroad ? 1.6 + Math.random() * 0.8 : 1));
+  // A campaign is a few days in a studio, not a season. What it really costs you is the year
+  // of nobody else's, and what it says about you.
+  const months = 1;
   (s.offers = s.offers || []).push({
     id: uid(s, 'brd'), via: 'brand', kind: 'brand', from: house,
     projectTitle: house + ' — ' + what, role: 'The face', type: 'Brand Campaign', genre: 'Commercial',
     salary: fee, months, fame: 2, prestigeScore: rint(15, 35), tier: 'supporting', scale: 'oneoff',
-    stability: 96, deadline: rint(2, 3), brandFor: 12,
-    note: `${house} want you to be the face of ${what} for a year. ${months} month${months === 1 ? '' : 's'} of shooting, and no other brand while it runs.`,
+    stability: 96, deadline: rint(2, 3), brandFor: 12, standing, abroad,
+    note: abroad
+      ? `${house} want you for ${what}, and only in ${abroad}. It will not run anywhere else and nobody you know will see it. A few days of shooting, no other brand for a year, and considerably more money than the same job at home.`
+      : `${house} want you to be the face of ${what} for a year. A few days of shooting, and no other brand while it runs.`,
   });
-  addTimeline(s, `${house} would like you to be the face of ${what}.`);
-  s.lastEvent = `${house} called your agent. They want your face on ${what} for a year — €${fee.toLocaleString()}, and nobody else's while it runs. The paper is in Messages.`;
+  addTimeline(s, `${house} would like you to be the face of ${what}${abroad ? `, in ${abroad}` : ''}.`);
+  s.lastEvent = abroad
+    ? `${house} called your agent. They want your face on ${what} — in ${abroad}, and only there. €${fee.toLocaleString()}, a few days of it, and not one person whose opinion you care about will ever see it. The paper is in Messages.`
+    : `${house} called your agent. They want your face on ${what} for a year — €${fee.toLocaleString()}, and nobody else's while it runs. The paper is in Messages.`;
 }
 export function maybeGenerateOffer(s) {
   const acc = computeAccess(s);
@@ -168,7 +203,26 @@ export function acceptOffer(s, id) {
   if (o.kind === 'brand') {
     s._brandUntil = (s.year || 0) * 12 + (s.month || 0) + (o.brandFor || 12);
     (s._brandsDone = s._brandsDone || []).push(o.from);
-    if (isStrong(s, 'serious')) { setRespect(s, (s.respect || 0) - 3); addTimeline(s, `The serious actor is selling ${String(o.projectTitle).split('— ')[1] || 'something'}. It was said in print, in those words.`, true); }
+    const thing = String(o.projectTitle).split('— ')[1] || 'something';
+    // A campaign that runs in one country only costs nothing here, which is the whole
+    // reason anybody takes one.
+    if (o.abroad) {
+      addTimeline(s, `Shot a campaign for ${o.from}. It runs in ${o.abroad} and nowhere else.`);
+    } else {
+      // Being the serious one costs three points for any of it — that has always been the
+      // rule and it is the right one; a serious actor in an advertisement is a sentence
+      // people repeat whatever the product is. What you sell decides how much MORE, and how
+      // far you had to fall to sell it. The one exception is the couture house and the
+      // fragrance, which are only ever offered to people they suit and cost nothing.
+      const worth = o.standing || 0;
+      const serious = isStrong(s, 'serious');
+      const base = serious ? (worth > 0 ? 0 : -3) : 0;
+      const extra = worth < 0 ? Math.round(worth * (serious ? 1.4 : 1) * (1 + (s.respect || 0) / 160)) : worth;
+      const drop = Math.max(-12, base + extra);
+      if (drop) setRespect(s, (s.respect || 0) + drop);
+      if (drop < 0) addTimeline(s, `${serious ? 'The serious actor is selling' : 'You are selling'} ${thing}. It was said in print, in those words.`, true);
+      else if (drop > 0) addTimeline(s, `The face of ${thing}. It is the kind of thing that is only offered to people it suits.`);
+    }
   }
   // Anything with a real schedule becomes a shoot you live through — same rule as a
   // casting. Only a day's work resolves in the same click.

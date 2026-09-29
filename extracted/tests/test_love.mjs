@@ -40,7 +40,7 @@ function getTogether(s, wants = 'family') {
   // attempts rather than fourteen, and the closeness is pushed well past the bar each time:
   // with fourteen this helper failed roughly one full-suite run in four and every test after
   // it in the file reported as broken, which is a worse lie than the thing it was testing.
-  for (let i = 0; i < 40 && !s.partner; i++) {
+  for (let i = 0; i < 200 && !s.partner; i++) {
     const inPool = (s.datingPool || [])[0];
     if (inPool) inPool.relationship = Math.max(inPool.relationship || 0, 55);
     // A month between attempts. This used to run all fourteen dates inside one month and
@@ -49,6 +49,10 @@ function getTogether(s, wants = 'family') {
     L.goOnDate(s, 'home', 'suit'); s._cool = {};
     s.month = (s.month + 1) % 12; if (!s.month) s.year++;
   }
+  // And if two hundred tries still produced nobody, say SO, here. Without this the helper
+  // returned null and the next line set a property on it, and a run of bad dice read as a
+  // broken dating system a hundred lines further down the file.
+  if (!s.partner) throw new Error("getTogether: 200 attempts and still nobody — this is the helper, not the system under test");
   return s.partner;
 }
 

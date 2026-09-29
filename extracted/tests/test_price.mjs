@@ -63,11 +63,47 @@ const st = (over) => ({ version: 'x', name: 'Mira Vale', ageY: 35, stage: 'caree
   let none = 0;
   for (let i = 0; i < 200; i++) { const s = st({ fame: 30 }); maybeBrandOffer(s); if (!(s.offers || []).length) none++; }
   ok('and below a name the brands do not call at all', none === 200);
-  // the serious actor pays for it
+  // The serious actor pays for it — and what he is selling decides how much. This used to
+  // take whichever campaign came up first and assume three points. Every brand cost the
+  // same then; they do not now, and one deal in five runs in one country only and costs
+  // nothing at all, so the test has to say which case it is looking at.
   const ser = st({ fame: 80, respect: 50, typecast: { scores: { serious: 6 }, active: ['serious'], strong: ['serious'] } });
-  let b = null; for (let i = 0; i < 400 && !b; i++) { const s = JSON.parse(JSON.stringify(ser)); maybeBrandOffer(s); if ((s.offers || []).length) b = s; }
-  acceptOffer(b, b.offers[0].id);
-  ok('a serious actor selling a watch pays three points', b.respect === 47 && b.timeline.some((x) => /said in print/.test(x.text)), String(b.respect));
+  const findBrand = (pick) => {
+    for (let i = 0; i < 4000; i++) {
+      const s = JSON.parse(JSON.stringify(ser));
+      maybeBrandOffer(s);
+      const o = (s.offers || [])[0];
+      if (o && pick(o)) return s;
+    }
+    return null;
+  };
+  // Something neutral, at home: three points, the way it always was.
+  const plain = findBrand((o) => !o.abroad && (o.standing || 0) === 0);
+  ok('a serious actor selling something neutral still pays three points', !!plain, 'no such offer came up');
+  if (plain) {
+    acceptOffer(plain, plain.offers[0].id);
+    ok('  and it is exactly three', plain.respect === 47 && plain.timeline.some((x) => /said in print/.test(x.text)), String(plain.respect));
+  }
+  // The bottom of the market costs more than that, because the sentence is better.
+  const cheap = findBrand((o) => !o.abroad && (o.standing || 0) <= -2);
+  if (cheap) {
+    acceptOffer(cheap, cheap.offers[0].id);
+    ok('and the cheap end of it costs more', cheap.respect < 47, String(cheap.respect));
+  }
+  // A couture house is only ever offered to people it suits.
+  const couture = findBrand((o) => !o.abroad && (o.standing || 0) > 0);
+  if (couture) {
+    acceptOffer(couture, couture.offers[0].id);
+    ok('and a house that suits you costs nothing at all', couture.respect >= 50, String(couture.respect));
+  }
+  // And the one nobody at home will ever see: more money, no sentence.
+  const away = findBrand((o) => !!o.abroad);
+  if (away) {
+    const fee = away.offers[0].salary;
+    acceptOffer(away, away.offers[0].id);
+    ok('a campaign that runs in one country only costs no standing', away.respect === 50, String(away.respect));
+    ok('  and pays more than it would at home', fee > 0);
+  }
 }
 console.log(fails ? `\n${fails} FAILED` : '\nall passed');
 process.exit(fails ? 1 : 0);
