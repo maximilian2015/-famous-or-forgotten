@@ -5,6 +5,7 @@ import { findClassmates, pokeFriend, spotlightFeed } from '../../systems/social/
 import { followers, fmtFollowers, followerLine, natural, overIndex, postsFor, canPost, post,
   postedThisMonth, canScroll, theScroll, social } from '../../systems/social/posting.js';
 import { inCareer } from '../../engine/stage.js';
+import { reactionsFor, feedMood } from '../../systems/social/reactions.js';
 
 // The account you had at school, later. Maxi: "yes, let us do social media — what role will
 // it play?" The role is in systems/social/posting.js: followers are the only reach in the
@@ -43,6 +44,32 @@ export function Spotlight({ g }) {
             </>)
           : <div style={{ fontSize: 11.5, color: theme.muted, marginTop: 2 }}>{friends.length} connections · keep them close — some go far</div>}
       </div>
+
+      {/* ── what people are saying about the work ──────────────────────────── */}
+      {/* The News app is the business talking about itself. This is people in their
+          kitchens, while it is on, and half of it is about YOU rather than about the
+          thing. systems/social/reactions.js */}
+      {career && (() => {
+        const said = reactionsFor(g, 6);
+        if (!said.length) return null;
+        const mood = feedMood(g);
+        return (<div style={{ marginBottom: 14 }}>
+          <div style={{ fontSize: 11, fontWeight: 900, letterSpacing: '.09em', textTransform: 'uppercase', color: '#ff6ec7', marginBottom: 4 }}>What they are saying</div>
+          {mood && <div style={{ fontSize: 11.5, color: theme.muted, lineHeight: 1.45, marginBottom: 7 }}>{mood}</div>}
+          {said.map((r, i) => (
+            <div key={i} style={{ background: theme.panel, borderRadius: 11, padding: '8px 10px', marginBottom: 6,
+              borderLeft: `2px solid ${r.tone === 'love' ? '#5fe07a' : r.tone === 'cruel' ? theme.bad : theme.line}` }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', gap: 8 }}>
+                <span style={{ fontSize: 11, fontWeight: 800, color: theme.muted }}>{r.handle}</span>
+                <span style={{ fontSize: 10, color: theme.muted, flex: 'none', opacity: .7 }}>
+                  {r.about === 'you' ? 'about you' : String(r.title).replace('⭐ ', '')}
+                </span>
+              </div>
+              <div style={{ fontSize: 12, lineHeight: 1.45, marginTop: 2 }}>{r.text}</div>
+            </div>
+          ))}
+        </div>);
+      })()}
 
       {/* ── posting ─────────────────────────────────────────────────────────── */}
       {career && (<div style={{ marginBottom: 12 }}>
