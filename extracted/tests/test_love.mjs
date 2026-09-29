@@ -36,10 +36,13 @@ function suitor(s, wants, rel = 0) {
 function getTogether(s, wants = 'family') {
   suitor(s, wants, 38);
   s.charisma = 100; s.looks = 100;
-  // Asking is itself a roll, so a run of bad luck must not read as a broken system.
-  for (let i = 0; i < 14 && !s.partner; i++) {
+  // Asking is itself a roll, so a run of bad luck must not read as a broken system. Forty
+  // attempts rather than fourteen, and the closeness is pushed well past the bar each time:
+  // with fourteen this helper failed roughly one full-suite run in four and every test after
+  // it in the file reported as broken, which is a worse lie than the thing it was testing.
+  for (let i = 0; i < 40 && !s.partner; i++) {
     const inPool = (s.datingPool || [])[0];
-    if (inPool && (inPool.relationship || 0) < 38) inPool.relationship = 38;
+    if (inPool) inPool.relationship = Math.max(inPool.relationship || 0, 55);
     // A month between attempts. This used to run all fourteen dates inside one month and
     // lean on the old floor that made every repeat worth at least a point — which is
     // exactly the "keep clicking" the damping is there to stop. life/bonds.js

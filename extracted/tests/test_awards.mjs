@@ -38,7 +38,11 @@ console.log('      strength — drama 9.1 indie ' + indie.toFixed(0) + ' · horr
 console.log('      television is judged apart — ' + branchOf('prestige') + ' vs ' + branchOf('feature'));
 
 // ── the three things that move a vote ─────────────────────────────────────────
-ok('a campaign helps but cannot buy it', campaignFactor(1) > 1.3 && campaignFactor(1) < 1.7, String(campaignFactor(1)));
+// The campaign used to be worth more on the night than it was on the list, which is the
+// wrong way round: a season of screeners and lunches is how a name gets ON to the list, and
+// the night is decided by whose turn it is. So this is deliberately small now, and the
+// nomination carries the weight instead — see the block below.
+ok('a campaign barely moves the night', campaignFactor(1) > 1.1 && campaignFactor(1) < 1.35, String(campaignFactor(1)));
 ok('standing matters', standingFactor(90) > standingFactor(30));
 ok('losing builds up credit', overdueFactor(4) > overdueFactor(0), `${overdueFactor(0)} → ${overdueFactor(4)}`);
 ok('but being overdue is not a guarantee', overdueFactor(20) <= 1.5, String(overdueFactor(20)));

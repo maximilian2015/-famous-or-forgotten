@@ -11,6 +11,7 @@ import { setQuote, setFame, setRespect } from '../meta/status.js';
 import { addTimeline, showMoment } from '../../engine/timeline.js';
 import { actorById, maybeIcon } from '../world/world.js';
 import { addHype } from '../meta/hype.js';
+import { COST, canAfford, spend, tooTired } from '../../engine/energy.js';
 
 const clamp = (v, a = 0, b = 100) => Math.max(a, Math.min(b, v));
 // The same diminishing curve the premieres use. Five nominations at a flat +6 each put a
@@ -63,10 +64,106 @@ export function awardStrength(c) {
 // prestige performance (strength around 200) comes out near eight per cent a film; a
 // masterpiece (330+) near a quarter; a decent, unremarkable picture near nothing.
 export const NOM_DIVISOR = 15.5, NOM_CAP = 52;
-export function nominationOdds(strength, picture = false) {
+export function nominationOdds(strength, picture = false, campaign = 0) {
   const s = Math.max(0, strength || 0);
   const p = Math.pow(s, 1.3) / (picture ? NOM_DIVISOR * 0.86 : NOM_DIVISOR);
-  return clamp(p, 0, picture ? NOM_CAP + 5 : NOM_CAP);
+  // And this is what a campaign is actually for. Maxi paid six million out of his own pocket
+  // on an OFFER, months before the picture was shot, and it did nothing whatever for the
+  // nomination — it moved the win by six points, if he ever got that far. Backwards. Every
+  // screener, lunch, panel and trade advertisement in this business exists to get a name onto
+  // the list. What happens on the night is decided by the story: whose turn it is, who was
+  // overlooked last time, who behaved.
+  return clamp(p * (1 + clamp(campaign, 0, 1) * CAMPAIGN_NOM), 0, picture ? NOM_CAP + 5 : NOM_CAP);
+}
+// A full season of it is worth about seventy per cent more chance of being read out. That is
+// a great deal, and it should be: it is the single biggest thing anybody can do about an
+// award, and it costs three months of your year.
+export const CAMPAIGN_NOM = 0.7;
+
+// ── the campaign, rebuilt ─────────────────────────────────────────────────────
+// Maxi, twice: "the Asker campaign still takes my money and I do not understand how it
+// works." Right both times, and the old one was wrong in three separate ways: you bought it
+// on the OFFER, blind, before the picture existed; it took fifteen per cent of your fee out
+// of your own pocket; and it did nothing for the nomination, which is the only thing a
+// campaign is for.
+//
+// A distributor pays for its own awards campaign, because the award is theirs too. What it
+// wants from the actor is the one thing it cannot buy: your time. Three months of lunches,
+// panels, forty interviews and a moderated Q&A after every screening, in the months you would
+// otherwise be working or living. That is the whole cost and it is a real one.
+//
+// The exception is the picture nobody is spending money on — an indie, a festival film, a
+// small thing that got good notices and has no marketing behind it. People do fund those
+// themselves. It costs actual money, and it does less, because you are one person and a
+// studio awards department is forty.
+export const CAMPAIGN_ENERGY = 15, CAMPAIGN_MONTHS = 3, CAMPAIGN_FLOOR = 62;
+const BACKED = { feature: 1, prestige: 1, blockbuster: 1 };
+export function studioBacks(scale) { return !!BACKED[scale]; }
+// What a campaign you fund yourself costs. Priced off what a small picture is worth, not off
+// a blockbuster fee: nobody spends a tentpole salary on a festival film.
+export function ownCampaignCost(s) { return Math.max(20000, Math.round((s.quote || 200000) * 0.08)); }
+
+// Which of your credits could still be campaigned this season: out this year, good enough
+// that somebody would bother, and the list has not been read out yet.
+function isTVScale(scale) { return scale === 'recurring' || scale === 'episode' || scale === 'oneoff'; }
+export function campaignable(s) {
+  if ((s.month || 0) >= NOMS_MONTH) return [];
+  return (s.filmography || []).filter((c) => (c.year || 0) === (s.year || 0)
+    && !c.running && (c.rating || 0) >= CAMPAIGN_FLOOR && !c.campaign && !isTVScale(c.scale));
+}
+export function campaignKind(c) { return studioBacks(c.scale) ? 'studio' : 'own'; }
+export function canCampaign(s, c) {
+  if (!c) return { ok: false, why: '' };
+  if ((s._campaign || {}).title) return { ok: false, why: 'You are already doing one of these. Two at once and you are nowhere properly.' };
+  if (campaignKind(c) === 'own' && (s.cash || 0) < ownCampaignCost(s)) return { ok: false, why: 'Nobody is putting money behind this one but you, and it costs €' + ownCampaignCost(s).toLocaleString() + '.' };
+  if (!canAfford(s, CAMPAIGN_ENERGY)) return { ok: false, why: tooTired(s, CAMPAIGN_ENERGY) };
+  return { ok: true, why: '' };
+}
+export function startCampaign(s, title) {
+  const c = campaignable(s).find((x) => x.title === title);
+  const fit = canCampaign(s, c);
+  if (!fit.ok) { if (fit.why) s.lastEvent = fit.why; return s; }
+  const kind = campaignKind(c);
+  if (kind === 'own') s.cash = (s.cash || 0) - ownCampaignCost(s);
+  s._campaign = { title, kind, months: 0, started: (s.year || 0) * 12 + (s.month || 0) };
+  c.campaign = kind;
+  addTimeline(s, 'Started the season for "' + String(title).replace('⭐ ', '') + '".');
+  s.lastEvent = kind === 'studio'
+    ? 'The awards people have a plan for you and it runs until the nominations: lunches, panels, a moderated Q&A after every screening, and the same four questions from people who have not seen it. The studio is paying for all of it. What it costs you is the months.'
+    : 'Nobody is spending a penny on this picture, so you are. It buys screeners, an advertisement in the trades that everybody claims not to read, and somebody who knows which forty people matter. Less than a studio would spend, and more than you would like.';
+  return s;
+}
+// Monthly. Every month you actually turn up is a month of it; miss it twice and it stops
+// being a campaign and becomes a poster.
+export function campaignTick(s) {
+  const k = s._campaign;
+  if (!k) return s;
+  if ((s.month || 0) >= NOMS_MONTH || k.months >= CAMPAIGN_MONTHS) { s._campaign = null; return s; }
+  if (!canAfford(s, CAMPAIGN_ENERGY)) {
+    k.missed = (k.missed || 0) + 1;
+    if (k.missed >= 2) { addTimeline(s, 'You stopped turning up for "' + String(k.title).replace('⭐ ', '') + '". It is a poster now.', true); s._campaign = null; }
+    return s;
+  }
+  spend(s, CAMPAIGN_ENERGY);
+  k.months += 1;
+  const c = (s.filmography || []).find((x) => x.title === k.title);
+  if (c) c.campaignMonths = k.months;
+  return s;
+}
+// How much of one you actually did, nought to one. Your own money is worth a little over
+// half, because a studio awards department is forty people and you are one.
+export function campaignStrength(c) {
+  if (!c || !c.campaign) return 0;
+  const done = Math.min(CAMPAIGN_MONTHS, c.campaignMonths || 0) / CAMPAIGN_MONTHS;
+  return done * (c.campaign === 'studio' ? 1 : 0.55);
+}
+export function liveCampaign(s) {
+  const k = s._campaign;
+  if (!k) return null;
+  return { ...k, left: Math.max(0, CAMPAIGN_MONTHS - k.months), cost: CAMPAIGN_ENERGY,
+    line: k.kind === 'studio'
+      ? 'The studio is paying for it. What it wants is your calendar.'
+      : 'You are funding this one yourself, which everybody in the room will know.' };
 }
 
 // Lead and supporting are judged apart, so a small part in a great film is a real route in.
@@ -124,7 +221,9 @@ function makeRival(strength, taken) {
 // Not "highest score wins" — that would make the ceremony a formality and turn the whole
 // game into rating arithmetic. Not a coin toss either. A weighted draw, with the reasons
 // visible to the player before it happens.
-export function campaignFactor(spentShare) { return 1 + Math.min(0.55, (spentShare || 0) * 0.55); }
+// Smaller than it was. A campaign gets you ON to the list; what happens on the night is
+// whose turn it is, who was overlooked last time, and who behaved themselves.
+export function campaignFactor(spentShare) { return 1 + Math.min(0.28, (spentShare || 0) * 0.28); }
 export function standingFactor(respect) { return 0.75 + clamp(respect, 0, 100) / 200; }
 // The room eventually decides it is somebody's turn. This is why losing four times is
 // worth something rather than nothing.
@@ -312,13 +411,13 @@ export function runNominations(s) {
     // real one: Meryl Streep has twenty-one nominations across fifty years and that is the
     // record; a working prestige career should see the lists a handful of times, not every
     // September. A flat roll with a cap at 45% put a name on the list one year in two.
-    if (chance(nominationOdds(strength))) {
+    if (chance(nominationOdds(strength, false, campaignStrength(c)))) {
       noms.push({ credit: c, category: categoryFor(c), branch: branchOf(c.scale), strength });
     }
     // The film itself can be up for the night's biggest award whether or not you are.
     // It is harder to get into and it is not really about you — but it is the one that
     // makes a good year feel like a good year.
-    if (chance(nominationOdds(strength, true))) {
+    if (chance(nominationOdds(strength, true, campaignStrength(c)))) {
       noms.push({ credit: c, category: 'picture', branch: branchOf(c.scale), strength: strength * 0.9 });
     }
   }

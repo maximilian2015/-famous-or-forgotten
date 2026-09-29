@@ -154,7 +154,7 @@ export function boxOfficeFor(s, rel) {
   // Tickets are sold to the room, not to the column. Three quarters of what a picture
   // takes is what the audience made of it; the reviews are the other quarter, which is
   // about how much they are worth on an opening weekend.
-  const sells = rel.audience != null ? rel.audience * 0.75 + (rel.rating || 0) * 0.25 : rel.rating;
+  const sells = rel.reception != null ? rel.reception * 0.75 + (rel.rating || 0) * 0.25 : rel.rating;
   return grossFor({ scale: rel.scale, rating: sells, genre: rel.genre, fame, trend: rel.genre === hotGenre(s), appealMod: rel.appealMod ?? 1 });
 }
 export function viewersFor(s, rel) {
@@ -192,7 +192,19 @@ function previousAudience(s, rel) {
 // Did it make its money back? This is what the industry actually remembers.
 export function budgetFor(rel) { return Math.round((BUDGET[rel.scale] || 0) * 1000000); }
 export function verdictOf(rel) {
-  if (!isFilm(rel.scale)) return rel.rating >= 78 ? 'watched' : rel.rating >= 55 ? 'seen' : 'ignored';
+  if (!isFilm(rel.scale)) {
+    // Television is judged on how many turned up, not on the column. Maxi: "thirty-seven
+    // million are watching a hit, and the game is calling it ignored." Quite. A procedural
+    // nobody reviews kindly and everybody watches is the most-seen thing on television, and
+    // "ignored" should mean what the word means: nobody was there.
+    const drew = rel.endViewers || rel.viewers || 0;
+    // Before the run has finished there is no audience yet, so the score stands in for it.
+    if (!drew) return rel.rating >= 78 ? 'watched' : rel.rating >= 55 ? 'seen' : 'ignored';
+    const pull = drew / (slotNorm(rel.type) || 2.6);
+    if (pull >= 1.35 || (pull >= 0.95 && (rel.rating || 0) >= 72)) return 'watched';
+    if (pull >= 0.7) return 'seen';
+    return 'ignored';
+  }
   const budget = budgetFor(rel);
   if (!budget) return 'seen';
   const ratio = (rel.boxOffice || 0) / budget;
@@ -337,7 +349,14 @@ function open(s, rel) {
   // has seen it. Maxi: "the system remembers it was a good picture and gives benefits."
   const known = ((rel.part || 1) > 1 || (rel.season || 0) > 1) ? 1.12 : 1;
   // What the room made of it. Asked before the money, because the money follows it.
-  rel.audience = audienceFor(s, rel);
+  // NOT onto rel.audience. Maxi, looking at a show rated 4.7 that forty-six million people
+  // apparently watched: "that does not happen in life." It does not, and it was not happening
+  // here either — it was a unit collision I introduced. Two different things were landing on
+  // the same field: showAudience() puts the viewers of a running show you JOINED there, in
+  // millions, and audienceFor() returns how the crowd took it, out of a hundred. This line
+  // overwrote the millions with the score, and viewersFor() then read the score as millions.
+  // audienceFor starts at 46, which is exactly the number on his screen.
+  rel.reception = audienceFor(s, rel);
   if (fest && fest.result === 'unsold') rel.finalGross = 0;
   else if (film) rel.finalGross = Math.round(boxOfficeFor(s, rel) * tourMultiplier(rel) * known * remindLift(rel));
   else {
@@ -348,7 +367,7 @@ function open(s, rel) {
     // decides on. See career/chapter.js holdFactor.
     const open = Math.max(0.1, Math.round(viewersFor(s, rel) * tourMultiplier(rel) * known * remindLift(rel) * 10) / 10);
     // A season people enjoy holds its audience whatever the column said about it.
-    const liked = 1 + ((rel.audience ?? rel.rating) - (rel.rating || 0)) / 260;
+    const liked = 1 + ((rel.reception ?? rel.rating) - (rel.rating || 0)) / 260;
     const end = Math.max(0.1, Math.round(open * holdFactor(rel.rating, rel) * liked * 10) / 10);
     rel.openViewers = open; rel.endViewers = end;
     rel.viewers = Math.max(0.1, Math.round(((open + end) / 2) * 10) / 10);   // millions, one decimal — rounding to a whole made a bad soap draw nobody
@@ -367,7 +386,9 @@ function open(s, rel) {
     running: true, weeks: 0, weeksTotal: runWeeks(rel, verdict), openedAt: (s.year || 0) * 12 + (s.month || 0),
     boxOffice: 0, viewers: rel.viewers || 0, openViewers: rel.openViewers || 0, endViewers: rel.endViewers || 0,
     // What the room thought, which is not what the column thought. See audienceFor above.
-    audience: rel.audience != null ? rel.audience : null,
+    // The credit carries the RECEPTION — out of a hundred, what splitLine and the critics
+    // read. The viewers live on openViewers/endViewers and always did.
+    audience: rel.reception != null ? rel.reception : null,
     direction: rel.direction || null, remind: rel.remind || null, character: rel.character || null,
     verdict: 'in cinemas', score: null,
     // Carried for the Asker season: what kind of thing it was, and whether it was pushed.
@@ -526,7 +547,9 @@ function closeRun(s, credit, r) {
   const rating = Number.isFinite(r.rating) ? r.rating : (Number.isFinite(credit.rating) ? credit.rating : 50);
   credit.score = Number((rating / 10).toFixed(1));
   r = { ...r, rating };
-  const verdict = verdictOf({ scale: r.scale, rating: r.rating, boxOffice: credit.boxOffice });
+  const verdict = verdictOf({ scale: r.scale, rating: r.rating, boxOffice: credit.boxOffice,
+    // Television needs to know who turned up; without these it fell back to the column.
+    type: credit.type, endViewers: credit.endViewers, viewers: credit.viewers });
   credit.verdict = verdict;
   const film = r.film;
 
