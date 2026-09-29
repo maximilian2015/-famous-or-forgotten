@@ -2613,6 +2613,8 @@ function groupCredits(list) {
       seasonFrom: seasonNos.length ? Math.min(...seasonNos) : 0, seasonTo: seasonNos.length ? Math.max(...seasonNos) : 0,
       episodes: g.series ? g.parts.reduce((n, p) => n + (p.episodes || 0), 0) : 0,
       askers: g.parts.reduce((n, p) => n + (p.asker || 0), 0),
+      askerNoms: g.parts.reduce((n, p) => n + (p.nominated || 0), 0),
+      askerPicture: g.parts.reduce((n, p) => n + (p.askerPicture || 0), 0),
       from: Math.min(...years), to: Math.max(...years),
       earned: g.parts.reduce((n, p) => n + (p.salary || 0), 0),
       // A franchise's gross is the whole run; a show's audience is the best season it had.
@@ -2695,7 +2697,7 @@ function CreditRow({ group, g }) {
           ◆ Push for a sequel · −{costOf(g, 'sequel')} standing
         </button>); })()}
       {/* the marks that never come off, and what it made */}
-      {(group.worldHit || hit || group.askers > 0 || c.comeback > 0 || group.boxOffice > 0 || group.viewers > 0 || c.festival) && (
+      {(group.worldHit || hit || group.askers > 0 || group.askerNoms > 0 || c.comeback > 0 || group.boxOffice > 0 || group.viewers > 0 || c.festival) && (
         <div style={{ fontSize: 10.5, marginTop: 4, display: 'flex', gap: 7, alignItems: 'center', flexWrap: 'wrap' }}>
           {group.worldHit ? <span style={{ fontWeight: 900, color: theme.gold }}>🌍 WORLD HIT</span>
             : hit ? <span style={{ fontWeight: 900, letterSpacing: '.06em', color: theme.gold }}>★ HIT</span>
@@ -2703,7 +2705,9 @@ function CreditRow({ group, g }) {
           {/* Where it screened, and what happened there. See release.js, the festival. */}
           {c.festival && <span style={{ fontWeight: 900, letterSpacing: '.06em', color: c.festival.result === 'prize' ? theme.gold : c.festival.result === 'sold' ? theme.good : theme.muted }}>
             🎞️ {String(c.festival.name).replace(/^the /, '').toUpperCase()} · {c.festival.result === 'prize' ? 'PRIZE' : c.festival.result === 'sold' ? 'SOLD' : 'NO BUYER'}</span>}
-          {group.askers > 0 && <span style={{ fontWeight: 900, letterSpacing: '.06em', color: theme.gold }}>🏆 ASKER{group.askers > 1 ? ` ×${group.askers}` : ''}</span>}
+          {group.askers > 0 && <span style={{ fontWeight: 900, letterSpacing: '.06em', color: theme.gold }}>🏆 ASKER{group.askers > 1 ? ` ×${group.askers}` : ''}{group.askerPicture > 0 ? ' · BEST PICTURE' : ''}</span>}
+          {/* Being up for one follows a picture around for ever too, and nothing said so. */}
+          {group.askers === 0 && group.askerNoms > 0 && <span style={{ fontWeight: 900, letterSpacing: '.06em', color: theme.gold, opacity: .75 }}>🏆 ASKER NOMINEE{group.askerNoms > 1 ? ` ×${group.askerNoms}` : ''}</span>}
           {c.comeback > 0 && <span style={{ fontWeight: 900, letterSpacing: '.06em', color: theme.accent }}>↩ COMEBACK · AFTER {c.comeback} YEARS</span>}
           {(group.boxOffice > 0 || group.viewers > 0) && <span style={{ color: theme.text, fontWeight: 700 }}>
             {group.boxOffice > 0 ? `${money(group.boxOffice)} box office` : `${group.viewers}m watched`}</span>}
@@ -2718,7 +2722,7 @@ function CreditRow({ group, g }) {
         </div>
       )}
       {/* Nothing to mark, and still something written: the button stands on its own. */}
-      {c.reviews && !c.running && !(group.worldHit || hit || group.askers > 0 || c.comeback > 0 || group.boxOffice > 0 || group.viewers > 0 || c.festival) && (
+      {c.reviews && !c.running && !(group.worldHit || hit || group.askers > 0 || group.askerNoms > 0 || c.comeback > 0 || group.boxOffice > 0 || group.viewers > 0 || c.festival) && (
         <button onClick={() => setShowReviews(!showReviews)} style={{ background: 'none', border: 'none', padding: '4px 0 0', cursor: 'pointer', fontSize: 10.5, fontWeight: 800, color: theme.accent }}>
           Kinomark {c.reviews.grade} · {c.reviews.audience.toFixed(1)}/{c.reviews.critics.toFixed(1)} {showReviews ? '▾' : '▸'}
         </button>)}

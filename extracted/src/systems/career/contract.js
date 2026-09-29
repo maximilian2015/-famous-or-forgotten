@@ -27,7 +27,21 @@ const SCALE_RANK = { oneoff: 0, small: 1, episode: 1, indie: 2, recurring: 3, pr
 // Whether they will hold a part until you are free. For a nobody it is the wait that decides;
 // a studio waits for a name — a star's odds are half again, and an A-lister is waited for,
 // full stop, because the picture is being made around them.
-function holdOdds(wait, s) {
+// The person a running show is about cannot be replaced between seasons. Maxi: "if you
+// play the lead in a series and it gets renewed, they cannot shoot it without you either
+// way — so they ask when YOU can start, you point at the calendar, and they arrange
+// themselves around it."
+//
+// Exactly so, and it was not true here: how long anybody would wait came only off your
+// fame tier, so a series lead who was merely known had the same leverage as a stranger.
+// It is not status, it is structure. A film can recast and shoot in March. A show that is
+// about you shoots when you are free or it does not shoot.
+export function theShowIsYou(o) {
+  return !!o && o.kind === 'renewal' && (o.tier === 'lead' || o.tier === 'tentpole');
+}
+function holdOdds(wait, s, o) {
+  // Nearly always, and for nearly as long as you like — they have nobody else to call.
+  if (theShowIsYou(o)) return wait <= 10 ? 96 : 80;
   const base = wait <= 2 ? 70 : wait <= 4 ? 45 : wait <= 6 ? 25 : 12;
   const t = s ? tierIdx(s) : 0;
   if (t >= 4) return 100;
@@ -105,7 +119,7 @@ function scheduleClause(s, o, big, ex) {
     sched.must = true;
     // Your own show's next season is written around you: the network schedules, it does not ask.
     const own = o.kind === 'renewal';
-    sched.options = [{ id: 'hold', label: own ? `They schedule the season around you — it starts when you wrap (${wait} mo)` : `Ask them to hold the part until you wrap (${wait} mo)`, value: { months: o.months || 1, start: now + wait, after: until.title }, odds: own ? 100 : holdOdds(wait, s), walkOnNo: !own, sure: own || holdOdds(wait, s) >= 100 }];
+    sched.options = [{ id: 'hold', label: own ? `They schedule the season around you — it starts when you wrap (${wait} mo)` : `Ask them to hold the part until you wrap (${wait} mo)`, value: { months: o.months || 1, start: now + wait, after: until.title }, odds: own ? 100 : holdOdds(wait, s, o), walkOnNo: !own, sure: own || holdOdds(wait, s, o) >= 100 }];
     const bigger = (SCALE_RANK[o.scale] || 0) > (SCALE_RANK[until.scale] || 0);
     if (bigger) sched.options.push({ id: 'walk', label: `Walk off "${until.title}" for this — they recast in a week, and everybody hears`, value: { months: o.months || 1, start: now, walkOff: until.id }, odds: 100, sure: true });
   }
@@ -273,11 +287,13 @@ export function proposeStart(s, id, month) {
   const delay = Math.max(0, month - want);
   const fit = canTakeSet(s, o);
   const until = fit.ok ? null : (fit.until || s.production);
-  const odds = delay === 0 ? 100 : holdOdds(delay, s);
+  const odds = delay === 0 ? 100 : holdOdds(delay, s, o);
   const op = { id: 'propose', label: `Start in ${MON[month % 12]} ${Math.floor(month / 12)} — your month${delay ? ` (${delay} past their date)` : ''}`, value: { months: o.months || 1, start: month, after: until ? until.title : (delay ? 'your own date' : undefined) }, odds, sure: odds >= 100, walkOnNo: !!c.must };
   c.options = [...c.options.filter((x) => x.id !== 'propose'), op];
   c.stance = 'talk'; c.ask = 'propose';
-  s.lastEvent = `You proposed ${MON[month % 12]} ${Math.floor(month / 12)}. Send the paper back and they answer next month.`;
+  s.lastEvent = theShowIsYou(o)
+    ? `You proposed ${MON[month % 12]} ${Math.floor(month / 12)}. They will take it — the show is about you and there is nobody else to shoot it with. Send the paper back.`
+    : `You proposed ${MON[month % 12]} ${Math.floor(month / 12)}. Send the paper back and they answer next month.`;
   return s;
 }
 export function openTalks(o) { return ((o.contract && o.contract.clauses) || []).filter((c) => c.stance === 'talk'); }

@@ -18,6 +18,10 @@ export function hitWeight(c, s) {
   const score = scoreOf(c), bo = c.boxOffice || 0;
   if (c.worldHit || c.status === 'World Hit') return 5;
   if ((c.asker || 0) > 0) return 4;
+  // Maxi: "an Asker is above any other award — why is it not in the known-for list?" It is
+  // now, and so is being up for one. A nomination sits above a smash and below a win,
+  // which is where the business puts it.
+  if ((c.nominated || 0) > 0) return 3.5;
   if (c.verdict === 'smash' || bo >= 300e6) return 3;
   if (score >= 8.5 || rankOf(s, c) <= 10 || bo >= 200e6) return 2;
   if (score >= 7.5 || (c.verdict === 'profitable' && c.scale === 'blockbuster')) return 1;
@@ -31,7 +35,8 @@ export function isFlop(c) {
 }
 function whyOf(s, c) {
   if (c.worldHit || c.status === 'World Hit') return 'world hit';
-  if ((c.asker || 0) > 0) return 'Asker';
+  if ((c.asker || 0) > 0) return (c.asker || 0) > 1 ? `${c.asker} Askers` : 'Asker';
+  if ((c.nominated || 0) > 0) return 'Asker nominee';
   if (c.verdict === 'smash') return 'smash';
   if ((c.boxOffice || 0) >= 200e6) return '€' + Math.round((c.boxOffice || 0) / 1e6) + 'm';
   if (rankOf(s, c) <= 10) return '#' + rankOf(s, c) + ' of ' + c.year;
@@ -84,7 +89,7 @@ export function knownFor(s) {
   // An Asker and a world hit are the two things that do not age — they are the sentence in
   // front of your name for the rest of your life, so they stay in the running for ever and
   // everything else has its four years. hitWeight scores both of those at 4 and above.
-  const recent = all.filter((c) => hitWeight(c, s) > 0 && (hitWeight(c, s) >= 4 || year - (c.year || 0) <= 4))
+  const recent = all.filter((c) => hitWeight(c, s) > 0 && (hitWeight(c, s) >= 3.5 || year - (c.year || 0) <= 4))
     .sort((a, b) => hitWeight(b, s) - hitWeight(a, s) || (b.year || 0) - (a.year || 0));
   const hit = recent[0] || all.find((c) => hitWeight(c, s) > 0);
   if (hit) return { title: hit.title, year: hit.year, hit: true, why: whyOf(s, hit) };

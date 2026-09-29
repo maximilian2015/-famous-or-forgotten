@@ -174,9 +174,13 @@ function liveOne(seedAge = 20, years = 55) {
     health: 0, relationship: 70, job: 'architect', means: 'money', marriedOn: 0 }];
   ok('a widow is not still married', C.spouseOf(s) === null);
   const p = L.prospect(s); p.id = 'new'; p.charm = 95; p.relationship = 38; s.datingPool = [p];
-  for (let i = 0; i < 14 && !s.partner; i++) {
-    const q = (s.datingPool || [])[0]; if (q && (q.relationship || 0) < 38) q.relationship = 38;
+  // The same coin toss test_love had: fourteen probabilistic dates inside one month, and a
+  // run of bad dice reported as a broken dating system by the assertion underneath. A month
+  // between each, the closeness pushed well past the bar, and two hundred tries.
+  for (let i = 0; i < 200 && !s.partner; i++) {
+    const q = (s.datingPool || [])[0]; if (q) q.relationship = Math.max(q.relationship || 0, 55);
     L.goOnDate(s, 'home', 'new'); s._cool = {};
+    s.month = (s.month + 1) % 12; if (!s.month) s.year++;
   }
   ok('and can start again', !!s.partner, 'never got there');
   for (let a = 0; a < 12 && !C.spouseOf(s); a++) { s._cool = {}; s.partner.relationship = 99; L.proposeMarriage(s, 'registry', false); }

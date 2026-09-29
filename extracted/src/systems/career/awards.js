@@ -441,7 +441,11 @@ export function runNominations(s) {
     const taken = new Set([n.credit.title, ...work.map((c) => c.title)]);
     const field = fieldFor(s, year, n.category, you, taken);
     const odds = oddsFor(field);
-    return { category: n.category, branch: n.branch, title: n.credit.title, creditYear: n.credit.year, year,
+    // The id as well as the title. Six months pass between the list and the night, and the
+    // credit was found again by NAME — so anything that moved the name in between lost the
+    // award off the film. Maxi: "there is nothing saying this film won." career/naming.js
+    // lets a picture be renamed, which is exactly the gap.
+    return { category: n.category, branch: n.branch, title: n.credit.title, creditId: n.credit.id, creditYear: n.credit.year, year,
       field, odds, yourOdds: odds[0], due: (s.year || 0) * 12 + (s.month || 0) + SEASON_LENGTH };
   });
   // The races you are not in still happen that night.
@@ -457,7 +461,8 @@ export function runNominations(s) {
   // The credit wears the nomination from the day the lists come out. Maxi wanted to SEE it.
   for (const p of pending) {
     if (p.theirs || !p.title) continue;
-    const c = [...(s.filmography || []), ...(s.discography || [])].find((x) => x.title === p.title);
+    const shelf = [...(s.filmography || []), ...(s.discography || [])];
+    const c = shelf.find((x) => p.creditId && x.id === p.creditId) || shelf.find((x) => x.title === p.title);
     if (c) c.nominated = (c.nominated || 0) + 1;
   }
   s.awards.pending = pending;
@@ -564,7 +569,7 @@ export function ceremonyTick(s) {
     const winner = pickWinner(p.field);
     if (!winner.them) { const entry = s.world && s.world.years && s.world.years[p.year]; if (entry) (entry.askers = entry.askers || []).push({ category: p.category, name: s.name, work: p.title, you: true }); }
     recordTheirWin(s, p, winner);
-    results.push({ category: p.category, title: p.title, won: !winner.them, winner: winner.name, work: winner.work, odds: p.yourOdds, theirs: !!p.theirs });
+    results.push({ category: p.category, title: p.title, creditId: p.creditId, won: !winner.them, winner: winner.name, work: winner.work, odds: p.yourOdds, theirs: !!p.theirs });
   }
   const yours = results.filter((r) => !r.theirs);
   a.pending = null;
@@ -610,8 +615,10 @@ export function ceremonyTick(s) {
     a.losses = 0;
     // Marked in the filmography for good.
     for (const r of won) {
-      const c = [...(s.filmography || []), ...(s.discography || [])].find((x) => x.title === r.title);
-      if (c) c.asker = (c.asker || 0) + 1;
+      const shelf = [...(s.filmography || []), ...(s.discography || [])];
+      // By id first; by title only for a season that started before ids were carried.
+      const c = shelf.find((x) => r.creditId && x.id === r.creditId) || shelf.find((x) => x.title === r.title);
+      if (c) { c.asker = (c.asker || 0) + 1; if (r.category === "picture") c.askerPicture = (c.askerPicture || 0) + 1; }
     }
     // An Asker really does make you famous overnight — that is most of what it is for.
     // The first version of this gave +8 and called it "not about tickets", which was
