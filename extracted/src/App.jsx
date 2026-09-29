@@ -23,6 +23,7 @@ import { sequelDue } from './systems/career/franchise.js';
 import { knownFor, isHit, isFlop, theHits, theFlops } from './systems/meta/knownFor.js';
 import { boxedInto, isUniversal } from './systems/meta/typecast.js';
 import { liveBubbles, backTheCampaign, canBack as canBackShow, BACK_COST } from './systems/career/bubble.js';
+import { liveEndorsement, dutiesDue, attendDuty, canAttend as canAttendDuty, clauseBlocks } from './systems/career/endorsement.js';
 import { openSeason, askerLine, campaignable, canCampaign, startCampaign, campaignKind,
   liveCampaign, ownCampaignCost, CAMPAIGN_ENERGY, CAMPAIGN_MONTHS } from './systems/career/awards.js';
 import { townOpen, townFor, goOut } from './systems/life/town.js';
@@ -227,6 +228,7 @@ export default function App() {
         </div>
         {g.lastEvent && <Card style={{ marginBottom: 14, borderColor: 'rgba(255,209,102,.35)' }}><div style={{ fontSize: 13.5, lineHeight: 1.5, whiteSpace: 'pre-line' }}>{g.lastEvent}</div></Card>}
         {inCareer(g) && <StandingCard g={g} />}
+        {inCareer(g) && <EndorsementCard g={g} />}
         {inCareer(g) && <CampaignCard g={g} />}
         {inCareer(g) && <SeasonCard g={g} />}
         {inCareer(g) && <BubbleCard g={g} />}
@@ -1444,6 +1446,40 @@ const SKIP_WHY = {
   mental: 'you stopped being all right',
   life: 'it ended',
 };
+
+// Being somebody's face, which is twelve months rather than a cheque. The dates are theirs
+// and they are counting. career/endorsement.js
+function EndorsementCard({ g }) {
+  const e = liveEndorsement(g);
+  if (!e) return null;
+  const due = dutiesDue(g);
+  return (<Card style={{ marginBottom: 14, borderColor: e.strikes ? 'rgba(255,141,158,.35)' : 'rgba(255,209,102,.28)' }}>
+    <div style={{ fontSize: 11, fontWeight: 900, letterSpacing: '.09em', textTransform: 'uppercase', color: theme.gold, marginBottom: 4 }}>
+      The face of {e.house}
+    </div>
+    <div style={{ fontSize: 11.5, color: theme.muted, lineHeight: 1.45 }}>
+      {e.what}{e.abroad ? ` · ${e.abroad} only` : ''} · {e.monthsLeft} month{e.monthsLeft === 1 ? '' : 's'} to run · {e.done} of {e.total} appearances done
+    </div>
+    {e.clause && <div style={{ fontSize: 11, color: theme.muted, marginTop: 3 }}>📄 {e.clause}, while it runs.</div>}
+    {e.strikes > 0 && <div style={{ fontSize: 11, color: theme.bad, marginTop: 3, fontWeight: 700 }}>One date missed. Another and they tear it up.</div>}
+    {due.map((d) => {
+      const fit = canAttendDuty(g, d.id);
+      return (<div key={d.id} style={{ marginTop: 8, paddingTop: 7, borderTop: `1px solid ${theme.line}` }}>
+        <div style={{ fontSize: 12.5, fontWeight: 800 }}>{d.label} · this month</div>
+        <div style={{ fontSize: 11.5, color: theme.muted, lineHeight: 1.45, marginTop: 2 }}>{d.line}</div>
+        <button onClick={() => dispatch(attendDuty, d.id)} disabled={!fit.ok}
+          style={{ marginTop: 5, border: 'none', borderRadius: 9, padding: '6px 11px', fontSize: 11.5, fontWeight: 800,
+            cursor: fit.ok ? 'pointer' : 'default', background: fit.ok ? 'rgba(255,209,102,.18)' : 'rgba(120,110,150,.15)', color: fit.ok ? theme.gold : '#6b6390' }}>
+          Turn up · {d.ap} energy
+        </button>
+        {!fit.ok && fit.why && <div style={{ fontSize: 10.5, color: theme.muted, marginTop: 3 }}>{fit.why}</div>}
+      </div>);
+    })}
+    {!due.length && e.next && <div style={{ fontSize: 10.5, color: theme.muted, marginTop: 6 }}>
+      Next: {e.next.label.toLowerCase()}, {e.next.inMonths <= 1 ? 'next month' : `in ${e.next.inMonths} months`}.
+    </div>}
+  </Card>);
+}
 
 // The season for a picture, which is the thing Maxi paid six million for and never
 // understood. It is not bought on an offer any more and it is not bought with money: a

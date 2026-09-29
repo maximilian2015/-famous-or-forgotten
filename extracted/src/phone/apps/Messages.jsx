@@ -7,6 +7,7 @@ import { dispatch } from '../../state/store.js';
 import { canTakeSet } from '../../engine/sets.js';
 import { phoneGone } from '../../systems/social/night.js';
 import { acceptOffer, declineOffer, runCampaign, campaignCost } from '../../systems/career/offers.js';
+import { clauseBlocks } from '../../systems/career/endorsement.js';
 import { hotGenre } from '../../systems/meta/news.js';
 import { agentLine, fireAgent } from '../../systems/career/agent.js';
 import { agentDropped } from '../../systems/meta/standing.js';
@@ -91,6 +92,12 @@ export function Messages({ g }) {
             : o.via === 'agent' || agent ? `${agent || 'Your agent'} · your agent brought it` : 'A producer'}
         </div>
         <div style={{ fontSize: 13 }}>{o.projectTitle} — {o.role} · {o.type}</div>
+        {/* What it costs to take a part the brand's paper says you cannot be seen in. It
+            does not stop you; it tells you the price first. career/endorsement.js */}
+        {(() => { const hit = clauseBlocks(g, o); if (!hit) return null;
+          return (<div style={{ fontSize: 11.5, color: theme.bad, lineHeight: 1.45, marginTop: 5, padding: '7px 9px', borderRadius: 9, background: 'rgba(255,141,158,.1)' }}>
+            📄 {hit.line}
+          </div>); })()}
         {/* Maxi: "write down who they are proposing you play and a couple of lines of the
             plot." career/script.js puts both on every offer, wherever it came from. */}
         {o.character && <div style={{ fontSize: 12, fontWeight: 800, color: theme.text, marginTop: 5 }}>You: {partLine(o)}</div>}

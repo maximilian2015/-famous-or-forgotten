@@ -15,6 +15,7 @@ import { spent } from '../../engine/economy.js';
 import { storyOfferFactor, noteRefusal, noteSequelLoss } from '../meta/stories.js';
 import { hypeDemand, hype, hypeSource, hypeBrands } from '../meta/hype.js';
 import { socialBrandLift } from '../social/posting.js';
+import { signEndorsement, clauseTaken } from './endorsement.js';
 import { isStrong, activeLabels, labelInfo } from '../meta/typecast.js';
 import { canTakeSet } from '../../engine/sets.js';
 const clamp = (v) => Math.max(0, Math.min(100, v));
@@ -201,6 +202,8 @@ export function acceptOffer(s, id) {
   // The face of something. A year of nobody else's, a word the business uses about you,
   // and a bill if the business had decided you were the serious one.
   if (o.kind === 'brand') {
+    // The money was the easy half. career/endorsement.js
+    signEndorsement(s, o);
     s._brandUntil = (s.year || 0) * 12 + (s.month || 0) + (o.brandFor || 12);
     (s._brandsDone = s._brandsDone || []).push(o.from);
     const thing = String(o.projectTitle).split('— ')[1] || 'something';
@@ -224,6 +227,9 @@ export function acceptOffer(s, id) {
       else if (drop > 0) addTimeline(s, `The face of ${thing}. It is the kind of thing that is only offered to people it suits.`);
     }
   }
+  // A part the brand's paper says you cannot be seen in. It does not stop you — the screen
+  // told you the price before you pressed it. career/endorsement.js
+  if (o.kind !== 'brand') clauseTaken(s, o);
   // Anything with a real schedule becomes a shoot you live through — same rule as a
   // casting. Only a day's work resolves in the same click.
   const fit = canWork(s);
