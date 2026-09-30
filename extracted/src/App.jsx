@@ -25,6 +25,7 @@ import { boxedInto, isUniversal } from './systems/meta/typecast.js';
 import { liveBubbles, backTheCampaign, canBack as canBackShow, BACK_COST } from './systems/career/bubble.js';
 import { liveEndorsement, dutiesDue, attendDuty, canAttend as canAttendDuty, clauseBlocks } from './systems/career/endorsement.js';
 import { heirLine } from './systems/life/origin.js';
+import { liveStandoff, takeTheRoom, pushTheRoom, walkTheRoom } from './systems/career/standoff.js';
 import { openSeason, askerLine, campaignable, canCampaign, startCampaign, campaignKind,
   liveCampaign, ownCampaignCost, CAMPAIGN_ENERGY, CAMPAIGN_MONTHS } from './systems/career/awards.js';
 import { townOpen, townFor, goOut } from './systems/life/town.js';
@@ -233,6 +234,7 @@ export default function App() {
         </div>
         {g.lastEvent && <Card style={{ marginBottom: 14, borderColor: 'rgba(255,209,102,.35)' }}><div style={{ fontSize: 13.5, lineHeight: 1.5, whiteSpace: 'pre-line' }}>{g.lastEvent}</div></Card>}
         {inCareer(g) && <StandingCard g={g} />}
+        {inCareer(g) && <StandoffCard g={g} />}
         {inCareer(g) && <EndorsementCard g={g} />}
         {inCareer(g) && <CampaignCard g={g} />}
         {inCareer(g) && <SeasonCard g={g} />}
@@ -1451,6 +1453,44 @@ const SKIP_WHY = {
   mental: 'you stopped being all right',
   life: 'it ended',
 };
+
+// The room where it gets decided. Maxi, five seasons into his own show and beaten on the
+// fee five times: "if you cannot agree there is a meeting, you are invited, and you decide
+// finally what happens and on what terms." It is not another letter. career/standoff.js
+function StandoffCard({ g }) {
+  const k = liveStandoff(g);
+  if (!k) return null;
+  const btn = (tone, on) => ({ border: 'none', borderRadius: 9, padding: '7px 12px', fontSize: 11.5, fontWeight: 800,
+    cursor: on ? 'pointer' : 'default', flex: 1,
+    background: !on ? 'rgba(120,110,150,.15)' : tone === 'pri' ? 'rgba(255,209,102,.2)' : tone === 'bad' ? 'rgba(255,141,158,.14)' : 'rgba(158,116,255,.16)',
+    color: !on ? '#6b6390' : tone === 'pri' ? theme.gold : tone === 'bad' ? theme.bad : '#d9cffa' });
+  return (<Card style={{ marginBottom: 14, borderColor: 'rgba(255,209,102,.45)' }}>
+    <div style={{ fontSize: 11, fontWeight: 900, letterSpacing: '.09em', textTransform: 'uppercase', color: theme.gold, marginBottom: 4 }}>
+      The meeting · "{k.title}"
+    </div>
+    <div style={{ fontSize: 11.5, color: theme.muted, lineHeight: 1.45 }}>
+      Season {k.season + 1} is not being written until this is settled. {k.mood}
+    </div>
+    <div style={{ marginTop: 7, padding: '8px 10px', borderRadius: 10, background: theme.panel }}>
+      <div style={{ fontSize: 11, fontWeight: 900, letterSpacing: '.08em', textTransform: 'uppercase', color: theme.muted, marginBottom: 4 }}>On the table</div>
+      {k.terms.map((t, i) => (
+        <div key={i} style={{ fontSize: 12, lineHeight: 1.5 }}>· {t}</div>
+      ))}
+    </div>
+    <div style={{ display: 'flex', gap: 6, marginTop: 8 }}>
+      <button onClick={() => dispatch(takeTheRoom)} style={btn('pri', true)}>Take it</button>
+      <button onClick={() => dispatch(pushTheRoom)} disabled={!k.can.ok} style={btn('', k.can.ok)}>
+        Go back once more · {k.pushCost}
+      </button>
+      <button onClick={() => dispatch(walkTheRoom)} style={btn('bad', true)}>Walk</button>
+    </div>
+    {!k.can.ok && k.can.why && <div style={{ fontSize: 10.5, color: theme.muted, marginTop: 4, lineHeight: 1.45 }}>{k.can.why}</div>}
+    <div style={{ fontSize: 10.5, color: theme.muted, marginTop: 6, lineHeight: 1.45 }}>
+      Nobody is taking the part — there is nobody to give it to. What a network does instead is
+      stop making it, and it would rather do that than set a number the whole town can read.
+    </div>
+  </Card>);
+}
 
 // Being somebody's face, which is twelve months rather than a cheque. The dates are theirs
 // and they are counting. career/endorsement.js

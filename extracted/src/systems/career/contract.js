@@ -12,6 +12,7 @@
 import { rint, chance } from '../../engine/rng.js';
 import { addTimeline } from '../../engine/timeline.js';
 import { fameTier } from '../meta/status.js';
+import { callTheRoom, standoff } from './standoff.js';
 import { negotiationFor, reachOf } from './negotiate.js';
 import { acceptOffer, declineOffer } from './offers.js';
 import { canTakeSet, monthsUntilFree, sets } from '../../engine/sets.js';
@@ -388,6 +389,17 @@ export function contractsTick(s) {
       addTimeline(s, `${title}: they could not hold the part. It went to somebody who was free.`, true);
       if (o.kind === 'sequel' || o.kind === 'renewal') noteSequelLoss(s, o, 'schedule');
       (s.moments = s.moments || []).push({ id: 'contract', kind: 'bad', title, lines, body: 'They needed somebody in the chair on the first day, and you were on another set. The part went to somebody who was free.', walked: true });
+      continue;
+    }
+    // Two refusals on your own show and nobody writes another letter. Maxi: "if you cannot
+    // come to an agreement there is a meeting, you are invited, and you decide finally what
+    // happens and on what terms." That is exactly how it goes, and it is where the things
+    // a studio will actually give live — back end, a producing credit, a shorter order.
+    // career/standoff.js
+    if (mine && refused && k.round >= 2 && !standoff(s)) {
+      callTheRoom(s, o);
+      (s.moments = s.moments || []).push({ id: 'contract', kind: 'bad', title, lines,
+        body: `Business affairs have stopped replying, and instead there is a date in the calendar. Everybody who can say yes to this will be in one room, and so will you.` });
       continue;
     }
     // Push three times and they may decide you are more trouble than you are worth. Not on
