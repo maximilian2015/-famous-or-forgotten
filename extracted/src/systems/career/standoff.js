@@ -49,6 +49,34 @@ const clean = (t) => String(t || 'it').replace('⭐ ', '');
 // WRITTEN OUT — a death, a transfer, a letter from somewhere else — and the show carries
 // on perfectly well, which is the part that stings. It happens constantly and almost
 // nobody outside the cast notices.
+// ── how much of the show is you ───────────────────────────────────────────────
+// An outside reading of the first version of this called the rule "main lead cannot be
+// removed" too hard, and it was right. Shows survive losing the person they were about,
+// and the examples are not obscure: The Office ran two more seasons after Steve Carell,
+// Shameless went to eleven after Emmy Rossum, House of Cards made a final season with
+// Robin Wright alone, Two and a Half Men replaced Charlie Sheen outright and kept going.
+//
+// So it is not a rule, it is a PRICE. The more the show depends on you, the more expensive
+// and dangerous removing you is — and at the top of the scale a network will genuinely
+// rather pay, or rather stop, than try. That is a much better shape than a prohibition.
+export function dependency(s, o) {
+  if (!o) return 0;
+  const centre = o.tier === 'lead' || o.tier === 'tentpole' ? 48 : 14;
+  // Years of being the face of it. A show is about whoever has been in it longest — but that
+  // has to be YOUR years, not the show’s. The first version read the season number, so
+  // somebody who turned up in season seven counted as more essential than a lead who had
+  // carried it since the pilot.
+  const years = Math.min(22, (o.joined ? 4 : (o.season || 1) * 4.5));
+  // And your own draw, which is the part the show did not give you.
+  const own = clamp((s.fame || 0) * 0.22, 0, 22);
+  // Somebody they wrote around already: joining an existing show makes you replaceable.
+  const joined = o.joined ? -6 : 0;
+  return clamp(Math.round(centre + years + own + joined), 4, 97);
+}
+export function replacementWord(d) {
+  return d >= 85 ? 'extreme' : d >= 65 ? 'very hard' : d >= 45 ? 'hard' : d >= 25 ? 'awkward' : 'routine';
+}
+
 export function yoursToLose(o) {
   return !!o && o.kind === 'renewal' && (o.tier === 'lead' || o.tier === 'tentpole');
 }
@@ -184,6 +212,43 @@ export function packageFor(s, o) {
   };
 }
 
+// ── what happens when it fails ────────────────────────────────────────────────
+// Five real endings, not two, and never a flat percentage. The outside reading was right
+// that "one meeting in seven is cancelled" was a game number I had dressed up as a fact;
+// there is no such industry figure and I should not have said there was. It is computed
+// from the show and from you, which is the honest version and a better one.
+export const FAILURES = {
+  pay: { label: 'They pay' },
+  around: { label: 'Written around' },
+  killed: { label: 'Killed off' },
+  newLead: { label: 'A new lead' },
+  cancel: { label: 'No season' },
+};
+export function failureOdds(s, o) {
+  const d = dependency(s, o);
+  const last = lastSeason(s, o);
+  // A show doing well is worth keeping whatever it costs; one that is slipping is one they
+  // are looking for a reason to end anyway.
+  const health = last ? clamp(Math.round(last.pull * 45 + (last.held - 1) * 120), 5, 95) : 50;
+  const w = {
+    // They pay. Most common, and more common the more the thing is you.
+    pay: 20 + d * 0.55 + health * 0.25,
+    // The show goes on with somebody else carrying it. Cheap when you are not the centre.
+    around: 58 - d * 0.45 + health * 0.12,
+    // A death is what a show does when it wants the leaving to be an event.
+    killed: 26 - d * 0.16 + health * 0.06,
+    // Bring somebody new in above the title. Needs a show healthy enough to carry it.
+    newLead: 10 - d * 0.05 + health * 0.18,
+    // And stopping, which is what happens when you are the show and it is not worth it.
+    cancel: 6 + d * 0.28 - health * 0.22,
+  };
+  for (const k of Object.keys(w)) w[k] = Math.max(0, w[k]);
+  const total = Object.values(w).reduce((x, y) => x + y, 0) || 1;
+  const out = {};
+  for (const k of Object.keys(w)) out[k] = Math.round((w[k] / total) * 100);
+  return out;
+}
+
 // ── the meeting ───────────────────────────────────────────────────────────────
 // Called from contract.js when the fee has been refused twice on a show that is yours. It is
 // not another letter. It is a room, and it ends that day.
@@ -288,7 +353,10 @@ export function askFor(s, id) {
   k.gave = null;
   // A no in a room is a no. And if the afternoon has gone badly enough, the people who can
   // end the whole thing are already sitting at the table.
-  if (chance(22)) return closeTheShow(s, 'them');
+  // And if the afternoon has gone badly enough, the people who can end it are already at
+  // the table. What they choose is not a flat die roll any more — it comes off how much of
+  // the show is you and how the show is doing. career/standoff.js failureOdds
+  if (chance(26)) { itFails(s, o); return s; }
   s.lastEvent = `No. Not angrily, and not negotiably. ${k.pack.mood} What was on the table is still on the table, and the showrunner has not looked up.`;
   return s;
 }
@@ -336,9 +404,60 @@ export function pushTheRoom(s) {
 
 // You end it. Nobody takes a show like this away from you — you leave it.
 export function walkTheRoom(s) {
-  const k = standoff(s);
+  const k = standoff(s), o = standoffOffer(s);
   if (!k) return s;
+  // You leaving does not automatically end the programme. What happens next is the same
+  // five things, minus the one where they pay — because you are the one who left.
+  if (o) {
+    const odds = failureOdds(s, o);
+    delete odds.pay;
+    let r = Math.random() * Object.values(odds).reduce((x, y) => x + y, 0);
+    let pick = null;
+    for (const kk of Object.keys(odds)) { if ((r -= odds[kk]) <= 0) { pick = kk; break; } }
+    const res = itFails(s, { ...o, _forced: pick });
+    setRespect(s, (s.respect || 0) + 2);   // leaving on your own terms reads as a spine
+    return s;
+  }
   return closeTheShow(s, 'you');
+}
+
+// Roll the five. Everything except paying means you are not in it, and they are all
+// different kinds of not being in it.
+export function itFails(s, o) {
+  const odds = failureOdds(s, o);
+  let r = Math.random() * 100;
+  let pick = null;
+  for (const k of Object.keys(odds)) { if ((r -= odds[k]) <= 0) { pick = k; break; } }
+  pick = pick || 'around';
+  const k = standoff(s);
+  const title = k ? k.title : clean(o.seriesTitle || o.projectTitle);
+  const next = (o.season || 1) + 1;
+  if (pick === 'pay') {
+    // They blink. It happens, and it happens most when the show is you.
+    const p = k ? k.pack : packageFor(s, o);
+    p.fee = Math.round(p.fee * 1.12);
+    if (k) k.pack = p;
+    s.lastEvent = `Somebody senior said a short word, and then they paid. ${Math.round((p.fee / p.was - 1) * 100)}% an episode. Nobody in that room will ever refer to this afternoon again.`;
+    addTimeline(s, `They paid, in the end, for "${title}".`);
+    return { how: pick, kept: true };
+  }
+  s.standoff = null;
+  s.offers = (s.offers || []).filter((x) => x.id !== o.id);
+  s.inbox = (s.inbox || []).filter((m) => m.offerId !== o.id);
+  if (pick === 'cancel') {
+    setRespect(s, (s.respect || 0) - 1);
+    addTimeline(s, `"${title}" is not coming back. The money could not be agreed and nobody will say so.`, true);
+    s.lastEvent = `They closed the file at ten to five. There is no season ${next} — not recast, not delayed, not made. Too much of it was you to carry on without you, and not enough of it was worth what you were asking.`;
+  } else {
+    const line = pick === 'killed'
+      ? `They are killing your character. It will be a good episode and people will say so, and they will be right, and that is the last of it.`
+      : pick === 'newLead'
+      ? `They are bringing somebody in above the title. A name, on a deal signed in a fortnight, and a first episode built entirely around explaining where you went.`
+      : `They are writing the show around somebody else. One of the people who has been standing behind you for five years moves forward a step, and by episode four it looks deliberate.`;
+    addTimeline(s, `Out of "${title}". Season ${next} is going ahead without you.`, true);
+    s.lastEvent = `${line} Season ${next} goes ahead exactly as planned, and you will find out how it does the way everybody else does.`;
+  }
+  return { how: pick, kept: false };
 }
 
 function closeTheShow(s, who) {
@@ -358,14 +477,37 @@ function closeTheShow(s, who) {
   return s;
 }
 
+// What your agent would tell you before you walk in. Every line of it is a real thing
+// agents actually weigh, and seeing them is most of what makes the room a decision rather
+// than a menu.
+export function leverageLines(s, o) {
+  const d = dependency(s, o);
+  const last = lastSeason(s, o);
+  const bar = (n) => n >= 2.5 ? '+++' : n >= 1.5 ? '++' : n >= 0.5 ? '+' : n <= -1.5 ? '--' : n <= -0.5 ? '-' : '·';
+  const out = [];
+  out.push({ what: 'How the show is doing', mark: bar(last ? (last.pull >= 1.6 ? 3 : last.pull >= 1.1 ? 2 : last.pull >= 0.75 ? 0 : -2) : 1) });
+  out.push({ what: 'How much of it is you', mark: bar(d >= 85 ? 3 : d >= 65 ? 2.5 : d >= 45 ? 1.5 : 0) });
+  out.push({ what: 'Hard to replace', mark: bar(d >= 75 ? 3 : d >= 50 ? 2 : d >= 30 ? 0.5 : -1) });
+  out.push({ what: 'Your own name outside it', mark: bar((s.fame || 0) >= 80 ? 2.5 : (s.fame || 0) >= 60 ? 1.5 : (s.fame || 0) >= 40 ? 0.5 : -0.5) });
+  if (((s.awards || {}).wins || []).length) out.push({ what: 'What is on your shelf', mark: bar(1) });
+  if (last && last.held < 0.9) out.push({ what: 'It is shedding people', mark: '--' });
+  if ((s.scandal || 0) >= 30) out.push({ what: 'The press you have had', mark: '--' });
+  return out;
+}
+
 // ── for the screen ────────────────────────────────────────────────────────────
 export function liveStandoff(s) {
   const k = standoff(s);
   if (!k || !k.open) return null;
+  const o = standoffOffer(s);
   const p = k.pack;
   return {
     title: k.title, season: k.season, rounds: k.rounds, mood: p.mood,
     asked: k.asked || null, gave: k.gave || null, chairs: CHAIRS,
+    // What your agent would tell you before you walk in.
+    leverage: o ? leverageLines(s, o) : [],
+    dependency: o ? dependency(s, o) : 0,
+    replacement: o ? replacementWord(dependency(s, o)) : null,
     asks: ASK_IDS.map((id) => ({ id, ...ASKS[id] })),
     rise: Math.round((p.fee / p.was - 1) * 100),
     fee: p.fee, was: p.was, episodes: p.episodes, wasEpisodes: p.wasEpisodes,

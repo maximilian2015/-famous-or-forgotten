@@ -1490,6 +1490,21 @@ function RoomModal({ g }) {
         <div style={{ fontSize: 11.5, lineHeight: 1.5, color: k.grew ? theme.good : theme.muted }}>📈 {k.because}</div>
       </Card>}
 
+      {/* What your agent says on the way in. Every line is a real thing agents weigh, and
+          seeing them is most of what makes this a decision rather than a menu. */}
+      {!!(k.leverage || []).length && <Card style={{ marginBottom: 10 }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', marginBottom: 5 }}>
+          <span style={{ fontSize: 11, fontWeight: 900, letterSpacing: '.08em', textTransform: 'uppercase', color: theme.muted }}>Your leverage</span>
+          <span style={{ fontSize: 11, color: theme.muted }}>replacing you: <b style={{ color: k.dependency >= 65 ? theme.gold : theme.text }}>{k.replacement}</b></span>
+        </div>
+        {k.leverage.map((l, i) => (
+          <div key={i} style={{ display: 'flex', justifyContent: 'space-between', fontSize: 11.5, lineHeight: 1.6 }}>
+            <span style={{ color: theme.muted }}>{l.what}</span>
+            <span style={{ fontWeight: 900, letterSpacing: 1, color: l.mark.startsWith('-') ? theme.bad : l.mark === '·' ? theme.muted : theme.good }}>{l.mark}</span>
+          </div>
+        ))}
+      </Card>}
+
       {/* What they have brought with them. */}
       <Card style={{ marginBottom: 10, borderColor: 'rgba(255,209,102,.4)' }}>
         <div style={{ fontSize: 11, fontWeight: 900, letterSpacing: '.08em', textTransform: 'uppercase', color: theme.gold, marginBottom: 5 }}>On the table</div>
