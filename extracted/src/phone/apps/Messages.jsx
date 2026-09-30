@@ -8,6 +8,7 @@ import { canTakeSet } from '../../engine/sets.js';
 import { phoneGone } from '../../systems/social/night.js';
 import { acceptOffer, declineOffer, runCampaign, campaignCost } from '../../systems/career/offers.js';
 import { clauseBlocks } from '../../systems/career/endorsement.js';
+import { contractStatus } from '../../systems/career/standoff.js';
 import { hotGenre } from '../../systems/meta/news.js';
 import { agentLine, fireAgent } from '../../systems/career/agent.js';
 import { agentDropped } from '../../systems/meta/standing.js';
@@ -110,6 +111,16 @@ export function Messages({ g }) {
         </div>
         <div style={{ display: 'flex', gap: 6, marginTop: 6, flexWrap: 'wrap' }}>
           {o.kind === 'renewal' && <span style={{ fontSize: 10.5, fontWeight: 800, padding: '3px 8px', borderRadius: 20, background: 'rgba(255,209,102,.18)', color: theme.gold }}>Season {o.season}</span>}
+        {/* Under option or out of it. It decides whether there is anything to argue about at
+            all, and it was nowhere on the screen. career/standoff.js contractStatus */}
+        {(() => { const c = contractStatus(g, o); if (!c) return null;
+          return (<div style={{ marginTop: 6, padding: '7px 9px', borderRadius: 9, background: c.open ? 'rgba(95,224,122,.09)' : 'rgba(120,110,150,.12)' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', gap: 8 }}>
+              <span style={{ fontSize: 11, fontWeight: 900, letterSpacing: '.06em', textTransform: 'uppercase', color: c.open ? theme.good : theme.muted }}>{c.status}</span>
+              <span style={{ fontSize: 10.5, color: theme.muted, flex: 'none' }}>leverage: {c.leverage}</span>
+            </div>
+            <div style={{ fontSize: 11.5, color: theme.muted, lineHeight: 1.45, marginTop: 2 }}>{c.line}</div>
+          </div>); })()}
           {o.kind === 'sequel' && <span style={{ fontSize: 10.5, fontWeight: 800, padding: '3px 8px', borderRadius: 20, background: 'rgba(255,209,102,.18)', color: theme.gold }}>Part {o.part}{o.optioned ? ' · optioned' : ''}</span>}
           <span style={{ fontSize: 10.5, fontWeight: 800, padding: '3px 8px', borderRadius: 20, background: 'rgba(158,116,255,.18)', color: tc[1] }}>{tc[0]}</span>
           <span style={{ fontSize: 10.5, fontWeight: 800, padding: '3px 8px', borderRadius: 20, background: onTrend ? 'rgba(95,206,138,.18)' : 'rgba(158,116,255,.12)', color: onTrend ? theme.good : theme.muted }}>{o.genre}{onTrend ? ' · trending' : ''}</span>

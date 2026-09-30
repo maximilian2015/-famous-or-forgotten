@@ -59,6 +59,16 @@ const clean = (t) => String(t || 'it').replace('⭐ ', '');
 // So it is not a rule, it is a PRICE. The more the show depends on you, the more expensive
 // and dangerous removing you is — and at the top of the scale a network will genuinely
 // rather pay, or rather stop, than try. That is a much better shape than a prohibition.
+// Two numbers, not one. A second reading separated them and it is right: how much the
+// STORY is about you, and how expensive and dangerous replacing you would be, are
+// different facts and they come apart constantly.
+//
+//   a huge star in an ensemble     dependency 60, difficulty 90
+//   a nobody whose show it is      dependency 93, difficulty 85
+//
+// The first can be written out and the programme survives; losing him is expensive
+// because of who he is. The second cannot be written out at all, and nobody outside would
+// notice him in a restaurant.
 export function dependency(s, o) {
   if (!o) return 0;
   const centre = o.tier === 'lead' || o.tier === 'tentpole' ? 48 : 14;
@@ -68,13 +78,63 @@ export function dependency(s, o) {
   // carried it since the pilot.
   const years = Math.min(22, (o.joined ? 4 : (o.season || 1) * 4.5));
   // And your own draw, which is the part the show did not give you.
-  const own = clamp((s.fame || 0) * 0.22, 0, 22);
+  // Your own draw counts for less here than it used to: this is about the story, not about
+  // you. It is the other number that carries your fame.
+  const own = clamp((s.fame || 0) * 0.10, 0, 10);
   // Somebody they wrote around already: joining an existing show makes you replaceable.
   const joined = o.joined ? -6 : 0;
   return clamp(Math.round(centre + years + own + joined), 4, 97);
 }
+// What it would actually cost them to do it: your own name, what the audience is attached
+// to, and how much of the story would have to be rebuilt.
+export function replacementCost(s, o) {
+  if (!o) return 0;
+  const yours = clamp((s.fame || 0) * 0.55, 0, 55);
+  const story = dependency(s, o) * 0.35;
+  const awards = clamp(((s.awards || {}).wins || []).length * 6, 0, 12);
+  return clamp(Math.round(yours + story + awards), 4, 98);
+}
 export function replacementWord(d) {
   return d >= 85 ? 'extreme' : d >= 65 ? 'very hard' : d >= 45 ? 'hard' : d >= 25 ? 'awkward' : 'routine';
+}
+
+// ── under contract, or out of it ──────────────────────────────────────────────
+// The single most important correction from the outside reading, and it was right: the
+// game gave the impression that every season is a fresh negotiation. It is not. A series
+// regular signs with the studio holding OPTIONS on future seasons at escalators written
+// into the first paper — five per cent a year, typically — and the studio simply exercises
+// them. There is nothing to meet about, because you already agreed to this.
+//
+// The fight happens in the window: when the options run out, or at the season where the
+// whole cast reopens together and the studio decides it would rather deal than lose
+// everybody. That is where the leverage lives, and it should be on the screen in those
+// words so the player knows which of the two they are in.
+export const REOPEN_SEASON = 3;
+export function contractStatus(s, o) {
+  if (!o || o.kind !== 'renewal') return null;
+  const locked = !!o.optioned;
+  const reopen = locked && (o.season || 1) >= REOPEN_SEASON && (o.marketFee || 0) > 0;
+  if (locked && !reopen) {
+    return {
+      status: 'Studio option', open: false, leverage: 'low',
+      line: `They hold an option on this season at the fee you signed for, plus five per cent. You agreed to this before anybody knew what the show would become, and that is what an option is for.`,
+    };
+  }
+  if (reopen) {
+    return {
+      status: 'The cast reopen together', open: true, leverage: 'strong',
+      line: `Season ${o.season}: the whole cast renegotiates at once and the studio knows it. This is the one door inside an option, and it is open because nobody can replace all of you.`,
+    };
+  }
+  return {
+    status: 'Renegotiation window', open: true, leverage: 'very strong',
+    line: `Your contract is up. They need a new deal and you do not, which is the whole of it.`,
+  };
+}
+// A meeting is for a negotiation. There is no meeting about an option — they exercise it.
+export function canMeet(s, o) {
+  const c = contractStatus(s, o);
+  return !c || c.open;
 }
 
 export function yoursToLose(o) {
@@ -224,23 +284,36 @@ export const FAILURES = {
   newLead: { label: 'A new lead' },
   cancel: { label: 'No season' },
 };
+// These are GAME WEIGHTS. There is no industry table of what a studio does when a
+// negotiation fails, and the first version of this quoted its own tuning back as though
+// there were. What is real is the shape: a healthy show is worth saving and a sinking one
+// is not, and nobody ends a programme over somebody who is not in most of it.
 export function failureOdds(s, o) {
   const d = dependency(s, o);
   const last = lastSeason(s, o);
   // A show doing well is worth keeping whatever it costs; one that is slipping is one they
-  // are looking for a reason to end anyway.
+  // are looking for a reason to end anyway. The second reading was right that this was far
+  // too weak: paying was 52% for a show that was sinking, which is a studio asking itself
+  // why it should spend ten million saving something the audience is already leaving.
   const health = last ? clamp(Math.round(last.pull * 45 + (last.held - 1) * 120), 5, 95) : 50;
   const w = {
-    // They pay. Most common, and more common the more the thing is you.
-    pay: 20 + d * 0.55 + health * 0.25,
-    // The show goes on with somebody else carrying it. Cheap when you are not the centre.
-    around: 58 - d * 0.45 + health * 0.12,
-    // A death is what a show does when it wants the leaving to be an event.
-    killed: 26 - d * 0.16 + health * 0.06,
-    // Bring somebody new in above the title. Needs a show healthy enough to carry it.
-    newLead: 10 - d * 0.05 + health * 0.18,
-    // And stopping, which is what happens when you are the show and it is not worth it.
-    cancel: 6 + d * 0.28 - health * 0.22,
+    // They pay. Two conditions, and it needs BOTH: the show has to be worth saving, and you
+    // have to be the reason it needs saving. Added rather than multiplied, a healthy show
+    // paid handsomely to keep a supporting player nobody would miss, which is not a thing
+    // that happens.
+    // And a show that is ENTIRELY one person, while it is still working, is the case where a
+    // studio simply writes the cheque. That last term only exists above seventy, and it is
+    // scaled by health too — nobody writes it for a programme people have stopped watching.
+    pay: (4 + d * 0.55) * (0.35 + health / 100) + Math.max(0, d - 70) * (health / 100) * 1.6,
+    // The show goes on with somebody else carrying it. The commonest answer of all when you
+    // are not the centre of it.
+    around: 52 - d * 0.38 + health * 0.10,
+    // A death, which is what a show does when it wants the leaving to be an event.
+    killed: 24 - d * 0.14 + health * 0.04,
+    // Somebody new above the title. Needs a show healthy enough to carry the change.
+    newLead: 12 - d * 0.04 + health * 0.14,
+    // And stopping. Only ever a real answer when the thing is you AND it is not worth it.
+    cancel: Math.max(0, (d - 45) * 0.55) + Math.max(0, (55 - health) * 0.85),
   };
   for (const k of Object.keys(w)) w[k] = Math.max(0, w[k]);
   const total = Object.values(w).reduce((x, y) => x + y, 0) || 1;
@@ -283,6 +356,11 @@ export const ASK_IDS = Object.keys(ASKS);
 export const ROOM_LEAD = 2;
 export function callTheRoom(s, o) {
   if (!yoursToLose(o) || s.standoff) return s;
+  // Nobody clears an afternoon to discuss a paper you already signed.
+  if (!canMeet(s, o)) {
+    s.lastEvent = `Business affairs answered in one line: they hold an option on this season and they are exercising it. There is nothing to meet about, because you agreed to this before anybody knew what the show would be.`;
+    return s;
+  }
   const due = stamp(s) + ROOM_LEAD;
   s.standoff = {
     offerId: o.id, title: clean(o.projectTitle), season: o.season || 1,
