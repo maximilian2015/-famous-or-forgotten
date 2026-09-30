@@ -26,6 +26,8 @@ import { addTimeline } from '../../engine/timeline.js';
 import { inCareer } from '../../engine/stage.js';
 import { newTitle } from '../world/titles.js';
 import { personName, namesInUse } from '../world/names.js';
+import { setFame, setRespect } from '../meta/status.js';
+import { addHype } from '../meta/hype.js';
 
 const clamp = (v, a = 0, b = 100) => Math.max(a, Math.min(b, v));
 const stamp = (s) => (s.year || 0) * 12 + (s.month || 0);
@@ -177,6 +179,86 @@ export function declineTick(s) {
     note: `${k.line(s)} ${k.note}`,
   });
   addTimeline(s, `${k.label} came in.`);
+  return s;
+}
+
+// ── and what each of them actually does to you ────────────────────────────────
+// An outside reading, after the market went in: "do not add twenty more low-end jobs —
+// make the consequences deeper, so that these can lead in different directions." Which is
+// the difference between a set of buttons and a second half of a career. So none of them
+// pays the same coin, and two of them can turn into something.
+export function laterOutcome(s, id) {
+  const k = LATER[id];
+  if (!k) return s;
+  const out = { id };
+  if (id === 'convention') {
+    // Money, and the discovery that the people who loved you never stopped. It does
+    // nothing at all for whether anybody in the business rings, and that is the point of it.
+    setRespect(s, (s.respect || 0) + 1);
+    addHype(s, 4, 'hit');
+    out.line = `Four hundred people, a queue that went round the building, and a woman of forty who cried and apologised for crying. Nobody in this industry will hear about it and every one of them meant it. You are going to think about this for a while.`;
+    out.tone = 'warm';
+  }
+  if (id === 'reality') {
+    // The loudest thing available and the most expensive in the other currency.
+    setFame(s, (s.fame || 0) + rint(5, 11));
+    addHype(s, rint(30, 55), 'hit');
+    setRespect(s, (s.respect || 0) - rint(3, 7));
+    out.line = `Eleven weeks, and by the fourth everybody who had forgotten you knows your name again. Your face is on a bus. Two people who used to send you scripts have made the same joke about it in print, and your agent says the word "visibility" a great many times without once saying "parts".`;
+    out.tone = 'loud';
+  }
+  if (id === 'horror') {
+    // Usually nothing. And once in a while, the thing nobody could have arranged.
+    if (chance(14)) {
+      setFame(s, (s.fame || 0) + rint(6, 12));
+      setRespect(s, (s.respect || 0) + rint(2, 5));
+      addHype(s, rint(25, 45), 'hit');
+      s._cultHit = stamp(s);
+      out.line = `It was nineteen days in a house in the woods and it has become the film of the year for a certain kind of person. Somebody cut your one good scene to music and it has been watched eleven million times. A director you have actually heard of used the word "extraordinary" about a horror sequel, in public, on purpose.`;
+      out.tone = 'lucky';
+    } else {
+      addHype(s, 2, 'hit');
+      out.line = `It went out on a streamer in March and did what those do. Somebody was pleased to see you. That is the whole of it, and the money was real.`;
+      out.tone = 'flat';
+    }
+  }
+  if (id === 'stage') {
+    // Nobody who can give you a job will see it, and you will be better than you have been
+    // in ten years — which is the sort of thing that reaches the right person eventually.
+    setRespect(s, (s.respect || 0) + rint(4, 8));
+    s.acting = clamp((s.acting || 0) + rint(2, 4));
+    s._stageRun = stamp(s);
+    out.line = `Eight shows a week for four months, and by the third you were doing something you have not done since drama school. Nobody who could hire you came. Two people who can did, quietly, on separate Tuesdays, and neither of them said so.`;
+    out.tone = 'earned';
+  }
+  if (id === 'parent') {
+    // The sentence that ends one half of a career and starts the other, and it works.
+    setFame(s, (s.fame || 0) + rint(3, 7));
+    setRespect(s, (s.respect || 0) + rint(1, 3));
+    addHype(s, rint(10, 22), 'hit');
+    s._visibleAgain = stamp(s);
+    out.line = `Four scenes. The one in the kitchen is the best thing in the picture and three separate reviews said so without using the word "returning". You are below the title now. You are also in a film people went to see.`;
+    out.tone = 'earned';
+  }
+  if (id === 'tellAll') {
+    // Two hours, unedited, and they have already written the headline. Which way it goes is
+    // not entirely yours to decide.
+    if (chance(38)) {
+      setFame(s, (s.fame || 0) + rint(4, 9));
+      addHype(s, rint(35, 60), 'hit');
+      setRespect(s, (s.respect || 0) + rint(1, 4));
+      out.line = `You answered the thing everybody had decided about you, once, without a lawyer in the room, and it went round the world in a night. The clip has four million views and the comments are — of all things — kind.`;
+      out.tone = 'lucky';
+    } else {
+      setFame(s, (s.fame || 0) + rint(1, 3));
+      addHype(s, rint(18, 34), 'scandal');
+      setRespect(s, (s.respect || 0) - rint(2, 5));
+      out.line = `They ran it under a headline with the words "whatever happened to" in it, and the photograph is from nine years ago. Everything you said was accurate and none of it was the story.`;
+      out.tone = 'cold';
+    }
+  }
+  addTimeline(s, `${k.label}. ${out.tone === 'lucky' ? 'And then something happened.' : ''}`.trim());
+  s.lastEvent = out.line;
   return s;
 }
 

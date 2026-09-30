@@ -18,6 +18,7 @@ import { acceptOffer, declineOffer } from './offers.js';
 import { canTakeSet, monthsUntilFree, sets } from '../../engine/sets.js';
 import { walkOffSet } from './production.js';
 import { noteSequelLoss } from '../meta/stories.js';
+import { paid } from './agent.js';
 import { sendMail } from '../meta/email.js';
 import { STUDIOS } from '../world/names.js';
 // The studio on the letterhead — the same hash ContractRoom draws the stamp from.
@@ -337,6 +338,18 @@ export function contractsTick(s) {
     const title = String(o.projectTitle || 'it').replace('⭐ ', '');
     s.offers = s.offers.filter((x) => x.id !== o.id);
     s.inbox = (s.inbox || []).filter((m) => m.offerId !== o.id);
+    // Pay-or-play, which is the entire reason anybody negotiates for it and which this path
+    // did not honour. Maxi, looking at a part voided for a schedule: "is this a glitch? I
+    // signed a contract with them." The recast itself is right — a picture cannot wait on a
+    // release date nobody will give, and he had the letter a month before. But the clause
+    // says the whole fee whether or not the picture happens, and that plainly includes the
+    // picture happening without you. It was only ever paid out when a production collapsed
+    // (career/stability.js), never when one went ahead and recast.
+    if (o.payOrPlay && (o.salary || 0) > 0) {
+      paid(s, o.salary, `${title} — pay-or-play`);
+      addTimeline(s, `${title} recast you and paid you anyway. That is what the clause was for.`);
+      s.lastEvent = `"${title}" went to somebody who was free, and business affairs paid the fee in full the same week. Pay-or-play: you argued for it on a Tuesday two years ago and it has just earned its place. Nobody says thank you for a clause and you should.`;
+    }
     addTimeline(s, `${title}: they held it as long as they could. You were still on another set, and they recast.`, true);
     // Losing your own season or your own sequel is the same loss however it happened, and
     // the world has a whole story for it (stories.js recast): the fans, the director's

@@ -150,8 +150,15 @@ export function applyMonthly(s) {
 // Nothing here ran before — fame only ever went up, so every life ended a Legend.
 export function relevanceDrift(s) {
   if (!inCareer(s)) return;
-  // Shooting counts as working, and a fresh credit buys you a few quiet months.
-  if (s.production) { s._idleMonths = 0; } else { s._idleMonths = (s._idleMonths || 0) + 1; }
+  // Shooting counts as working, and a fresh credit buys you a few quiet months — but only
+  // work that somebody might notice. An outside reading put it exactly: WORKING IS NOT THE
+  // SAME AS RELEVANT. A convention, a reality format or the fifth horror picture keeps you
+  // busy and keeps nobody’s attention, and the clock that forgets you should not stop for
+  // them. Otherwise one cheap job a year holds a name up for ever, which is the opposite of
+  // what that kind of year actually does to somebody. career/decline.js is where they come
+  // from; they carry a prestige in the teens and a real picture does not.
+  const noticed = !!s.production && (s.production.prestigeScore || 0) >= 30;
+  if (noticed) { s._idleMonths = 0; } else { s._idleMonths = (s._idleMonths || 0) + 1; }
   // Old news fades whether you like it or not.
   // A publicist is the difference between a bad week and a bad year.
   // A scandal sticks to the face — famous and unrespected — for longer than to anyone else.

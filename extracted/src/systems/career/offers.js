@@ -16,6 +16,7 @@ import { storyOfferFactor, noteRefusal, noteSequelLoss } from '../meta/stories.j
 import { hypeDemand, hype, hypeSource, hypeBrands } from '../meta/hype.js';
 import { socialBrandLift } from '../social/posting.js';
 import { signEndorsement, clauseTaken } from './endorsement.js';
+import { laterOutcome } from './decline.js';
 import { isStrong, activeLabels, labelInfo } from '../meta/typecast.js';
 import { canTakeSet } from '../../engine/sets.js';
 const clamp = (v) => Math.max(0, Math.min(100, v));
@@ -230,6 +231,10 @@ export function acceptOffer(s, id) {
   // A part the brand's paper says you cannot be seen in. It does not stop you — the screen
   // told you the price before you pressed it. career/endorsement.js
   if (o.kind !== 'brand') clauseTaken(s, o);
+  // The market that only exists on the way down does not go through a shoot and a release —
+  // a convention is two days and a format is eleven weeks of somebody else's edit. What it
+  // does to you is decided here, and none of them pays in the same coin. career/decline.js
+  if (o.kind === 'later' && o.later) { laterOutcome(s, o.later); }
   // Anything with a real schedule becomes a shoot you live through — same rule as a
   // casting. Only a day's work resolves in the same click.
   const fit = canWork(s);
