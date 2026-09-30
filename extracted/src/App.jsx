@@ -24,6 +24,7 @@ import { knownFor, isHit, isFlop, theHits, theFlops } from './systems/meta/known
 import { boxedInto, isUniversal } from './systems/meta/typecast.js';
 import { liveBubbles, backTheCampaign, canBack as canBackShow, BACK_COST } from './systems/career/bubble.js';
 import { liveEndorsement, dutiesDue, attendDuty, canAttend as canAttendDuty, clauseBlocks } from './systems/career/endorsement.js';
+import { heirLine } from './systems/life/origin.js';
 import { openSeason, askerLine, campaignable, canCampaign, startCampaign, campaignKind,
   liveCampaign, ownCampaignCost, CAMPAIGN_ENERGY, CAMPAIGN_MONTHS } from './systems/career/awards.js';
 import { townOpen, townFor, goOut } from './systems/life/town.js';
@@ -173,6 +174,10 @@ export default function App() {
             {/* Being talked about, on the face of it rather than one tap inside the fame tile. */}
             {/* Nominated, or a winner, said next to the name — which is where it is said in
                 life. career/awards.js askerLine */}
+            {/* Whose child you are. It is the first thing anybody says about you and the
+                last thing you get rid of. life/origin.js */}
+            {(() => { const hl = heirLine(g); if (!hl) return null;
+              return <div style={{ fontSize: 10, marginTop: 2, fontWeight: 700, color: hl.own ? theme.accent : theme.muted, opacity: hl.own ? 1 : .8 }}>{hl.text}</div>; })()}
             {(() => { const al = inCareer(g) ? askerLine(g) : null; if (!al) return null;
               return <div style={{ fontSize: 10, marginTop: 2, fontWeight: 800, color: theme.gold, opacity: al.hot ? 1 : .8 }}>🏆 {al.text}</div>; })()}
             {hype(g) >= 20 && <div style={{ fontSize: 10, marginTop: 2, fontWeight: 700, color: hypeSource(g) === 'scandal' ? '#ff8d9e' : theme.accent }}>

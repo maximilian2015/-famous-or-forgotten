@@ -27,6 +27,7 @@ import { typeFit, typeFactor, typecastAfterDayWork, strongLabels, isStrong, acti
 import { storyCastFactor, hiding } from '../meta/stories.js';
 import { hypeReach, hypeBrands } from '../meta/hype.js';
 import { socialReach } from '../social/posting.js';
+import { heirReach } from '../life/origin.js';
 export { tvMonths, TV_PACE } from './franchise.js';
 // What a casting office will see you for. Usually that is fame — but an Asker counts,
 // and it is the one route into work above your level that does not run through
@@ -42,7 +43,9 @@ export function poisoned(s) { return (s.poisonUntil || 0) > (s.year || 0) * 12 +
 // And followers, but only the part of them your fame does not already account for: an
 // audience you assembled yourself gets you read for things. It does not make you a film
 // star, so it is capped at nine. See systems/social/posting.js.
-export function reach(s) { return (s.fame || 0) + askerStanding(s) + reachFromStanding(s) + hypeReach(s) + socialReach(s); }
+// And whose child you are, which opens rooms until you are somebody yourself and then
+// quietly stops. life/origin.js heirReach
+export function reach(s) { return (s.fame || 0) + askerStanding(s) + reachFromStanding(s) + hypeReach(s) + socialReach(s) + heirReach(s); }
 const clamp = (v) => Math.max(0, Math.min(100, v));
 // Two things the old table got wrong, both of them real-world facts:
 //   · television is paid PER EPISODE, film is paid for the picture. They are not the

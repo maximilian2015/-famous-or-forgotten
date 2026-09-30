@@ -189,6 +189,35 @@ function beginAsHeir(s) {
   return s;
 }
 
+// ── being somebody’s child ──────────────────────────────────────────────────
+// A sweep for state that is written and never read turned this up: the heir path recorded
+// who your parent was, how big they got and whether you knew them, and then nobody in the
+// business ever mentioned it again. Not the press, not a casting office, not one person at
+// a party. It is the loudest single fact about a person in this trade and the game forgot
+// it the moment you were born.
+export function heir(s) { return s.heirOf || null; }
+
+// The door the name opens, which is real and closes behind you. A room will read the child
+// of somebody they admired; the same room stops caring the moment you are somebody in your
+// own right, and by then the name has become a thing people say ABOUT you rather than for
+// you. Into reach() in career/castings.js, alongside every other kind of reach.
+export function heirReach(s) {
+  const h = heir(s);
+  if (!h) return 0;
+  return Math.max(0, Math.min(14, ((h.peak || 0) - (s.fame || 0)) * 0.18));
+}
+
+// What gets said, and whether it is still being said for you or about you.
+export function heirLine(s) {
+  const h = heir(s);
+  if (!h) return null;
+  const own = s.fame || 0, peak = h.peak || 0;
+  if (own >= peak && peak > 0) return { text: `bigger than ${h.parent} ever was`, own: true };
+  if (own >= peak * 0.7) return { text: `out of ${h.parent}’s shadow, mostly`, own: true };
+  if (own >= 30) return { text: `${h.parent}’s child`, own: false };
+  return { text: `${h.parent}’s child, and so far that is the whole of it`, own: false };
+}
+
 // Pocket money, birthdays, a note slipped into your hand at the door. It is the only
 // income a child has, and how much of it there is depends entirely on the family.
 export function allowanceTick(s) {

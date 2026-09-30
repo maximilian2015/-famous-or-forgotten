@@ -3,6 +3,7 @@ import { theme } from '../theme.js';
 import { Card } from './Card.jsx';
 import { yearsOf, moneyOf } from '../../systems/world/yearbook.js';
 import { legends as legendsOf, alist as alistOf, ageOf, SEATS } from '../../systems/world/world.js';
+import { youngBlood } from '../../systems/career/youngblood.js';
 
 // The wall. Who is an icon right now, who was one, and every year the business has kept
 // lists for — the ten films that took the money, the five actors whose year it was, the
@@ -70,6 +71,38 @@ export function WalkOfFame({ g }) {
         <span style={{ fontWeight: 800, color: a.icon ? theme.gold : theme.text }}>#{a.rank} {a.name}</span>
         <span style={{ fontSize: 11, color: theme.muted, whiteSpace: 'nowrap' }}>{ageOf(g, a)} · {a.icon ? `icon since ${a.iconSince}` : 'in the chair, not yet the name'}{a.askers ? ` · 🏆 ${a.askers}` : ''}</span>
       </div>))}
+      {/* ── the other end of the same list ─────────────────────────────────── */}
+      {/* Maxi: "young blood should be a column in the same legend — actors and directors
+          you can work with, the agent brings you their work, and it breaks the typecast."
+          The mechanics were built and wired: the agent brings one every fourteen months,
+          working with one pays off years later, and a shoot with one chips at a label. The
+          LIST itself was never put on a screen — youngBlood() was exported and called by
+          nothing, so the whole column existed only in the code. career/youngblood.js */}
+      {(() => {
+        const young = youngBlood(g);
+        if (!young.length) return null;
+        return (<>
+          <div style={sub}>Young blood</div>
+          <div style={{ fontSize: 11, color: theme.muted, padding: '0 8px 4px', lineHeight: 1.45 }}>
+            Nobody has heard of them. In ten years three of these names are the ones above.
+          </div>
+          {young.map((y) => (<div key={y.id} style={{ padding: '5px 8px', borderTop: `1px solid ${theme.line}` }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', gap: 8 }}>
+              <span style={{ fontWeight: 700, fontSize: 12.5, color: y.worked ? theme.gold : theme.text }}>
+                {y.name}{y.worked ? ' ★' : ''}
+              </span>
+              <span style={{ fontSize: 11, color: theme.muted, whiteSpace: 'nowrap' }}>
+                {y.kind === 'director' ? 'director' : 'actor'} · {y.age}
+              </span>
+            </div>
+            <div style={{ fontSize: 11, color: theme.muted, lineHeight: 1.4, marginTop: 1 }}>{y.line}</div>
+          </div>))}
+          <div style={{ fontSize: 10.5, color: theme.muted, padding: '6px 8px 0', lineHeight: 1.45 }}>
+            Your agent will not bring you these — the money is wrong and the material is the
+            only argument. One turns up about every fourteen months anyway.
+          </div>
+        </>);
+      })()}
       {/* The nine chairs under them — the room you are trying to get into, with your own place under it. */}
       <div style={sub}>The A-list</div>
       {alist.map((a) => (<div key={a.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', gap: 8, padding: '4px 8px', fontSize: 12 }}>
