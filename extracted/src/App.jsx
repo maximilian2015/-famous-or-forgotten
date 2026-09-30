@@ -25,7 +25,7 @@ import { boxedInto, isUniversal } from './systems/meta/typecast.js';
 import { liveBubbles, backTheCampaign, canBack as canBackShow, BACK_COST } from './systems/career/bubble.js';
 import { liveEndorsement, dutiesDue, attendDuty, canAttend as canAttendDuty, clauseBlocks } from './systems/career/endorsement.js';
 import { heirLine } from './systems/life/origin.js';
-import { liveStandoff, takeTheRoom, pushTheRoom, walkTheRoom } from './systems/career/standoff.js';
+import { liveStandoff, takeTheRoom, askFor, walkTheRoom, roomDue, canPush, PUSH_COST } from './systems/career/standoff.js';
 import { openSeason, askerLine, campaignable, canCampaign, startCampaign, campaignKind,
   liveCampaign, ownCampaignCost, CAMPAIGN_ENERGY, CAMPAIGN_MONTHS } from './systems/career/awards.js';
 import { townOpen, townFor, goOut } from './systems/life/town.js';
@@ -127,6 +127,7 @@ export default function App() {
   if (!g.created) return <CreatorScreen />;
   if (!g.alive) return <EndOfLifeScreen g={g} />;
   if (g.scene) return <SceneModal g={g} />;
+  if (liveStandoff(g)) return <RoomModal g={g} />;
   if (g.pendingArc) return <ArcModal g={g} />;
   if (showGenres) return <GenreScreen g={g} onBack={() => setShowGenres(false)} />;
   if (showHealth) return <HealthScreen g={g} onBack={() => setShowHealth(false)} />;
@@ -1454,44 +1455,102 @@ const SKIP_WHY = {
   life: 'it ended',
 };
 
+// The afternoon itself. Maxi: "a letter comes, a meeting with the producers, a date on the
+// calendar — what day, what month — and then a window opens, music, little figures at a
+// table." It is a room rather than a card because everything about the season is waiting on
+// it, and because a card is something you scroll past. career/standoff.js
+function RoomModal({ g }) {
+  const k = liveStandoff(g);
+  if (!k) return null;
+  const fit = canPush(g);
+  return (<div style={{ position: 'fixed', inset: 0, background: 'rgba(8,5,20,.94)', zIndex: 70,
+    display: 'flex', alignItems: 'flex-start', justifyContent: 'center', padding: 16, overflowY: 'auto', color: theme.text }}>
+    <div style={{ maxWidth: 460, width: '100%', marginTop: 24 }}>
+
+      {/* The table, seen from the door. */}
+      <div style={{ textAlign: 'center', marginBottom: 14 }}>
+        <div style={{ fontSize: 34, letterSpacing: 6 }}>🪑🪑🪑🪑</div>
+        <div style={{ fontFamily: FONT_DISPLAY, fontSize: 23, fontWeight: 700, marginTop: 6 }}>The meeting</div>
+        <div style={{ fontSize: 12.5, color: theme.muted, marginTop: 2 }}>
+          "{k.title}" · season {k.season + 1}
+        </div>
+      </div>
+
+      {/* Who is in it. */}
+      <Card style={{ marginBottom: 10 }}>
+        {k.chairs.map((c, i) => (
+          <div key={i} style={{ fontSize: 11.5, lineHeight: 1.5, color: theme.muted, padding: '2px 0' }}>
+            <span style={{ fontWeight: 800, color: theme.text }}>{c.who}</span> — {c.line}
+          </div>
+        ))}
+      </Card>
+
+      {/* The only number anybody at that table cares about. */}
+      {k.because && <Card style={{ marginBottom: 10 }}>
+        <div style={{ fontSize: 11.5, lineHeight: 1.5, color: k.grew ? theme.good : theme.muted }}>📈 {k.because}</div>
+      </Card>}
+
+      {/* What they have brought with them. */}
+      <Card style={{ marginBottom: 10, borderColor: 'rgba(255,209,102,.4)' }}>
+        <div style={{ fontSize: 11, fontWeight: 900, letterSpacing: '.08em', textTransform: 'uppercase', color: theme.gold, marginBottom: 5 }}>On the table</div>
+        {k.terms.map((t, i) => <div key={i} style={{ fontSize: 12.5, lineHeight: 1.55 }}>· {t}</div>)}
+        <div style={{ fontSize: 11.5, color: theme.muted, marginTop: 6, lineHeight: 1.45 }}>{k.mood}</div>
+      </Card>
+
+      {/* One thing, once. */}
+      {!k.asked && <Card style={{ marginBottom: 10 }}>
+        <div style={{ fontSize: 11, fontWeight: 900, letterSpacing: '.08em', textTransform: 'uppercase', color: theme.muted, marginBottom: 5 }}>
+          Ask for one thing · {PUSH_COST} energy
+        </div>
+        {k.asks.map((x) => (
+          <button key={x.id} onClick={() => dispatch(askFor, x.id)} disabled={!fit.ok}
+            style={{ width: '100%', textAlign: 'left', border: 'none', borderRadius: 10, padding: '8px 11px', marginBottom: 5,
+              cursor: fit.ok ? 'pointer' : 'default', background: fit.ok ? 'rgba(158,116,255,.15)' : 'rgba(120,110,150,.12)', color: fit.ok ? '#d9cffa' : '#6b6390' }}>
+            <div style={{ fontSize: 12.5, fontWeight: 800 }}>{x.label}</div>
+            <div style={{ fontSize: 11, opacity: .8, lineHeight: 1.4, marginTop: 1 }}>{x.ask}</div>
+          </button>
+        ))}
+        {!fit.ok && fit.why && <div style={{ fontSize: 10.5, color: theme.muted, lineHeight: 1.45 }}>{fit.why}</div>}
+      </Card>}
+      {k.asked && <div style={{ fontSize: 11.5, color: k.gave ? theme.good : theme.muted, lineHeight: 1.5, marginBottom: 10 }}>
+        {k.gave ? 'They gave you that. Everything on the table is what you leave with.' : 'You asked. They did not move. What is on the table is what is on the table.'}
+      </div>}
+
+      <div style={{ display: 'flex', gap: 8 }}>
+        <button onClick={() => dispatch(takeTheRoom)} style={{ flex: 2, border: 'none', borderRadius: 12, padding: '13px', fontSize: 14, fontWeight: 800,
+          cursor: 'pointer', background: `linear-gradient(135deg,${theme.gold},#c9962f)`, color: '#1a1206' }}>Shake on it</button>
+        <button onClick={() => dispatch(walkTheRoom)} style={{ flex: 1, border: `1px solid ${theme.line}`, borderRadius: 12, padding: '13px', fontSize: 13, fontWeight: 800,
+          cursor: 'pointer', background: 'transparent', color: theme.bad }}>Walk out</button>
+      </div>
+      <div style={{ fontSize: 10.5, color: theme.muted, marginTop: 8, lineHeight: 1.45, textAlign: 'center' }}>
+        Walk out and there is no season. The show is about you, so there is nobody to give it to —
+        and a network would rather lose it than set a number the whole town can read.
+      </div>
+    </div>
+  </div>);
+}
+
 // The room where it gets decided. Maxi, five seasons into his own show and beaten on the
 // fee five times: "if you cannot agree there is a meeting, you are invited, and you decide
 // finally what happens and on what terms." It is not another letter. career/standoff.js
 function StandoffCard({ g }) {
-  const k = liveStandoff(g);
-  if (!k) return null;
-  const btn = (tone, on) => ({ border: 'none', borderRadius: 9, padding: '7px 12px', fontSize: 11.5, fontWeight: 800,
-    cursor: on ? 'pointer' : 'default', flex: 1,
-    background: !on ? 'rgba(120,110,150,.15)' : tone === 'pri' ? 'rgba(255,209,102,.2)' : tone === 'bad' ? 'rgba(255,141,158,.14)' : 'rgba(158,116,255,.16)',
-    color: !on ? '#6b6390' : tone === 'pri' ? theme.gold : tone === 'bad' ? theme.bad : '#d9cffa' });
+  // The room itself is a modal now. This is the WAITING, which is most of the pressure and
+  // the part I had left out: business affairs stop replying, an invitation arrives, and there
+  // is a month in the diary with an entire season held against it. career/standoff.js
+  const d = roomDue(g);
+  if (!d) return null;
+  const MONS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
   return (<Card style={{ marginBottom: 14, borderColor: 'rgba(255,209,102,.45)' }}>
     <div style={{ fontSize: 11, fontWeight: 900, letterSpacing: '.09em', textTransform: 'uppercase', color: theme.gold, marginBottom: 4 }}>
-      The meeting · "{k.title}"
+      A date about "{d.title}"
     </div>
-    <div style={{ fontSize: 11.5, color: theme.muted, lineHeight: 1.45 }}>
-      Season {k.season + 1} is not being written until this is settled. {k.mood}
+    <div style={{ fontSize: 12.5, fontWeight: 800 }}>
+      {MONS[d.due % 12]} {Math.floor(d.due / 12)}{d.months <= 0 ? ' — this month' : d.months === 1 ? ' — next month' : ` — in ${d.months} months`}
     </div>
-    {/* The only number anybody in that room actually cares about. career/standoff.js */}
-    {k.because && <div style={{ fontSize: 11.5, color: k.grew ? theme.good : theme.muted, lineHeight: 1.45, marginTop: 5 }}>
-      📈 {k.because}
-    </div>}
-    <div style={{ marginTop: 7, padding: '8px 10px', borderRadius: 10, background: theme.panel }}>
-      <div style={{ fontSize: 11, fontWeight: 900, letterSpacing: '.08em', textTransform: 'uppercase', color: theme.muted, marginBottom: 4 }}>On the table</div>
-      {k.terms.map((t, i) => (
-        <div key={i} style={{ fontSize: 12, lineHeight: 1.5 }}>· {t}</div>
-      ))}
-    </div>
-    <div style={{ display: 'flex', gap: 6, marginTop: 8 }}>
-      <button onClick={() => dispatch(takeTheRoom)} style={btn('pri', true)}>Take it</button>
-      <button onClick={() => dispatch(pushTheRoom)} disabled={!k.can.ok} style={btn('', k.can.ok)}>
-        Go back once more · {k.pushCost}
-      </button>
-      <button onClick={() => dispatch(walkTheRoom)} style={btn('bad', true)}>Walk</button>
-    </div>
-    {!k.can.ok && k.can.why && <div style={{ fontSize: 10.5, color: theme.muted, marginTop: 4, lineHeight: 1.45 }}>{k.can.why}</div>}
-    <div style={{ fontSize: 10.5, color: theme.muted, marginTop: 6, lineHeight: 1.45 }}>
-      Nobody is taking the part — there is nobody to give it to. What a network does instead is
-      stop making it, and it would rather do that than set a number the whole town can read.
+    <div style={{ fontSize: 11.5, color: theme.muted, lineHeight: 1.45, marginTop: 3 }}>
+      Business affairs have stopped replying. Instead there is an invitation: the studio head,
+      business affairs, the showrunner, your agent and you, in one room for an afternoon.
+      Nothing about season {d.season + 1} moves until then.
     </div>
   </Card>);
 }

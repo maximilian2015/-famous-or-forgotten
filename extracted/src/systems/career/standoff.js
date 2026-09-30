@@ -187,15 +187,66 @@ export function packageFor(s, o) {
 // ── the meeting ───────────────────────────────────────────────────────────────
 // Called from contract.js when the fee has been refused twice on a show that is yours. It is
 // not another letter. It is a room, and it ends that day.
+// Who is actually in the room. Nobody sends one person to a meeting like this.
+export const CHAIRS = [
+  { who: 'The studio head', line: 'has not looked at the papers once and knows every number on them' },
+  { who: 'Business affairs', line: 'brought the file and will do the talking about money' },
+  { who: 'The showrunner', line: 'wants you back and is not allowed to say so in this room' },
+  { who: 'Your agent', line: 'on your side of the table, and has done this two hundred times' },
+];
+
+// Not an abstract push. You name the one thing you came for, which is what people do in
+// these rooms — nobody says "more, generally". Money is the hardest of the four, because
+// money is the one that gets printed and then every other agent in town quotes it.
+export const ASKS = {
+  money: { label: 'The number', ask: 'More an episode. Say it plainly and let it sit.', hard: 26,
+    got: 'They went out of the room for eleven minutes and came back with it.' },
+  points: { label: 'A piece of it', ask: 'Back end. If it runs, that is where the money actually is.', hard: 8,
+    got: 'Nobody argued. It costs them nothing today and a great deal in four years, which is exactly why they say yes.' },
+  producer: { label: 'A producing credit', ask: 'Your name in the front titles, and the room where the scripts are argued about.', hard: 12,
+    got: 'Agreed before your agent finished the sentence. The cheapest thing on the table and the one you will notice most.' },
+  fewer: { label: 'Fewer episodes', ask: 'A shorter season at the same rate. The months back are the point.', hard: 16,
+    got: 'The showrunner looked relieved, which tells you what the writing room has been like.' },
+};
+export const ASK_IDS = Object.keys(ASKS);
+
+// A meeting is a DATE, not something that happens the moment somebody is annoyed. Maxi: "a
+// letter comes inviting you to a meeting with the producers, with a date on the calendar —
+// what day, what month." That is how it goes: business affairs stop replying, an invitation
+// arrives, and there is a month in the diary with everything held until it. The waiting is
+// most of the pressure and it was the part I had left out.
+export const ROOM_LEAD = 2;
 export function callTheRoom(s, o) {
   if (!yoursToLose(o) || s.standoff) return s;
+  const due = stamp(s) + ROOM_LEAD;
   s.standoff = {
     offerId: o.id, title: clean(o.projectTitle), season: o.season || 1,
-    since: stamp(s), rounds: 0, pack: packageFor(s, o),
+    since: stamp(s), due, open: false, asked: null, gave: null, rounds: 0, pack: packageFor(s, o),
   };
-  addTimeline(s, `A meeting about "${clean(o.projectTitle)}". Not a letter this time.`);
-  s.lastEvent = `Nobody is answering letters about "${clean(o.projectTitle)}" any more, so there is a meeting: you, your agent, and three people from the studio who have all cleared an afternoon. It ends today, one way or the other.`;
+  addTimeline(s, `A date for "${clean(o.projectTitle)}". Everybody who can say yes will be in one room.`);
+  s.lastEvent = `Business affairs have stopped replying about "${clean(o.projectTitle)}". Instead there is an invitation and a date ${ROOM_LEAD} months out — the studio head, business affairs, the showrunner, your agent and you. Nothing about season ${(o.season || 1) + 1} moves until that afternoon.`;
   return s;
+}
+
+// Monthly. The date comes round and it stops being a calendar entry.
+export function standoffTick(s) {
+  const k = s.standoff;
+  if (!k || k.open) return s;
+  if (stamp(s) < (k.due || 0)) return s;
+  const o = (s.offers || []).find((x) => x.id === k.offerId);
+  if (!o) { s.standoff = null; return s; }
+  k.open = true;
+  // Two months have passed and the numbers have moved with the show.
+  k.pack = packageFor(s, o);
+  addTimeline(s, `The meeting about "${k.title}".`);
+  s.lastEvent = `The afternoon for "${k.title}". Four people, a file, and a room that has been booked for two hours.`;
+  return s;
+}
+// For the calendar, before the day comes.
+export function roomDue(s) {
+  const k = s.standoff;
+  if (!k || k.open) return null;
+  return { title: k.title, season: k.season, due: k.due, months: Math.max(0, (k.due || 0) - stamp(s)) };
 }
 export function standoff(s) { return s.standoff || null; }
 export function standoffOffer(s) {
@@ -208,9 +259,38 @@ export const PUSH_COST = 15;
 export function canPush(s) {
   const k = standoff(s);
   if (!k) return { ok: false, why: '' };
-  if (k.rounds >= 2) return { ok: false, why: 'You have been back twice. A third time is not negotiating, it is a position, and they will treat it as one.' };
+  if (k.asked) return { ok: false, why: 'You have asked, and they have answered. Asking twice in the same afternoon is not a negotiation, it is a position, and they will read it as one.' };
   if (!canAfford(s, PUSH_COST)) return { ok: false, why: tooTired(s, PUSH_COST) };
   return { ok: true, why: '' };
+}
+
+// Name it. One thing, once, in the room.
+export function askFor(s, id) {
+  const k = standoff(s), o = standoffOffer(s);
+  const spec = ASKS[id];
+  const fit = canPush(s);
+  if (!fit.ok) { if (fit.why) s.lastEvent = fit.why; return s; }
+  if (!k || !o || !spec) return s;
+  spend(s, PUSH_COST);
+  k.asked = id;
+  k.rounds += 1;
+  const odds = clamp(k.pack.room - spec.hard + (tierIdx(s) >= 5 ? 12 : 0));
+  if (chance(odds)) {
+    const p = k.pack;
+    if (id === 'money') p.fee = Math.round(p.fee * 1.18);
+    if (id === 'points') p.points = (p.points || 0) + rint(2, 3);
+    if (id === 'producer') p.producer = true;
+    if (id === 'fewer') p.episodes = Math.max(4, Math.round(p.episodes * 0.75));
+    k.gave = id;
+    s.lastEvent = `${spec.got} It is on the table with the rest of it.`;
+    return s;
+  }
+  k.gave = null;
+  // A no in a room is a no. And if the afternoon has gone badly enough, the people who can
+  // end the whole thing are already sitting at the table.
+  if (chance(22)) return closeTheShow(s, 'them');
+  s.lastEvent = `No. Not angrily, and not negotiably. ${k.pack.mood} What was on the table is still on the table, and the showrunner has not looked up.`;
+  return s;
 }
 
 // Take what is on the table. The commonest ending, and usually the right one.
@@ -281,10 +361,12 @@ function closeTheShow(s, who) {
 // ── for the screen ────────────────────────────────────────────────────────────
 export function liveStandoff(s) {
   const k = standoff(s);
-  if (!k) return null;
+  if (!k || !k.open) return null;
   const p = k.pack;
   return {
     title: k.title, season: k.season, rounds: k.rounds, mood: p.mood,
+    asked: k.asked || null, gave: k.gave || null, chairs: CHAIRS,
+    asks: ASK_IDS.map((id) => ({ id, ...ASKS[id] })),
     rise: Math.round((p.fee / p.was - 1) * 100),
     fee: p.fee, was: p.was, episodes: p.episodes, wasEpisodes: p.wasEpisodes,
     because: p.because, grew: p.grew, last: p.last,
