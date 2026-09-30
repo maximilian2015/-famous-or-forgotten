@@ -18,6 +18,7 @@ import { regardTick } from '../systems/life/regard.js';
 import { campaignTick } from '../systems/career/awards.js';
 import { endorsementTick } from '../systems/career/endorsement.js';
 import { standoffTick } from '../systems/career/standoff.js';
+import { declineTick } from '../systems/career/decline.js';
 import { datingYear } from '../systems/life/dating.js';
 import { childhoodTick, adoptionTick } from '../systems/life/children.js';
 import { spotlightYear } from '../systems/social/spotlight.js';
@@ -154,6 +155,7 @@ export function advanceMonth(state) {
   campaignTick(s);   // a season for a picture is three months of lunches you have to turn up to
   endorsementTick(s); // and a brand you are the face of has dates of its own, which it keeps count of
   standoffTick(s);    // and the afternoon everything about a season is waiting on finally arrives
+  declineTick(s);     // and on the way down, the other market opens: the hall, the format, the envelope
   childhoodTick(s);  // and a childhood spent watching you leave for a set counts double
   adoptionTick(s);   // and somewhere an office is still reading about your life
   healthTick(s);

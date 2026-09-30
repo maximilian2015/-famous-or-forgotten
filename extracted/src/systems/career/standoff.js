@@ -360,16 +360,16 @@ export const ASKS = {
     got: 'Written in as a guarantee. Whatever happens to the season now, that is money that exists.' },
   // The biggest one in this game, because it decides whether you have a film career at all
   // while the series runs. A full exclusivity means the show owns your year.
-  exclusivity: { label: 'The right to work between seasons', ask: 'A window they cannot block. You are not asking to leave, you are asking for the summer.', hard: 20,
+  exclusivity: { label: 'The right to work between seasons', ask: 'A conflict-free window after principal photography. You are not asking to leave — you are asking for the summer, and it will cost you a little of the rise.', hard: 20,
     need: () => true,
     got: 'A conflict-free window, in writing. What you do with the months between is now your own business.' },
   // A shorter span is not fewer episodes — it is the same season shot faster, and the
   // months it hands back are the months a film happens in.
-  span: { label: 'A shorter shoot', ask: 'The same season, in fewer months. They can afford the unit; you cannot afford the year.', hard: 22,
+  span: { label: 'A shorter shoot', ask: 'The same season, gathered into blocks, in fewer months. Holding a crew around one person is expensive and they will take it out of the money.', hard: 22,
     need: () => true,
-    got: 'Condensed. The unit will hate it and the first assistant director will make it work, because they always do.' },
+    got: 'Condensed, and twelve per cent off the rise for the privilege. The unit will hate it and the first assistant director will make it work, because they always do.' },
   // Cheap for them, and it is the thing actors actually go to war about.
-  billing: { label: 'First billing', ask: 'Your name first. It costs them nothing, which is why it is worth having.', hard: 10,
+  billing: { label: 'First billing', ask: 'Your name first. It costs them almost no money, which is why it is worth having — and a fight with somebody else’s agent, which is why they hesitate.', hard: 10,
     need: () => true,
     got: 'Agreed in about four seconds. It costs them nothing at all, and somebody else in that cast is going to hear about it from an assistant before Friday.' },
 };
@@ -471,7 +471,18 @@ export function askFor(s, id) {
     if (id === 'fewer') p.episodes = Math.max(4, Math.round(p.episodes * 0.75));
     if (id === 'guarantee') p.guarantee = p.episodes;
     if (id === 'exclusivity') p.conflictFree = true;
-    if (id === 'span') p.span = Math.max(2, Math.round((o.months || 6) * 0.6));
+    // A season shot around one person means holding locations, a crew and everybody else
+    // in the cast to somebody else’s film. Studios do it, and they take it out of the
+    // money — which is the decision worth having: two million more, or four months in
+    // which a film can happen.
+    if (id === 'span') {
+      p.span = Math.max(2, Math.round((o.months || 6) * 0.6));
+      p.fee = Math.round(p.fee * 0.88);
+      p.paidFor = true;
+    }
+    // And the same bargain, smaller: a window they cannot block is a window they cannot
+    // sell to anybody else either.
+    if (id === 'exclusivity') p.fee = Math.round(p.fee * 0.95);
     if (id === 'billing') {
       p.billing = true;
       // It costs the studio nothing, which is why it is worth having — and it costs you
