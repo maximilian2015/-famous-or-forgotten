@@ -12,7 +12,7 @@
 import { rint, chance } from '../../engine/rng.js';
 import { addTimeline } from '../../engine/timeline.js';
 import { fameTier } from '../meta/status.js';
-import { callTheRoom, standoff } from './standoff.js';
+import { callTheRoom, standoff, canBeWrittenOut, writeOut } from './standoff.js';
 import { negotiationFor, reachOf } from './negotiate.js';
 import { acceptOffer, declineOffer } from './offers.js';
 import { canTakeSet, monthsUntilFree, sets } from '../../engine/sets.js';
@@ -416,6 +416,16 @@ export function contractsTick(s) {
         if (o.kind === 'renewal') noteSequelLoss(s, o, 'talks');
         sendMail(s, { from: `${studioOf(o)} · business affairs`, subj: `"${title}" — the season`, tag: 'contract', kind: 'contract',
           body: `We have not been able to reach an agreement on terms and the network will not be proceeding with the season. This is not a reflection on the work. It has been a pleasure, and we hope to find something together again before long.` });
+        continue;
+      }
+      // A series regular who is not the centre of it does not lose the part to somebody who
+      // signed the same paper — nobody signs your recurring part. They write you out, and the
+      // show comes back without you. Maxi drew that line: the lead cannot be, anybody else can.
+      if (canBeWrittenOut(o)) {
+        writeOut(s, o);
+        noteSequelLoss(s, o, 'talks');
+        (s.moments = s.moments || []).push({ id: 'contract', kind: 'bad', title, lines,
+          body: `You asked, they said no, and then they solved it the way a show always solves it: your character is written out and the season goes ahead. Nobody has done anything to you. You were simply not the reason anybody was watching.` });
         continue;
       }
       addTimeline(s, `${title}: they stopped answering. Somebody else signed it as written.`, true);

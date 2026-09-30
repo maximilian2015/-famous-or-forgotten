@@ -1471,6 +1471,10 @@ function StandoffCard({ g }) {
     <div style={{ fontSize: 11.5, color: theme.muted, lineHeight: 1.45 }}>
       Season {k.season + 1} is not being written until this is settled. {k.mood}
     </div>
+    {/* The only number anybody in that room actually cares about. career/standoff.js */}
+    {k.because && <div style={{ fontSize: 11.5, color: k.grew ? theme.good : theme.muted, lineHeight: 1.45, marginTop: 5 }}>
+      📈 {k.because}
+    </div>}
     <div style={{ marginTop: 7, padding: '8px 10px', borderRadius: 10, background: theme.panel }}>
       <div style={{ fontSize: 11, fontWeight: 900, letterSpacing: '.08em', textTransform: 'uppercase', color: theme.muted, marginBottom: 4 }}>On the table</div>
       {k.terms.map((t, i) => (

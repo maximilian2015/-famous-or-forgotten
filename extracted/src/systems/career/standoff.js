@@ -30,15 +30,50 @@ import { inCareer } from '../../engine/stage.js';
 import { COST, canAfford, spend, tooTired } from '../../engine/energy.js';
 import { setRespect } from '../meta/status.js';
 import { fameTier } from '../meta/status.js';
+import { slotNorm } from './franchise.js';
 
 const clamp = (v, a = 0, b = 100) => Math.max(a, Math.min(b, v));
 const stamp = (s) => (s.year || 0) * 12 + (s.month || 0);
 const tierIdx = (s) => ['unknown', 'rising', 'known', 'star', 'alist', 'icon'].indexOf(fameTier(s.fame).id);
 const clean = (t) => String(t || 'it').replace('⭐ ', '');
 
-// The show is about you, so there is nobody to give it to. career/contract.js theShowIsYou
+// Two rules, and Maxi drew the line between them exactly where it is:
+//
+//   "the show continues without you — only if I am not the lead."
+//
+// Quite. If the show is ABOUT you there are two endings and no third: they pay, or it does
+// not get made. Nobody is written out of the middle of their own programme and nobody is
+// recast into it either.
+//
+// Anybody else is a different conversation. A series regular who is not the centre gets
+// WRITTEN OUT — a death, a transfer, a letter from somewhere else — and the show carries
+// on perfectly well, which is the part that stings. It happens constantly and almost
+// nobody outside the cast notices.
 export function yoursToLose(o) {
   return !!o && o.kind === 'renewal' && (o.tier === 'lead' || o.tier === 'tentpole');
+}
+// The other half of the same rule: your part can be written out, and the show cannot.
+export function canBeWrittenOut(o) {
+  return !!o && o.kind === 'renewal' && !yoursToLose(o);
+}
+
+// How they do it. None of these is about you and all of them are about you.
+export const EXITS = [
+  { how: 'a transfer', line: 'Your character is offered something in another city in episode three and takes it. Two lines about it in four, and then nothing.' },
+  { how: 'a death', line: 'They kill you in the back half. It is a good episode and people will say so, and they will be right, and that is the last of it.' },
+  { how: 'quietly', line: 'Nothing happens to your character at all. They are simply not in it, and by episode six nobody in the story mentions them, and by season seven the show behaves as though they were never there.' },
+  { how: 'a wedding', line: 'They marry your character off and move them somewhere happy, which is how a show says goodbye when it wants to stay friendly about it.' },
+];
+
+// Written out over money. The show does not stop, and that is the whole of it.
+export function writeOut(s, o) {
+  const e = EXITS[Math.floor(Math.random() * EXITS.length)];
+  const title = clean(o.seriesTitle || o.projectTitle);
+  s.offers = (s.offers || []).filter((x) => x.id !== o.id);
+  s.inbox = (s.inbox || []).filter((m) => m.offerId !== o.id);
+  addTimeline(s, `Written out of "${title}". The show is coming back; you are not in it.`, true);
+  s.lastEvent = `Nobody argued for long. You are not the reason anybody watches ${title}, and the room worked that out faster than your agent did. ${e.line} Season ${(o.season || 1)} goes ahead exactly as planned, and you will find out how it does the way everybody else does.`;
+  return s;
 }
 
 // ── what they will actually put on the table ──────────────────────────────────
@@ -53,6 +88,31 @@ export const EXTRAS = {
 };
 export const EXTRA_IDS = Object.keys(EXTRAS);
 
+// What the LAST season actually did, which is the thing everybody in the room has in front
+// of them. Maxi: "and then look at how the season played out — if it paid off, continue,
+// offer a share, a producing credit." That is exactly the mechanism and it was missing:
+// the package was priced off who you are and how many seasons had gone by, and not off the
+// only number anybody in that building cares about.
+export function lastSeason(s, o) {
+  const root = String(o.seriesTitle || o.projectTitle || '').replace(/(\s*·\s*season\s+\d+)+\s*$/i, '').trim();
+  const runs = (s.filmography || []).filter((c) => {
+    const t = String(c.title || '').replace(/(\s*·\s*season\s+\d+)+\s*$/i, '').trim();
+    return t === root && !c.running;
+  }).sort((x, y) => (y.season || 0) - (x.season || 0));
+  const c = runs[0];
+  if (!c) return null;
+  const norm = slotNorm(c.type) || 2.6;
+  const drew = c.endViewers || c.viewers || 0;
+  const open = c.openViewers || drew;
+  return {
+    season: c.season || 1, rating: c.rating || 0, drew, open, norm,
+    pull: norm > 0 ? drew / norm : 1,
+    // Held its people, or bled them. A season that grew is the strongest thing you can
+    // put on the table, and it is not your argument — it is theirs, about their own show.
+    held: open > 0 ? drew / open : 1,
+  };
+}
+
 // How much room the studio has. A show they need is a show they will pay for; a show that is
 // limping is one they will let go rather than be held up by.
 export function theirRoom(s, o) {
@@ -61,11 +121,21 @@ export function theirRoom(s, o) {
   // The third season is the classic one: the paper is old, the show has proved itself, and
   // everybody in the building knows what the original deal looks like now.
   const proven = seasons >= 3 ? 1 : 0.6;
-  return clamp(Math.round((28 + tier * 11 + (o.prestigeScore || 50) * 0.18) * proven), 10, 92);
+  let room = (28 + tier * 11 + (o.prestigeScore || 50) * 0.18) * proven;
+  // And then the only thing that really decides it: what the last season did. A show
+  // pulling well above its slot is one they cannot afford to lose; one that slipped is one
+  // they are already half out of.
+  const last = lastSeason(s, o);
+  if (last) {
+    room *= last.pull >= 1.6 ? 1.35 : last.pull >= 1.1 ? 1.15 : last.pull >= 0.75 ? 0.95 : 0.7;
+    room *= last.held >= 1.02 ? 1.12 : last.held >= 0.9 ? 1 : 0.86;
+  }
+  return clamp(Math.round(room), 10, 92);
 }
 
 export function packageFor(s, o) {
   const room = theirRoom(s, o);
+  const last = lastSeason(s, o);
   const tier = tierIdx(s);
   const fee = o.episodeFee || Math.round((o.salary || 0) / Math.max(1, o.episodes || 1));
   // Part of the ask in cash, and never all of it.
@@ -82,7 +152,31 @@ export function packageFor(s, o) {
     points: extras.includes('points') ? rint(2, 5) : 0,
     producer: extras.includes('producer'),
     directOne: extras.includes('directOne'),
-    extras, room,
+    extras, room, last,
+    // The sentence everybody in the room already knows, said out loud for the player.
+    // Two facts, and a room reads them together: how big it is, and which way it is going.
+    // A show doing well above its slot while shedding a third of its audience is not the
+    // same conversation as one doing well above its slot and climbing, and saying "they
+    // cannot afford to lose it" about the first one is how you get laughed at.
+    because: last ? (() => {
+      const size = last.pull >= 1.6
+        ? `${last.drew}m against the ${last.norm}m the slot wants`
+        : `${last.drew}m against a ${last.norm}m slot`;
+      const way = last.held >= 1.05 ? `and it grew through the run, from ${last.open}m`
+        : last.held >= 0.95 ? `and it held what it opened with`
+        : `and it shed ${Math.round((1 - last.held) * 100)}% of them between the first episode and the last`;
+      const read = last.pull >= 1.6 && last.held >= 0.95
+        ? `They cannot afford to lose it, and every person at that table knows the number.`
+        : last.pull >= 1.6
+        ? `Still the biggest thing they have, and somebody in that room has already said the word "tired" about it.`
+        : last.pull >= 1.1
+        ? `Comfortable. Not untouchable.`
+        : last.pull >= 0.75
+        ? `They are not frightened of losing it.`
+        : `They are already half out of this, and you are asking them for money.`;
+      return `Season ${last.season} did ${size}, ${way}. ${read}`;
+    })() : null,
+    grew: last ? last.held >= 1.02 : false,
     // What they are really saying, which is never what the letter says.
     mood: room >= 70 ? 'They need this show and everybody in the room knows it.'
       : room >= 45 ? 'They will pay something. They will not pay it in a way anybody can read about.'
@@ -193,6 +287,7 @@ export function liveStandoff(s) {
     title: k.title, season: k.season, rounds: k.rounds, mood: p.mood,
     rise: Math.round((p.fee / p.was - 1) * 100),
     fee: p.fee, was: p.was, episodes: p.episodes, wasEpisodes: p.wasEpisodes,
+    because: p.because, grew: p.grew, last: p.last,
     points: p.points, producer: p.producer, directOne: p.directOne,
     terms: [
       `${Math.round((p.fee / p.was - 1) * 100)}% more an episode`,
