@@ -29,6 +29,7 @@ import { addTimeline } from '../../engine/timeline.js';
 import { inCareer } from '../../engine/stage.js';
 import { COST, canAfford, spend, tooTired } from '../../engine/energy.js';
 import { setRespect } from '../meta/status.js';
+import { applyBond } from '../life/bonds.js';
 import { fameTier } from '../meta/status.js';
 import { slotNorm } from './franchise.js';
 
@@ -313,6 +314,12 @@ export function failureOdds(s, o) {
     // Somebody new above the title. Needs a show healthy enough to carry the change.
     newLead: 12 - d * 0.04 + health * 0.14,
     // And stopping. Only ever a real answer when the thing is you AND it is not worth it.
+    //
+    // Read this as: a contract dispute with THIS actor will not itself end the programme.
+    // It is not a claim that the show is safe — a show can be cancelled the same month for
+    // its ratings, its budget or a change of strategy somewhere above everybody in that
+    // room. Those are elsewhere (career/franchise.js, career/bubble.js). This number is
+    // only ever about whether YOU were the reason.
     cancel: Math.max(0, (d - 45) * 0.55) + Math.max(0, (55 - health) * 0.85),
   };
   for (const k of Object.keys(w)) w[k] = Math.max(0, w[k]);
@@ -345,7 +352,45 @@ export const ASKS = {
     got: 'Agreed before your agent finished the sentence. The cheapest thing on the table and the one you will notice most.' },
   fewer: { label: 'Fewer episodes', ask: 'A shorter season at the same rate. The months back are the point.', hard: 16,
     got: 'The showrunner looked relieved, which tells you what the writing room has been like.' },
+  // Guaranteed money, which is a different thing from a bigger number. A hundred and fifty
+  // thousand across ten guaranteed episodes beats a hundred and eighty across five they
+  // might not use, and the paper says how many they have to make.
+  guarantee: { label: 'A guaranteed number of episodes', ask: 'Not a rate. A floor. However the season goes, that is what they owe.', hard: 14,
+    need: () => true,
+    got: 'Written in as a guarantee. Whatever happens to the season now, that is money that exists.' },
+  // The biggest one in this game, because it decides whether you have a film career at all
+  // while the series runs. A full exclusivity means the show owns your year.
+  exclusivity: { label: 'The right to work between seasons', ask: 'A window they cannot block. You are not asking to leave, you are asking for the summer.', hard: 20,
+    need: () => true,
+    got: 'A conflict-free window, in writing. What you do with the months between is now your own business.' },
+  // A shorter span is not fewer episodes — it is the same season shot faster, and the
+  // months it hands back are the months a film happens in.
+  span: { label: 'A shorter shoot', ask: 'The same season, in fewer months. They can afford the unit; you cannot afford the year.', hard: 22,
+    need: () => true,
+    got: 'Condensed. The unit will hate it and the first assistant director will make it work, because they always do.' },
+  // Cheap for them, and it is the thing actors actually go to war about.
+  billing: { label: 'First billing', ask: 'Your name first. It costs them nothing, which is why it is worth having.', hard: 10,
+    need: () => true,
+    got: 'Agreed in about four seconds. It costs them nothing at all, and somebody else in that cast is going to hear about it from an assistant before Friday.' },
 };
+// Not everything is on the table for everybody, and showing an unknown in their second
+// season a back-end point would be silly. What you can even ASK for comes off what you are
+// and how much of the show is you.
+export function asksFor(s, o) {
+  const tier = tierIdx(s);
+  const d = dependency(s, o);
+  const season = (o && o.season) || 1;
+  const out = [];
+  out.push('money');
+  out.push('billing');
+  if (season >= 2) out.push('guarantee');
+  if (tier >= 3 || d >= 55) out.push('fewer');
+  if (tier >= 3 && season >= 3) out.push('exclusivity');
+  if (tier >= 4 && (d >= 60 || season >= 4)) out.push('points');
+  if (tier >= 4 && season >= 3) out.push('producer');
+  if (tier >= 4 && d >= 65) out.push('span');
+  return out;
+}
 export const ASK_IDS = Object.keys(ASKS);
 
 // A meeting is a DATE, not something that happens the moment somebody is annoyed. Maxi: "a
@@ -424,6 +469,21 @@ export function askFor(s, id) {
     if (id === 'points') p.points = (p.points || 0) + rint(2, 3);
     if (id === 'producer') p.producer = true;
     if (id === 'fewer') p.episodes = Math.max(4, Math.round(p.episodes * 0.75));
+    if (id === 'guarantee') p.guarantee = p.episodes;
+    if (id === 'exclusivity') p.conflictFree = true;
+    if (id === 'span') p.span = Math.max(2, Math.round((o.months || 6) * 0.6));
+    if (id === 'billing') {
+      p.billing = true;
+      // It costs the studio nothing, which is why it is worth having — and it costs you
+      // something with whoever has just been moved down a line. They find out on a Friday
+      // from somebody who works for them, which is the worst way to find out anything.
+      const costar = (s.people || []).filter((x) => /Actor|Star/i.test(x.role || '') && (x.relationship || 0) > 0)
+        .sort((x, y) => (y.relationship || 0) - (x.relationship || 0))[0];
+      if (costar) {
+        applyBond(s, costar, -rint(9, 16));
+        p.billingCost = costar.name;
+      }
+    }
     k.gave = id;
     s.lastEvent = `${spec.got} It is on the table with the rest of it.`;
     return s;
@@ -450,6 +510,12 @@ export function takeTheRoom(s) {
   if (p.points) o.tvPoints = p.points;
   if (p.producer) o.producing = true;
   if (p.directOne) o.directOne = true;
+  if (p.guarantee) o.guaranteed = p.guarantee;
+  // The one that changes your year: the show stops owning the months between seasons, so
+  // a film can happen in them. career/castings.js reads production.exclusive.
+  if (p.conflictFree) { o.conflictFree = true; o.exclusive = false; }
+  if (p.span) o.months = p.span;
+  if (p.billing) o.billing = true;
   o._settled = true;
   // A paper settled in a room is a paper. The clauses stop being arguable.
   if (o.contract) { for (const c of o.contract.clauses || []) { c.stance = 'ok'; c.ask = null; } o.contract.sent = null; }
@@ -586,7 +652,7 @@ export function liveStandoff(s) {
     leverage: o ? leverageLines(s, o) : [],
     dependency: o ? dependency(s, o) : 0,
     replacement: o ? replacementWord(dependency(s, o)) : null,
-    asks: ASK_IDS.map((id) => ({ id, ...ASKS[id] })),
+    asks: (o ? asksFor(s, o) : ASK_IDS).map((id) => ({ id, ...ASKS[id] })),
     rise: Math.round((p.fee / p.was - 1) * 100),
     fee: p.fee, was: p.was, episodes: p.episodes, wasEpisodes: p.wasEpisodes,
     because: p.because, grew: p.grew, last: p.last,
