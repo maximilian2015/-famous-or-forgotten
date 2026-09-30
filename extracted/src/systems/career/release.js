@@ -51,6 +51,9 @@ const VIEWERS = { episode: [0.4, 6], recurring: [1, 9], prestige: [2, 14] };
 
 // A good film sells more than a bad one, and the gap is enormous — the difference
 // between a 9 and a 3 is not thirty per cent, it is an order of magnitude.
+// Cinema. A ticket is a decision somebody makes about ONE film, so how good it is decides
+// most of what it takes: a picture people love has legs, gets recommended, and is seen
+// twice, and a bad one is gone by the second weekend. This curve is steep on purpose.
 function qualityPull(rating) {
   if (rating >= 90) return 2.30;
   if (rating >= 80) return 1.60;
@@ -58,6 +61,21 @@ function qualityPull(rating) {
   if (rating >= 60) return 0.80;
   if (rating >= 45) return 0.50;
   return 0.25;
+}
+// Television, which is a different thing entirely. Maxi: "in life, does something rated
+// 6.5 get six million watching, or fewer?" Six million is exactly right — and the question
+// found that this used to run off the cinema curve, swinging the audience by a factor of
+// NINE on the critics’ score alone. That is a game’s assumption, not a fact. Watching a
+// series is a habit rather than a purchase: a crime procedural nobody reviews kindly
+// out-draws a prestige drama with a nine, most weeks, because it is a crime procedural.
+// Quality moves the number here. It does not decide it.
+function watchPull(rating) {
+  if (rating >= 90) return 1.35;
+  if (rating >= 80) return 1.20;
+  if (rating >= 70) return 1.08;
+  if (rating >= 60) return 1.00;
+  if (rating >= 45) return 0.88;
+  return 0.72;
 }
 // Not everything good is commercial. A prestige drama and a horror picture with the same
 // score do not do the same business, and that is the whole reason the score and the money
@@ -174,8 +192,14 @@ export function viewersFor(s, rel) {
       : 0.68 + Math.random() * 0.16;
     return Math.round(Math.max(0.2, prev * move) * 10) / 10;
   }
-  const base = span[0] + Math.random() * (span[1] - span[0]);
-  return Math.round(base * qualityPull(rel.rating) * star * 10) / 10;
+  // What this KIND of thing draws, which is most of it. A soap has a soap audience and a
+  // prestige series has a prestige one, whatever the column says about either. The scale
+  // span is the fallback for anything with no slot of its own. franchise.js SLOT_NORM
+  const norm = slotNorm(rel.type);
+  const base = norm > 0
+    ? norm * (0.55 + Math.random() * 1.35)
+    : span[0] + Math.random() * (span[1] - span[0]);
+  return Math.round(base * watchPull(rel.rating) * star * 10) / 10;
 }
 // What the season before this one drew, if there was one.
 function previousAudience(s, rel) {

@@ -350,7 +350,19 @@ export function contractsTick(s) {
   for (const o of (s.offers || [])) {
     const k = o.contract; if (!k || !k.sent || k.sent >= now) continue;
     k.sent = null;
-    const lev = leverage(s, o) * Math.pow(0.7, k.round - 1);
+    // Maxi, A-list, the lead of a running series: "five times they sent the fee, five times
+    // I asked for more, five times they refused, and then they simply wrote that I had not
+    // been selected and the show goes on without me."
+    //
+    // That is not what happens. A network does not recast the person a show is ABOUT over
+    // money — it pays, or it meets you halfway, or the thing does not get made. Recasting a
+    // lead mid-run is rare enough that the two or three times it has happened are still
+    // brought up thirty years later. The leverage fix a few days ago covered the calendar
+    // and not the fee, which is the half he was actually being beaten on.
+    //
+    // So: you hold your ground here, and every round costs them rather than you.
+    const mine = theShowIsYou(o);
+    const lev = leverage(s, o) * Math.pow(mine ? 0.92 : 0.7, k.round - 1) * (mine ? 1.45 : 1);
     const lines = []; let refused = 0;
     for (const c of k.clauses) {
       if (c.stance !== 'talk') continue;
@@ -378,11 +390,22 @@ export function contractsTick(s) {
       (s.moments = s.moments || []).push({ id: 'contract', kind: 'bad', title, lines, body: 'They needed somebody in the chair on the first day, and you were on another set. The part went to somebody who was free.', walked: true });
       continue;
     }
-    // Push three times and they may decide you are more trouble than you are worth.
-    if (refused && k.round >= 3 && chance(35)) {
+    // Push three times and they may decide you are more trouble than you are worth. Not on
+    // your own show, though: there is nobody to give it to. What a network does instead is
+    // stop making it, which is the real ending to this argument and a far worse one.
+    if (refused && k.round >= 3 && chance(mine ? 14 : 35)) {
       k.walked = true;
       s.offers = s.offers.filter((x) => x.id !== o.id);
       s.inbox = (s.inbox || []).filter((m) => m.offerId !== o.id);
+      if (mine) {
+        addTimeline(s, `${title} is not being made. Nobody would say the word money out loud, and everybody said it.`, true);
+        (s.moments = s.moments || []).push({ id: 'contract', kind: 'bad', title, lines,
+          body: `Nobody took the part off you, because there was nobody to give it to — the show is about you and everybody in the room knew it. So they did the other thing. There is no season. The cast were told on a Thursday, the crew found out from the trades, and a piece will run this week about what a shame it is, written by somebody who has been briefed.` });
+        if (o.kind === 'renewal') noteSequelLoss(s, o, 'talks');
+        sendMail(s, { from: `${studioOf(o)} · business affairs`, subj: `"${title}" — the season`, tag: 'contract', kind: 'contract',
+          body: `We have not been able to reach an agreement on terms and the network will not be proceeding with the season. This is not a reflection on the work. It has been a pleasure, and we hope to find something together again before long.` });
+        continue;
+      }
       addTimeline(s, `${title}: they stopped answering. Somebody else signed it as written.`, true);
       if (o.kind === 'sequel' || o.kind === 'renewal') noteSequelLoss(s, o, o.story === 'recast' ? 'meeting' : 'talks');
       (s.moments = s.moments || []).push({ id: 'contract', kind: 'bad', title, lines, body: 'Three times back and forth, and on the third they simply stopped replying. Somebody else signed it as written.', walked: true });
