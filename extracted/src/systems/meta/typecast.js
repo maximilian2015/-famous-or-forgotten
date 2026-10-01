@@ -210,3 +210,46 @@ export function typeWord(s, c) {
   const f = typeFit(s, c);
   return f >= 0.5 ? 'on type' : f <= -0.5 ? 'against type' : null;
 }
+
+// ── two different questions, and they used to be one ──────────────────────────
+// typeFit above answers "will the room cast you in this", and release.js was reading that same
+// number again to decide what the audience made of you in it. Those are not the same question,
+// and a relayed note put it exactly: there is what people think BEFORE they have seen it —
+// "why is this comic playing Batman?" — and there is what they think AFTER, which is either
+// "he was extraordinary" or "I never believed him for a second".
+//
+// So: two functions, one on each side of the premiere.
+
+// BEFORE. A modest thing, and deliberately modest: it moves the trailer response and a little
+// of the demand, nothing more. The twist is that an odd casting is a QUESTION people ask out
+// loud, and with a big enough name the question itself sells tickets — which is why a famous
+// actor can take a strange part and open fine, and an unknown doing the same looks miscast.
+export function castingExpectation(s, c) {
+  const fit = typeFit(s, c);
+  if (fit >= 0) return fit;                    // they know what they are getting
+  const talked = Math.min(1, ((s.fame || 0) + (s.media || 0) * 0.6) / 110);
+  return fit * (1 - talked * 0.75);
+}
+
+// AFTER. This is where the bet pays or does not, and it is the reason to take a part against
+// type at all. Playing to your label is safe and small. A stretch is judged on whether you
+// actually pulled it off — the picture itself and what you can do — and a stretch you land is
+// worth MORE than anything safe, because that is the performance people talk about for years.
+export function roleAcceptance(s, c) {
+  const fit = typeFit(s, c);
+  const skill = s.dream === 'singer' ? (s.singing || 0) : (s.acting || 0);
+  if (fit >= -0.3) return fit * 0.7;           // on type, or near enough: safe and modest
+  const rating = Number.isFinite(c.rating) ? c.rating : 55;
+  // Did it land? The film is most of the evidence and your craft is the rest.
+  const landed = Math.max(0, Math.min(1, 0.5 + ((rating - 60) / 60) * 0.6 + ((skill - 60) / 80) * 0.4));
+  return Math.abs(fit) * (landed * 2.6 - 1.3);
+}
+export function acceptanceWord(s, c) {
+  const a = roleAcceptance(s, c);
+  const fit = typeFit(s, c);
+  if (fit >= -0.3) return null;
+  if (a >= 0.8) return 'Nobody expected you in this and nobody is talking about anything else.';
+  if (a >= 0.2) return 'They were not sure about the casting. They are now.';
+  if (a <= -0.7) return 'They did not believe you in it, and the reviews said so before the audience did.';
+  return 'The part never quite fitted, and everybody could see the seams.';
+}

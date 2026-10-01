@@ -25,7 +25,7 @@ import { reviewsFor } from '../world/critics.js';
 import { actorById, applyFilmToActor } from '../world/world.js';
 import { tourMultiplier, tourFame } from './tour.js';
 import { networkLine, slotNorm } from './franchise.js';
-import { typecastAfterCredit, typeFit } from '../meta/typecast.js';
+import { typecastAfterCredit, typeFit, castingExpectation, roleAcceptance, acceptanceWord } from '../meta/typecast.js';
 import { storyAfterCredit } from '../meta/stories.js';
 import { addHype, flopHype, hype, hypeSource } from '../meta/hype.js';
 
@@ -205,7 +205,7 @@ export function demandFor(s, rel) {
   // fame came out exactly level, which says the lead carries a tentpole. They do not.
   d += (MUSCLE[rel.scale] ?? 40) * 0.22;                           // distribution muscle
   // The genre, as a market with a memory rather than a calendar. See meta/market.js.
-  d += (appetiteFor(s, rel.genre) - 1) * 28;
+  d *= 0.52 + appetiteFor(s, rel.genre) * 0.48;
   // And the kind of film it is, which is not the same question: horror is structurally cheap
   // and popular whatever the fashion is doing. APPEAL has always said that and still does.
   d *= 0.45 + ((APPEAL[rel.genre] || 1) * 0.55);
@@ -218,6 +218,10 @@ export function demandFor(s, rel) {
     const last = rel.lastRating ?? 65;
     d += fam - tired * (last >= 75 ? 0.25 : last >= 60 ? 0.6 : 1.2);
   }
+  // What people make of the casting BEFORE they have seen it. Small on purpose: it moves the
+  // trailer response and a little of the demand, and nothing else. An odd choice is a question
+  // people ask out loud, and with a big enough name the question itself sells some tickets.
+  d += castingExpectation(s, rel) * 2.5;
   // The press tour and anything bought to remind people it exists both belong HERE and not on
   // the final total. A digital campaign says so in its own blurb: the first night is enormous
   // and the people it brings are the people who leave first. See career/chapter.js REMINDERS.
@@ -294,7 +298,7 @@ export function grossFor({ scale, rating, genre, fame = 0, trend = 1, appealMod 
   d += castDraw([fame]) * 0.52;
   d += Math.min(26, Math.sqrt(Math.max(0, campaignSpend(rel))) * 2.1);
   d += (MUSCLE[scale] ?? 40) * 0.22;
-  d += ((Number.isFinite(trend) ? trend : 1) - 1) * 28;
+  d *= 0.52 + (Number.isFinite(trend) ? trend : 1) * 0.48;
   d *= 0.45 + ((APPEAL[genre] || 1) * 0.55);
   d *= 0.55 + (appealMod ?? 1) * 0.45;
   const demand = Math.max(2, Math.round(d));
@@ -347,7 +351,12 @@ export function audienceFor(s, rel) {
   // It answers a different question there — whether anybody will CAST you — and reusing the
   // number is the point. A second table of what suits you would be a second answer to the
   // same question, and the two would drift apart within a month.
-  v += typeFit(s, rel) * 7;
+  // roleAcceptance, not typeFit. Reading the casting number again said that what the audience
+  // makes of a performance is decided before anybody sees it, which is the thing this whole
+  // rewrite exists to stop doing. A part against type is now a BET: play to your label and it
+  // is safe and small; take a stretch and it is judged on whether you landed it. A stretch you
+  // land is worth more than anything safe, which is both true and the only reason to take one.
+  v += roleAcceptance(s, rel) * 7;
   // And a script shot as something it is not is a worse film than the script was. The story
   // room lets you argue a picture into another genre (career/story.js aim) — this is the bill.
   if (rel.scriptGenre && rel.scriptGenre !== rel.genre) {
@@ -464,6 +473,41 @@ export function previousRating(s, rel) {
   const prev = (s.filmography || []).filter((c) => (c.part || 1) === (rel.part || 1) - 1
     && String(c.title || '').replace(/(\s*(?:·|:)?\s*part\s+\d+)+\s*$/i, '').trim() === root);
   return prev.length ? (prev[prev.length - 1].rating ?? null) : null;
+}
+
+// ── three different questions, and they must not be collapsed into one ────────
+// I had this wrong and was told so. Looking at a €12m picture that took €8m and was nominated
+// for four things, I said the commercial verdict was the wrong yardstick for a small film.
+// It is not. It is one of three yardsticks, and hiding it because the other two came out well
+// destroys the only interesting thing about the situation:
+//
+//     COMMERCIAL   flop
+//     CRITICAL     92
+//     CAREER       a major prestige win
+//
+// A player who reads that understands something real — the film lost money and was still the
+// right decision. Take the word "flop" away and there is nothing left to understand. The same
+// in reverse for a sequel that takes €690m and is worth 31 to the column: commercial triumph,
+// prestige damage, and the typecasting tightens another notch.
+export function criticalOf(rating) {
+  const r = rating || 0;
+  if (r >= 85) return 'acclaimed';
+  if (r >= 70) return 'well received';
+  if (r >= 55) return 'mixed';
+  if (r >= 40) return 'poorly reviewed';
+  return 'panned';
+}
+// What it did to the career, which is neither of the other two and is the one the player is
+// actually playing for. Built from what the close of the run really moved, not from the money.
+export function careerOf(d) {
+  const resp = d.respect || 0, fame = d.fame || 0, noms = d.noms || 0;
+  if (resp >= 8 || noms >= 3) return { word: 'a major prestige win', tone: 'gold' };
+  if (fame >= 9) return { word: 'this is the one people will know you for', tone: 'gold' };
+  if (resp >= 4) return { word: 'the right people noticed', tone: 'good' };
+  if (fame >= 4) return { word: 'more people know your name', tone: 'good' };
+  if (fame <= -2 || resp <= -5) return { word: 'this cost you', tone: 'bad' };
+  if (resp <= -2) return { word: 'prestige damage', tone: 'bad' };
+  return { word: 'it happened', tone: 'flat' };
 }
 
 // Did it make its money back? This is what the industry actually remembers.
@@ -861,12 +905,17 @@ function closeRun(s, credit, r) {
   credit.verdict = verdict;
   credit.needed = breakEvenFor({ scale: r.scale, campaignTier: r.campaignTier });
   // And the genre is used up by what you released into it, exactly as the world's pictures are.
+  // Weighted by what anybody actually saw of it, not counted as one release. See exposureOf.
   if (r.film && r.genre) marketAfterRelease(s, r.genre, r.scale,
-    credit.needed ? (credit.boxOffice || 0) / credit.needed : null);
+    credit.needed ? (credit.boxOffice || 0) / credit.needed : null,
+    campaignOf({ campaignTier: r.campaignTier }).share, r.part || 1);
   const film = r.film;
 
   // The score buys respect; the money buys reach. They are different currencies, and both
   // of them are settled here rather than on opening night.
+  // What the three of them say, measured across this close rather than inferred from the money.
+  credit.critical = criticalOf(r.rating);
+  const _fameBefore = s.fame || 0, _respBefore = s.respect || 0;
   const bySkill = { tentpole: 9, lead: 5, supporting: 2 }[r.tier] || 2;
   let fame = bySkill + (r.rating >= 85 ? 4 : 0) + (r.worldHit ? 25 : 0);
   // Hype: where the talk comes from this year. A hit replaces whatever was there; a flop
@@ -1032,6 +1081,14 @@ function closeRun(s, credit, r) {
   // Standing next to an icon is worth something on its own: the photographs, the poster,
   // the fact that they said yes to a film you were in.
   if (r.withIcon) { setFame(s, (s.fame || 0) + 3 * headroom(s.fame)); setRespect(s, (s.respect || 0) + 2 * soft(112, s.respect)); addTimeline(s, `Your name is on a poster next to ${r.with}'s. People noticed.`); }
+  // The third verdict: what the thing did to you. Read off what actually moved.
+  credit.careerFame = Math.round(((s.fame || 0) - _fameBefore) * 10) / 10;
+  credit.careerRespect = Math.round(((s.respect || 0) - _respBefore) * 10) / 10;
+  credit.career = careerOf({ fame: credit.careerFame, respect: credit.careerRespect }).word;
+  credit.careerTone = careerOf({ fame: credit.careerFame, respect: credit.careerRespect }).tone;
+  // And if the part was a stretch, whether the room bought you in it (meta/typecast.js).
+  credit.acceptance = acceptanceWord(s, { genre: credit.genre, scale: r.scale, type: credit.type,
+    perEpisode: !!credit.episodes, rating: r.rating });
   typecastAfterCredit(s, credit);
   storyAfterCredit(s, credit);
   showMoment(s, {

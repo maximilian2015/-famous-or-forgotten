@@ -19,7 +19,7 @@ import { setRespect } from '../meta/status.js';
 // you decide what you want out of a life.
 import { rint, chance, pick } from '../../engine/rng.js';
 import { hotGenre } from '../meta/news.js';
-import { appetiteWord, appetiteWhy } from '../meta/market.js';
+import { appetiteWord, appetiteWhy, totalDemand, totalWord } from '../meta/market.js';
 import { genreXP } from './genres.js';
 
 const clamp = (v, a = 0, b = 100) => Math.max(a, Math.min(b, v));
@@ -146,8 +146,12 @@ export function trendNote(s, p) {
   const because = why ? ` — ${why}` : '';
   // The trap is the same as it ever was and is now worth stating: you are choosing today for
   // something that opens later, and the appetite moves over years. See meta/market.js.
-  if (p.genre === hot) return `${p.genre} is what everyone wants right now${because}. You open ${opensIn(p)}.`;
-  return `${p.genre}: ${word}${because}. ${hot} is what everyone wants this year. You open ${opensIn(p)}.`;
+  // And whether anybody is going to the cinema AT ALL this year, which is a separate number from
+  // which genre they want - and was invisible until now, so half of that split did nothing.
+  const t = totalDemand(s);
+  const year = (t >= 1.09 || t <= 0.91) ? ` And ${totalWord(s)}.` : '';
+  if (p.genre === hot) return `${p.genre} is what everyone wants right now${because}. You open ${opensIn(p)}.${year}`;
+  return `${p.genre}: ${word}${because}. ${hot} is what everyone wants this year. You open ${opensIn(p)}.${year}`;
 }
 
 // ── the room ──────────────────────────────────────────────────────────────────

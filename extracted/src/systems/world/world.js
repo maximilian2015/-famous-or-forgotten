@@ -104,7 +104,8 @@ export function makeWorldFilm(s, a, year, taken) {
   // Everything the rest of the industry releases uses its genre up, and reports how it did. The
   // glut cannot come from the player alone: one picture every year or two against the twenty the
   // world makes, and the audience would never tire of anything.
-  marketAfterRelease(s, genre, scale, gross / Math.max(1, (BUDGET_W[scale] || 12) * 1.5e6));
+  marketAfterRelease(s, genre, scale, gross / Math.max(1, (BUDGET_W[scale] || 12) * 1.5e6),
+    scale === 'blockbuster' ? 0.75 : scale === 'feature' ? 0.55 : 0.35, 1);
   const pr = PRESTIGE[scale] || PRESTIGE.indie;
   return { id: 'wf' + Math.random().toString(36).slice(2, 8), title: newTitle(s, genre, taken), genre, scale, rating, gross, year,
     actorId: a.id, actor: a.name, prestigeScore: rint(pr[0], pr[1]), tier: scale === 'blockbuster' ? 'tentpole' : scale === 'small' ? 'supporting' : 'lead' };

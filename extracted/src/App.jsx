@@ -2843,6 +2843,14 @@ function CreditRow({ group, g }) {
             needed {money(c.needed)}</span>}
           {c.verdict && !c.running && <span style={{ fontWeight: 900, letterSpacing: '.07em', textTransform: 'uppercase', fontSize: 9.5,
             color: VERDICT_COL[c.verdict] || theme.muted }}>{c.verdict}</span>}
+          {/* Two more, kept deliberately apart from the money. A picture can lose everything,
+              be the best-reviewed thing of its year and be the making of you, all at once. */}
+          {c.critical && !c.running && <span style={{ color: CRIT_COL[c.critical] || theme.muted, fontSize: 10.5, fontWeight: 700 }}>
+            {c.critical}</span>}
+          {c.career && !c.running && c.careerTone !== 'flat' && <span style={{ fontSize: 10.5, fontWeight: 700,
+            color: c.careerTone === 'gold' ? theme.gold : c.careerTone === 'good' ? theme.good : theme.bad }}>
+            {c.career}{c.careerRespect ? ` · respect ${c.careerRespect > 0 ? '+' : ''}${c.careerRespect}` : ''}
+            {c.careerFame ? ` · fame ${c.careerFame > 0 ? '+' : ''}${c.careerFame}` : ''}</span>}
           {ranked && <span style={{ fontWeight: 900, letterSpacing: '.06em', color: ranked.rank <= 3 ? theme.gold : theme.muted }}>#{ranked.rank} OF {c.year}</span>}
           {/* What was written, on the same row as the marks — it used to cost every credit
               a line of its own. world/critics.js keeps it from the night the run closed. */}
@@ -2852,6 +2860,8 @@ function CreditRow({ group, g }) {
         </div>
       )}
       {/* Nothing to mark, and still something written: the button stands on its own. */}
+      {c.acceptance && !c.running && (
+        <div style={{ fontSize: 11.5, color: theme.muted, marginTop: 3, fontStyle: 'italic' }}>{c.acceptance}</div>)}
       {c.reviews && !c.running && !(group.worldHit || hit || group.askers > 0 || group.askerNoms > 0 || c.comeback > 0 || group.boxOffice > 0 || group.viewers > 0 || c.festival) && (
         <button onClick={() => setShowReviews(!showReviews)} style={{ background: 'none', border: 'none', padding: '4px 0 0', cursor: 'pointer', fontSize: 10.5, fontWeight: 800, color: theme.accent }}>
           Kinomark {c.reviews.grade} · {c.reviews.audience.toFixed(1)}/{c.reviews.critics.toFixed(1)} {showReviews ? '▾' : '▸'}
@@ -2861,6 +2871,10 @@ function CreditRow({ group, g }) {
   </div>);
 }
 const VERDICT_COL = { smash: theme.gold, profitable: theme.good, 'broke even': theme.muted, bomb: theme.bad, watched: theme.good, seen: theme.muted, ignored: theme.bad, unsold: theme.muted };
+// The critics' verdict is its OWN column and gets its own colours, because the whole point of
+// showing it next to the money is that the two of them disagree.
+const CRIT_COL = { acclaimed: theme.gold, 'well received': theme.good, mixed: theme.muted,
+  'poorly reviewed': theme.bad, panned: theme.bad };
 const BACKING_COL = { locked: theme.good, solid: theme.accent, shaky: theme.gold, fragile: theme.bad };
 // The same fact the OpenCall board shows, in the one line an offer card has room for.
 function OfferBacking({ o }) {

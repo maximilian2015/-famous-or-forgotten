@@ -50,11 +50,37 @@ export const GENRES = ['Drama', 'Thriller', 'Comedy', 'Sci-Fi', 'Romance', 'Horr
 export function marketOf(s) {
   if (!s) return null;
   if (!s.market || !s.market.trend) {
-    const m = { trend: {}, glut: {}, tally: {} };
+    const m = { trend: {}, glut: {}, tally: {}, total: 1 };
     for (const g of GENRES) { m.trend[g] = 0.9 + Math.random() * 0.2; m.glut[g] = 0; }
     s.market = m;
   }
+  if (s.market.total == null) s.market.total = 1;    // saves made before there was a total
   return s.market;
+}
+
+// ── how many people are going to the cinema AT ALL ────────────────────────────
+// A relayed note, and a correct one: genre share being perfectly zero-sum says the audience
+// always has exactly the same amount of attention to give, and it does not. Some years everybody
+// goes and some years the theatrical market is simply weaker. Keeping the two apart also leaves
+// the door open for the things that really move it — a streaming boom, a strike, a recession,
+// something nobody has a word for yet — without any of them having to pretend to be a genre.
+//
+// So: genres compete for SHARE, which is conserved. The size of the thing they are competing
+// for is its own number, and it drifts.
+export function totalDemand(s) { const m = marketOf(s); return m ? (m.total ?? 1) : 1; }
+export function totalWord(s) {
+  const t = totalDemand(s);
+  if (t >= 1.14) return 'everybody is going to the cinema this year';
+  if (t >= 1.05) return 'a good year for cinemas';
+  if (t >= 0.95) return 'an ordinary year';
+  if (t >= 0.86) return 'a thin year for cinemas';
+  return 'nobody is going to the cinema this year';
+}
+// The share alone, for anybody who needs to say which genres are up against which.
+export function genreShare(s, genre) {
+  const m = marketOf(s);
+  if (!m || !genre) return 1;
+  return Math.max(0.5, (m.trend[genre] || 1) * (1 - fatigueOf(s, genre)));
 }
 
 export function fatigueOf(s, genre) {
@@ -66,10 +92,11 @@ export function fatigueOf(s, genre) {
 }
 
 // What the appetite is worth right now: 0.5 dead, 1.0 ordinary, 1.5 everybody wants one.
+// What the appetite is worth right now: the genre's share of attention, times how much
+// attention there is to go round. 0.5 dead, 1.0 ordinary, 1.5 everybody wants one.
 export function appetiteFor(s, genre) {
-  const m = marketOf(s);
-  if (!m || !genre) return 1;
-  return Math.max(0.5, (m.trend[genre] || 1) * (1 - fatigueOf(s, genre)));
+  if (!genre) return totalDemand(s);
+  return Math.max(0.42, genreShare(s, genre) * totalDemand(s));
 }
 
 // The hottest thing in town. Same signature as the old hotGenre, so every screen that asked
@@ -108,10 +135,22 @@ export function appetiteWhy(s, genre) {
 // One picture opens: it uses its genre up a little, and the year remembers how it did. The
 // appetite itself is settled once a year on the evidence, never film by film.
 const WEIGHT = { blockbuster: 2.4, feature: 1.4, prestige: 0.7, indie: 0.5, festival: 0.3, small: 0.2 };
-export function marketAfterRelease(s, genre, scale, ratio) {
+// What tires an audience is not a count of films. Seven tiny horror pictures that opened on
+// forty screens between them are not the same event as four superhero sequels with a hundred
+// million of television behind each — and counted as releases they were identical. So it is
+// weighted by how much of it anybody actually SAW: how big the release was, how loudly it was
+// sold, and whether it was the fourth one of those. Exposure, not arithmetic.
+export function exposureOf(scale, campaignShare = 0.35, part = 1) {
+  const size = WEIGHT[scale] ?? 0.5;
+  const loud = 0.55 + Math.min(1.1, campaignShare) * 1.1;   // 0.72 at minimal, 1.38 at event
+  // The fourth one of a thing is more tiring than the first, because it is the same thing.
+  const again = 1 + Math.min(0.5, Math.max(0, (part || 1) - 1) * 0.14);
+  return size * loud * again;
+}
+export function marketAfterRelease(s, genre, scale, ratio, campaignShare, part) {
   const m = marketOf(s);
   if (!m || !genre || !GENRES.includes(genre)) return s;
-  m.glut[genre] = (m.glut[genre] || 0) + (WEIGHT[scale] ?? 0.5);
+  m.glut[genre] = (m.glut[genre] || 0) + exposureOf(scale, campaignShare ?? 0.35, part ?? 1);
   if (Number.isFinite(ratio)) {
     const t = (m.tally[genre] = m.tally[genre] || { n: 0, sum: 0 });
     t.n++; t.sum += ratio;
@@ -145,9 +184,18 @@ export function marketYear(s) {
     m.trend[g] = Math.max(0.5, Math.min(1.6, m.trend[g] + (Math.random() - 0.5) * 0.06));
     m.glut[g] = (m.glut[g] || 0) * 0.5;
   }
-  // Attention is finite, enforced rather than hoped for. Only the SHAPE may move.
+  // Share is finite, enforced rather than hoped for. Only the SHAPE of it may move — the SIZE
+  // of the thing being shared is the separate number below, which is the whole point of
+  // splitting them: a genre can only get hot at another genre's expense, but the cinema as a
+  // whole is free to have a good year or a bad one.
   const mean = GENRES.reduce((acc, g) => acc + m.trend[g], 0) / GENRES.length;
   if (mean > 0.01) for (const g of GENRES) m.trend[g] = Math.max(0.5, Math.min(1.6, m.trend[g] / mean));
+  // How many people went this year against how many went last year. Slow, mean-reverting, and
+  // once in a while something happens to the whole business at once.
+  const swing = marketMean > 0 ? Math.max(-0.05, Math.min(0.06, (marketMean - 1) * 0.05)) : 0;
+  m.total = (m.total ?? 1) * 0.94 + 1.0 * 0.06 + swing + (Math.random() - 0.5) * 0.045;
+  if (Math.random() < 0.055) m.total += (Math.random() < 0.5 ? -1 : 1) * (0.07 + Math.random() * 0.1);
+  m.total = Math.max(0.72, Math.min(1.28, m.total));
   m.tally = {};
   return s;
 }
