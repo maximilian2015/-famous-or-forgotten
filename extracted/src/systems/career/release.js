@@ -86,7 +86,21 @@ const APPEAL = {
 };
 // Opening weekend is a coin toss with a heavy coin. Triangular, so the extremes are
 // rare rather than routine — most films land near what they deserved.
-function luck() { return 0.5 + (Math.random() + Math.random()) * 0.55; }
+// An outside reading: a film’s result should be mostly the sum of what already happened in
+// the game, with luck worth ten or twenty per cent rather than half the answer. Measured,
+// this was worth eighty-two per cent between a bad roll and a good one — and the rating that
+// feeds it is ALREADY randomised upstream, by rint(-16, 12) plus the stability swings. The
+// variance was being applied twice and the second one was the bigger.
+//
+// So: narrow in the middle, where most films land, and a rare genuine surprise in either
+// direction — which is also closer to the truth than a wide even spread. Most pictures open
+// roughly where everybody expected. The breakout and the catastrophe are the exceptions, and
+// they are exceptional because they are rare.
+function luck() {
+  const base = 0.80 + (Math.random() + Math.random()) * 0.20;
+  if (Math.random() < 0.055) return base * (Math.random() < 0.5 ? 0.6 : 1.5);
+  return base;
+}
 
 // Ten years on, the picture that sank is the one they screen at midnight. Once a year, for
 // a film of yours that failed a decade ago — a small one, mostly — a small chance it comes
@@ -165,6 +179,29 @@ export function splitLine(rating, audience) {
     : 'The reviews are the best of your career and the people who bought a ticket came out looking at their phones.';
 }
 
+// ── when it opens, and what opened against it ─────────────────────────────────
+// The one thing an outside reading listed that genuinely was not here. A picture does not
+// open into a vacuum: the month decides how many people were going to the cinema at all,
+// and once in a while something enormous opens the same weekend and takes the room with it.
+//
+// The months are the real shape of a cinema year. Summer and the back half of December are
+// when everybody goes; January and September are where films are sent to be forgotten, and
+// everybody in the business knows it when the date is announced.
+const WINDOW = [0.82, 0.88, 0.96, 1.0, 1.08, 1.18, 1.2, 1.14, 0.84, 0.94, 1.06, 1.22];
+export function windowFor(month) { return WINDOW[((month % 12) + 12) % 12] || 1; }
+export function windowWord(month) {
+  const w = windowFor(month);
+  return w >= 1.15 ? 'the best weekend of the year to open' : w >= 1.04 ? 'a good date'
+    : w >= 0.95 ? 'an ordinary date' : w >= 0.86 ? 'a quiet month' : 'the month they send things to die';
+}
+// And somebody else opening on top of you, which is nobody’s fault and costs you the same.
+export function againstYou(scale) {
+  // A small picture has the room to itself; a blockbuster is opening into a fight it did
+  // not pick, because everything that size lands on the same four weekends.
+  const odds = scale === 'blockbuster' ? 26 : scale === 'feature' ? 16 : 7;
+  return chance(odds) ? 0.74 + Math.random() * 0.14 : 1;
+}
+
 export function boxOfficeFor(s, rel) {
   // The bigger name on the poster sells the tickets. A nobody opposite an icon opens like
   // an icon's film, mostly — which is the whole reason to want to be in one.
@@ -173,7 +210,12 @@ export function boxOfficeFor(s, rel) {
   // takes is what the audience made of it; the reviews are the other quarter, which is
   // about how much they are worth on an opening weekend.
   const sells = rel.reception != null ? rel.reception * 0.75 + (rel.rating || 0) * 0.25 : rel.rating;
-  return grossFor({ scale: rel.scale, rating: sells, genre: rel.genre, fame, trend: rel.genre === hotGenre(s), appealMod: rel.appealMod ?? 1 });
+  // The date, and whoever else took that weekend. Rolled once and kept on the release, so
+  // the screen can say what happened rather than leaving the player with a number.
+  if (rel._window == null) rel._window = windowFor(s.month || 0);
+  if (rel._against == null) rel._against = againstYou(rel.scale);
+  const gross = grossFor({ scale: rel.scale, rating: sells, genre: rel.genre, fame, trend: rel.genre === hotGenre(s), appealMod: rel.appealMod ?? 1 });
+  return Math.round(gross * rel._window * rel._against);
 }
 export function viewersFor(s, rel) {
   const span = VIEWERS[rel.scale] || VIEWERS.episode;
