@@ -19,6 +19,7 @@ import { setRespect } from '../meta/status.js';
 // you decide what you want out of a life.
 import { rint, chance, pick } from '../../engine/rng.js';
 import { hotGenre } from '../meta/news.js';
+import { appetiteWord, appetiteWhy } from '../meta/market.js';
 import { genreXP } from './genres.js';
 
 const clamp = (v, a = 0, b = 100) => Math.max(a, Math.min(b, v));
@@ -140,8 +141,13 @@ export function opensIn(p) {
 }
 export function trendNote(s, p) {
   const hot = hotGenre(s);
-  if (p.genre === hot) return `${p.genre} is what everyone is watching right now — and you open ${opensIn(p)}.`;
-  return `${hot} is what everyone is watching right now. This is ${p.genre}.`;
+  const word = appetiteWord(s, p.genre);
+  const why = appetiteWhy(s, p.genre);
+  const because = why ? ` — ${why}` : '';
+  // The trap is the same as it ever was and is now worth stating: you are choosing today for
+  // something that opens later, and the appetite moves over years. See meta/market.js.
+  if (p.genre === hot) return `${p.genre} is what everyone wants right now${because}. You open ${opensIn(p)}.`;
+  return `${p.genre}: ${word}${because}. ${hot} is what everyone wants this year. You open ${opensIn(p)}.`;
 }
 
 // ── the room ──────────────────────────────────────────────────────────────────
@@ -174,7 +180,10 @@ export function pushTake(s, takeId) {
   const odds = pushOdds(s, takeId, p);
   if (chance(odds)) {
     p.take = takeId; p.takeWon = true;
-    if (take.aim) p.genre = take.aim;
+    // Keep what the script actually was. Winning the argument to shoot a comedy as a drama
+    // changes what the picture IS, and release.js charges for the distance between the two —
+    // without this the original genre was simply overwritten and the bill could never arrive.
+    if (take.aim && take.aim !== p.genre) { p.scriptGenre = p.genre; p.genre = take.aim; }
     setRespect(s, (s.respect || 0) + 1);
     if (director) director.bond = clamp((director.bond || 40) + rint(2, 6));
     s.lastEvent = take.said;

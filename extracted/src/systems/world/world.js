@@ -11,7 +11,8 @@
 import { rint, chance, pick } from '../../engine/rng.js';
 import { fameTier } from '../meta/status.js';
 import { ensureDirectors } from './directors.js';
-import { grossFor } from '../career/release.js';
+import { grossFor, verdictOf as relVerdict } from '../career/release.js';
+import { appetiteFor, marketAfterRelease } from '../meta/market.js';
 import { personName, namesInUse, OUTLETS } from './names.js';
 import { newTitle } from './titles.js';
 
@@ -89,12 +90,21 @@ function ratingFor(a, scale) {
   return clamp(18 + a.craft * 0.52 + (MATERIAL[scale] || 0) + rint(-16, 14) + (chance(8) ? rint(8, 16) : 0) + (chance(10) ? rint(-22, -10) : 0), 10, 96);
 }
 const PRESTIGE = { small: [15, 30], indie: [35, 55], feature: [55, 72], blockbuster: [80, 96] };
+// Only to report a rough ratio to the market. release.js owns the real break-even.
+const BUDGET_W = { small: 1, festival: 1.5, indie: 12, feature: 90, blockbuster: 220 };
 export function makeWorldFilm(s, a, year, taken) {
   const tier = a.icon ? 'icon' : fameTier(a.fame).id;
   const scale = weighted(SCALE_BY_TIER[tier] || SCALE_BY_TIER.unknown);
   const genre = chance(65) ? a.genre : pick(GENRES);
   const rating = ratingFor(a, scale);
-  const gross = grossFor({ scale, rating, genre, fame: a.fame, trend: chance(12) });
+  // The genre market, not a one-in-eight coin. The rest of the industry is making pictures into
+  // the same appetite the player is, which is the only way a trend can mean anything: if the
+  // world ignored it, horror could be dead for everybody except you. See meta/market.js.
+  const gross = grossFor({ scale, rating, genre, fame: a.fame, trend: appetiteFor(s, genre) });
+  // Everything the rest of the industry releases uses its genre up, and reports how it did. The
+  // glut cannot come from the player alone: one picture every year or two against the twenty the
+  // world makes, and the audience would never tire of anything.
+  marketAfterRelease(s, genre, scale, gross / Math.max(1, (BUDGET_W[scale] || 12) * 1.5e6));
   const pr = PRESTIGE[scale] || PRESTIGE.indie;
   return { id: 'wf' + Math.random().toString(36).slice(2, 8), title: newTitle(s, genre, taken), genre, scale, rating, gross, year,
     actorId: a.id, actor: a.name, prestigeScore: rint(pr[0], pr[1]), tier: scale === 'blockbuster' ? 'tentpole' : scale === 'small' ? 'supporting' : 'lead' };
@@ -104,11 +114,9 @@ function headroom(f) {
   if (f < 55) return 1 - f / 130;
   return Math.max(0.03, 0.577 * Math.pow(Math.max(0, (104 - f) / 49), 1.9));
 }
-function verdictOf(scale, gross) {
-  const budget = { small: 1, indie: 12, feature: 90, blockbuster: 220 }[scale] || 1;
-  const ratio = gross / (budget * 1000000);
-  return ratio >= 4 ? 'smash' : ratio >= 2.2 ? 'profitable' : ratio >= 1.1 ? 'broke even' : 'bomb';
-}
+// This was a third copy of the thresholds, measured against the bare budget like the other two.
+// Everybody on the same list has to be judged by the same sum, so it asks release.js now.
+function verdictOf(scale, gross) { return relVerdict({ scale, boxOffice: gross }); }
 // A film moves a rival's fame the way it moves yours, month to month. But the SHAPE of the
 // world is set once a year by rank (see rankTheWorld): there are three names at the very
 // top and twelve on the A-list, and who they are is decided by heat — what you did lately.

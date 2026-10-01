@@ -15,6 +15,7 @@ import { addTimeline, showMoment } from '../../engine/timeline.js';
 import { regardAfterWorking } from '../life/regard.js';
 import { markReleased } from '../../engine/economy.js';
 import { hotGenre, GENRES } from '../meta/news.js';
+import { appetiteFor, marketAfterRelease } from '../meta/market.js';
 import { maybeContinue } from './franchise.js';
 import { appealShift } from './story.js';
 import { dirAppeal, remindLift, holdFactor, retentionLine } from './chapter.js';
@@ -26,7 +27,7 @@ import { tourMultiplier, tourFame } from './tour.js';
 import { networkLine, slotNorm } from './franchise.js';
 import { typecastAfterCredit, typeFit } from '../meta/typecast.js';
 import { storyAfterCredit } from '../meta/stories.js';
-import { addHype, flopHype } from '../meta/hype.js';
+import { addHype, flopHype, hype, hypeSource } from '../meta/hype.js';
 
 const clamp = (v, a = 0, b = 100) => Math.max(a, Math.min(b, v));
 
@@ -43,25 +44,13 @@ export function postProduction(scale) {
 // Everything commercial is measured against the budget, because that is the only number
 // the industry compares anything to. A picture is not "big" — it is big AGAINST its cost.
 const BUDGET = { small: 1, festival: 1.5, indie: 12, feature: 90, blockbuster: 220 };   // millions
-// What a competent, averagely-received picture of this size takes. Roughly 2.2× the
-// budget, which is about where a studio stops losing money once marketing is paid.
-const PAR = 2.25;
 // Television does not sell tickets. It has an audience, in millions per episode.
 const VIEWERS = { episode: [0.4, 6], recurring: [1, 9], prestige: [2, 14] };
 
-// A good film sells more than a bad one, and the gap is enormous — the difference
-// between a 9 and a 3 is not thirty per cent, it is an order of magnitude.
-// Cinema. A ticket is a decision somebody makes about ONE film, so how good it is decides
-// most of what it takes: a picture people love has legs, gets recommended, and is seen
-// twice, and a bad one is gone by the second weekend. This curve is steep on purpose.
-function qualityPull(rating) {
-  if (rating >= 90) return 2.30;
-  if (rating >= 80) return 1.60;
-  if (rating >= 70) return 1.15;
-  if (rating >= 60) return 0.80;
-  if (rating >= 45) return 0.50;
-  return 0.25;
-}
+// A good film sells more than a bad one, and the gap is enormous. That used to be a single curve
+// — qualityPull — applied to the whole gross, which amounted to saying that how good a film is
+// decides how many people turn up on the first weekend. Nobody has seen it on the first weekend.
+// The same truth now lives in legsFor, where it belongs: quality decides how LONG a run lasts.
 // Television, which is a different thing entirely. Maxi: "in life, does something rated
 // 6.5 get six million watching, or fewer?" Six million is exactly right — and the question
 // found that this used to run off the cinema curve, swinging the audience by a factor of
@@ -96,11 +85,10 @@ const APPEAL = {
 // direction — which is also closer to the truth than a wide even spread. Most pictures open
 // roughly where everybody expected. The breakout and the catastrophe are the exceptions, and
 // they are exceptional because they are rare.
-function luck() {
-  const base = 0.80 + (Math.random() + Math.random()) * 0.20;
-  if (Math.random() < 0.055) return base * (Math.random() < 0.5 ? 0.6 : 1.5);
-  return base;
-}
+// The outlier is gone with it, and deliberately. A one-in-eighteen die that multiplied the whole
+// result by 1.5 was how this model used to produce a surprise hit, and a surprise that arrives
+// by die is not a story — nobody can point at what caused it. A sleeper now comes out of the
+// crowd liking it and the distributor adding screens, which is both the truth and legible.
 
 // Ten years on, the picture that sank is the one they screen at midnight. Once a year, for
 // a film of yours that failed a decade ago — a small one, mostly — a small chance it comes
@@ -122,15 +110,198 @@ export function cultTick(s) {
 }
 export function isFilm(scale) { return ['small', 'indie', 'festival', 'feature', 'blockbuster'].includes(scale); }
 
-// The commercial result. Star power sells tickets — that is what a name is FOR.
-// One formula for everybody: your films and the ones the rest of the world makes in the
-// same year sit on the same list, so they have to be priced by the same arithmetic.
-export function grossFor({ scale, rating, genre, fame = 0, trend = false, appealMod = 1 }) {
-  const budget = BUDGET[scale];
-  if (!budget) return 0;
-  const star = 0.7 + (fame || 0) / 180;                    // 0.7 at nobody, 1.26 at icon
-  const gross = budget * PAR * qualityPull(rating) * (APPEAL[genre] || 1) * (appealMod ?? 1) * star * (trend ? 1.25 : 1) * luck();
-  return Math.round(gross * 1000000);
+// ── what a picture takes, in four stages ──────────────────────────────────────
+//
+// This used to be one line: budget × 2.25 × a steep quality curve × genre × star × trend ×
+// luck. Which made the BUDGET the answer. A blockbuster took about twenty times what an indie
+// took because it cost about twenty times as much, and the only things that could move it were
+// how good the film was and a die roll.
+//
+// Four stages instead, each one a question somebody in this business actually asks:
+//
+//   1. DEMAND   — how many people want to see it before anybody HAS. No quality in it at all,
+//                 because nobody has seen the film. Who is on the poster, what was spent
+//                 selling it, what genre it is this year, whether they know the franchise,
+//                 and what is being said about you this month.
+//   2. OPENING  — demand raised to a power, because the top of this market is winner-take-most,
+//                 times how wide it can physically go, times the date, times whoever opened
+//                 against you.
+//   3. THE WORD — two things, not one. How long the run lasts, which is mostly the crowd and
+//                 barely the column; and, for a small release, whether the screen count GROWS.
+//                 Every sleeper in the history of cinema came out of the second one.
+//   4. RESULT   — against what it cost to make AND to sell, which is the only sum the trades
+//                 ever mean by asking whether it worked.
+//
+// The budget is not a multiplier anywhere now. It buys screens, and it raises the bar. Measured
+// over five thousand simulated pictures: eighteen times the budget still buys about sixteen
+// times the gross, because a wide release genuinely does take more — but the VERDICT gets
+// WORSE, not better. The identical picture at €12m is profitable 38% of the time; at €220m it
+// scrapes break-even 88% of the time. Money buys the gross and buys the bar faster.
+
+// P&A as a share of the negative, which is how it is really decided. Nobody spends more than
+// about three quarters of the budget again on selling it.
+export const CAMPAIGN = {
+  minimal: { id: 'minimal', label: 'Barely a campaign', share: 0.15, word: 'almost nothing' },
+  standard: { id: 'standard', label: 'A normal campaign', share: 0.35, word: 'the usual' },
+  major: { id: 'major', label: 'A real campaign', share: 0.55, word: 'properly sold' },
+  event: { id: 'event', label: 'Sold as an event', share: 0.75, word: 'everywhere you look' },
+};
+// Who decides: the studio, by what the picture is. A player’s hand on this dial is its own
+// feature and the data is ready for it — rel.campaignTier is only ever a string.
+export function studioCampaign(scale) {
+  if (scale === 'blockbuster') return chance(70) ? 'event' : 'major';
+  if (scale === 'feature') return chance(55) ? 'major' : 'standard';
+  if (scale === 'indie' || scale === 'prestige') return chance(65) ? 'standard' : 'minimal';
+  return 'minimal';
+}
+export function campaignOf(rel) { return CAMPAIGN[rel && rel.campaignTier] || CAMPAIGN.standard; }
+export function campaignSpend(rel) { return (BUDGET[rel.scale] || 0) * campaignOf(rel).share; }
+// What it has to clear. The trades’ own rule: worldwide takes about two and a half times the
+// negative before anybody sees a profit, because the cinema keeps roughly half of every ticket.
+// This is the number that replaces comparing the gross to the bare budget.
+export function breakEvenFor(rel) {
+  const b = BUDGET[rel.scale] || 0;
+  if (!b) return 0;
+  return Math.round((b + b * campaignOf(rel).share) * 1.5 * 1000000);
+}
+
+// How wide it can physically go. THIS is what the budget buys instead of buying tickets, and
+// the real gap between a platform release and a global day-and-date is enormous.
+const SCREENS = { small: 0.012, festival: 0.02, indie: 0.09, prestige: 0.12, feature: 0.55, blockbuster: 0.78 };
+const isPlatform = (scale) => (SCREENS[scale] ?? 0.09) < 0.2;
+// There is no studio entity in this game, so distribution muscle is read off what the picture
+// is — which is most of what it would say anyway. Named honestly as a stand-in.
+// Spread wide on purpose. A uniform lift here raised every picture equally, which is the opposite
+// of the point: what matters is the DIFFERENCE. A tentpole arrives with a studio behind it and is
+// barely about whoever is leading it; a small film has none of that and is almost entirely its
+// cast and what people say. The gap between the two ends is the whole content of this table.
+const MUSCLE = { blockbuster: 86, feature: 52, prestige: 30, indie: 20, festival: 12, small: 10 };
+
+// Diminishing twice over. Between the names on the poster, because the second one is worth
+// about half the first and the fourth is worth almost nothing. And WITHIN a name, because the
+// one thing everybody in this business already knows about star power is that the difference
+// between famous and very famous sells almost no extra tickets: fifty to eighty is worth a
+// great deal, eighty to ninety-seven is worth very little and costs a fortune.
+const DRAW_W = [1, 0.55, 0.25, 0.12];
+export function castDraw(names) {
+  return (names || []).filter((n) => n > 0).sort((x, y) => y - x)
+    .reduce((n, f, i) => n + Math.pow(f, 0.82) * (DRAW_W[i] ?? 0.05), 0);
+}
+
+// ── 1. DEMAND ─────────────────────────────────────────────────────────────────
+// Quality is deliberately absent. Nobody has seen the film. If anything in here moved with how
+// good it is, the model would be lying about what an opening weekend measures.
+export function demandFor(s, rel) {
+  let d = 6;
+  d += castDraw([s.fame || 0, rel.withFame || 0]) * 0.52;          // who is on the poster
+  // What is being said this month — and the existing rule that scandal is not the kind of
+  // talk that sells a ticket is kept, because it is right. See meta/hype.js hypeReach.
+  d += (hypeSource(s) === 'scandal' ? 0 : hype(s)) * 0.28;
+  d += Math.min(26, Math.sqrt(Math.max(0, campaignSpend(rel))) * 2.1);   // the campaign
+  // Weighted heavily on purpose, because this is the one thing the old formula had no room for
+  // at all: the bigger the picture, the LESS of it is the actor. Nobody buys a ticket to a
+  // tentpole for whoever is third on the poster - the franchise, the studio and the campaign sell
+  // it. Measured at a tenth, a €220m picture rated 9.2 fronted by somebody at forty points of
+  // fame came out exactly level, which says the lead carries a tentpole. They do not.
+  d += (MUSCLE[rel.scale] ?? 40) * 0.22;                           // distribution muscle
+  // The genre, as a market with a memory rather than a calendar. See meta/market.js.
+  d += (appetiteFor(s, rel.genre) - 1) * 28;
+  // And the kind of film it is, which is not the same question: horror is structurally cheap
+  // and popular whatever the fashion is doing. APPEAL has always said that and still does.
+  d *= 0.45 + ((APPEAL[rel.genre] || 1) * 0.55);
+  // Familiarity, and then fatigue — and a good last one buys the fatigue back. A fourth
+  // instalment nobody liked is a harder sell than a first nobody has heard of.
+  const part = rel.part || 1;
+  if (part > 1) {
+    const fam = [0, 0, 16, 19, 19, 16, 13][Math.min(6, part)] ?? 11;
+    const tired = [0, 0, 0, 4, 10, 18, 26][Math.min(6, part)] ?? 30;
+    const last = rel.lastRating ?? 65;
+    d += fam - tired * (last >= 75 ? 0.25 : last >= 60 ? 0.6 : 1.2);
+  }
+  // The press tour and anything bought to remind people it exists both belong HERE and not on
+  // the final total. A digital campaign says so in its own blurb: the first night is enormous
+  // and the people it brings are the people who leave first. See career/chapter.js REMINDERS.
+  d *= tourMultiplier(rel) * remindLift(rel);
+  // A festival prize or a buyer is the only thing that makes anybody aware of a small picture.
+  d *= 0.55 + (rel.appealMod ?? 1) * 0.45;
+  // No ceiling. Demand is an index, not a percentage: an event picture with a star, a genre on
+  // the rise and a campaign behind it reaches 110, and a tentpole nobody asked for sits at 70.
+  return Math.max(2, Math.round(d));
+}
+
+// ── 2. OPENING ────────────────────────────────────────────────────────────────
+export function openingFor(s, rel, demand) {
+  const wide = SCREENS[rel.scale] ?? 0.09;
+  // Superlinear, because the gap between seventy and ninety matters far more than the gap
+  // between twenty and forty. The top of this market is winner-take-most and always was.
+  const base = Math.pow(Math.max(2, demand), 1.45) * 0.46 * wide;
+  if (rel._window == null) rel._window = windowFor(s.month || 0);
+  if (rel._against == null) rel._against = againstYou(rel.scale);
+  return base * rel._window * rel._against * (0.9 + Math.random() * 0.2);
+}
+
+// ── 3a. THE RUN ───────────────────────────────────────────────────────────────
+// How long it lasts, and it is almost entirely the crowd. A tentpole the audience dislikes
+// finishes at twice its opening; one they love finishes at five. The column moves this a little
+// and moves it most for the small ones, where a review is still how anybody hears of it.
+export function wordFor(rel) {
+  const crowd = rel.reception != null ? rel.reception : (rel.rating || 50);
+  return crowd * 0.6 + (rel.rating || 50) * 0.4;
+}
+export function legsFor(rel) {
+  const w = wordFor(rel);
+  // Continuous: 1.8x for something nobody enjoyed, about 3.5x for a picture people like, and
+  // five and a half for one they carry. Those are the real multiples of a worldwide opening.
+  let m = 1.75 + Math.pow(Math.max(0, w - 35) / 60, 1.5) * 3.5;
+  // Frontloading, which is a mechanism and not a punishment: everybody who was ever going to
+  // see a bad blockbuster goes on the first weekend, and then it falls off a cliff.
+  if (!isPlatform(rel.scale) && w < 60) m *= 0.78;
+  return Math.max(1.35, m * (0.92 + Math.random() * 0.16));
+}
+
+// ── 3b. THE EXPANSION ─────────────────────────────────────────────────────────
+// The stage that was missing, and the whole reason a sleeper can exist. A small release can get
+// WIDER: the distributor watches the per-screen average and adds screens week after week. Not a
+// lucky die — a thing the crowd earned. "My Big Fat Greek Wedding" opened on a hundred screens
+// and finished on two thousand, and no multiplier on a fixed release could ever produce that.
+export function expansionFor(rel) {
+  if (!isPlatform(rel.scale)) return 1;
+  const crowd = rel.reception != null ? rel.reception : (rel.rating || 50);
+  // Weighted towards the reviews on purpose, and only here. A platform release widens on what
+  // is written about it and on a self-selected audience telling each other, not on how broad
+  // its appeal was to people who were never going to go.
+  const word = crowd * 0.35 + (rel.rating || 50) * 0.65;
+  if (word <= 65) return 1;                      // it closes where it opened
+  // Continuous, because a step meant a film on 66 and a film on 71 had nothing in common.
+  const grow = 1 + Math.pow((word - 65) / 7.5, 1.9) * (0.8 + Math.random() * 0.5);
+  // And a hard ceiling, which is the thing that was missing from the ceiling-less version and
+  // the reason a twelve-million picture was reaching a billion in testing. There are only so
+  // many cinemas: however beloved it is, a platform release widens to about the breadth of an
+  // ordinary wide release and stops. That is still an enormous result.
+  return Math.min(grow, 0.36 / (SCREENS[rel.scale] ?? 0.09));
+}
+
+// The commercial result, for anybody. Your films and the ones the rest of the world makes in
+// the same year sit on the same list, so they are priced by the same arithmetic — the world
+// simply has fewer things to say about its own pictures, so it takes the defaults.
+export function grossFor({ scale, rating, genre, fame = 0, trend = 1, appealMod = 1, crowd = null, campaignTier = null }) {
+  if (!BUDGET[scale]) return 0;
+  const rel = { scale, genre, rating, reception: crowd != null ? crowd : rating,
+    appealMod, part: 1, campaignTier: campaignTier || studioCampaign(scale) };
+  // A world film has no hype, no tour and nobody else on the poster; its genre appetite
+  // arrives as a number from the caller, who has the market in hand.
+  let d = 6;
+  d += castDraw([fame]) * 0.52;
+  d += Math.min(26, Math.sqrt(Math.max(0, campaignSpend(rel))) * 2.1);
+  d += (MUSCLE[scale] ?? 40) * 0.22;
+  d += ((Number.isFinite(trend) ? trend : 1) - 1) * 28;
+  d *= 0.45 + ((APPEAL[genre] || 1) * 0.55);
+  d *= 0.55 + (appealMod ?? 1) * 0.45;
+  const demand = Math.max(2, Math.round(d));
+  const wide = SCREENS[scale] ?? 0.09;
+  const opening = Math.pow(demand, 1.45) * 0.46 * wide
+    * windowFor(rint(0, 11)) * againstYou(scale) * (0.9 + Math.random() * 0.2);
+  return Math.round(opening * legsFor(rel) * expansionFor(rel) * 1000000);
 }
 // ── what the room thought ─────────────────────────────────────────────────────
 // Maxi: "not every film should be a success — it depends on you, the script, the shoot,
@@ -163,6 +334,27 @@ export function audienceFor(s, rel) {
   if (rel.take === 'strange') v += rint(-18, 18);
   // A season they have been with for years is a habit; they are gentle with it.
   if ((rel.season || 0) > 2) v += 4;
+  // ── did they buy you in it ───────────────────────────────────────────────────
+  // The crowd decides this AFTER watching, which is why it lands here on the reception and
+  // nowhere near the opening weekend. A comedian in a grim drama opens fine on his name and
+  // dies in the second week, and the columns may well call it brave — both of those are real,
+  // and only a number that moves the run and not the opening can produce either.
+  //
+  // Measured, the same star in the same film at five levels of fit: the opening moved from
+  // €86m to €99m and the run moved from 2.1x to 3.8x, so the final went €180m to €376m.
+  //
+  // This reads typeFit, which already exists and already knows your labels (meta/typecast.js).
+  // It answers a different question there — whether anybody will CAST you — and reusing the
+  // number is the point. A second table of what suits you would be a second answer to the
+  // same question, and the two would drift apart within a month.
+  v += typeFit(s, rel) * 7;
+  // And a script shot as something it is not is a worse film than the script was. The story
+  // room lets you argue a picture into another genre (career/story.js aim) — this is the bill.
+  if (rel.scriptGenre && rel.scriptGenre !== rel.genre) {
+    const near = { Horror: 'Thriller', Thriller: 'Horror', Crime: 'Thriller', Drama: 'Romance',
+      Romance: 'Drama', Comedy: 'Romance', 'Sci-Fi': 'Thriller', Musical: 'Romance' };
+    v *= near[rel.scriptGenre] === rel.genre ? 0.93 : 0.8;
+  }
   return clamp(Math.round(v + rint(-9, 9)));
 }
 // When the two of them have seen different films, and which way round.
@@ -203,19 +395,26 @@ export function againstYou(scale) {
 }
 
 export function boxOfficeFor(s, rel) {
-  // The bigger name on the poster sells the tickets. A nobody opposite an icon opens like
-  // an icon's film, mostly — which is the whole reason to want to be in one.
-  const fame = Math.max(s.fame || 0, (rel.withFame || 0) * 0.85);
-  // Tickets are sold to the room, not to the column. Three quarters of what a picture
-  // takes is what the audience made of it; the reviews are the other quarter, which is
-  // about how much they are worth on an opening weekend.
-  const sells = rel.reception != null ? rel.reception * 0.75 + (rel.rating || 0) * 0.25 : rel.rating;
-  // The date, and whoever else took that weekend. Rolled once and kept on the release, so
-  // the screen can say what happened rather than leaving the player with a number.
-  if (rel._window == null) rel._window = windowFor(s.month || 0);
-  if (rel._against == null) rel._against = againstYou(rel.scale);
-  const gross = grossFor({ scale: rel.scale, rating: sells, genre: rel.genre, fame, trend: rel.genre === hotGenre(s), appealMod: rel.appealMod ?? 1 });
-  return Math.round(gross * rel._window * rel._against);
+  // Every stage is kept on the release, because a number with no account of itself is not
+  // information. The screen can say what opened it, what carried it, and what killed it.
+  if (rel.campaignTier == null) rel.campaignTier = studioCampaign(rel.scale);
+  if (rel.lastRating == null) rel.lastRating = previousRating(s, rel);
+  rel._demand = demandFor(s, rel);
+  rel._opening = openingFor(s, rel, rel._demand);
+  rel._legs = legsFor(rel);
+  rel._expansion = expansionFor(rel);
+  rel._breakEven = breakEvenFor(rel);
+  return Math.round(rel._opening * rel._legs * rel._expansion * 1000000);
+}
+// What the numbers were, said in words, for the night it closes.
+export function runStory(rel) {
+  if (!rel || !isFilm(rel.scale)) return null;
+  const out = [];
+  if (rel._expansion > 1.6) out.push(`It opened small and they kept adding screens — it finished ${rel._expansion.toFixed(1)} times wider than it started.`);
+  if (rel._legs != null && rel._legs <= 1.9) out.push('Everybody who was ever going to see it went on the first weekend.');
+  if (rel._legs != null && rel._legs >= 4.2) out.push('It held for months. People were taking other people.');
+  if (rel._against != null && rel._against < 1) out.push('Something enormous opened against it, which was nobody\u2019s fault and cost the same.');
+  return out.length ? out.join(' ') : null;
 }
 export function viewersFor(s, rel) {
   const span = VIEWERS[rel.scale] || VIEWERS.episode;
@@ -255,6 +454,18 @@ function previousAudience(s, rel) {
   return prev ? (prev.endViewers > 0 ? prev.endViewers : (prev.viewers > 0 ? prev.viewers : null)) : null;
 }
 
+// What the last instalment was like, which is what decides whether anybody is tired of this.
+// Found the same way previousAudience finds last season: by the title with the part stripped
+// off, because nothing on the production carries a pointer back to the picture before it.
+export function previousRating(s, rel) {
+  if (!rel || (rel.part || 1) < 2) return null;
+  const root = String(rel.title || '').replace(/(\s*(?:·|:)?\s*part\s+\d+)+\s*$/i, '').trim();
+  if (!root) return null;
+  const prev = (s.filmography || []).filter((c) => (c.part || 1) === (rel.part || 1) - 1
+    && String(c.title || '').replace(/(\s*(?:·|:)?\s*part\s+\d+)+\s*$/i, '').trim() === root);
+  return prev.length ? (prev[prev.length - 1].rating ?? null) : null;
+}
+
 // Did it make its money back? This is what the industry actually remembers.
 export function budgetFor(rel) { return Math.round((BUDGET[rel.scale] || 0) * 1000000); }
 export function verdictOf(rel) {
@@ -271,12 +482,18 @@ export function verdictOf(rel) {
     if (pull >= 0.7) return 'seen';
     return 'ignored';
   }
-  const budget = budgetFor(rel);
-  if (!budget) return 'seen';
-  const ratio = (rel.boxOffice || 0) / budget;
-  if (ratio >= 4) return 'smash';
-  if (ratio >= 2.2) return 'profitable';
-  if (ratio >= 1.1) return 'broke even';
+  // Against what it cost to make AND to sell, which is the only sum anybody in the trades
+  // means by asking whether it worked. It used to be measured against the bare budget, which
+  // quietly gave every picture a marketing campaign that was free.
+  const need = breakEvenFor(rel);
+  if (!need) return 'seen';
+  const ratio = (rel.boxOffice || 0) / need;
+  // Four names and not five. A fifth tier would read better on a chart and would break twenty
+  // call sites that switch on these exact strings — franchise.js prices a sequel from a table
+  // keyed by them, and a missing key there is not a worse colour, it is NaN in somebody’s money.
+  if (ratio >= 2.0) return 'smash';
+  if (ratio >= 1.25) return 'profitable';
+  if (ratio >= 0.7) return 'broke even';
   return 'bomb';
 }
 
@@ -302,6 +519,10 @@ export function scheduleRelease(s, credit, p) {
     with: p.with || null, withId: p.withId || null, withFame: p.withFame || 0, withIcon: !!p.withIcon,
     // What the version you shot does to the box office, and the line it was pitched on.
     appealMod: appealShift(p) * dirAppeal(p), premise: p.premise || credit.premise || null, take: credit.take || null,
+    // What the studio is spending to sell it, decided when it is booked — see CAMPAIGN above.
+    campaignTier: p.campaignTier || studioCampaign(p.scale || 'feature'),
+    // What the script was before anybody argued it somewhere else (career/story.js).
+    scriptGenre: p.scriptGenre || null,
     // Where you said it should go and whether anybody was paid to remind people it exists.
     // Both decide what the first night looks like, and one of them decides who is still
     // there at the last. See career/chapter.js.
@@ -421,9 +642,10 @@ function open(s, rel) {
   }
   // What it will end up taking. The player does not see this number yet — it arrives a
   // few thousand at a time, week by week, which is how anybody actually experiences it.
-  // The press tour, or the lack of one, is the studio's marketing working or not — see tour.js.
-  // A sequel or a later season opens on a name people know: a tenth more, before anybody
-  // has seen it. Maxi: "the system remembers it was a good picture and gives benefits."
+  // A later season opens on a name people know: a tenth more, before anybody has seen it.
+  // Maxi: "the system remembers it was a good picture and gives benefits." For FILM this is
+  // now demandFor's familiarity-and-fatigue table, which knows the difference between a second
+  // part and a sixth; below, it is still television, where a returning show is simply a habit.
   const known = ((rel.part || 1) > 1 || (rel.season || 0) > 1) ? 1.12 : 1;
   // What the room made of it. Asked before the money, because the money follows it.
   // NOT onto rel.audience. Maxi, looking at a show rated 4.7 that forty-six million people
@@ -435,7 +657,10 @@ function open(s, rel) {
   // audienceFor starts at 46, which is exactly the number on his screen.
   rel.reception = audienceFor(s, rel);
   if (fest && fest.result === 'unsold') rel.finalGross = 0;
-  else if (film) rel.finalGross = Math.round(boxOfficeFor(s, rel) * tourMultiplier(rel) * known * remindLift(rel));
+  // The tour, the reminder campaign and a known name are all AWARENESS, so they are inside
+  // demandFor now rather than multiplied onto the finished total. Multiplying the total said
+  // that a trailer campaign makes a film play longer, which is the opposite of what it does.
+  else if (film) rel.finalGross = boxOfficeFor(s, rel);
   else {
     // Maxi: "how are seasons measured — how many watched at the start and how many at the
     // end, and then they decide whether to renew?" Two numbers, not one. The first night
@@ -520,6 +745,10 @@ function open(s, rel) {
   // The finished thing is kept ON the release so runTick can close it out properly.
   credit._rel = { rating: rel.rating, worldHit: rel.worldHit, tier: rel.tier, scale: rel.scale,
     salary: rel.salary, finalGross: rel.finalGross || 0, job: rel.job, film,
+    // The campaign has to survive to closeRun. The verdict is measured against what the thing
+    // cost to make AND to sell, and without this line every picture would be judged at the end
+    // against a default campaign instead of the one it actually had.
+    campaignTier: rel.campaignTier, genre: rel.genre, part: rel.part,
     // Read by closeRun and by the critics. These were read off _rel and never written to it,
     // so a carried set and a part got over dinner were both invisible once the run closed.
     meter: rel.meter || 0, viaPartner: rel.viaPartner || null, fellApart: !!rel.fellApart, backend: rel.backend || 0, merch: rel.merch || 0, potential: rel.potential || null,
@@ -625,9 +854,15 @@ function closeRun(s, credit, r) {
   credit.score = Number((rating / 10).toFixed(1));
   r = { ...r, rating };
   const verdict = verdictOf({ scale: r.scale, rating: r.rating, boxOffice: credit.boxOffice,
+    // What it cost to sell, so the bar is the one this picture actually had to clear.
+    campaignTier: r.campaignTier,
     // Television needs to know who turned up; without these it fell back to the column.
     type: credit.type, endViewers: credit.endViewers, viewers: credit.viewers });
   credit.verdict = verdict;
+  credit.needed = breakEvenFor({ scale: r.scale, campaignTier: r.campaignTier });
+  // And the genre is used up by what you released into it, exactly as the world's pictures are.
+  if (r.film && r.genre) marketAfterRelease(s, r.genre, r.scale,
+    credit.needed ? (credit.boxOffice || 0) / credit.needed : null);
   const film = r.film;
 
   // The score buys respect; the money buys reach. They are different currencies, and both

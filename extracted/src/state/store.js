@@ -1,6 +1,7 @@
 import { useSyncExternalStore } from 'react';
 import { createInitialState } from './initialState.js';
 import { beginLife } from '../systems/life/origin.js';
+import { ageMarket } from '../systems/meta/market.js';
 import { ensureAppearance } from '../systems/life/appearance.js';
 import { dressOffers } from '../systems/career/script.js';
 const KEY = 'fof_react_save';
@@ -67,7 +68,9 @@ function sanitize(st) {
   for (const k of Object.keys(base)) { if (typeof base[k] === 'number' && (typeof st[k] !== 'number' || !Number.isFinite(st[k]))) st[k] = base[k]; }
   return st;
 }
-function freshLife(opts) { const s = createInitialState(opts); beginLife(s); ensureAppearance(s); return s; }
+// The genre market has to have a history before the first audition, or every genre sits at
+// exactly ordinary and nothing can be hot or dead in the year you start. See meta/market.js.
+function freshLife(opts) { const s = createInitialState(opts); beginLife(s); ensureAppearance(s); ageMarket(s); return s; }
 
 let state = normalize(load());
 const listeners = new Set();

@@ -1,8 +1,11 @@
 import { setFame, setRespect } from './status.js';
 import { rint, chance } from '../../engine/rng.js';
 import { addTimeline } from '../../engine/timeline.js';
-export const GENRES = ['Drama','Thriller','Comedy','Sci-Fi','Romance','Horror','Musical','Crime'];
-export function hotGenre(s) { return GENRES[((s.year || 2026) * 12 + (s.month || 0)) % GENRES.length]; }
+// Both of these used to live here, and hotGenre was a calendar: it walked the genre list one
+// per month, forever, so a player could count the months and know which date to open on. It is
+// a real market now - see meta/market.js - and every screen that already asked this question
+// gets the new answer without changing a line, because the signature is the same.
+export { GENRES, hotGenre } from './market.js';
 export function hasHit(s) { const all = [...(s.filmography || []), ...(s.discography || [])]; return all.some((x) => /hit|smash|classic|acclaim/i.test(x.status || '') || (x.rating || 0) >= 70); }
 function monthKey(s) { return (s.year || 0) * 12 + (s.month || 0); }
 export function pressUnread(s) { return hasHit(s) && s._newsActed !== monthKey(s) ? 1 : 0; }

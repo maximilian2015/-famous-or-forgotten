@@ -11,6 +11,7 @@ import { chance, rint } from '../../engine/rng.js';
 import { addTimeline } from '../../engine/timeline.js';
 import { setFame, setRespect } from './status.js';
 import { OUTLETS } from '../world/names.js';
+import { hotGenre } from './market.js';
 import { slotNorm } from '../career/franchise.js';
 import { budgetFor } from '../career/release.js';
 import { continues, gapOf, GAP_YEARS } from '../career/chapter.js';
@@ -242,8 +243,11 @@ function worldPieces(s) {
   }
   return out.slice(0, 1);
 }
-// hotGenre and slotNorm without importing the world into the papers twice.
-function hotGenreOf(s) { const G = ['Drama', 'Thriller', 'Comedy', 'Sci-Fi', 'Romance', 'Horror', 'Musical', 'Crime']; return G[((s.year || 2026) * 12 + (s.month || 0)) % G.length]; }
+// slotNorm without importing the world into the papers twice.
+// This was a private copy of the old calendar, kept here to avoid importing the world into the
+// papers. The market imports nothing, so the papers can simply ask it - and now they agree with
+// every other screen instead of quietly printing a different answer.
+const hotGenreOf = hotGenre;
 function slotNormOf(type) { return slotNorm(type); }
 
 // Monthly, at the end of the tick, after everything that writes to the timeline.

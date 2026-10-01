@@ -2837,6 +2837,10 @@ function CreditRow({ group, g }) {
           {c.comeback > 0 && <span style={{ fontWeight: 900, letterSpacing: '.06em', color: theme.accent }}>↩ COMEBACK · AFTER {c.comeback} YEARS</span>}
           {(group.boxOffice > 0 || group.viewers > 0) && <span style={{ color: theme.text, fontWeight: 700 }}>
             {group.boxOffice > 0 ? `${money(group.boxOffice)} box office` : `${group.viewers}m watched`}</span>}
+          {/* What it had to clear. A verdict is now measured against the budget AND the campaign,
+              which is the only sum the trades mean — so the gross on its own is unreadable. */}
+          {group.boxOffice > 0 && c.needed > 0 && <span style={{ color: theme.muted, fontSize: 10.5 }}>
+            needed {money(c.needed)}</span>}
           {c.verdict && !c.running && <span style={{ fontWeight: 900, letterSpacing: '.07em', textTransform: 'uppercase', fontSize: 9.5,
             color: VERDICT_COL[c.verdict] || theme.muted }}>{c.verdict}</span>}
           {ranked && <span style={{ fontWeight: 900, letterSpacing: '.06em', color: ranked.rank <= 3 ? theme.gold : theme.muted }}>#{ranked.rank} OF {c.year}</span>}

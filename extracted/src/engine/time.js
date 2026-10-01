@@ -58,6 +58,7 @@ import { hypeTick } from '../systems/meta/hype.js';
 import { socialTick } from '../systems/social/posting.js';
 import { priceTick } from '../systems/meta/price.js';
 import { typecastYear } from '../systems/meta/typecast.js';
+import { marketYear } from '../systems/meta/market.js';
 
 export function stepIsYear(state) { return state.stage === 'child' || state.stage === 'teen'; }
 export function advanceTime(state) { return stepIsYear(state) ? advanceYear(state) : advanceMonth(state); }
@@ -200,7 +201,9 @@ export function advanceMonth(state) {
   storyTick(s);      // and the world comes for you now and then, whether you asked or not
   storiesTick(s);    // the career stories: what the last thing became, and the next beat of it
   grudgesTick(s);
-  if (s.month === 0) { overtakenTick(s); typecastYear(s); cultTick(s); }   // the year's list is out, and the labels fade a little
+  // The year's list is out, the labels fade a little, and the audience decides what it is
+  // tired of. The market moves ONCE, here, on the evidence of everything that opened.
+  if (s.month === 0) { overtakenTick(s); typecastYear(s); cultTick(s); marketYear(s); }
   standingTick(s);   // and the trades find a word for what you are now
   setsTick(s);       // and the month a second set, or a third, opens to you
   emailTick(s);
