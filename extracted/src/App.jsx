@@ -2789,7 +2789,9 @@ export function money(n) {
 function CreditRow({ group, g }) {
   const c = group.best;
   const r = c.rating || 0;
-  const [showReviews, setShowReviews] = useState(false);
+  // One switch for the whole row now. It used to open only the reviews; it opens the film.
+  const [open, setOpen] = useState(false);
+  const showReviews = open, setShowReviews = setOpen;
   // Where it sat in its year, if it made the list. See systems/world/yearbook.js.
   const yearEntry = g.world && g.world.years && g.world.years[c.year];
   const ranked = yearEntry && yearEntry.films.find((f) => f.you && f.title === c.title);
@@ -2802,7 +2804,7 @@ function CreditRow({ group, g }) {
   const kind = tv ? 'TV Series' : c.type || 'Feature Film';
   const years = group.from === group.to ? String(group.to) : `${group.from}–${group.to}`;
   const eps = tv ? (group.episodes || c.episodes || 0) : 0;
-  return (<div style={{ display: 'flex', gap: 10, padding: '8px 9px', borderRadius: 11, marginBottom: 5,
+  return (<div onClick={() => setOpen(!open)} style={{ display: 'flex', gap: 10, padding: '6px 8px', borderRadius: 11, marginBottom: 4, cursor: 'pointer',
     background: group.worldHit ? 'linear-gradient(100deg, rgba(255,209,102,.16), rgba(255,209,102,.04))'
       : hit ? 'linear-gradient(100deg, rgba(255,209,102,.10), rgba(255,209,102,.02))' : flop ? 'rgba(255,106,138,.05)' : 'transparent',
     border: `${hit || group.worldHit ? '1.5px' : '1px'} solid ${group.worldHit ? 'rgba(255,209,102,.6)' : hit ? 'rgba(255,209,102,.45)' : flop ? 'rgba(255,106,138,.3)' : theme.line}` }}>
@@ -2858,6 +2860,7 @@ function CreditRow({ group, g }) {
           broken, it was REPLACED (c3aefbb): a sequel is offered to you when a picture earns
           one, or pitched yourself from your own sofa. Disabling a thing and leaving it is how
           a codebase fills with features nobody can reach and nobody dares delete. */}
+      {open && <>
       {/* the marks that never come off, and what it made */}
       {(group.worldHit || hit || group.askers > 0 || group.askerNoms > 0 || c.comeback > 0 || group.boxOffice > 0 || group.viewers > 0 || c.festival) && (
         <div style={{ fontSize: 10.5, marginTop: 4, display: 'flex', gap: 7, alignItems: 'center', flexWrap: 'wrap' }}>
@@ -2911,18 +2914,13 @@ function CreditRow({ group, g }) {
       {c.acceptance && !c.running && (
         <div style={{ fontSize: 11.5, color: theme.muted, marginTop: 3, fontStyle: 'italic' }}>{c.acceptance}</div>)}
       {/* What happened while they were shooting it. The test: after a picture wraps, can the
-          player say what it WAS? "The one where I argued with the director, did the stunt
-          myself, and the last monologue came out perfect" — not "the one where I pressed
-          Rehearse four times". Written at wrap, career/production.js onSetStory. */}
+          player say what it WAS? Written at wrap, career/production.js onSetStory. */}
       {!!(c.onSet && c.onSet.length) && (<div style={{ marginTop: 5, paddingTop: 5, borderTop: `1px solid ${theme.line}` }}>
         <div style={{ fontSize: 9.5, fontWeight: 900, letterSpacing: '.08em', textTransform: 'uppercase', color: theme.muted, marginBottom: 3 }}>On set</div>
         {c.onSet.map((l, i) => (<div key={i} style={{ fontSize: 11.5, color: theme.muted, lineHeight: 1.45 }}>· {l}</div>))}
       </div>)}
-      {c.reviews && !c.running && !(group.worldHit || hit || group.askers > 0 || group.askerNoms > 0 || c.comeback > 0 || group.boxOffice > 0 || group.viewers > 0 || c.festival) && (
-        <button onClick={() => setShowReviews(!showReviews)} style={{ background: 'none', border: 'none', padding: '4px 0 0', cursor: 'pointer', fontSize: 10.5, fontWeight: 800, color: theme.accent }}>
-          Kinomark {c.reviews.grade} · {c.reviews.audience.toFixed(1)}/{c.reviews.critics.toFixed(1)} {showReviews ? '▾' : '▸'}
-        </button>)}
-      {showReviews && c.reviews && <Reviews page={c.reviews} accent={theme.gold} compact />}
+            {c.reviews && <Reviews page={c.reviews} accent={theme.gold} compact />}
+      </>}
     </div>
   </div>);
 }

@@ -101,8 +101,10 @@ const SCENES = {
   </>),
 };
 
-export function Poster({ title, type, genre, director, size = 52, tall }) {
+export function Poster({ title, type, genre, director, size = 52, tall, compact }) {
   const w = tall ? Math.round(size) : 44, h = Math.round(w * 1.5);
+  // Below about sixty pixels the type is noise and the composition is a smudge.
+  const mini = compact ?? w < 60;
   const seed = hash(String(title || '') + (genre || ''));
   const r = rng(seed);
   const c = PALETTE[genre] || PALETTE.Drama;
@@ -123,23 +125,28 @@ export function Poster({ title, type, genre, director, size = 52, tall }) {
         </linearGradient>
       </defs>
       <rect width="100" height="150" fill={`url(#${id}sky)`} />
-      {Scene(r, c)}
+      {/* A thumbnail enlarges the scene about a third and drops it slightly, so the shape that
+          says which genre this is fills the frame instead of hiding in the middle of it. */}
+      {mini ? <g transform="translate(-16 -10) scale(1.32)">{Scene(r, c)}</g> : Scene(r, c)}
+      {/* A hard band of the genre's own light along the foot: at this size that stripe is the
+          thing a person actually distinguishes one picture from another by. */}
+      {mini && <rect x="0" y="132" width="100" height="18" fill={c.light} opacity=".9" />}
       {/* the bottom of every poster is dark, so the title always reads */}
-      <rect x="0" y="92" width="100" height="58" fill={`url(#${id}fade)`} />
-      <text x="50" y={long ? 120 : 124} textAnchor="middle" fontFamily={FONT_DISPLAY} fontWeight="700"
+      {!mini && <rect x="0" y="92" width="100" height="58" fill={`url(#${id}fade)`} />}
+      {!mini && <text x="50" y={long ? 120 : 124} textAnchor="middle" fontFamily={FONT_DISPLAY} fontWeight="700"
         fontSize={long ? 9 : 11.5} fill="#f6f1e6" letterSpacing=".04em" style={{ textTransform: 'uppercase' }}>
         {long ? <>
           <tspan x="50" dy="-6">{words.slice(0, Math.ceil(words.length / 2)).join(' ')}</tspan>
           <tspan x="50" dy="10">{words.slice(Math.ceil(words.length / 2)).join(' ')}</tspan>
         </> : words.join(' ')}
-      </text>
+      </text>}
       {/* the credits block: a line of tiny type nobody can read, exactly like the real thing */}
-      <text x="50" y="136" textAnchor="middle" fontSize="3.2" fill="#f6f1e6" opacity=".55" letterSpacing=".08em" fontFamily="system-ui, sans-serif">
+      {!mini && <text x="50" y="136" textAnchor="middle" fontSize="3.2" fill="#f6f1e6" opacity=".55" letterSpacing=".08em" fontFamily="system-ui, sans-serif">
         {(director ? 'A FILM BY ' + director.toUpperCase() : 'A FILM').slice(0, 30)}
-      </text>
-      <text x="50" y="142" textAnchor="middle" fontSize="2.4" fill="#f6f1e6" opacity=".35" letterSpacing=".05em" fontFamily="system-ui, sans-serif">
+      </text>}
+      {!mini && <text x="50" y="142" textAnchor="middle" fontSize="2.4" fill="#f6f1e6" opacity=".35" letterSpacing=".05em" fontFamily="system-ui, sans-serif">
         EXECUTIVE PRODUCER · MUSIC BY · EDITED BY · CASTING · PRODUCTION DESIGN
-      </text>
+      </text>}
       {tv && <>
         <rect x="0" y="0" width="100" height="11" fill={c.ink} opacity=".85" />
         <text x="50" y="7.8" textAnchor="middle" fontSize="5.5" fontWeight="900" fill={c.light} letterSpacing=".2em" fontFamily="system-ui, sans-serif">A SERIES</text>

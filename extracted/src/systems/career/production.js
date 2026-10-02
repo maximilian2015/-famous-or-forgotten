@@ -153,7 +153,7 @@ export function startProduction(s, offer) {
     // What the paper said it was about and who you would be. Rolled at the offer now
     // (career/script.js), so you are not signing a genre and a fee — and kept, so season
     // four is about the same person as season one.
-    premise: offer.premise || makePremise(), character: offer.character || null, take: null, takeWon: false,
+    premise: offer.premise || makePremise(offer.genre), character: offer.character || null, take: null, takeWon: false,
     // Where you said it should go, and whether anybody was paid to remind people it exists.
     direction: offer.direction || null, remind: offer.remind || null,
     // Whose first film this is. The payoff is not the review — it is the phone call years

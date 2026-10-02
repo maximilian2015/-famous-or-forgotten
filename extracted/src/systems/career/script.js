@@ -64,7 +64,7 @@ export function dressOffers(s) {
   for (const list of lists) {
     for (const o of (list || [])) {
       if (!o || o.kind === 'brand') continue;                 // a brand is not a part
-      if (!o.premise) o.premise = makePremise();
+      if (!o.premise) o.premise = makePremise(o.genre);
       if (!o.character) o.character = makeCharacter(s, o.genre, o.tier);
     }
   }

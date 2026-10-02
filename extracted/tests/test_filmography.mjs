@@ -96,13 +96,27 @@ ok('the save loaded into a career', /Alex Moon|Buried Hunger|Career/i.test(text(
 await press(/^(🎬)?Career$/);
 await press(/Filmography|Film\/TV|Credits/i);
 
+// A row is a line in a listing now and everything else is behind a press, so this checks both
+// halves: that the collapsed row stays short, and that pressing it opens the picture.
+const shut = text();
+ok('a collapsed row does not carry the synopsis', !/harbour town/.test(shut));
+// The handler is on the ROW, and clicking an ancestor does not fire a descendant's. Find the
+// element that is actually pressable: the one the component marks with a pointer cursor.
+// The handler is on the ROW, and clicking an ancestor does not fire a descendant's. Press the
+// elements the component itself marks as pressable, all of them, so every credit is open.
+for (const title of ['Buried Hunger', 'WellPlanned']) {
+  const row = [...D.querySelectorAll('div')]
+    .filter((d) => new RegExp(title).test(d.textContent || '') && d.style && d.style.cursor === 'pointer')
+    .pop();
+  if (row) { row.dispatchEvent(new W.MouseEvent('click', { bubbles: true })); await sleep(260); }
+}
 const t = text();
-ok('the filmography renders at all', t.length > 300 && /Buried Hunger/.test(t));
+ok('the filmography renders at all', shut.length > 200 && /Buried Hunger/.test(shut));
 ok('nothing threw', errors.length === 0, errors.slice(0, 2).join(' | '));
 // The actual regression: a character is an object and must be drawn by its name.
 ok('a character is drawn by name, not as an object', /Nadia Kerr/.test(t),
   /\[object Object\]/.test(t) ? 'rendered [object Object]' : 'name missing from the row');
-ok('and what the picture was about is on it', /harbour town/.test(t));
+ok('and opening it shows what the picture was about', /harbour town/.test(t));
 ok('a film nobody bought says so in words', /nobody bought it/i.test(t) || /NO BUYER/.test(t));
 
 console.log(fails ? `\n${fails} failed` : '\nall passed');

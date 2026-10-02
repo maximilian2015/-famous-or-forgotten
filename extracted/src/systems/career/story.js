@@ -48,7 +48,60 @@ const WHO = [
   'and it is your character who started it', 'and the town has already decided who did it',
   'and neither of them will say the thing out loud', 'and the money ran out in the first week',
 ];
-export function makePremise() { return `${pick(WHERE)}, ${pick(WHAT)}, ${pick(WHO)}.`; }
+// Maxi: the line should match the genre and the title. It did neither — every picture got the
+// same three tables, so a musical and a horror film were both "a harbour town out of season, a
+// body in the water". Titles are already built from the genre (world/titles.js shape()), so
+// tying the premise to the genre ties it to the title as well.
+//
+// Per-genre first, the general tables as a fallback. Not every entry needs a genre of its own:
+// a disappearance belongs to a thriller and to a drama both, and the tables above are good.
+const G_WHERE = {
+  Horror: ['A farmhouse eleven miles from the next one', 'A sleep clinic with one patient left',
+    'A tunnel the council sealed in 1974', 'A village that empties every winter'],
+  Comedy: ['A wedding venue double-booked for the same Saturday', 'A failing garden centre',
+    'A local radio phone-in nobody listens to', 'A suburban cul-de-sac at war over a hedge'],
+  Romance: ['A bookshop three weeks from closing', 'A night train with one sleeper carriage left',
+    'A language school in a city neither of them knows', 'A wedding where they are both guests'],
+  Musical: ['A dance hall with a demolition notice on the door', 'A seaside pier out of season',
+    'A church choir that has not been full since 1986', 'A pit band two players short'],
+  'Sci-Fi': ['A research station eight months from resupply', 'A city where the water is rationed by lottery',
+    'An orbital hotel nobody can afford to run', 'A town built around a thing nobody is allowed to see'],
+  Crime: ['A port where everything goes through two families', 'A betting shop that launders more than it takes',
+    'A police station with one working cell', 'A scrapyard at the edge of the ring road'],
+  Thriller: ['A conference hotel with the wrong people in it', 'A ferry that cannot turn back',
+    'A clinic where the files do not match the patients', 'A border crossing kept open an extra night'],
+};
+const G_WHAT = {
+  Horror: ['something in the house that uses the children\u2019s voices', 'a sound under the floor that keeps time',
+    'a photograph in which somebody is always closer', 'a door that is open when nobody opened it'],
+  Comedy: ['a funeral two families have booked at once', 'a lie that has to be kept going for one more day',
+    'a prize nobody meant to win', 'a houseguest who will not say when they are leaving'],
+  Romance: ['a letter neither of them sent', 'a marriage proposal made to the wrong person',
+    'eleven years and a street neither of them crosses', 'a last night before a flight'],
+  Musical: ['one night to fill a room that holds nine hundred', 'a song written for somebody who left',
+    'a competition the town has not won since the war', 'a voice that goes at exactly the wrong moment'],
+  'Sci-Fi': ['a message that takes nine years to answer', 'a copy of somebody who should not have one',
+    'a machine that is right more often than the people', 'a rule that was never meant to apply to a person'],
+  Crime: ['a shipment that was never on the manifest', 'a confession traded for somebody else\u2019s name',
+    'money that has to move before Friday', 'an arrest that would end three careers'],
+  Thriller: ['a name on a list that should not be there', 'forty minutes of missing footage',
+    'a witness who changes their account every time', 'a bag left on purpose'],
+};
+const G_WHO = {
+  Horror: ['and the one who sees it is the one nobody believes', 'and leaving is not the same as getting out'],
+  Comedy: ['and every single one of them is lying about something small', 'and nobody will be the first to say it is absurd'],
+  Romance: ['and neither of them is free to say so', 'and the timing was never going to be kind'],
+  Musical: ['and the one who can actually sing it will not', 'and the whole town has decided it is already over'],
+  'Sci-Fi': ['and the answer costs more than the question was worth', 'and nobody can agree what counts as a person'],
+  Crime: ['and the one holding it together is the one who will go down', 'and loyalty here has a price list'],
+  Thriller: ['and the person asking already knows', 'and there are two days before anybody notices'],
+};
+// Some of a genre’s flavour, some of the general tables, so it reads like a film rather than
+// a label: the general ones are good and a genre that only ever used its own would go stale.
+const lean = (g, table, all) => (g && table[g] && Math.random() < 0.72 ? pick(table[g]) : pick(all));
+export function makePremise(genre) {
+  return `${lean(genre, G_WHERE, WHERE)}, ${lean(genre, G_WHAT, WHAT)}, ${lean(genre, G_WHO, WHO)}.`;
+}
 
 // ── the takes ─────────────────────────────────────────────────────────────────
 // bump     : moves the finished film directly. The material weight is only 0.18, so a
@@ -157,7 +210,7 @@ export function trendNote(s, p) {
 // ── the room ──────────────────────────────────────────────────────────────────
 export function openStoryRoom(s, p) {
   return {
-    premise: p.premise || makePremise(),
+    premise: p.premise || makePremise(p.genre),
     takes: takesFor(p).map((id) => ({ ...TAKES[id], odds: pushOdds(s, id, p) })),
     title: p.title, genre: p.genre,
     director: ((p.crew || [])[0] || {}).name || 'the director',
