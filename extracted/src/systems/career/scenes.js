@@ -139,6 +139,75 @@ export const SCENES = {
 export const SCENE_IDS = Object.keys(SCENES);
 
 // Which scenes this shoot can throw at all — rolled once, so a picture has a character.
+// ── and what you decide to DO with the day ────────────────────────────────────
+// A relayed note, and it is the right criticism: a scene was a test of whether you could play
+// it, and never a question about how. The minigames are good and there are sixteen of them, but
+// skill alone is a calculator - the interesting part of a shooting day is that somebody has to
+// decide what the scene IS, and the director, the studio and you all want different things.
+//
+// So every day now asks first. The choice changes the size of the window you are playing for,
+// what a good day is worth, what a bad one costs, and whether the thing can become a MOMENT at
+// all. Going bigger is how a scene ends up in the trailer and how you lose a director.
+export const APPROACHES = {
+  written: { id: 'written', label: 'Play it as written',
+    blurb: 'What is on the page, the way they blocked it. Nobody will be surprised and nobody will be angry.',
+    window: 1, up: 1, down: 1, moment: 1, trust: 1, crowd: 0, prestige: 0 },
+  bigger: { id: 'bigger', label: 'Make it bigger',
+    blurb: 'Take it further than anybody asked. It is how a scene ends up in the trailer, and how you lose a director.',
+    window: 1.3, up: 1.5, down: 1.4, moment: 2.2, trust: -1.4, crowd: 4, prestige: -2 },
+  back: { id: 'back', label: 'Strip it back',
+    blurb: 'Do almost nothing and trust the camera. The people who care will see it. The Friday crowd may not.',
+    window: 1.15, up: 1.15, down: 1.1, moment: 1.4, trust: 0.6, crowd: -4, prestige: 3 },
+  change: { id: 'change', label: 'Ask to change the scene',
+    blurb: 'You have an idea and enough standing to say it out loud. If they go for it the day is yours.',
+    needsBond: 62, window: 0.88, up: 1.35, down: 1.2, moment: 1.8, trust: 0.4, crowd: 1, prestige: 2 },
+};
+export const APPROACH_ORDER = ['written', 'bigger', 'back', 'change'];
+// The fourth one is the relationship paying for itself: you cannot ask a director you barely
+// know to rewrite the day. Everything else is always open.
+export function approachesFor(s, p) {
+  const bond = (lead(p) || {}).bond || 0;
+  return APPROACH_ORDER.filter((id) => !APPROACHES[id].needsBond || bond >= APPROACHES[id].needsBond)
+    .map((id) => ({ ...APPROACHES[id], open: true }))
+    .concat(APPROACH_ORDER.filter((id) => APPROACHES[id].needsBond && bond < APPROACHES[id].needsBond)
+      .map((id) => ({ ...APPROACHES[id], open: false,
+        why: `${(lead(p) || {}).name || 'The director'} does not know you well enough for that yet.` })));
+}
+export function chooseApproach(s, id) {
+  if (!s.scene || s.scene.approach) return s;
+  if (!APPROACHES[id]) return s;
+  const p = setById(s, s.scene.setId);
+  // The gate is only enforceable when the set is in hand. It always is in the game; a probe with
+  // a malformed state found that a missing one made this a silent no-op, and a button the player
+  // pressed that does nothing at all is worse than a gate that did not check.
+  if (p && APPROACHES[id].needsBond && ((lead(p) || {}).bond || 0) < APPROACHES[id].needsBond) return s;
+  s.scene.approach = id;
+  // The window the minigame gives you moves with the decision, which is the whole point:
+  // going bigger is harder to land, and a day you talked through first is easier.
+  s.scene.difficulty = Math.max(0.5, Math.min(2.2, (s.scene.difficulty || 1) * APPROACHES[id].window));
+  return s;
+}
+
+// ── and for anybody who does not want to play the day by hand ─────────────────
+// The rule a relayed note put well and which this has to obey: the CHARACTER acts, not the
+// person holding the phone. An actor at ninety who is played badly must not become a bad actor,
+// and an actor at thirty must not be carried by good reflexes. So auto-resolve reads the craft,
+// the preparation, the director and the day, and returns what that person would have got.
+// Playing it by hand can beat this - that is the reward for playing it - and can also do worse.
+export function autoQuality(s) {
+  const sc = s.scene; if (!sc) return 50;
+  const p = setById(s, sc.setId);
+  const skill = s.dream === "singer" ? (s.singing || 0) : (s.acting || 0);
+  const stance = p && p.stance === "allin" ? 7 : p && p.stance === "coast" ? -8 : 0;
+  const bond = ((lead(p) || {}).bond || 40) - 40;
+  let q = 26 + skill * 0.52 + stance + bond * 0.14;
+  q /= Math.max(0.55, sc.difficulty || 1);
+  q -= Math.max(0, (s.strain || 0) - 55) * 0.25;
+  // A hand played well beats this and a hand played badly loses to it. The ceiling is a little
+  // under the top on purpose: the rarest days should belong to somebody who was there for them.
+  return clamp(Math.round(q + rint(-7, 7)), 4, 86);
+}
+
 export function poolFor(s, p) {
   const live = SCENE_IDS.filter((id) => { try { return SCENES[id].when(s, p); } catch (e) { return false; } });
   return live.length ? live : ['mark', 'takes'];
@@ -215,7 +284,11 @@ export function resolveScene(s, quality) {
   (p._sceneLog = p._sceneLog || []).push({ id: sc0.id, label: sc.label, q: Math.round(q) });
   const d = lead(p);
   // The picture. A good day is worth more than a month of turning up; a bad one costs.
+  const ap = APPROACHES[sc0.approach] || APPROACHES.written;
   let swing = q >= 88 ? rint(12, 18) : q >= 70 ? rint(7, 11) : q >= 45 ? rint(2, 5) : q >= 25 ? -rint(2, 5) : -rint(6, 11);
+  // The decision pays and charges on different scales, which is what makes it a decision: going
+  // bigger is worth half again when it lands and costs nearly half again when it does not.
+  swing = swing > 0 ? swing * ap.up : swing * ap.down;
   // Maxi: "once players get good at these, will every film be great?" He was right to ask.
   // Measured: a master with the best script, nailing every day, was hitting 76 per cent of
   // the time — and the same actor playing the days badly hit 15. Sixty-one points of hit
@@ -229,10 +302,22 @@ export function resolveScene(s, quality) {
   if (swing > 0) swing = Math.max(1, Math.round(swing * room));
   p.meter = clamp((p.meter || 20) + swing);
   p._workedMonth = stamp(s);
-  if (d && d.name) d.bond = clamp((d.bond || 50) + (q >= 80 ? rint(4, 8) : q >= 50 ? rint(1, 3) : -rint(3, 7)));
+  // The director. A day done as written buys trust whatever happens; a day you took somewhere
+  // they did not ask for buys a great deal of it if it works and burns it if it does not.
+  if (d && d.name) {
+    const base = q >= 80 ? rint(4, 8) : q >= 50 ? rint(1, 3) : -rint(3, 7);
+    const shift = ap.trust >= 0 ? base * ap.trust : (q >= 80 ? base * 1.5 : base * Math.abs(ap.trust));
+    d.bond = clamp((d.bond || 50) + Math.round(shift));
+  }
   // A day that everybody on set will talk about. This is the thing the critics name.
+  // What the day leaves on the finished picture beyond the number: whether the room liked it,
+  // and whether it is the kind of thing that wins anything. Both are read at release.
+  if (ap.crowd) p.sceneCrowd = (p.sceneCrowd || 0) + ap.crowd * (q >= 70 ? 1 : 0.4);
+  if (ap.prestige) p.prestigeScore = clamp((p.prestigeScore || 50) + ap.prestige * (q >= 70 ? 1 : 0.3));
   let moment = null;
-  if (q >= 88) {
+  // Going bigger is how a take ends up in a trailer, and it is the only way the bar comes down.
+  const momentAt = Math.max(72, 88 - (ap.moment - 1) * 13);
+  if (q >= momentAt) {
     moment = MOMENT[sc0.id] ? MOMENT[sc0.id](sc0) : `the ${sc.label.toLowerCase()}`;
     (p.moments = p.moments || []).push(moment);
     addTimeline(s, `${sc.label}: you got it in one, and the set went quiet. ${d.name || 'The director'} watched it twice on the monitor.`);
@@ -242,10 +327,16 @@ export function resolveScene(s, quality) {
   // What the day costs you, beyond the work.
   if (sc.draining) s.strain = clamp((s.strain || 0) + (q >= 70 ? 3 : 6));
   if (sc.risky && q < 30) {
-    // You landed badly. Not the end of anything, but you feel it for a while.
+    // You landed badly. Not the end of anything, but you feel it for a while — and the unit
+    // stands around for a fortnight waiting for you, which is a thing other people remember.
     s.health = clamp((s.health || 100) - rint(4, 9));
     s.strain = clamp((s.strain || 0) + rint(4, 8));
-    addTimeline(s, 'You landed badly. Ice, a doctor on set, and the rest of the week hurts.', true);
+    const days = rint(5, 16);
+    p.lostDays = (p.lostDays || 0) + days;
+    p.stability = clamp((p.stability ?? 70) - rint(6, 14));
+    // Past about a fortnight it is not a delay any more, it is another month of shooting.
+    if (days >= 11) p.monthsLeft = (p.monthsLeft || 1) + 1;
+    addTimeline(s, `You landed badly. Ice, a doctor on set, and ${days} days the production will not get back.`, true);
   }
   // And what you learned. A hard day done well is the only thing that moves the craft here.
   if (q >= 80) { const cap = skillCap(s); if ((s.acting || 0) < cap) s.acting = Math.min(cap, (s.acting || 0) + (sc.hard ? 1 : 0.5)); }

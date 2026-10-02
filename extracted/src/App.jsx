@@ -12,7 +12,7 @@ import { seeDoctor, treatmentCost, pushThrough, PILLS, usePills, infectionOdds }
 import { resolveArc } from './systems/life/arcs.js';
 import { computeLegacy, getHall, heirsOf, heirOpts, enshrine } from './systems/meta/legacy.js';
 import { fameTier, setHousing, FAME_TIERS, fameCeiling, ladderBlurb, TIER_OPENS, alistKey, iconKey, scandalReport, respectReport, RESPECT_MOVES, RESPECT_TIERS, RESPECT_OPENS, respectTier, FORGOTTEN, FORGOTTEN_OPENS, isForgotten, forgottenDepth } from './systems/meta/status.js';
-import { rehearse, riskyTake, bondWithCrew, STANCES, STANCE_ORDER, stanceOf, setStance, meterTier } from './systems/career/production.js';
+import { bondWithCrew, STANCES, STANCE_ORDER, stanceOf, setStance, meterTier } from './systems/career/production.js';
 // Every set you are on. Three at most — see engine/sets.js; g.production is the first.
 const allSets = (g) => (g.productions && g.productions.length ? g.productions : (g.production ? [g.production] : []));
 import { agentCut, agentLine, fireAgent } from './systems/career/agent.js';
@@ -35,7 +35,7 @@ import { activeStories } from './systems/meta/stories.js';
 import { ambitionProgress } from './systems/meta/ambition.js';
 import { rename as renameProject, canRename, whyNot, TITLE_MAX } from './systems/career/naming.js';
 import { goals } from './systems/meta/goals.js';
-import { resolveScene, sceneState } from './systems/career/scenes.js';
+import { resolveScene, sceneState, approachesFor, chooseApproach, autoQuality } from './systems/career/scenes.js';
 import { RhythmLine, HoldZone, KeySequence, QuickPick } from './ui/components/SceneGames.jsx';
 import { Chronology, ScriptLines, Motive } from './ui/components/SceneLogic.jsx';
 import { FrameCheck, FindTheLight, TheAssembly, WhoSaysIt, TakeSheet } from './ui/components/ScenePuzzles.jsx';
@@ -2215,12 +2215,20 @@ function LegacyScreen({ g }) {
 // is, and what comes out of it moves the picture. See systems/career/scenes.js.
 function SceneModal({ g }) {
   const sc = g.scene;
-  const [state, setState] = useState('brief');
+  // A relayed note: a scene was a test of whether you could play it and never a question about
+  // HOW. The sixteen minigames are good; skill on its own is a calculator. So the day asks
+  // first — the director, the studio and you want different things out of it — and only then
+  // finds out whether you can do the thing you just chose. career/scenes.js APPROACHES.
+  const [state, setState] = useState(sc.approach ? 'ready' : 'brief');
   const [score, setScore] = useState(null);
   // The day ends on a card. It used to drop you straight back to the main screen with a
   // line in the feed, which read as nothing having happened at all.
   const done = (q) => { play(q >= 88 ? 'printed' : q < 25 ? 'blown' : 'tap'); setScore(Math.round(q)); setState('done'); };
   const finish = () => dispatch(resolveScene, score);
+  const take = (id) => { dispatch(chooseApproach, id); setState('ready'); };
+  // For anybody who does not want to play the day by hand. The CHARACTER acts, not the person
+  // holding the phone: this reads craft, preparation and the director. See autoQuality.
+  const auto = () => done(autoQuality(g));
   const d = sc.difficulty || 1;
   // The thinking days are written from the picture itself, so they need the set the scene
   // belongs to — the modal had only the scene. career/scenework.js
@@ -2253,8 +2261,27 @@ function SceneModal({ g }) {
     <div style={{ fontSize: 11, fontWeight: 900, letterSpacing: '.1em', textTransform: 'uppercase', color: theme.gold, marginBottom: 8 }}>🎬 {sc.title} · {sc.label}</div>
     <div style={{ fontSize: 14.5, lineHeight: 1.6, marginBottom: 14 }}>{sc.line}</div>
     {state === 'brief'
+      ? (<>
+          <div style={{ fontSize: 10.5, fontWeight: 900, letterSpacing: '.08em', textTransform: 'uppercase', color: theme.muted, marginBottom: 8 }}>How are you playing it?</div>
+          <div style={{ display: 'grid', gap: 9, marginBottom: 6 }}>
+            {approachesFor(g, onSet).map((ap) => (<button key={ap.id} disabled={!ap.open} onClick={() => ap.open && take(ap.id)}
+              style={{ textAlign: 'left', background: ap.open ? theme.panel : 'rgba(120,110,150,.10)',
+                border: `1px solid ${ap.id === 'change' && ap.open ? 'rgba(255,209,102,.45)' : theme.line}`,
+                borderRadius: 12, padding: '12px 14px', cursor: ap.open ? 'pointer' : 'default',
+                color: ap.open ? theme.text : '#6b6390', fontSize: 14, fontWeight: 700, fontFamily: FONT }}>
+              {ap.label}
+              <div style={{ fontSize: 11.5, fontWeight: 500, color: ap.open ? theme.muted : '#6b6390', marginTop: 3, lineHeight: 1.45 }}>
+                {ap.open ? ap.blurb : ap.why}</div></button>))}
+          </div></>)
+      : state === 'ready'
       ? (<><div style={{ fontSize: 12.5, color: theme.muted, lineHeight: 1.5, marginBottom: 16 }}>{sc.hint}</div>
-          <Button kind="pri" sfx="action" onClick={() => setState('play')}>Action</Button></>)
+          <Button kind="pri" sfx="action" onClick={() => setState('play')}>Action</Button>
+          <div style={{ height: 8 }} />
+          <button onClick={auto} style={{ width: '100%', background: 'transparent', border: `1px solid ${theme.line}`,
+            borderRadius: 12, padding: '11px 14px', cursor: 'pointer', color: theme.muted, fontSize: 12.5,
+            fontWeight: 700, fontFamily: FONT }}>Let the take happen
+            <div style={{ fontSize: 11, fontWeight: 500, marginTop: 2 }}>Played out on your training and the day. You can beat it by hand, and you can do worse.</div>
+          </button></>)
       : state === 'play' ? game
       : (<>
           <div style={{ textAlign: 'center', padding: '10px 0 14px' }}>
@@ -2862,6 +2889,14 @@ function CreditRow({ group, g }) {
       {/* Nothing to mark, and still something written: the button stands on its own. */}
       {c.acceptance && !c.running && (
         <div style={{ fontSize: 11.5, color: theme.muted, marginTop: 3, fontStyle: 'italic' }}>{c.acceptance}</div>)}
+      {/* What happened while they were shooting it. The test: after a picture wraps, can the
+          player say what it WAS? "The one where I argued with the director, did the stunt
+          myself, and the last monologue came out perfect" — not "the one where I pressed
+          Rehearse four times". Written at wrap, career/production.js onSetStory. */}
+      {!!(c.onSet && c.onSet.length) && (<div style={{ marginTop: 5, paddingTop: 5, borderTop: `1px solid ${theme.line}` }}>
+        <div style={{ fontSize: 9.5, fontWeight: 900, letterSpacing: '.08em', textTransform: 'uppercase', color: theme.muted, marginBottom: 3 }}>On set</div>
+        {c.onSet.map((l, i) => (<div key={i} style={{ fontSize: 11.5, color: theme.muted, lineHeight: 1.45 }}>· {l}</div>))}
+      </div>)}
       {c.reviews && !c.running && !(group.worldHit || hit || group.askers > 0 || group.askerNoms > 0 || c.comeback > 0 || group.boxOffice > 0 || group.viewers > 0 || c.festival) && (
         <button onClick={() => setShowReviews(!showReviews)} style={{ background: 'none', border: 'none', padding: '4px 0 0', cursor: 'pointer', fontSize: 10.5, fontWeight: 800, color: theme.accent }}>
           Kinomark {c.reviews.grade} · {c.reviews.audience.toFixed(1)}/{c.reviews.critics.toFixed(1)} {showReviews ? '▾' : '▸'}
@@ -3209,23 +3244,30 @@ function StanceRow({ g, p }) {
 }
 function ProductionCard({ g, p }) {
   const tier = meterTier(p.meter); const noEnergy = !canAfford(g, COST.rehearse);
-  const [minigame, setMinigame] = useState(null);
   const actBtn = (danger) => ({ flex: 1, border: 'none', borderRadius: 10, padding: '9px', fontSize: 12.5, fontWeight: 800, cursor: noEnergy ? 'default' : 'pointer', background: noEnergy ? 'rgba(120,110,150,.15)' : danger ? 'rgba(255,209,102,.18)' : `linear-gradient(135deg,${theme.accent2},${theme.accent})`, color: noEnergy ? '#6b6390' : danger ? theme.gold : '#fff' });
-  function openRiskyTake() {
-    setMinigame({ game: Math.random() < 0.5 ? 'timing' : 'grid',
-      zoneStart: 10 + Math.random() * 64, zoneWidth: 10 + Math.random() * 6, speed: 2.6 + Math.random() * 1.6,
-      bad: 3 + (Math.random() < 0.5 ? 1 : 0) });
-  }
-  function onMinigameResult(quality) {
-    dispatch(riskyTake, quality, p.id);
-    setMinigame(null);
-  }
   return (<Card style={{ marginBottom: 14, borderColor: 'rgba(255,209,102,.35)' }}>
     <div style={{ fontSize: 11, fontWeight: 900, letterSpacing: '.08em', textTransform: 'uppercase', color: theme.gold, marginBottom: 6 }}>🎬 {p.prepLeft > 0 ? `Preparing · ${p.prepLeft} mo before the first day` : `On set · ${p.monthsLeft} mo left`}</div>
     <TitleLine g={g} kind="set" id={p.id} title={p.title} />
     <div style={{ fontSize: 11.5, color: theme.muted, margin: '3px 0 8px' }}>{p.role} · {p.type}</div>
-    <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 11.5, color: theme.muted, marginBottom: 4 }}><span>Shoot quality</span><span>{tier.label} · {Math.round(p.meter)}</span></div>
-    <div style={{ height: 7, background: 'rgba(255,255,255,.08)', borderRadius: 4, marginBottom: 10 }}><div style={{ width: p.meter + '%', height: '100%', background: theme.gold, borderRadius: 4 }} /></div>
+    <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 11.5, color: theme.muted, marginBottom: 4 }}><span>Your performance</span><span>{tier.label} · {Math.round(p.meter)}</span></div>
+    <div style={{ height: 7, background: 'rgba(255,255,255,.08)', borderRadius: 4, marginBottom: 8 }}><div style={{ width: p.meter + '%', height: '100%', background: theme.gold, borderRadius: 4 }} /></div>
+    {/* The other three, in words. A set is a story, not a progress bar. */}
+    {(() => {
+      const dir = (p.crew || [])[0], co = (p.crew || [])[1];
+      const row = (k, v, col) => (<div key={k} style={{ display: 'flex', justifyContent: 'space-between', fontSize: 11.5, padding: '2px 0' }}>
+        <span style={{ color: theme.muted }}>{k}</span><span style={{ color: col, fontWeight: 700 }}>{v}</span></div>);
+      const word = (b) => (b >= 72 ? ['Delighted with you', theme.gold] : b >= 55 ? ['Pleased', theme.good]
+        : b >= 38 ? ['Professional', theme.muted] : b >= 22 ? ['Cooling', theme.bad] : ['Has stopped looking at you', theme.bad]);
+      const chem = (b) => (b >= 70 ? ['You two have it', theme.gold] : b >= 52 ? ['Easy enough', theme.good]
+        : b >= 34 ? ['Polite', theme.muted] : ['Uneasy', theme.bad]);
+      const press = (st) => ((st ?? 70) >= 80 ? ['Running smoothly', theme.good] : (st ?? 70) >= 60 ? ['The usual chaos', theme.muted]
+        : (st ?? 70) >= 42 ? ['Behind schedule', theme.bad] : ['Falling apart', theme.bad]);
+      return (<div style={{ marginBottom: 10 }}>
+        {dir && row('Director', ...[word(dir.bond || 0)].flatMap((x) => x))}
+        {co && row('Chemistry', ...[chem(co.bond || 0)].flatMap((x) => x))}
+        {row('Production', ...[press(p.stability)].flatMap((x) => x))}
+      </div>);
+    })()}
     {p.prepLeft > 0 ? null : <div style={{ marginBottom: 10 }}><StanceRow g={g} p={p} /></div>}
     {/* The days on this shoot that are a scene rather than a month — see career/scenes.js. */}
     {p.prepLeft > 0 ? null : (() => { const sc = sceneState(g, p); if (!sc) return null; return (<div style={{ marginBottom: 10, padding: '8px 10px', borderRadius: 10, background: 'rgba(255,209,102,.06)', border: `1px solid ${theme.line}` }}>
@@ -3240,20 +3282,12 @@ function ProductionCard({ g, p }) {
       <div style={{ fontSize: 11.5, color: theme.muted, lineHeight: 1.45, marginTop: 3 }}>{sc.line}</div>
       {!!sc.moments.length && <div style={{ fontSize: 11.5, color: theme.text, lineHeight: 1.45, marginTop: 4 }}>★ In the film now: {sc.moments.join('; ')}.</div>}
     </div>); })()}
-    <div style={{ fontSize: 10.5, fontWeight: 900, letterSpacing: '.08em', textTransform: 'uppercase', color: theme.muted, marginBottom: 6 }}>Push harder this month</div>
-    {minigame ? (<div style={{ marginBottom: 12 }}>
-      <div style={{ fontSize: 11.5, color: theme.gold, textAlign: 'center', marginBottom: 8, lineHeight: 1.45 }}>
-        {minigame.game === 'timing' ? 'Hit your mark — tap dead centre of the green.' : 'Push the scene take by take. Some choices fall flat. Stop while it still works.'}
-      </div>
-      {minigame.game === 'timing'
-        ? <TimingBar zoneStart={minigame.zoneStart} zoneWidth={minigame.zoneWidth} speed={minigame.speed} onResult={onMinigameResult} />
-        : <GridRisk cols={4} rows={3} bad={minigame.bad} labelSafe="✓" labelBad="✕" onResult={onMinigameResult} />}
-    </div>) : (<div style={{ display: 'flex', gap: 7, marginBottom: 12 }}>
-      <button onClick={() => dispatch(rehearse, p.id)} disabled={noEnergy} style={actBtn(false)}>Rehearse · {COST.rehearse}</button>
-      {canSmooth(g) && <button onClick={() => dispatch(smoothOver)} disabled={!canUse(g, 'smooth').ok} title={canUse(g, 'smooth').ok ? FAVOURS.smooth.blurb : canUse(g, 'smooth').why}
-        style={{ ...actBtn(true), background: canUse(g, 'smooth').ok ? 'rgba(255,209,102,.18)' : 'rgba(120,110,150,.15)', color: canUse(g, 'smooth').ok ? theme.gold : '#6b6390' }}>◆ Have a word · −{costOf(g, 'smooth')}</button>}
-      <button onClick={openRiskyTake} disabled={!canAfford(g, COST.take)} style={actBtn(true)}>Risky take · {COST.take}</button>
-    </div>)}
+    {/* One favour, not a grind: somebody owes you and you spend it. The month itself is the
+        stance above, and the shooting is the days. */}
+    {canSmooth(g) && <div style={{ marginBottom: 12 }}>
+      <button onClick={() => dispatch(smoothOver)} disabled={!canUse(g, 'smooth').ok} title={canUse(g, 'smooth').ok ? FAVOURS.smooth.blurb : canUse(g, 'smooth').why}
+        style={{ ...actBtn(true), width: '100%', background: canUse(g, 'smooth').ok ? 'rgba(255,209,102,.18)' : 'rgba(120,110,150,.15)', color: canUse(g, 'smooth').ok ? theme.gold : '#6b6390' }}>◆ Have a word · −{costOf(g, 'smooth')}</button>
+    </div>}
     <div style={{ fontSize: 10.5, fontWeight: 900, letterSpacing: '.08em', textTransform: 'uppercase', color: theme.muted, marginBottom: 6 }}>Crew</div>
     {p.crew.map((c) => (<div key={c.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '6px 0', borderBottom: `1px solid ${theme.line}` }}>
       <div><div style={{ fontSize: 12.5, fontWeight: 700 }}>{c.name}</div><div style={{ fontSize: 10.5, color: theme.muted }}>{c.role} · {c.trait} · bond {Math.round(c.bond || 0)}</div></div>

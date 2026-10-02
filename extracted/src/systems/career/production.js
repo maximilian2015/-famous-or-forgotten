@@ -487,6 +487,35 @@ function bottomOut(r) { return r >= 28 ? r : 15 + (Math.max(0, r) / 28) * 13; }
 // its own number, because that is what "a world hit" means.
 function topOut(r) { return r <= 86 ? r : 86 + 12 * (1 - Math.exp(-(r - 86) / 22)); }
 
+// Six lines at most, strongest first, and nothing invented: every one of these is read off
+// something that really happened during the shoot.
+function onSetStory(s, p) {
+  const out = [];
+  const dir = (p.crew || [])[0], co = (p.crew || [])[1];
+  const log = p._sceneLog || [];
+  const best = log.slice().sort((x, y) => (y.q || 0) - (x.q || 0))[0];
+  const worst = log.slice().sort((x, y) => (x.q || 0) - (y.q || 0))[0];
+  for (const m of (p.moments || []).slice(0, 2)) out.push(`In the film now: ${m}.`);
+  if (best && best.q >= 70 && !(p.moments || []).length) out.push(`${best.label}: better than anybody expected.`);
+  if (worst && worst.q < 30) out.push(`${worst.label}: it never worked, and they cut around it.`);
+  if (dir && dir.name) {
+    const b = dir.bond || 0, was = dir.bond0;
+    if (b >= 72) out.push(`${dir.name} wants to work with you again.`);
+    else if (was != null && b <= was - 14) out.push(`You and ${dir.name} did not end this one as friends.`);
+    else if (b <= 24) out.push(`${dir.name} stopped asking your opinion somewhere in the second month.`);
+  }
+  if (co && co.name) {
+    if ((co.bond || 0) >= 70) out.push(`You and ${co.name} have something on screen, and everybody saw it.`);
+    else if ((co.bond || 0) <= 28) out.push(`You and ${co.name} never quite found it.`);
+  }
+  if (p.lostDays) out.push(`Production lost ${p.lostDays} days.`);
+  if ((p.stability ?? 70) < 45) out.push('The whole thing was behind schedule from the second week.');
+  if (p.drunkMonths) out.push('There were months everybody on that set noticed.');
+  // And the rarest line of all, which only reads as special because the others exist.
+  if (!out.length) out.push('A smooth shoot. Everybody competent, nothing to tell.');
+  return out.slice(0, 6);
+}
+
 function wrapProduction(s, p) {
   const skill = s.dream === 'singer' ? s.singing : s.acting;
   // Skill is a FLOOR, not a ceiling: a master never embarrasses themselves, but a hit has to
@@ -571,6 +600,12 @@ function wrapProduction(s, p) {
   // fame, box office and the score all arrive on premiere night, not on the last
   // day of shooting. See systems/career/release.js.
   credit.premise = p.premise; credit.take = p.takeWon ? p.take : null;
+  // ── what happened on set ────────────────────────────────────────────────────
+  // The test a relayed note proposed, and it is a good one: when a picture wraps, can the player
+  // say what it WAS? The old answer was "the film where I pressed Rehearse four times". All of
+  // this already happened and was thrown away with the crew - the days, the arguments, the
+  // stunt, who was pleased with you - so it is collected here and kept on the credit.
+  credit.onSet = onSetStory(s, p);
   // Who you were in it, and where you said it should go. Both follow the part into the
   // next season's brief — see career/script.js and career/chapter.js.
   credit.character = p.character || null; credit.direction = p.direction || null;

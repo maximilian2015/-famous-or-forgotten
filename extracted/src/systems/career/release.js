@@ -338,6 +338,8 @@ export function audienceFor(s, rel) {
   if (rel.take === 'strange') v += rint(-18, 18);
   // A season they have been with for years is a habit; they are gentle with it.
   if ((rel.season || 0) > 2) v += 4;
+  // The days you went bigger than anybody asked, and the days you did almost nothing.
+  v += Math.max(-12, Math.min(12, rel.sceneCrowd || 0));
   // ── did they buy you in it ───────────────────────────────────────────────────
   // The crowd decides this AFTER watching, which is why it lands here on the reception and
   // nowhere near the opening weekend. A comedian in a grim drama opens fine on his name and
@@ -567,6 +569,13 @@ export function scheduleRelease(s, credit, p) {
     campaignTier: p.campaignTier || studioCampaign(p.scale || 'feature'),
     // What the script was before anybody argued it somewhere else (career/story.js).
     scriptGenre: p.scriptGenre || null,
+    // And what you decided to do on the days that mattered. Playing it big plays better in the
+    // room and worse in the column; stripping it back does the reverse. career/scenes.js.
+    sceneCrowd: p.sceneCrowd || 0,
+    // What happened while they were shooting it. Written at wrap (production.js onSetStory)
+    // and carried through post, because the credit that reaches the filmography is a NEW
+    // object built on opening night — anything not carried here is simply lost.
+    onSet: credit.onSet || null,
     // Where you said it should go and whether anybody was paid to remind people it exists.
     // Both decide what the first night looks like, and one of them decides who is still
     // there at the last. See career/chapter.js.
@@ -736,6 +745,7 @@ function open(s, rel) {
     // read. The viewers live on openViewers/endViewers and always did.
     audience: rel.reception != null ? rel.reception : null,
     direction: rel.direction || null, remind: rel.remind || null, character: rel.character || null,
+    onSet: rel.onSet || null,
     verdict: 'in cinemas', score: null,
     // Carried for the Asker season: what kind of thing it was, and whether it was pushed.
     scale: rel.scale, tier: rel.tier, prestigeScore: rel.prestigeScore, director: rel.director || null,
