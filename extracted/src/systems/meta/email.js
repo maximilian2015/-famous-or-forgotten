@@ -6,6 +6,7 @@ import { HOUSING } from '../../engine/economy.js';
 import { setFame, setRespect } from './status.js';
 import { agentWantsYou, offerAgent, signAgent, declineAgent, AGENT_TIERS } from '../career/agent.js';
 import { toursFor } from '../career/tour.js';
+import { festivalOdds, agentCost, FEST_ENERGY } from '../career/release.js';
 import { STUDIOS } from '../world/names.js';
 import { COST } from '../../engine/energy.js';
 import { hype, hypeSource, showBump } from './hype.js';
@@ -125,8 +126,26 @@ export function emailTick(s) {
       body: `"${r.title}" opens next month. ${big ? 'Three cities, two weeks' : 'Two weeks'}: the junket, ${big ? 'the late show' : 'a talk show'}, a cover. It is in the contract, more or less. ${COST.tour} energy, and a fortnight you do not get back.`,
       cta: [{ label: `Do the tour · ${COST.tour} energy`, tour: 'go' }, { label: 'Skip it', tour: 'skip' }] });
   }
+  // ── the festival ──
+  // A festival picture has nobody attached to release it. It screens, buyers come, and one of
+  // them takes it or it never opens at all. The player used to watch that happen to them —
+  // Maxi: "так как его релизовать? мне опции не давалось." See career/release.js.
+  for (const r of s.releases || []) {
+    if (r.festAsked || r.scale !== 'festival' || r.due - key !== 1) continue;
+    r.festAsked = true;
+    const cost = agentCost(s);
+    const o = festivalOdds(r.rating || 50, s.fame || 0, r.tier !== 'supporting');
+    push(s, { from: 'the producers', subj: `"${r.title}" is in competition`, tag: 'fest', kind: 'fest', releaseId: r.id, title: r.title,
+      body: `"${r.title}" has a slot. There is nobody attached to put it in cinemas — that is what the festival is FOR, and if nobody buys it there, nobody buys it. `
+        + `As it stands they put the odds of a sale at about ${o.sold} in a hundred. You can change that, and only in the two ways anybody ever has.`,
+      cta: [
+        { label: `Go, and work it · ${FEST_ENERGY} energy`, fest: 'go' },
+        { label: `Pay for a sales agent · €${cost.toLocaleString()}`, fest: 'agent' },
+        { label: 'Let it screen', fest: 'skip' },
+      ] });
+  }
   // A letter about a picture that has opened is not a letter.
-  s.inbox = (s.inbox || []).filter((m) => m.tag !== 'tour' || (s.releases || []).some((r) => r.id === m.releaseId));
+  s.inbox = (s.inbox || []).filter((m) => (m.tag !== 'tour' && m.tag !== 'fest') || (s.releases || []).some((r) => r.id === m.releaseId));
   // ── fan mail, hate mail, spam ──
   const flopped = (s.filmography || []).some((c) => (c.rating || 0) < 45 && c.closedAt && key - c.closedAt <= 3);
   if (fame >= 15 && offer(s, 'fan', 0, flopped ? 22 : fame >= 35 ? 10 : 5)) {

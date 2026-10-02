@@ -652,17 +652,70 @@ const FESTIVALS = ['Park City', 'the Lido', 'the Croisette', 'Locarno', 'Toronto
 // picture finds a buyer is most of what a star is worth to one, and it is why they are cast.
 //
 // The jury is untouched, because a jury watches the film. Fame buys the deal, never the prize.
-export function festivalOdds(rating, star = 0, lead = true) {
+// ── a festival picture has no distributor, and that is the whole of it ───────
+// Maxi, twice, looking at NO BUYER: "он никогда не вышел что ли?" — and then the real
+// question: "так как его релизовать? мне опции не давалось."
+//
+// He was right that there was none. A festival film is financed without anybody attached to
+// put it in cinemas; it premieres, buyers come, and either one of them takes it or it never
+// opens at all — which is what happens to most of them. That part was true and stays true.
+// What was wrong is that it was resolved in silence out of the rating and your fame, with
+// the player sitting there watching it happen to them.
+//
+// Three things an actor can really do about it, and now does:
+//   GO. Fly out, do the photocall, the Q&A after every screening, the buyer meetings. What
+//       a distributor is buying is something it can sell, and you on a carpet is the thing
+//       being sold. Costs the energy and a fortnight.
+//   PAY FOR A SALES AGENT. Somebody whose entire job is knowing which eleven people to
+//       call. Small films really are sold this way, and it really does come out of
+//       somebody’s pocket.
+//   NOTHING. It screens. It takes its chances. Most of them do.
+export const FEST_ENERGY = 15;
+export function agentCost(s) { return Math.max(18000, Math.round((s.quote || 200000) * 0.09)); }
+export function festivalOdds(rating, star = 0, lead = true, push = null) {
   const prize = rating >= 84 ? 48 : rating >= 76 ? 32 : rating >= 68 ? 18 : rating >= 60 ? 8 : 2;
   const base = rating >= 76 ? 62 : rating >= 66 ? 48 : rating >= 56 ? 32 : rating >= 46 ? 16 : 5;
   // Above the title it is the whole pitch; further down the poster it is a line in the deck.
   const pull = (lead ? star : star * 0.35) * 0.75;
-  return { prize, sold: Math.max(0, Math.min(97, Math.round(base + pull))) };
+  // Turning up helps the jury a little and the buyers a great deal. An agent does nothing
+  // for a prize at all — juries do not take calls — and a lot for a sale.
+  const went = push === 'went' ? 18 : 0;
+  const agent = push === 'agent' ? 24 : 0;
+  return {
+    prize: Math.max(0, Math.min(92, prize + (push === 'went' ? 6 : 0))),
+    sold: Math.max(0, Math.min(97, Math.round(base + pull + went + agent))),
+  };
 }
-function festivalResult(rating, star = 0, lead = true) {
-  const o = festivalOdds(rating, star, lead);
+function festivalResult(rating, star = 0, lead = true, push = null) {
+  const o = festivalOdds(rating, star, lead, push);
   if (chance(o.prize)) return 'prize';
   return chance(o.sold) ? 'sold' : 'unsold';
+}
+// Answered from the invitation in the inbox (meta/email.js), the way the press tour is.
+export function answerFestMail(s, id, i) {
+  const m = (s.inbox || []).find((x) => x.id === id); if (!m) return s;
+  const c = m.cta && m.cta[i]; if (!c || !c.fest) return s;
+  if (answerFestival(s, m, c.fest)) s.inbox = (s.inbox || []).filter((x) => x.id !== id);
+  return s;
+}
+export function answerFestival(s, m, what) {
+  const r = (s.releases || []).find((x) => x.id === m.releaseId);
+  if (!r) { s.lastEvent = 'That one has already screened.'; return true; }
+  if (what === 'skip') { r.festPush = 'none'; s.lastEvent = `You are not going. "${r.title}" screens on a Tuesday afternoon to four hundred people and whatever happens, happens.`; return true; }
+  if (what === 'go') {
+    if (!canAfford(s, FEST_ENERGY)) { s.lastEvent = tooTired(s, FEST_ENERGY); return false; }
+    spend(s, FEST_ENERGY);
+    r.festPush = 'went';
+    s.strain = clamp((s.strain || 0) + 4);
+    s.lastEvent = `Four days of it: the photocall, a Q&A after every screening, and eleven meetings with people who will decide in a week whether "${r.title}" is ever seen again.`;
+    return true;
+  }
+  const cost = agentCost(s);
+  if ((s.cash || 0) < cost) { s.lastEvent = `A sales agent wants €${cost.toLocaleString()} and you do not have it.`; return false; }
+  s.cash = (s.cash || 0) - cost;
+  r.festPush = 'agent';
+  s.lastEvent = `You are paying for somebody who knows which eleven people matter. €${cost.toLocaleString()} of your own money on a picture you are only in.`;
+  return true;
 }
 // The studios rang. A prize at a festival is the one thing that gets a stranger a studio
 // script — one lead, a real fee, a month or two after the trades used the word.
@@ -689,7 +742,7 @@ function open(s, rel) {
   // it, a buyer sells it a little, and no buyer means there is nothing to open.
   let fest = null;
   if (rel.scale === 'festival') {
-    fest = { name: pick(FESTIVALS), result: festivalResult(rel.rating, s.fame || 0, rel.tier !== 'supporting') };
+    fest = { name: pick(FESTIVALS), result: festivalResult(rel.rating, s.fame || 0, rel.tier !== 'supporting', rel.festPush), push: rel.festPush || null };
     if (fest.result === 'prize') { rel.appealMod = (rel.appealMod ?? 1) * 2.2; rel.rating = clamp(rel.rating + 3, 0, 96); }
     else if (fest.result === 'sold') rel.appealMod = (rel.appealMod ?? 1) * 1.3;
   }

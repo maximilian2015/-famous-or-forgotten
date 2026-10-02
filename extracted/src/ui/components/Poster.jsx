@@ -85,6 +85,23 @@ const BACK = {
     <path d={`M${40 + r() * 6} 70 L8 150 L92 150 L${58 + r() * 6} 70 Z`} fill={c.ink} opacity=".8" />
     {[0, 1, 2, 3].map((i) => <rect key={i} x={48 - i * 0.6} y={88 + i * 16} width={2 + i} height={5 + i * 2} fill={c.light} opacity=".4" />)}
   </g>),
+  bridge: (r, c) => (<g>
+    <path d={`M0 ${86 + r() * 10} L100 ${86 + r() * 10}`} stroke={c.ink} strokeWidth="6" opacity=".9" />
+    {[0, 1, 2, 3, 4].map((i) => <path key={i} d={`M${10 + i * 20} ${88 + r() * 8} L${10 + i * 20} 150`} stroke={c.ink} strokeWidth="3" opacity=".8" />)}
+    {[0, 1, 2, 3, 4, 5, 6, 7].map((i) => <path key={'c' + i} d={`M${6 + i * 13} ${86} q6 ${-14 - r() * 8} 13 0`} stroke={c.light} strokeWidth=".8" fill="none" opacity=".3" />)}
+  </g>),
+  stairs: (r, c) => (<g>
+    {[0, 1, 2, 3, 4, 5, 6].map((i) => <rect key={i} x={10 + i * 6} y={150 - (i + 1) * 13} width={80 - i * 12} height="13" fill={c.ink} opacity={0.92 - i * 0.03} />)}
+    <rect x="0" y="0" width="100" height={62 + r() * 8} fill={c.ink} opacity=".35" />
+  </g>),
+  crowd: (r, c) => (<g>
+    {Array.from({ length: 14 }, (_, i) => <circle key={i} cx={4 + (i % 7) * 15 + r() * 6} cy={104 + Math.floor(i / 7) * 18} r={5 + r() * 2} fill={c.ink} opacity=".88" />)}
+    <rect x="0" y="118" width="100" height="32" fill={c.ink} opacity=".8" />
+  </g>),
+  moonrise: (r, c) => (<g>
+    <circle cx={26 + r() * 48} cy={34 + r() * 10} r={14 + r() * 7} fill={c.light} opacity=".55" />
+    <rect x="0" y={100 + r() * 10} width="100" height="56" fill={c.ink} opacity=".92" />
+  </g>),
   grid: (r, c) => (<g>
     {[0, 1, 2, 3, 4, 5].map((i) => <path key={i} d={`M0 ${100 + i * 9} L100 ${100 + i * 9}`} stroke={c.light} strokeWidth=".6" opacity={0.3 - i * 0.04} />)}
     {[0, 1, 2, 3, 4, 5, 6].map((i) => <path key={'v' + i} d={`M50 100 L${-30 + i * 27} 150`} stroke={c.light} strokeWidth=".6" opacity=".18" />)}
@@ -127,6 +144,22 @@ const SUBJ = {
     <path d="M50 24 L50 88 M30 56 L70 56" stroke={c.ink} strokeWidth="2" opacity=".7" />
     <rect x="30" y="24" width="40" height="64" stroke={c.ink} strokeWidth="2" fill="none" opacity=".7" />
   </g>),
+  // A figure seen from behind, filling the lower half: the commonest poster there is.
+  back: (r, c) => (<g>
+    <circle cx="50" cy={72 + r() * 8} r={14 + r() * 4} fill={c.ink} />
+    <path d={`M50 ${88 + r() * 8} c-22 0 -28 26 -28 42 l0 24 h56 l0 -24 c0 -16 -6 -42 -28 -42 z`} fill={c.ink} />
+  </g>),
+  // Two of them, one much nearer than the other.
+  apart: (r, c) => (<g>
+    <circle cx={24 + r() * 6} cy="78" r="11" fill={c.ink} />
+    <path d={`M${24 + r() * 6} 90 c-16 0 -20 20 -20 32 l0 30 h40 l0 -30 c0 -12 -4 -32 -20 -32 z`} fill={c.ink} />
+    <circle cx={76 - r() * 6} cy="56" r="5" fill={c.ink} opacity=".9" />
+    <path d={`M${76 - r() * 6} 62 c-6 0 -8 10 -8 17 l0 14 h16 l0 -14 c0 -7 -2 -17 -8 -17 z`} fill={c.ink} opacity=".9" />
+  </g>),
+  // A hand, reaching into the frame from below.
+  hand: (r, c) => (<g>
+    <path d={`M${42 + r() * 10} 150 l0 -40 l5 -16 l3 15 l3 -19 l3 19 l3 -15 l4 14 l0 42 z`} fill={c.ink} />
+  </g>),
   orb: (r, c) => { const y = 40 + r() * 10, rad = 18 + r() * 8; return (<g>
     <circle cx="50" cy={y} r={rad} fill={c.light} opacity=".2" />
     <circle cx="50" cy={y} r={rad} stroke={c.light} strokeWidth="1.4" fill="none" opacity=".65" />
@@ -158,14 +191,14 @@ const WEATHER = {
 // The gate is the whole point. A musical does not get rain on a motorway and a horror film does
 // not get three people in a sunbeam. Inside the gate the seed does as it likes.
 const G = {
-  Drama: { back: ['room', 'horizon', 'hills', 'plain'], subj: ['figure', 'pair', 'chair', 'window'], lit: ['shaft', 'halo', 'pool', 'rim'], wx: ['none', 'fog', 'rain'] },
-  Crime: { back: ['skyline', 'road', 'corridor', 'horizon'], subj: ['figure', 'car', 'pair', 'looming'], lit: ['cone', 'pool', 'rim', 'none'], wx: ['rain', 'fog', 'none'] },
-  Romance: { back: ['room', 'sea', 'hills', 'plain'], subj: ['pair', 'window', 'figure', 'chair'], lit: ['sun', 'halo', 'shaft'], wx: ['snow', 'none', 'rain'] },
-  Musical: { back: ['room', 'plain', 'skyline', 'horizon'], subj: ['three', 'figure', 'pair', 'chair'], lit: ['cone', 'pool', 'halo', 'sun'], wx: ['none', 'stars', 'snow'] },
-  Thriller: { back: ['corridor', 'road', 'room', 'skyline'], subj: ['figure', 'door', 'looming', 'car'], lit: ['shaft', 'rim', 'none', 'cone'], wx: ['rain', 'fog', 'none'] },
-  'Sci-Fi': { back: ['grid', 'horizon', 'hills', 'plain'], subj: ['orb', 'figure', 'looming', 'none'], lit: ['halo', 'rim', 'sun'], wx: ['stars', 'scan', 'none'] },
-  Comedy: { back: ['room', 'hills', 'plain', 'skyline', 'sea'], subj: ['three', 'pair', 'figure', 'car'], lit: ['sun', 'halo', 'pool', 'shaft'], wx: ['none', 'snow', 'rain'] },
-  Horror: { back: ['trees', 'room', 'corridor', 'plain'], subj: ['door', 'looming', 'figure', 'window'], lit: ['none', 'shaft', 'pool'], wx: ['fog', 'rain', 'none'] },
+  Drama: { back: ['room', 'horizon', 'hills', 'plain', 'stairs', 'bridge'], subj: ['figure', 'pair', 'chair', 'window', 'back', 'apart'], lit: ['shaft', 'halo', 'pool', 'rim'], wx: ['none', 'fog', 'rain'] },
+  Crime: { back: ['skyline', 'road', 'corridor', 'horizon', 'bridge', 'stairs'], subj: ['figure', 'car', 'pair', 'looming', 'back', 'apart'], lit: ['cone', 'pool', 'rim', 'none'], wx: ['rain', 'fog', 'none'] },
+  Romance: { back: ['room', 'sea', 'hills', 'plain', 'bridge', 'moonrise'], subj: ['pair', 'window', 'figure', 'chair', 'apart', 'back'], lit: ['sun', 'halo', 'shaft'], wx: ['snow', 'none', 'rain'] },
+  Musical: { back: ['room', 'plain', 'skyline', 'horizon', 'stairs', 'crowd'], subj: ['three', 'figure', 'pair', 'chair', 'back'], lit: ['cone', 'pool', 'halo', 'sun'], wx: ['none', 'stars', 'snow'] },
+  Thriller: { back: ['corridor', 'road', 'room', 'skyline', 'stairs', 'bridge'], subj: ['figure', 'door', 'looming', 'car', 'back', 'hand'], lit: ['shaft', 'rim', 'none', 'cone'], wx: ['rain', 'fog', 'none'] },
+  'Sci-Fi': { back: ['grid', 'horizon', 'hills', 'plain', 'moonrise', 'crowd'], subj: ['orb', 'figure', 'looming', 'none', 'back'], lit: ['halo', 'rim', 'sun'], wx: ['stars', 'scan', 'none'] },
+  Comedy: { back: ['room', 'hills', 'plain', 'skyline', 'sea', 'crowd', 'stairs'], subj: ['three', 'pair', 'figure', 'car', 'apart'], lit: ['sun', 'halo', 'pool', 'shaft'], wx: ['none', 'snow', 'rain'] },
+  Horror: { back: ['trees', 'room', 'corridor', 'plain', 'moonrise', 'stairs'], subj: ['door', 'looming', 'figure', 'window', 'back', 'hand'], lit: ['none', 'shaft', 'pool'], wx: ['fog', 'rain', 'none'] },
 };
 // For anybody counting: how many one-sheets a genre can actually produce, before the hue and the
 // dozen seeded positions inside each layer are counted at all.

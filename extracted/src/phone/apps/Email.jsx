@@ -3,6 +3,7 @@ import { theme } from '../../ui/theme.js';
 import { dispatch } from '../../state/store.js';
 import { emailAct, markRead } from '../../systems/meta/email.js';
 import { answerTourMail } from '../../systems/career/tour.js';
+import { answerFestMail } from '../../systems/career/release.js';
 export function Email({ g }) {
   const [openId, setOpenId] = useState(null);
   const box = g.inbox || [];
@@ -12,7 +13,7 @@ export function Email({ g }) {
             /* The letter used to close on every click. When the system refused — no energy
                for a tour, a picture that has been renamed — the mail vanished off the screen
                and the refusal went with it, so nothing appeared to have happened at all. */
-            : (m.cta || []).map((c, i) => (<button key={i} onClick={() => { const had = (g.inbox || []).length; dispatch(c.tour ? answerTourMail : emailAct, m.id, i); if ((g.inbox || []).length !== had) setOpenId(null); }} style={btn(i === 0 ? 'pri' : '')}>{c.label}</button>))}</div></div></div>); }
+            : (m.cta || []).map((c, i) => (<button key={i} onClick={() => { const had = (g.inbox || []).length; dispatch(c.tour ? answerTourMail : c.fest ? answerFestMail : emailAct, m.id, i); if ((g.inbox || []).length !== had) setOpenId(null); }} style={btn(i === 0 ? 'pri' : '')}>{c.label}</button>))}</div></div></div>); }
   if (!box.length) return <div style={{ fontSize: 12.5, color: theme.muted, textAlign: 'center', padding: 24, lineHeight: 1.6 }}>Inbox zero.<br />Bills and invitations land here as life happens.</div>;
   return (<div>{box.map((m) => { const chip = m.kind === 'bill' ? ['bill', theme.gold] : m.kind === 'agent' ? ['representation', theme.gold] : m.kind === 'contract' ? ['contract', theme.gold] : m.kind === 'reply' ? ['casting', theme.accent] : m.kind === 'fan' ? ['fan mail', theme.good] : m.kind === 'hate' ? ['forwarded', theme.bad || '#ff5a72'] : m.kind === 'spam' ? ['spam', theme.muted] : m.tag === 'vip' ? ['VIP', theme.good] : ['invite', theme.accent];
     return (<button key={m.id} onClick={() => { dispatch(markRead, m.id); setOpenId(m.id); }} style={{ width: '100%', textAlign: 'left', background: theme.panel, border: 'none', borderRadius: 12, padding: '10px 12px', marginBottom: 8, cursor: 'pointer' }}><div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline' }}><div style={{ fontSize: 13, fontWeight: 800, color: theme.text }}>{!m.read && <span style={{ display: 'inline-block', width: 8, height: 8, borderRadius: '50%', background: '#4a90ff', marginRight: 7 }} />}{m.from}</div><span style={{ fontSize: 10.5, fontWeight: 800, color: chip[1] }}>{chip[0]}</span></div><div style={{ fontSize: 11.5, color: theme.muted, marginTop: 3 }}>{m.subj}</div></button>); })}</div>);
