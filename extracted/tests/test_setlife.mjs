@@ -1,0 +1,75 @@
+// The months of a shoot in which nothing is decided — which is most of them.
+//
+// Maxi, six months into a picture: "оно ж скучно." It was: the month is a stance chosen once,
+// the big days are one to three scenes across the whole film, and everything between was a
+// progress bar with a tick beside it. These are the ordinary weeks, reported and not decided.
+import { setLife } from '../src/systems/career/setlife.js';
+
+let fails = 0;
+const ok = (n, c, e = '') => { if (!c) { fails++; console.log('FAIL  ' + n + (e ? ' :: ' + e : '')); } else console.log('ok    ' + n); };
+
+const shoot = (over = {}) => ({
+  id: 'p1', title: 'Buried Hunger', months: 6, monthsLeft: 4, prepLeft: 0, meter: 50, stability: 80,
+  crew: [{ id: 'c0', name: 'Vera Salazar', role: 'Director', bond: 45, bond0: 45 },
+    { id: 'c1', name: 'Zora Sorensen', role: 'Co-star', bond: 40, bond0: 40 }], ...over,
+});
+const st = () => ({ year: 2060, month: 3, strain: 20, mental: 50 });
+
+// ── it happens, but not every month ───────────────────────────────────────────
+let fired = 0;
+for (let i = 0; i < 400; i++) if (setLife(st(), shoot())) fired++;
+ok('a shoot has something happen on it most months', fired > 160, `${fired}/400`);
+ok('and not every month — a set with an incident every month is a disaster film', fired < 320, `${fired}/400`);
+
+// ── never two running, so the quiet weeks stay quiet ──────────────────────────
+{
+  const s = st(), p = shoot();
+  p._lifeMonth = s.year * 12 + s.month - 1;   // it fired last month
+  let any = 0;
+  for (let i = 0; i < 200; i++) if (setLife(s, { ...p, crew: p.crew.map((c) => ({ ...c })) })) any++;
+  ok('never two months running', any === 0, String(any));
+}
+
+// ── a longer shoot has more weeks for something to go wrong in ────────────────
+{
+  const count = (months) => { let n = 0; for (let i = 0; i < 600; i++) if (setLife(st(), shoot({ months }))) n++; return n; };
+  const short = count(3), long = count(7);
+  ok('a long shoot has more happen on it than a short one', long > short, `${short} vs ${long} of 600`);
+}
+
+// ── it moves the set, and it is not all bad news ──────────────────────────────
+{
+  let better = 0, worse = 0, warmer = 0, cooler = 0;
+  for (let i = 0; i < 600; i++) {
+    const s = st(), p = shoot();
+    if (!setLife(s, p)) continue;
+    if ((p.stability ?? 80) > 80 || (p.meter || 50) > 50) better++;
+    if ((p.stability ?? 80) < 80 || (p.meter || 50) < 50) worse++;
+    const d = p.crew[0].bond;
+    if (d > 45) warmer++; if (d < 45) cooler++;
+  }
+  ok('some months make the picture better', better > 40, String(better));
+  ok('and some make it worse', worse > 40, String(worse));
+  ok('the director can warm to you over an ordinary month', warmer > 10, String(warmer));
+}
+
+// ── it leaves something for the wrap to remember ──────────────────────────────
+{
+  let kept = 0;
+  for (let i = 0; i < 400; i++) {
+    const p = shoot();
+    setLife(st(), p);
+    if ((p._setLog || []).length) kept++;
+  }
+  ok('and some of them are still worth saying at wrap', kept > 40, `${kept}/400 left a line`);
+}
+
+// ── preparation months are not shooting months ────────────────────────────────
+{
+  let any = 0;
+  for (let i = 0; i < 200; i++) if (setLife(st(), shoot({ prepLeft: 2 }))) any++;
+  ok('nothing happens on a set that has not started shooting', any === 0, String(any));
+}
+
+console.log(fails ? `\n${fails} failed` : '\nall passed');
+process.exit(fails ? 1 : 0);

@@ -382,9 +382,16 @@ function OnSetNow({ g, p }) {
     </div>}
     <StanceRow g={g} p={p} />
     {(() => { const sc = sceneState(g, p); return sc && sc.left > 0 ? (<div style={{ fontSize: 11, color: theme.gold, marginTop: 6, lineHeight: 1.45 }}>🎬 {sc.line}</div>) : null; })()}
+    {/* What the month on the set was like. Most months of a shoot are not a decision and were
+        a blank line with a tick next to it — career/setlife.js gives them a texture. */}
+    {p._lifeLine && <div style={{ fontSize: 11.5, color: theme.text, opacity: .85, marginTop: 6, lineHeight: 1.5, fontStyle: 'italic' }}>{p._lifeLine}</div>}
     <div style={{ fontSize: 11, color: p._stanceDone === 'broke' ? theme.bad : theme.muted, marginTop: 6, lineHeight: 1.45 }}>
       {p._stanceDone === 'broke' ? 'No energy for the set this month — you coasted. The director noticed.'
-        : worked ? `✓ This month's work is done${st !== 'coast' ? ` (${STANCES[st].cost} energy, taken at the top of the month)` : ''}. Push harder under Career if you want to.`
+        // This used to end 'Push harder under Career if you want to' and pointed at Rehearse
+        // and Risky Take, which were removed when the month became a stance and the DAYS
+        // became the game. An instruction to press a button that is not there any more is
+        // worse than no instruction: the player goes looking and thinks the screen is broken.
+        : worked ? `✓ This month's work is done${st !== 'coast' ? ` (${STANCES[st].cost} energy, taken at the top of the month)` : ''}. The rest of the month is yours.`
         : st === 'coast' ? 'Coasting. Live the month like this and you turned up not knowing the pages; a pattern, the director notices.' : 'The set is under Career.'}
     </div>
   </div>);

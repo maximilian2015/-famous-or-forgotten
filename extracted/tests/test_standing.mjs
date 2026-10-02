@@ -196,7 +196,12 @@ function actor(over) {
   function monthAt(meter) {
     const s = shoot(); s.production.meter = meter;
     s.year = 2060; s.month = 3; PR.rehearse(s); s.production.meter = meter;   // rehearse stamps the month; pin the meter after
-    s.month = 4; PR.productionTick(s);
+    s.month = 4;
+    // setlife.js is a SECOND way the director warms to you — a good night at two in the
+    // morning, a birthday everybody went to — and this is measuring the first one. A month it
+    // has just used is quiet, so marking the previous month isolates the channel under test.
+    s.production._lifeMonth = s.year * 12 + s.month - 1;
+    PR.productionTick(s);
     return s.production.crew[0].bond - 45;
   }
   const cold = [], warm = [], hot = [];

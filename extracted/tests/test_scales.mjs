@@ -105,9 +105,16 @@ ok('and nobody went through the floor', minR >= S.RESPECT_FLOOR, String(minR));
   b.production.stance = 'coast';
   const bondA0 = a.production.crew[0].bond, bondB0 = b.production.crew[0].bond;
   a.production.crew[0].bond = 45; b.production.crew[0].bond = 45;
+  // Same isolation as test_standing: setlife.js is a second channel into the director's bond
+  // (a good night, a birthday in a bar) and this measures the cooling from not turning up
+  // prepared. A month setlife has just used is quiet, so each month is marked before the tick.
+  // advanceMonth increments the month BEFORE it ticks, so the month setlife would call "last"
+  // is this one. Getting that off by one left the isolation doing nothing and the test still
+  // failing, which looked for a moment like the model rather than the helper.
+  const quiet = (st) => { if (st.production) st.production._lifeMonth = st.year * 12 + st.month; return st; };
   for (let m = 0; m < 4; m++) {
-    a.ap = 100; PR.rehearse(a); a = advanceMonth(a);
-    b.ap = 100; b = advanceMonth(b);
+    a.ap = 100; PR.rehearse(a); a = advanceMonth(quiet(a));
+    b.ap = 100; b = advanceMonth(quiet(b));
   }
   const bondA = a.production ? a.production.crew[0].bond : -1, bondB = b.production ? b.production.crew[0].bond : -1;
   ok('a director you rehearse for stays where they were', bondA >= 44, String(bondA));

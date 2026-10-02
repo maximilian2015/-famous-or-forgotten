@@ -11,6 +11,7 @@ import { addGenreXP, genreBonus } from './genres.js';
 import { scheduleRelease } from './release.js';
 import { rollStability, productionTrouble, volatileSwing, roughness } from './stability.js';
 import { makePremise, prestigeShift, ratingShift, swingShift, apartShift } from './story.js';
+import { setLife } from './setlife.js';
 import { skillCap } from './actions.js';
 import { bandLift } from '../world/directors.js';
 import { coldStart } from '../meta/standing.js';
@@ -429,6 +430,10 @@ function tickSet(s, p) {
     p._mentalCost = Math.round(st * big * many * worn * 10) / 10;
     s.mental = clamp((s.mental || 50) - p._mentalCost);
   }
+  // What the month on the set was actually like. No decision, no click — the shoot simply has
+  // a texture now instead of a tick in a box. career/setlife.js
+  const life = setLife(s, p);
+  if (life) { p._lifeLine = life; s.lastEvent = life; } else { p._lifeLine = null; }
   p.monthsLeft -= 1;
   // You are paid while you work. A fourteen-month blockbuster that only paid on wrap
   // would starve you out of your flat long before the premiere.
@@ -496,6 +501,8 @@ function onSetStory(s, p) {
   const best = log.slice().sort((x, y) => (y.q || 0) - (x.q || 0))[0];
   const worst = log.slice().sort((x, y) => (x.q || 0) - (y.q || 0))[0];
   for (const m of (p.moments || []).slice(0, 2)) out.push(`In the film now: ${m}.`);
+  // The ordinary months, which are most of a shoot and used to leave nothing behind at all.
+  for (const l of (p._setLog || []).slice(0, 2)) out.push(l);
   if (best && best.q >= 70 && !(p.moments || []).length) out.push(`${best.label}: better than anybody expected.`);
   if (worst && worst.q < 30) out.push(`${worst.label}: it never worked, and they cut around it.`);
   if (dir && dir.name) {
