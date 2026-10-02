@@ -2828,7 +2828,12 @@ function CreditRow({ group, g }) {
       <div style={{ fontSize: 11.5, color: theme.muted, marginTop: 3 }}>
         {c.director ? <span style={{ color: theme.text, opacity: .85 }}>{c.director}</span> : null}
         {c.director ? ' · ' : ''}{c.role}
-        {c.character ? <span> · as <span style={{ color: theme.text, fontWeight: 700 }}>{c.character}</span></span> : null}
+        {/* makeCharacter returns an OBJECT - { name, what, tier } - and rendering it whole threw
+            React #31 and took the whole filmography screen down with it. The autoplayer could
+            not catch this: it never lands a part, so it never reaches a screen with a credit on
+            it, which is the exact limitation written into tests/autoplay.mjs. */}
+        {(() => { const ch = c.character; const name = typeof ch === 'string' ? ch : (ch && ch.name) || null;
+          return name ? <span> · as <span style={{ color: theme.text, fontWeight: 700 }}>{name}</span></span> : null; })()}
         {c.with ? <span> · with <span style={{ color: c.withIcon ? theme.gold : theme.text, fontWeight: 700 }}>{c.with}</span></span> : null}
       </div>
       {/* What the network decided. Maxi, playing: "the season ended in 2075 and I am at the
