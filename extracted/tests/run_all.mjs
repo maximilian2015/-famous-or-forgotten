@@ -43,4 +43,16 @@ const lintBad = / error /.test(lintOut) || /Found \d+ error/.test(lintOut);
 console.log(`${lintBad ? 'FAIL' : 'PASS'}  lint`);
 if (lintBad) console.log('      ' + lintOut.split('\n').filter((l) => / error /.test(l)).slice(0, 6).join('\n      '));
 
-process.exit(failed || lintBad ? 1 : 0);
+// ── and one life, played through the real interface ──────────────────────────
+// Every other test in here calls engine functions directly, and so do all 44 probes. Not one
+// of them touches a screen — which is why the whole suite was green on the day a negotiation
+// room had four buttons that did nothing at all. This presses them. Eighteen seconds for one
+// life of about 130 screens; `node tests/autoplay.mjs 5 600` for a longer look.
+const play = spawnSync(process.execPath, [path.join(here, 'autoplay.mjs'), '1', '200'],
+  { encoding: 'utf8', timeout: 180000 });
+const playOut = (play.stdout || '') + (play.stderr || '');
+const playBad = play.status !== 0 || /THINGS THAT THREW/.test(playOut);
+console.log(`${playBad ? 'FAIL' : 'PASS'}  autoplay`);
+if (playBad) console.log('      ' + playOut.split('\n').slice(-14).join('\n      '));
+
+process.exit(failed || lintBad || playBad ? 1 : 0);
