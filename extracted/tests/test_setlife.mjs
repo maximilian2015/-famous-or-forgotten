@@ -41,20 +41,26 @@ ok('but not on all of them — the quiet weeks are what make the others land', n
   ok('a long shoot has more happen on it than a short one', long > short, `${short} vs ${long} of 600`);
 }
 
-// ── it moves the set, and it is not all bad news ──────────────────────────────
+// ── it moves the people, and nothing else ────────────────────────────────────
+// This asserted that months made the picture better or worse, and it was right to fail when
+// that was taken out. An ordinary month must not touch the meter, the stability or the player:
+// each of those is a promise the game has printed somewhere — what a month costs you, that
+// safe money delivers a film, that the quality is the script and the days you played. What a
+// month in which nothing was decided DOES change is how the people on it feel about each other.
 {
-  let better = 0, worse = 0, warmer = 0, cooler = 0;
-  for (let i = 0; i < 600; i++) {
-    const s = st(), p = shoot();
-    if (!setLife(s, p)) continue;
-    if ((p.stability ?? 80) > 80 || (p.meter || 50) > 50) better++;
-    if ((p.stability ?? 80) < 80 || (p.meter || 50) < 50) worse++;
+  let warmer = 0, cooler = 0, meterMoved = 0, stabilityMoved = 0;
+  for (let i = 0; i < 800; i++) {
+    const p = shoot();
+    setLife(st(), p);
     const d = p.crew[0].bond;
     if (d > 45) warmer++; if (d < 45) cooler++;
+    if ((p.meter || 50) !== 50) meterMoved++;
+    if ((p.stability ?? 80) !== 80) stabilityMoved++;
   }
-  ok('some months make the picture better', better > 40, String(better));
-  ok('and some make it worse', worse > 40, String(worse));
-  ok('the director can warm to you over an ordinary month', warmer > 10, String(warmer));
+  ok('the director can warm to you over an ordinary month', warmer > 20, String(warmer));
+  ok('and can cool', cooler > 10, String(cooler));
+  ok('but the picture itself is never touched', meterMoved === 0, String(meterMoved));
+  ok('and neither is whether it gets finished', stabilityMoved === 0, String(stabilityMoved));
 }
 
 // ── it leaves something for the wrap to remember ──────────────────────────────

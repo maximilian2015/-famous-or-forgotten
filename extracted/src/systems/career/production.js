@@ -463,7 +463,7 @@ function learnOnSet(s, p) {
   const cap = skillCap(s);
   if (now >= cap) return 0;
   const room = 1 - now / 104;                        // 0.83 at twenty, 0.14 at ninety
-  const months = Math.min(2, 0.5 + (p.monthsTotal || p.months || 4) / 7);
+  const months = Math.min(2, 0.5 + (p.months || 4) / 7);
   const shoot = 0.55 + (p.meter || 20) / 130;        // a set that worked teaches more
   const lead = p.tier === 'supporting' ? 0.6 : 1;    // you learn most carrying it
   const gain = Math.max(0, room * 2.6 * months * shoot * lead);

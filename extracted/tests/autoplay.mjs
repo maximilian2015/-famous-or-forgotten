@@ -48,7 +48,10 @@ const AVOID = /start anew|new life|reset|delete|export|import|wipe|hall of fame/
 const ADVANCE = /live one (month|year)|live until|be born|^continue$|^go on$/i;
 // The navigation bar. Pressing the tab you are already on correctly does nothing, so these
 // are counted apart rather than drowning the list that matters.
-const NAV = /^(🏠|🎬|❤️|📱|🛍️|🏆)|^(Home|Career|People|Phone|Style|Legacy)$/;
+// The bottom bar AND the sub-tabs inside a screen. Pressing the tab you are already on is the
+// honest no-op, and leaving the sub-tabs out of this put 'Things' and 'Events' at the top of
+// the list of buttons that did nothing — which is where a real dead button needs to be.
+const NAV = /^(🏠|🎬|❤️|📱|🛍️|🏆)|^(Home|Career|People|Phone|Style|Legacy|Things|Body|Events|Calendar|Training|Filmography)$/;
 // The handful of presses a career is actually made of. Pressed whenever they are available
 // and enabled, before anything else.
 // Found by watching it fail: a character who answers every prompt and presses time for

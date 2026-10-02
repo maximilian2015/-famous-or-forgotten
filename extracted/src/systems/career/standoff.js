@@ -634,7 +634,8 @@ export function walkTheRoom(s) {
     s.walkedOff = [...(s.walkedOff || []).filter((t) => now - t < 36), now];
     // Somebody specific remembers. meta/stories.js has the letter that can undo it, which is
     // the only way back and is deliberately not easy.
-    const who = o.from || o.showrunner || o.studio || 'The showrunner';
+    // A person, not a job title. franchise.js puts the name on the renewal now.
+    const who = o.showrunner || o.from || o.studio || 'The showrunner';
     (s.grudges = s.grudges || []).push({ who, title: k.title, scale: o.scale || 'recurring',
       since: now, due: now + 9999, until: now + cost.months, hit: false, gross: 0, opened: true });
     // Walking out of a programme that WAS you is the one the insurers hear about.

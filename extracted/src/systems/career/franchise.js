@@ -432,6 +432,11 @@ export function maybeContinue(s, credit, p, force = false) {
       id: uid(s, 'ren'),
       // A show that got renewed is a show that works. The money is not the question here.
       kind: 'renewal', seriesTitle: root, season: nextSeason, scale: p.scale,
+      // Who runs the show. A renewal carried no person at all, so walking out of one recorded
+      // a grudge against the literal string 'The showrunner' — and meta/stories.js then looked
+      // that name up in your contacts, found nobody, and the letter that mends it half-worked.
+      showrunner: ((p.crew || [])[0] || {}).name || null,
+      showrunnerId: ((p.crew || [])[0] || {}).knownId || null,
       // Television is priced by the episode on the paper too — the renewal used to read
       // 'for the picture' in the contract room.
       perEpisode: true, medium: mediumOf(p),

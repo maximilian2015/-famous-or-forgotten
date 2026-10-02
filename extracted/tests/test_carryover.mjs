@@ -54,8 +54,22 @@ const st = () => {
 // the dice are the reason it went unnoticed for so long.
 {
   const src = await import('node:fs').then((fs) => fs.readFileSync(new URL('../src/systems/career/franchise.js', import.meta.url), 'utf8'));
-  const renewal = src.slice(src.indexOf("kind: 'renewal'"), src.indexOf("kind: 'renewal'") + 1400);
-  const sequel = src.slice(src.indexOf("kind: 'sequel'"), src.indexOf("kind: 'sequel'") + 1400);
+  // A fixed window of 1400 characters is a trap: adding two lines to the renewal pushed
+  // `potential:` to character 1635 and this failed without anything being removed. Read to the
+  // end of the object literal instead, by counting braces, so the check is about the field
+  // being there and not about how long the lines above it happen to be.
+  const literal = (key) => {
+    const i = src.indexOf(key);
+    if (i < 0) return '';
+    let depth = 0, j = src.lastIndexOf('{', i);
+    for (let k = j; k < src.length; k++) {
+      if (src[k] === '{') depth++;
+      else if (src[k] === '}') { depth--; if (depth === 0) return src.slice(j, k + 1); }
+    }
+    return src.slice(j);
+  };
+  const renewal = literal("kind: 'renewal'");
+  const sequel = literal("kind: 'sequel'");
   ok(/potential:/.test(renewal), 'a renewal carries what kind of show it is');
   ok(/potential:/.test(sequel), 'a sequel carries what kind of picture it is');
 }

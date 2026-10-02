@@ -19,7 +19,14 @@ function shoot(s, scale = 'feature', title = 'Test Picture') {
   s.production.stability = 100;
   return s.production;
 }
-function wrap(s) { s.production.monthsLeft = 1; s.production._workedMonth = null; PR.productionTick(s); }
+// setlife.js can warm or cool a bond over an ordinary month (a night at two in the morning, a
+// birthday everybody went to), and these assertions want the exact number they set. A month it
+// has just used is quiet, so marking the previous one isolates what is being measured.
+function wrap(s) {
+  s.production.monthsLeft = 1; s.production._workedMonth = null;
+  s.production._lifeMonth = (s.year || 0) * 12 + (s.month || 0) - 1;
+  PR.productionTick(s);
+}
 
 // ── a warm set leaves you people ──
 {

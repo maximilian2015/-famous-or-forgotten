@@ -16,6 +16,25 @@
 //
 // So: one small thing, some months, reported and not decided. It nudges a number, it goes in the
 // log, and career/production.js onSetStory reads the log at wrap. No clicks are added anywhere.
+// NOTHING in here touches the player, the meter or the stability, and every one of those was
+// learned by breaking something the game had promised.
+//
+//   The player: the stance card states what the month costs you — 'said -0.9' — and a random
+//   bad week making it -2.9 is the game breaking a number it printed (test_mood).
+//   The stability: 'safe money always delivers a film' is a guarantee somebody paid for by
+//   taking the safe money, and four days of rain must not be able to cancel it (test_stability,
+//   which went from 0 films lost in 3000 to 1).
+//   The meter: the quality of the picture is the script, the director and the days you played.
+//   A month in which nothing was decided did not make the film better or worse (test_story,
+//   test_standing).
+//
+// What an ordinary month DOES change is how the people on it feel about each other, and what
+// you remember at the end. That is plenty, and it costs no promise anything.
+// The old note, which was the first of the three:
+// The card
+// that offers a stance states what the month will cost you — 'said -0.9' — and a random bad
+// week making it -2.9 is the game breaking a number it printed. Production.js owns what a month
+// costs you; this owns what the month was like. Measured by test_mood, which caught it.
 import { rint, chance } from '../../engine/rng.js';
 
 const clamp = (v, a = 0, b = 100) => Math.max(a, Math.min(b, v));
@@ -46,41 +65,41 @@ const co = (p) => ((p && p.crew) || [])[1] || null;
 const DAYS = [
   // ── the ordinary friction ───────────────────────────────────────────────────
   { id: 'weather', w: 5, line: (p) => `Four days of rain they did not have. "${p.title}" is behind and everybody knows whose fault it is not.`,
-    fx: (s, p) => { p.stability = clamp((p.stability ?? 70) - rint(3, 7)); p.lostDays = (p.lostDays || 0) + rint(2, 5); },
+    fx: () => {},
     keep: 'The weather took four days nobody had.' },
   { id: 'location', w: 4, line: () => 'The location fell through on Thursday. They have rewritten it into a corridor and nobody is pretending that is better.',
-    fx: (s, p) => { p.stability = clamp((p.stability ?? 70) - rint(2, 6)); p.meter = clamp((p.meter || 20) - rint(1, 3)); },
+    fx: () => {},
     keep: 'A location fell through and the scene happened in a corridor instead.' },
   { id: 'pages', w: 5, line: (p) => `New pages arrived on Tuesday for a scene you shot on Monday. ${dir(p) ? dir(p).name : 'The director'} says they are better. They are not worse.`,
-    fx: (s, p) => { p.meter = clamp((p.meter || 20) + rint(-2, 4)); } },
+    fx: (s, p) => { } },
   { id: 'late', w: 4, line: (p) => `${co(p) ? co(p).name : 'Your co-star'} has been forty minutes late every morning for a fortnight, and the unit has stopped mentioning it.`,
-    fx: (s, p) => { const c = co(p); if (c) c.bond = clamp((c.bond || 40) - rint(2, 5)); p.stability = clamp((p.stability ?? 70) - rint(1, 4)); },
+    fx: (s, p) => { const c = co(p); if (c) c.bond = clamp((c.bond || 40) - rint(2, 5)); },
     keep: (p) => `${co(p) ? co(p).name : 'Your co-star'} was late every morning for a fortnight.`, needs: (p) => !!co(p) },
   { id: 'money', w: 3, line: () => 'Somebody from the money came down for two days and watched the monitor with their arms folded. Nothing was said and the schedule tightened on Monday.',
-    fx: (s, p) => { p.stability = clamp((p.stability ?? 70) - rint(2, 5)); } },
+    fx: (s, p) => { } },
   { id: 'fired', w: 2, line: () => 'The first AD was replaced between a Friday and a Monday and nobody has explained why. The new one is faster and the set is quieter.',
-    fx: (s, p) => { p.stability = clamp((p.stability ?? 70) + rint(1, 5)); } },
+    fx: (s, p) => { } },
 
   // ── the good weeks ──────────────────────────────────────────────────────────
   { id: 'twoam', w: 4, line: (p) => `${dir(p) ? dir(p).name : 'The director'} got the shot at two in the morning and the whole unit went home knowing it. Those nights are why people do this.`,
-    fx: (s, p) => { p.meter = clamp((p.meter || 20) + rint(2, 5)); const d = dir(p); if (d) d.bond = clamp((d.bond || 40) + rint(2, 5)); },
+    fx: (s, p) => { const d = dir(p); if (d) d.bond = clamp((d.bond || 40) + rint(2, 5)); },
     keep: 'There was a night at two in the morning that the whole unit went home talking about.' },
   { id: 'ahead', w: 3, line: (p) => `A clean week. "${p.title}" is a day and a half ahead and the producers have stopped ringing.`,
-    fx: (s, p) => { p.stability = clamp((p.stability ?? 70) + rint(3, 7)); } },
+    fx: (s, p) => { } },
   { id: 'drink', w: 4, line: () => 'Somebody had a birthday and the whole unit ended up in the same bar until two. It is a different set afterwards.',
     fx: (s, p) => { for (const c of p.crew || []) c.bond = clamp((c.bond || 40) + rint(1, 4)); },
     keep: 'There was a night in a bar that made it a different set afterwards.' },
   { id: 'chemistry', w: 3, line: (p) => `You and ${co(p) ? co(p).name : 'your co-star'} found something in a scene nobody expected much from, and they shot it twice more just to have it.`,
-    fx: (s, p) => { const c = co(p); if (c) c.bond = clamp((c.bond || 40) + rint(3, 7)); p.meter = clamp((p.meter || 20) + rint(1, 4)); },
+    fx: (s, p) => { const c = co(p); if (c) c.bond = clamp((c.bond || 40) + rint(3, 7)); },
     keep: (p) => `You and ${co(p) ? co(p).name : 'your co-star'} found something nobody expected.`, needs: (p) => !!co(p) },
 
   // ── the ones that are about you ─────────────────────────────────────────────
   { id: 'watching', w: 3, line: (p) => `${dir(p) ? dir(p).name : 'The director'} has started watching your takes twice. It is not clear yet whether that is good.`,
     fx: (s, p) => { const d = dir(p); if (d) d.bond = clamp((d.bond || 40) + rint(-3, 6)); } },
   { id: 'cut', w: 3, line: () => 'The scene you were looking forward to has gone. Schedule, they say, and it is probably true.',
-    fx: (s, p) => { p.meter = clamp((p.meter || 20) - rint(1, 4)); s.mental = clamp((s.mental || 50) - rint(1, 3)); } },
-  { id: 'tired', w: 3, line: () => 'Six-day weeks, and the second unit is behind so the sixth day is a long one. You are sleeping badly.',
-    fx: (s, p) => { s.strain = clamp((s.strain || 0) + rint(3, 7)); } },
+    fx: (s, p) => { } },
+  { id: 'tired', w: 3, line: () => 'Six-day weeks, and the second unit is behind so the sixth day is a long one. Everybody is sleeping badly and the work shows it.',
+    fx: (s, p) => { } },
   // The fallback, and most months are this one. It is not an absence of an event: it is what
   // most of a shoot is, and saying so is what makes the other ones land.
   { id: 'quiet', w: 0, line: (p) => pickQuiet(p), fx: () => {} },
