@@ -20,6 +20,26 @@ import { rint, chance } from '../../engine/rng.js';
 
 const clamp = (v, a = 0, b = 100) => Math.max(a, Math.min(b, v));
 const dir = (p) => ((p && p.crew) || [])[0] || null;
+// Eight ways to say that nothing happened, because hearing the same sentence six months
+// running is its own kind of nothing.
+const QUIET = [
+  (p) => `A quiet month on "${p.title}". The work got done and nobody will remember a day of it.`,
+  (p) => 'Five days a week, the pages that were on the call sheet, and home. Some months are the job.',
+  (p) => `Nothing on "${p.title}" that anybody will tell a story about. The schedule held.`,
+  (p) => 'A competent month. Everybody knew their lines and the van left on time.',
+  (p) => `${dir(p) ? dir(p).name : 'The director'} got what they came for, four weeks running, without raising their voice once.`,
+  (p) => 'Coverage, inserts, and a day in a car park that is meant to be a different car park. This is most of it.',
+  (p) => 'Rain cover twice and neither time was it needed. A month of the ordinary kind.',
+  (p) => `Four weeks of "${p.title}" that will be eleven minutes of it.`,
+];
+// Not the same one twice running: hearing the identical sentence two months in a row is how a
+// quiet month goes back to being a blank one.
+const pickQuiet = (p) => {
+  const i = Math.floor(Math.random() * QUIET.length);
+  const j = i === p._lastQuiet ? (i + 1) % QUIET.length : i;
+  p._lastQuiet = j;
+  return QUIET[j](p);
+};
 const co = (p) => ((p && p.crew) || [])[1] || null;
 
 // Each one: a line, and what it costs or gives. `keep` is what the wrap remembers.
@@ -61,8 +81,9 @@ const DAYS = [
     fx: (s, p) => { p.meter = clamp((p.meter || 20) - rint(1, 4)); s.mental = clamp((s.mental || 50) - rint(1, 3)); } },
   { id: 'tired', w: 3, line: () => 'Six-day weeks, and the second unit is behind so the sixth day is a long one. You are sleeping badly.',
     fx: (s, p) => { s.strain = clamp((s.strain || 0) + rint(3, 7)); } },
-  { id: 'quiet', w: 6, line: (p) => `A quiet month on "${p.title}". The work got done and nobody will remember a day of it.`,
-    fx: () => {} },
+  // The fallback, and most months are this one. It is not an absence of an event: it is what
+  // most of a shoot is, and saying so is what makes the other ones land.
+  { id: 'quiet', w: 0, line: (p) => pickQuiet(p), fx: () => {} },
 ];
 
 // Not every month, and never two months running — a shoot that has something every month is a
@@ -70,11 +91,17 @@ const DAYS = [
 export function setLife(s, p) {
   if (!p || (p.prepLeft || 0) > 0 || p.paused) return null;
   const now = (s.year || 0) * 12 + (s.month || 0);
-  if (p._lifeMonth === now - 1) return null;
+  // A month ALWAYS says what it was like, and most of the time what it was like is nothing
+  // much. Returning null for the quiet ones left the card saying the same four lines of
+  // mechanics every month — Maxi, looking at the new build: "так всё осталось". A shoot that
+  // reports two months in five is not a shoot that reports.
+  const quiet = DAYS.find((d) => d.id === 'quiet');
+  // Never two notable months running: the rare catastrophe only reads as one against quiet weeks.
+  if (p._lifeMonth === now - 1) { p._lastLife = 'quiet'; return quiet.line(p); }
   // A longer shoot has more weeks in it for something to happen in.
-  if (!chance((p.months || 4) >= 5 ? 58 : 44)) return null;
-  const pool = DAYS.filter((d) => (!d.needs || d.needs(p)) && d.id !== p._lastLife);
-  if (!pool.length) return null;
+  if (!chance((p.months || 4) >= 5 ? 62 : 48)) { p._lastLife = 'quiet'; return quiet.line(p); }
+  const pool = DAYS.filter((d) => d.id !== 'quiet' && (!d.needs || d.needs(p)) && d.id !== p._lastLife);
+  if (!pool.length) { p._lastLife = 'quiet'; return quiet.line(p); }
   const total = pool.reduce((n, d) => n + d.w, 0);
   let r = Math.random() * total, got = pool[0];
   for (const d of pool) { r -= d.w; if (r <= 0) { got = d; break; } }

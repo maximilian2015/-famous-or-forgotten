@@ -16,23 +16,27 @@ const shoot = (over = {}) => ({
 const st = () => ({ year: 2060, month: 3, strain: 20, mental: 50 });
 
 // ── it happens, but not every month ───────────────────────────────────────────
-let fired = 0;
-for (let i = 0; i < 400; i++) if (setLife(st(), shoot())) fired++;
-ok('a shoot has something happen on it most months', fired > 160, `${fired}/400`);
-ok('and not every month — a set with an incident every month is a disaster film', fired < 320, `${fired}/400`);
+// The contract changed while this was being written and the test changed with it, not the
+// other way round: a month ALWAYS says what it was like, and most months are quiet. Returning
+// null for the quiet ones left the card reading identically four months in five.
+let said = 0, notable = 0;
+for (let i = 0; i < 400; i++) { const p = shoot(); if (setLife(st(), p)) said++; if (p._lastLife !== 'quiet') notable++; }
+ok('every month of a shoot says what it was like', said === 400, `${said}/400`);
+ok('something worth telling happens on most of them', notable > 160, `${notable}/400`);
+ok('but not on all of them — the quiet weeks are what make the others land', notable < 330, `${notable}/400`);
 
 // ── never two running, so the quiet weeks stay quiet ──────────────────────────
 {
   const s = st(), p = shoot();
   p._lifeMonth = s.year * 12 + s.month - 1;   // it fired last month
-  let any = 0;
-  for (let i = 0; i < 200; i++) if (setLife(s, { ...p, crew: p.crew.map((c) => ({ ...c })) })) any++;
-  ok('never two months running', any === 0, String(any));
+  let notable = 0;
+  for (let i = 0; i < 200; i++) { const q = { ...p, crew: p.crew.map((c) => ({ ...c })) }; setLife(s, q); if (q._lastLife !== 'quiet') notable++; }
+  ok('never two NOTABLE months running — the one after is always a quiet one', notable === 0, String(notable));
 }
 
 // ── a longer shoot has more weeks for something to go wrong in ────────────────
 {
-  const count = (months) => { let n = 0; for (let i = 0; i < 600; i++) if (setLife(st(), shoot({ months }))) n++; return n; };
+  const count = (months) => { let n = 0; for (let i = 0; i < 600; i++) { const p = shoot({ months }); setLife(st(), p); if (p._lastLife !== 'quiet') n++; } return n; };
   const short = count(3), long = count(7);
   ok('a long shoot has more happen on it than a short one', long > short, `${short} vs ${long} of 600`);
 }

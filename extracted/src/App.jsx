@@ -376,15 +376,16 @@ function OnSetNow({ g, p }) {
   const mood = b >= 70 ? ['warm to you', '#4fc07f'] : b >= 45 ? ['fine with you', theme.muted] : b >= 26 ? ['cooling on you', '#f0b429'] : ['done with you', '#ff5a72'];
   const st = stanceOf(p);
   return (<div style={{ marginTop: 8 }}>
+    {/* THE MONTH FIRST. It used to sit fifth, under four lines of mechanics that read the same
+        every month for six months — which is why a card with something new on it still looked
+        like a card with nothing on it. career/setlife.js */}
+    {p._lifeLine && <div style={{ fontSize: 13, color: theme.text, lineHeight: 1.55, marginBottom: 8 }}>{p._lifeLine}</div>}
     {lead && <div style={{ fontSize: 11.5, color: theme.muted, marginBottom: 8 }}>
       {lead.name}, directing, is <b style={{ color: mood[1] }}>{mood[0]}</b>.
       {b < 45 && ' A cold director is what costs you standing at wrap.'}
     </div>}
     <StanceRow g={g} p={p} />
     {(() => { const sc = sceneState(g, p); return sc && sc.left > 0 ? (<div style={{ fontSize: 11, color: theme.gold, marginTop: 6, lineHeight: 1.45 }}>🎬 {sc.line}</div>) : null; })()}
-    {/* What the month on the set was like. Most months of a shoot are not a decision and were
-        a blank line with a tick next to it — career/setlife.js gives them a texture. */}
-    {p._lifeLine && <div style={{ fontSize: 11.5, color: theme.text, opacity: .85, marginTop: 6, lineHeight: 1.5, fontStyle: 'italic' }}>{p._lifeLine}</div>}
     <div style={{ fontSize: 11, color: p._stanceDone === 'broke' ? theme.bad : theme.muted, marginTop: 6, lineHeight: 1.45 }}>
       {p._stanceDone === 'broke' ? 'No energy for the set this month — you coasted. The director noticed.'
         // This used to end 'Push harder under Career if you want to' and pointed at Rehearse
