@@ -101,6 +101,88 @@ const SCENES = {
   </>),
 };
 
+// A second one-sheet for each genre, in the same idiom: one big shape, one light source,
+// nothing that needs to read at full size to work at forty-four pixels.
+const ALT = {
+  Drama: (r, c) => (<>
+    {/* two chairs, one of them empty */}
+    <rect x="0" y="96" width="100" height="54" fill={c.ink} opacity=".5" />
+    <path d="M26 96 l0 -26 l14 0 l0 26" stroke={c.light} strokeWidth="2.5" fill="none" opacity=".55" />
+    <path d="M60 96 l0 -26 l14 0 l0 26" stroke={c.light} strokeWidth="2.5" fill="none" opacity=".55" />
+    <circle cx={33} cy={54} r="7" fill={c.ink} />
+    <path d="M33 62 c-7 0 -9 12 -9 20 l0 14 h18 l0 -14 c0 -8 -2 -20 -9 -20 z" fill={c.ink} />
+    <ellipse cx="50" cy="30" rx={26 + r() * 10} ry="18" fill={c.light} opacity=".12" />
+  </>),
+  Crime: (r, c) => (<>
+    {/* a car on a wet road, headlights toward you */}
+    <rect x="0" y="104" width="100" height="46" fill={c.ink} opacity=".85" />
+    {[0, 1, 2, 3, 4].map((i) => <rect key={i} x={46 + (i - 2) * 1.5} y={110 + i * 9} width="3" height="6" fill={c.light} opacity=".35" />)}
+    <path d="M28 104 l6 -16 h32 l6 16 z" fill={c.ink} />
+    <circle cx="36" cy="98" r="4.5" fill={c.light} opacity=".95" />
+    <circle cx="64" cy="98" r="4.5" fill={c.light} opacity=".95" />
+    <path d="M36 98 L10 150 L62 150 Z" fill={c.light} opacity=".10" />
+    <path d="M64 98 L38 150 L90 150 Z" fill={c.light} opacity=".10" />
+    <rect x={10 + r() * 20} y="30" width="2" height="44" fill={c.light} opacity=".3" />
+  </>),
+  Romance: (r, c) => (<>
+    {/* a window seat and the weather outside it */}
+    <circle cx="50" cy="52" r="34" fill={c.light} opacity=".13" />
+    <circle cx="50" cy="52" r="34" stroke={c.ink} strokeWidth="2.5" fill="none" opacity=".6" />
+    <path d="M50 18 L50 86 M16 52 L84 52" stroke={c.ink} strokeWidth="2" opacity=".5" />
+    <path d="M38 86 c-5 0 -7 10 -7 16 l0 10 h14 l0 -10 c0 -6 -2 -16 -7 -16 z" fill={c.ink} />
+    <circle cx="38" cy="80" r="5.5" fill={c.ink} />
+    {[0, 1, 2, 3, 4, 5].map((i) => <path key={i} d={`M${20 + i * 12} ${24 + r() * 10} l-3 10`} stroke={c.light} strokeWidth="1" opacity=".4" />)}
+  </>),
+  Musical: (r, c) => (<>
+    {/* a proscenium, from the wings */}
+    <rect x="0" y="0" width="18" height="150" fill={c.ink} opacity=".95" />
+    <rect x="82" y="0" width="18" height="150" fill={c.ink} opacity=".95" />
+    <ellipse cx="52" cy="96" rx="30" ry="10" fill={c.light} opacity=".22" />
+    <path d={`M${48 + r() * 6} 60 l-8 36 h18 l-8 -36 z`} fill={c.ink} />
+    <circle cx={52 + r() * 4} cy="54" r="6" fill={c.ink} />
+    <path d="M34 50 L52 58 L70 50" stroke={c.light} strokeWidth="1.5" fill="none" opacity=".5" />
+    {[0, 1, 2].map((i) => <circle key={i} cx={28 + i * 24} cy={22 + r() * 8} r="2.5" fill={c.light} opacity=".8" />)}
+  </>),
+  Thriller: (r, c) => (<>
+    {/* a corridor, and somebody at the far end of it */}
+    <path d="M0 0 L34 56 L34 104 L0 150 Z" fill={c.ink} opacity=".8" />
+    <path d="M100 0 L66 56 L66 104 L100 150 Z" fill={c.ink} opacity=".8" />
+    <rect x="34" y="56" width="32" height="48" fill={c.light} opacity=".16" />
+    <path d="M50 72 c-5 0 -6 10 -6 16 l-1 16 h14 l-1 -16 c0 -6 -1 -16 -6 -16 z" fill={c.ink} />
+    <circle cx="50" cy="67" r="4.5" fill={c.ink} />
+    {[0, 1, 2].map((i) => <rect key={i} x="34" y={60 + i * 16} width="32" height="1.5" fill={c.light} opacity={r() > .5 ? .35 : .12} />)}
+  </>),
+  'Sci-Fi': (r, c) => (<>
+    {/* a horizon with something enormous above it */}
+    <circle cx="50" cy={34 + r() * 8} r="24" fill={c.light} opacity=".18" />
+    <circle cx="50" cy={34 + r() * 8} r="24" stroke={c.light} strokeWidth="1.5" fill="none" opacity=".6" />
+    <ellipse cx="50" cy="38" rx="42" ry="6" stroke={c.light} strokeWidth="1" fill="none" opacity=".35" />
+    <rect x="0" y="96" width="100" height="54" fill={c.ink} opacity=".9" />
+    <path d="M0 96 L100 96" stroke={c.light} strokeWidth="1" opacity=".5" />
+    <path d="M48 76 c-5 0 -6 10 -6 16 l-1 4 h14 l-1 -4 c0 -6 -1 -16 -6 -16 z" fill={c.ink} />
+    {[0, 1, 2, 3, 4, 5, 6].map((i) => <circle key={i} cx={8 + i * 14} cy={12 + r() * 14} r=".9" fill={c.light} opacity=".8" />)}
+  </>),
+  Comedy: (r, c) => (<>
+    {/* three of them, and one is clearly the problem */}
+    <ellipse cx="50" cy="112" rx="38" ry="9" fill={c.ink} opacity=".3" />
+    {[0, 1, 2].map((i) => (<g key={i}>
+      <circle cx={28 + i * 22} cy={58 + (i === 1 ? -8 : 0)} r="7" fill={c.ink} />
+      <path d={`M${28 + i * 22} ${66 + (i === 1 ? -8 : 0)} c-7 0 -9 14 -9 22 l0 18 h18 l0 -18 c0 -8 -2 -22 -9 -22 z`} fill={c.ink} />
+    </g>))}
+    <path d={`M${20 + r() * 8} 30 q30 -14 60 0`} stroke={c.light} strokeWidth="2" fill="none" opacity=".5" />
+  </>),
+  Horror: (r, c) => (<>
+    {/* a doorway, and it is open */}
+    <rect x="0" y="0" width="100" height="150" fill={c.ink} opacity=".25" />
+    <rect x="32" y="34" width="36" height="68" fill={c.ink} opacity=".95" />
+    <rect x="32" y="34" width="36" height="68" stroke={c.light} strokeWidth="1.5" fill="none" opacity=".45" />
+    <rect x={36 + r() * 10} y="38" width="6" height="60" fill={c.light} opacity=".5" />
+    <ellipse cx="50" cy="108" rx="22" ry="5" fill={c.light} opacity=".12" />
+    <path d="M50 118 c-6 0 -8 10 -8 16 l0 16 h16 l0 -16 c0 -6 -2 -16 -8 -16 z" fill={c.ink} />
+    <circle cx="50" cy="112" r="5.5" fill={c.ink} />
+  </>),
+};
+
 export function Poster({ title, type, genre, director, size = 52, tall, compact }) {
   const w = tall ? Math.round(size) : 44, h = Math.round(w * 1.5);
   // Below about sixty pixels the type is noise and the composition is a smudge.
@@ -108,7 +190,10 @@ export function Poster({ title, type, genre, director, size = 52, tall, compact 
   const seed = hash(String(title || '') + (genre || ''));
   const r = rng(seed);
   const c = PALETTE[genre] || PALETTE.Drama;
-  const Scene = SCENES[genre] || SCENES.Drama;
+  // Which of the genre's two one-sheets this picture got. Off the same seed, so a film's
+  // poster never changes — and two crime films are a skyline and a car on a wet road.
+  const alt = ALT[genre] && (seed % 2 === 1);
+  const Scene = (alt ? ALT[genre] : SCENES[genre]) || SCENES.Drama;
   const tv = /Series|Soap|Show|Opera/i.test(type || '');
   const words = String(title || '').replace(/\s*·\s*season\s+\d+/gi, '').split(' ').filter(Boolean);
   const long = words.join(' ').length > 14;
