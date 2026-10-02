@@ -112,6 +112,9 @@ for (const title of ['Buried Hunger', 'WellPlanned']) {
 }
 const t = text();
 ok('the filmography renders at all', shut.length > 200 && /Buried Hunger/.test(shut));
+// Asked about twice: a festival picture that found no distributor must say so WITHOUT being
+// opened. The word 'unsold' is not an answer and neither is a badge hidden behind a press.
+ok('a film that never came out says so on the row itself', /never released/i.test(shut));
 ok('nothing threw', errors.length === 0, errors.slice(0, 2).join(' | '));
 // The actual regression: a character is an object and must be drawn by its name.
 ok('a character is drawn by name, not as an object', /Nadia Kerr/.test(t),

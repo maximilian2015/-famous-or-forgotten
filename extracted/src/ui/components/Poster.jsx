@@ -26,12 +26,21 @@ const HUE = {
   Drama: [262, 26], Crime: [212, 22], Romance: [336, 24], Musical: [28, 26],
   Thriller: [188, 24], 'Sci-Fi': [206, 30], Comedy: [44, 22], Horror: [356, 20],
 };
-const LIGHT_HUE = { Drama: 38, Crime: 42, Romance: 348, Musical: 44, Thriller: 186, 'Sci-Fi': 198, Comedy: 48, Horror: 6 };
+// Spread properly now. These used to sit inside ten degrees of each other for half the genres.
+const LIGHT_HUE = { Drama: 36, Crime: 196, Romance: 342, Musical: 318, Thriller: 172, 'Sci-Fi': 190, Comedy: 50, Horror: 4 };
+// How bright the picture itself is, which is the thing that was identical everywhere. A
+// comedy is a bright poster and a horror film is nearly a black one; a drama is somewhere in
+// between and should be allowed to be either.
+const TONE = {
+  Comedy: [46, 26], Musical: [42, 24], Romance: [34, 24], 'Sci-Fi': [22, 20],
+  Drama: [24, 24], Thriller: [16, 16], Crime: [15, 15], Horror: [9, 12],
+};
 function palette(genre, r) {
   const [h0, spread] = HUE[genre] || HUE.Drama;
   const h = Math.round(h0 + (r() - 0.5) * spread * 2);
   const sat = 26 + Math.round(r() * 24);
-  const top = 20 + Math.round(r() * 16);
+  const [lo, span] = TONE[genre] || TONE.Drama;
+  const top = lo + Math.round(r() * span);
   const lh = LIGHT_HUE[genre] ?? 40;
   return {
     sky: [`hsl(${h} ${sat}% ${top}%)`, `hsl(${h} ${Math.round(sat * 0.8)}% 5%)`],
@@ -177,6 +186,7 @@ export function Poster({ title, type, genre, director, size = 52, tall, compact 
   const wx = WEATHER[one(g.wx, r)] || WEATHER.none;
   // Below about sixty pixels the type is noise and the fine detail is a smudge.
   const mini = compact ?? w < 60;
+  const finish = one(['foot', 'head', 'edge', 'corner', 'split', 'none'], r);
   const tv = /Series|Soap|Show|Opera/i.test(type || '');
   const words = String(title || '').replace(/\s*·\s*season\s+\d+/gi, '').split(' ').filter(Boolean);
   const long = words.join(' ').length > 14;
@@ -203,7 +213,13 @@ export function Poster({ title, type, genre, director, size = 52, tall, compact 
       {wx(r, c)}
       {/* At forty-four pixels a hard band of the genre's own light is the thing a person actually
           tells one picture from another by. */}
-      {mini && <rect x="0" y="134" width="100" height="16" fill={c.light} opacity=".9" />}
+      {/* Five ways to finish a thumbnail instead of one. A single fixed stripe along the foot
+          made every picture in the list rhyme with every other one, whatever was inside it. */}
+      {mini && finish === 'foot' && <rect x="0" y="132" width="100" height="18" fill={c.light} opacity=".9" />}
+      {mini && finish === 'head' && <rect x="0" y="0" width="100" height="14" fill={c.light} opacity=".85" />}
+      {mini && finish === 'edge' && <rect x="2" y="2" width="96" height="146" stroke={c.light} strokeWidth="4" fill="none" opacity=".75" />}
+      {mini && finish === 'corner' && <path d="M100 0 L100 46 L56 0 Z" fill={c.light} opacity=".85" />}
+      {mini && finish === 'split' && <rect x="0" y="0" width="9" height="150" fill={c.light} opacity=".85" />}
       {!mini && <rect x="0" y="92" width="100" height="58" fill={`url(#${id}fade)`} />}
       {!mini && <text x="50" y={long ? 120 : 124} textAnchor="middle" fontFamily={FONT_DISPLAY} fontWeight="700"
         fontSize={long ? 9 : 11.5} fill="#f6f1e6" letterSpacing=".04em" style={{ textTransform: 'uppercase' }}>

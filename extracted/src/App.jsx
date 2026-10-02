@@ -2860,6 +2860,16 @@ function CreditRow({ group, g }) {
           broken, it was REPLACED (c3aefbb): a sequel is offered to you when a picture earns
           one, or pitched yourself from your own sofa. Disabling a thing and leaving it is how
           a codebase fills with features nobody can reach and nobody dares delete. */}
+      {/* One line of result on the collapsed row, because that is what a filmography is FOR.
+          Compacting it put the verdict behind the press along with everything else, and a
+          festival film that never found a distributor then said nothing at all about its own
+          fate — Maxi, twice now: "но байер, он никогда не вышел что ли?" */}
+      {!c.running && (c.verdict || c.critical) && (
+        <div style={{ display: 'flex', gap: 7, flexWrap: 'wrap', marginTop: 3, fontSize: 10.5, fontWeight: 900, letterSpacing: '.06em', textTransform: 'uppercase' }}>
+          {c.verdict && <span style={{ color: VERDICT_COL[c.verdict] || theme.muted }}>
+            {c.verdict === 'unsold' ? 'never released' : c.verdict}</span>}
+          {c.critical && <span style={{ color: CRIT_COL[c.critical] || theme.muted, fontWeight: 700, letterSpacing: 0, textTransform: 'none', fontSize: 11 }}>{c.critical}</span>}
+        </div>)}
       {open && <>
       {/* the marks that never come off, and what it made */}
       {(group.worldHit || hit || group.askers > 0 || group.askerNoms > 0 || c.comeback > 0 || group.boxOffice > 0 || group.viewers > 0 || c.festival) && (
@@ -2869,7 +2879,7 @@ function CreditRow({ group, g }) {
             : c.cult ? <span style={{ fontWeight: 900, letterSpacing: '.06em', color: theme.accent }}>🌙 CULT CLASSIC · {c.cult}</span> : null}
           {/* Where it screened, and what happened there. See release.js, the festival. */}
           {c.festival && <span style={{ fontWeight: 900, letterSpacing: '.06em', color: c.festival.result === 'prize' ? theme.gold : c.festival.result === 'sold' ? theme.good : theme.muted }}>
-            🎞️ {String(c.festival.name).replace(/^the /, '').toUpperCase()} · {c.festival.result === 'prize' ? 'PRIZE' : c.festival.result === 'sold' ? 'SOLD' : 'NO BUYER'}</span>}
+            🎞️ {String(c.festival.name).replace(/^the /, '').toUpperCase()} · {c.festival.result === 'prize' ? 'PRIZE' : c.festival.result === 'sold' ? 'SOLD' : 'NEVER RELEASED'}</span>}
           {/* Maxi, looking at CROISETTE · NO BUYER · UNSOLD: "я так и не понял, этот фильм не
               вышел?" Two labels and a verdict, none of which says the thing. It is a real and
               ordinary outcome - most festival films never find a distributor - and it should be
