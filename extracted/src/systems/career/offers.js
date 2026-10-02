@@ -11,7 +11,6 @@ import { rollStability } from './stability.js';
 import { canWork } from '../life/strain.js';
 import { newTitle } from '../world/titles.js';
 import { refusedOnType } from '../meta/typecast.js';
-import { spent } from '../../engine/economy.js';
 import { storyOfferFactor, noteRefusal, noteSequelLoss } from '../meta/stories.js';
 import { hypeDemand, hype, hypeBrands } from '../meta/hype.js';
 import { socialBrandLift } from '../social/posting.js';
@@ -66,18 +65,10 @@ export function roomOffer(s, who) {
     scale: 'blockbuster', stability: rollStability('blockbuster'), deadline: rint(2, 3),
     note: `${who.name.split(' ')[0]} got you in the room. Everybody on that set will know it — make it not matter.` };
 }
-export function campaignCost(o) { return Math.max(800, Math.round(o.salary * 0.15)); }
-export function runCampaign(s, id) {
-  const o = (s.offers || []).find((x) => x.id === id); if (!o || o.tier === 'supporting' || o.campaign) return s;
-  const cost = campaignCost(o);
-  if ((s.cash || 0) < cost) { s.lastEvent = `A campaign for "${o.projectTitle.replace('⭐ ', '')}" would cost €${cost.toLocaleString()} — you can't cover it right now.`; return s; }
-  s.cash = (s.cash || 0) - cost;
-  spent(s, 'career', cost);   // it comes out of your pocket; the statement should say so
-  o.campaign = true;
-  s.lastEvent = `You greenlit a marketing push for "${o.projectTitle.replace('⭐ ', '')}" — €${cost.toLocaleString()}. Should help if it lands.`;
-  addTimeline(s, `Ran a campaign for ${o.projectTitle.replace('⭐ ', '')}.`);
-  return s;
-}
+// campaignCost and runCampaign lived here and bought an awards campaign on an OFFER - before
+// the picture existed, out of your own pocket, at fifteen per cent of a fee not yet paid, with
+// no refund if you then passed. career/awards.js replaced the whole idea: a campaign is run in
+// the season, on a film that has opened, and what a studio-backed one costs you is months.
 // Every offer has always carried a deadline. Messages printed it ("answer within 3 mo"),
 // the calendar drew an hourglass on the month it ran out — and nothing anywhere ever
 // counted it down. Offers sat on the home screen for forty years. The game was telling the

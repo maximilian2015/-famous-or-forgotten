@@ -6,7 +6,7 @@ import { smsReply, smsReadAll } from '../../systems/social/sms.js';
 import { dispatch } from '../../state/store.js';
 import { canTakeSet } from '../../engine/sets.js';
 import { phoneGone } from '../../systems/social/night.js';
-import { acceptOffer, declineOffer, runCampaign, campaignCost } from '../../systems/career/offers.js';
+import { acceptOffer, declineOffer } from '../../systems/career/offers.js';
 import { clauseBlocks } from '../../systems/career/endorsement.js';
 import { contractStatus } from '../../systems/career/standoff.js';
 import { hotGenre } from '../../systems/meta/news.js';
@@ -69,7 +69,7 @@ export function Messages({ g }) {
       // The same line the contract draws (contract.js): anything that shoots for two months is
       // a paper, whatever the part. A supporting sequel used to get a bare Accept — Maxi:
       // "part two came as a yes/no button, no contract at all."
-      const big = o.tier !== 'supporting' || (o.months || 0) >= 2; const onTrend = o.genre === trend; const cost = campaignCost(o);
+      const big = o.tier !== 'supporting' || (o.months || 0) >= 2; const onTrend = o.genre === trend;
       // What they AGREED to, not what they opened with. contractsTick writes the number
       // into the clause and it only reaches the offer at signature, so for the whole
       // month between "we can confirm your points" and your pen the card was quoting
@@ -127,13 +127,9 @@ export function Messages({ g }) {
           {o.campaign && <span style={{ fontSize: 10.5, fontWeight: 800, padding: '3px 8px', borderRadius: 20, background: 'rgba(255,209,102,.18)', color: theme.gold }}>📣 campaign running</span>}
         </div>
         {/* The Asker push. Maxi: "what does 'run the campaign' mean?" — it said nothing. */}
-        {o.tier !== 'supporting' && !o.campaign && <button onClick={() => dispatch(runCampaign, o.id)}
-          style={{ ...btn(''), width: '100%', marginTop: 8, textAlign: 'left', lineHeight: 1.35 }}>
-          🏆 Run an awards campaign · €{cost.toLocaleString()}
-          <div style={{ fontSize: 10.5, fontWeight: 500, opacity: .75, marginTop: 2 }}>
-            Out of your own pocket. Nearly doubles the odds of a nomination for this one — and buys
-            nothing at all if the work is not there.</div>
-        </button>}
+        {/* Nothing here any more. A campaign is bought in the awards season, on a picture that
+            has opened — career/awards.js, and the card for it is on the Career screen. You
+            cannot campaign for a part you have not taken. */}
         {o.campaign && <div style={{ fontSize: 10.5, color: theme.gold, marginTop: 8 }}>🏆 Asker campaign paid — the push runs when it comes out.</div>}
         {/* A season or a part that continues something: the brief, and where it goes.
             career/chapter.js */}

@@ -11,7 +11,7 @@ import { seeDoctor, treatmentCost, pushThrough, PILLS, usePills, infectionOdds }
 import { resolveArc } from './systems/life/arcs.js';
 import { computeLegacy, getHall, heirsOf, heirOpts, enshrine } from './systems/meta/legacy.js';
 import { fameTier, setHousing, FAME_TIERS, fameCeiling, ladderBlurb, TIER_OPENS, alistKey, iconKey, scandalReport, respectReport, RESPECT_MOVES, RESPECT_TIERS, RESPECT_OPENS, respectTier, FORGOTTEN, FORGOTTEN_OPENS, isForgotten, forgottenDepth } from './systems/meta/status.js';
-import { bondWithCrew, STANCES, STANCE_ORDER, stanceOf, setStance, meterTier } from './systems/career/production.js';
+import { STANCES, STANCE_ORDER, stanceOf, setStance, meterTier } from './systems/career/production.js';
 // Every set you are on. Three at most — see engine/sets.js; g.production is the first.
 const allSets = (g) => (g.productions && g.productions.length ? g.productions : (g.production ? [g.production] : []));
 import { agentCut, agentLine, fireAgent } from './systems/career/agent.js';
@@ -2828,6 +2828,7 @@ function CreditRow({ group, g }) {
       <div style={{ fontSize: 11.5, color: theme.muted, marginTop: 3 }}>
         {c.director ? <span style={{ color: theme.text, opacity: .85 }}>{c.director}</span> : null}
         {c.director ? ' · ' : ''}{c.role}
+        {c.character ? <span> · as <span style={{ color: theme.text, fontWeight: 700 }}>{c.character}</span></span> : null}
         {c.with ? <span> · with <span style={{ color: c.withIcon ? theme.gold : theme.text, fontWeight: 700 }}>{c.with}</span></span> : null}
       </div>
       {/* What the network decided. Maxi, playing: "the season ended in 2075 and I am at the
@@ -2861,6 +2862,12 @@ function CreditRow({ group, g }) {
           {/* Where it screened, and what happened there. See release.js, the festival. */}
           {c.festival && <span style={{ fontWeight: 900, letterSpacing: '.06em', color: c.festival.result === 'prize' ? theme.gold : c.festival.result === 'sold' ? theme.good : theme.muted }}>
             🎞️ {String(c.festival.name).replace(/^the /, '').toUpperCase()} · {c.festival.result === 'prize' ? 'PRIZE' : c.festival.result === 'sold' ? 'SOLD' : 'NO BUYER'}</span>}
+          {/* Maxi, looking at CROISETTE · NO BUYER · UNSOLD: "я так и не понял, этот фильм не
+              вышел?" Two labels and a verdict, none of which says the thing. It is a real and
+              ordinary outcome - most festival films never find a distributor - and it should be
+              a sentence, not a stamp. */}
+          {c.verdict === 'unsold' && <span style={{ color: theme.muted, fontSize: 11 }}>
+            Screened, and nobody bought it. It never opened.</span>}
           {/* Two different prizes. One of them is yours and one of them is the film's, and a
               credit that won only Best Picture must not read as an award you carried home. */}
           {group.askers - group.askerPicture > 0 && <span style={{ fontWeight: 900, letterSpacing: '.06em', color: theme.gold }}>🏆 ASKER{group.askers - group.askerPicture > 1 ? ` ×${group.askers - group.askerPicture}` : ''}</span>}
@@ -2893,6 +2900,9 @@ function CreditRow({ group, g }) {
         </div>
       )}
       {/* Nothing to mark, and still something written: the button stands on its own. */}
+      {/* What it was about, and the version of it you argued for on the first day. Both have
+          been carried on every credit since the story room was built and never shown. */}
+      {c.premise && <div style={{ fontSize: 11.5, color: theme.muted, marginTop: 3, lineHeight: 1.45 }}>{c.premise}</div>}
       {c.acceptance && !c.running && (
         <div style={{ fontSize: 11.5, color: theme.muted, marginTop: 3, fontStyle: 'italic' }}>{c.acceptance}</div>)}
       {/* What happened while they were shooting it. The test: after a picture wraps, can the
@@ -3289,7 +3299,7 @@ function ProductionCard({ g, p }) {
     <div style={{ fontSize: 10.5, fontWeight: 900, letterSpacing: '.08em', textTransform: 'uppercase', color: theme.muted, marginBottom: 6 }}>Crew</div>
     {p.crew.map((c) => (<div key={c.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '6px 0', borderBottom: `1px solid ${theme.line}` }}>
       <div><div style={{ fontSize: 12.5, fontWeight: 700 }}>{c.name}</div><div style={{ fontSize: 10.5, color: theme.muted }}>{c.role} · {c.trait} · bond {Math.round(c.bond || 0)}</div></div>
-      <button onClick={() => dispatch(bondWithCrew, c.id)} disabled={!canAfford(g, COST.bond)} style={{ ...actBtn(false), flex: 'none', width: 'auto', padding: '6px 10px', fontSize: 11 }}>Bond · {COST.bond}</button>
+
     </div>))}
   </Card>);
 }
