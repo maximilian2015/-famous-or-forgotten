@@ -24,7 +24,7 @@ import { boxedInto, isUniversal } from './systems/meta/typecast.js';
 import { liveBubbles, backTheCampaign, canBack as canBackShow, BACK_COST } from './systems/career/bubble.js';
 import { liveEndorsement, dutiesDue, attendDuty, canAttend as canAttendDuty } from './systems/career/endorsement.js';
 import { heirLine } from './systems/life/origin.js';
-import { liveStandoff, takeTheRoom, askFor, walkTheRoom, roomDue, canPush, PUSH_COST } from './systems/career/standoff.js';
+import { liveStandoff, takeTheRoom, askFor, walkTheRoom, walkCost, roomDue, canPush, PUSH_COST } from './systems/career/standoff.js';
 import { openSeason, askerLine, campaignable, canCampaign, startCampaign, campaignKind,
   liveCampaign, ownCampaignCost, CAMPAIGN_ENERGY, CAMPAIGN_MONTHS } from './systems/career/awards.js';
 import { townOpen, townFor, goOut } from './systems/life/town.js';
@@ -1537,10 +1537,17 @@ function RoomModal({ g }) {
         <button onClick={() => dispatch(walkTheRoom)} style={{ flex: 1, border: `1px solid ${theme.line}`, borderRadius: 12, padding: '13px', fontSize: 13, fontWeight: 800,
           cursor: 'pointer', background: 'transparent', color: theme.bad }}>Walk out</button>
       </div>
-      <div style={{ fontSize: 10.5, color: theme.muted, marginTop: 8, lineHeight: 1.45, textAlign: 'center' }}>
-        Walk out and there is no season. The show is about you, so there is nobody to give it to —
-        and a network would rather lose it than set a number the whole town can read.
-      </div>
+      {/* What it costs YOU, said before the pressing rather than discovered after it. The old
+          line here was about what happens to the SHOW, which is not the part a player needs to
+          weigh. career/standoff.js walkCost. */}
+      {(() => { const c = walkCost(g, (g.offers || []).find((o) => o.id === (g.standoff || {}).offerId));
+        return (<div style={{ marginTop: 10, padding: '9px 11px', borderRadius: 10,
+          background: c.band === 'theirs' ? 'rgba(255,90,122,.10)' : 'rgba(255,255,255,.04)',
+          border: `1px solid ${c.band === 'theirs' ? 'rgba(255,90,122,.35)' : theme.line}` }}>
+          <div style={{ fontSize: 10, fontWeight: 900, letterSpacing: '.08em', textTransform: 'uppercase',
+            color: c.band === 'theirs' ? theme.bad : theme.muted, marginBottom: 4 }}>If you walk</div>
+          {c.lines.map((l, i) => (<div key={i} style={{ fontSize: 11.5, color: theme.muted, lineHeight: 1.5 }}>· {l}</div>))}
+        </div>); })()}
     </div>
   </div>);
 }

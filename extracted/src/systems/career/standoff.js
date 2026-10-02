@@ -569,6 +569,49 @@ export function pushTheRoom(s) {
 }
 
 // You end it. Nobody takes a show like this away from you — you leave it.
+// Maxi: walking out of a show you led, or a sequel, after they have come back to you twice,
+// ought to be ruinous — "последние в индустрии жесткие" — and the player has to be able to
+// see that BEFORE they press it.
+//
+// It cost nothing at all. walkTheRoom rolled what became of the show, handed you TWO POINTS
+// OF RESPECT for having a spine, and stopped. It did not even record that you had walked —
+// s.walkedOff, which the studios faction reads and docks fifteen points for, was written by
+// production.js when you abandon a shoot and by nothing else. So the single most destructive
+// thing an actor can do to a network was, in this game, mildly good for you.
+//
+// The price is the same thing that gave you the leverage in the first place: dependency. A
+// show that is entirely you is a show you can hold up, and walking out of it is the thing
+// nobody forgives, because it was not a part you cost them, it was the programme. Walking
+// out of something they can recast by Tuesday is an inconvenience and priced like one.
+export function walkCost(s, o) {
+  const dep = dependency(s, o);
+  const asked = !!(standoff(s) || {}).asked;
+  // Three bands, because the difference between them is the whole decision.
+  // Measured before these were set: at 58 and 32 every lead came out 'theirs', including a
+  // first season, so the three bands were two and the middle one never happened. A show is
+  // only really YOU after you have carried it for a few years. centre is 48 for a lead before
+  // anything else is counted, which is why these sit where they do.
+  const band = dep >= 72 ? 'theirs' : dep >= 50 ? 'awkward' : 'replaceable';
+  const months = band === 'theirs' ? 36 : band === 'awkward' ? 24 : 12;
+  const lines = [];
+  if (band === 'theirs') {
+    lines.push('This programme is you. Walking out of it does not cost them a part, it costs them the show.');
+    lines.push(`Nobody at that network will take your call for ${Math.round(months / 12)} years, and the rest of the town will hear why within a fortnight.`);
+    lines.push('The studios will not insure you on anything big while it is fresh.');
+  } else if (band === 'awkward') {
+    lines.push('They can recast you. It will hurt them, and they will remember that it hurt.');
+    lines.push(`Two years of cold calls from that network, and the showrunner keeps a list.`);
+  } else {
+    lines.push('They can replace you by the end of the week, and they know it.');
+    lines.push('A year of being the one who walked, and then it is somebody else\u2019s turn to be talked about.');
+  }
+  // And the one thing that makes it defensible rather than merely difficult.
+  lines.push(asked
+    ? 'You asked for one thing and they said no. Your own people will say you were right.'
+    : 'You have not asked them for anything. Walking now reads as temperament, not terms.');
+  return { dep, band, months, asked, lines };
+}
+
 export function walkTheRoom(s) {
   const k = standoff(s), o = standoffOffer(s);
   if (!k) return s;
@@ -580,9 +623,28 @@ export function walkTheRoom(s) {
     let r = Math.random() * Object.values(odds).reduce((x, y) => x + y, 0);
     let pick = null;
     for (const kk of Object.keys(odds)) { if ((r -= odds[kk]) <= 0) { pick = kk; break; } }
+    // The bill BEFORE itFails, because itFails resolves the show and clears s.standoff — and
+    // walkCost reads 'did you ask them for anything first' off that. Computed after, it always
+    // came back false, so walking out having fought for something read exactly like a tantrum.
+    const cost = walkCost(s, o);
     // The call, not its answer: itFails writes what became of the show into the state.
     itFails(s, { ...o, _forced: pick });
-    setRespect(s, (s.respect || 0) + 2);   // leaving on your own terms reads as a spine
+    const now = stamp(s);
+    // The thing the studios faction already reads and nothing was writing here.
+    s.walkedOff = [...(s.walkedOff || []).filter((t) => now - t < 36), now];
+    // Somebody specific remembers. meta/stories.js has the letter that can undo it, which is
+    // the only way back and is deliberately not easy.
+    const who = o.from || o.showrunner || o.studio || 'The showrunner';
+    (s.grudges = s.grudges || []).push({ who, title: k.title, scale: o.scale || 'recurring',
+      since: now, due: now + 9999, until: now + cost.months, hit: false, gross: 0, opened: true });
+    // Walking out of a programme that WAS you is the one the insurers hear about.
+    if (cost.band === 'theirs') s.poisonUntil = Math.max(s.poisonUntil || 0, now + 12);
+    // Your own people think you were right — but only if you actually asked for something.
+    // Walking before you have put a number on the table is temperament, and reads as one.
+    setRespect(s, (s.respect || 0) + (cost.asked ? 2 : -3));
+    addTimeline(s, cost.asked
+      ? `Walked out of "${k.title}". You had asked for one thing.`
+      : `Walked out of "${k.title}" without asking for anything.`, true);
     return s;
   }
   return closeTheShow(s, 'you');
