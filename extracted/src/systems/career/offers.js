@@ -13,11 +13,11 @@ import { newTitle } from '../world/titles.js';
 import { refusedOnType } from '../meta/typecast.js';
 import { spent } from '../../engine/economy.js';
 import { storyOfferFactor, noteRefusal, noteSequelLoss } from '../meta/stories.js';
-import { hypeDemand, hype, hypeSource, hypeBrands } from '../meta/hype.js';
+import { hypeDemand, hype, hypeBrands } from '../meta/hype.js';
 import { socialBrandLift } from '../social/posting.js';
 import { signEndorsement, clauseTaken } from './endorsement.js';
 import { laterOutcome } from './decline.js';
-import { isStrong, activeLabels, labelInfo } from '../meta/typecast.js';
+import { isStrong } from '../meta/typecast.js';
 import { canTakeSet } from '../../engine/sets.js';
 const clamp = (v) => Math.max(0, Math.min(100, v));
 // Titles come from the same generator as everything else the world makes, so an agent's

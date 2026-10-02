@@ -1,6 +1,6 @@
 import { COST, canAfford, spend, tooTired } from '../../engine/energy.js';
 import { an } from '../../engine/text.js';
-import { rint, chance, pick } from '../../engine/rng.js';
+import { chance, pick } from '../../engine/rng.js';
 import { addTimeline } from '../../engine/timeline.js';
 import { earn } from '../../engine/economy.js';
 import { makePerson } from './relationships.js';

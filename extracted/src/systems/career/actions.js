@@ -13,8 +13,6 @@ const clamp = (v) => Math.max(0, Math.min(100, v));
 //
 // A voice session is not a masterclass. Minor work is the same list the Hall of Fame
 // already refuses to engrave. See systems/meta/legacy.js.
-const MINOR = /^(Brand Campaign|Commercial|Jingle|Brand Song|TV Extra|Voice Session|Open Mic|Festival Slot|Session Work|Music Video)$/;
-const isMinor = (c) => c.minor === true || (c.minor === undefined && MINOR.test(c.type || ''));
 // Two ceilings. Teachers take you to forty, full stop — the panel always said so, and the
 // number underneath it kept climbing with every credit, which is how a conservatory took a
 // perfect player to a hundred by twenty-seven. Past forty it is sets, and sets take you to

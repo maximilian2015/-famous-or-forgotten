@@ -10,7 +10,7 @@ import { hotGenre } from '../meta/news.js';
 import { addGenreXP, genreBonus } from './genres.js';
 import { scheduleRelease } from './release.js';
 import { rollStability, productionTrouble, volatileSwing, roughness } from './stability.js';
-import { makePremise, prestigeShift, ratingShift, swingShift, apartShift, appealShift } from './story.js';
+import { makePremise, prestigeShift, ratingShift, swingShift, apartShift } from './story.js';
 import { skillCap } from './actions.js';
 import { bandLift } from '../world/directors.js';
 import { coldStart } from '../meta/standing.js';

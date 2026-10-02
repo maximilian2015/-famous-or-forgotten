@@ -13,13 +13,11 @@
 // franchise.js — and it was rolled behind your back, and then overwritten by a bug two
 // lines later, so it never did anything at all. This is that arc, out in the open, with
 // your hand on it.
-import { rint, chance, pick } from '../../engine/rng.js';
 import { addTimeline } from '../../engine/timeline.js';
 import { setRespect } from '../meta/status.js';
 import { COST, canAfford, spend, tooTired } from '../../engine/energy.js';
 import { spent } from '../../engine/economy.js';
 
-const stamp = (s) => (s.year || 0) * 12 + (s.month || 0);
 const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
 
 // ── where it goes ─────────────────────────────────────────────────────────────

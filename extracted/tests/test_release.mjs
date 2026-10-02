@@ -1,4 +1,4 @@
-import { scheduleRelease, releaseTick, runTick, postProduction, boxOfficeFor, viewersFor, budgetFor, verdictOf, isFilm }
+import { scheduleRelease, releaseTick, runTick, postProduction, boxOfficeFor, budgetFor, verdictOf, isFilm }
   from '../src/systems/career/release.js';
 import { startProduction, productionTick } from '../src/systems/career/production.js';
 import { relevanceDrift } from '../src/engine/economy.js';

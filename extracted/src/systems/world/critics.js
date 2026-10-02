@@ -5,7 +5,7 @@
 // poster beside you. The critics are the same twelve people every time; the sentences
 // are drawn from pools with the least-used ones first, so a career of four hundred
 // reviews does not read the same line twice for a long time.
-import { rint, chance, pick } from '../../engine/rng.js';
+import { chance, pick } from '../../engine/rng.js';
 import { critics as rosterOf } from './world.js';
 
 const clamp = (v, a, b) => Math.max(a, Math.min(b, v));

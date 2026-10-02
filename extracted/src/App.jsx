@@ -4,7 +4,6 @@ import { useGame, dispatch, newLife, exportSave, importSave, getState } from './
 import { advanceTime, stepIsYear, advanceUntilSomething, liveUntilSomething, canSkip } from './engine/time.js';
 import { rentApartment, STAGE_LABEL } from './systems/life/stages.js';
 import { runAction, availableActions } from './systems/career/actions.js';
-import { acceptOffer, declineOffer } from './systems/career/offers.js';
 import { computeAccess } from './systems/career/access.js';
 import { SCHOOLS, train, trainingKey } from './systems/career/training.js';
 import { skillCap, lessonCap, talentHint } from './systems/career/actions.js';
@@ -18,18 +17,18 @@ const allSets = (g) => (g.productions && g.productions.length ? g.productions : 
 import { agentCut, agentLine, fireAgent } from './systems/career/agent.js';
 import { COST, canAfford } from './engine/energy.js';
 import { EnergyBar } from './ui/components/EnergyBar.jsx';
-import { FAVOURS, FAVOUR_ORDER, canUse, costOf, asksLeft, ASKS_A_YEAR, canSmooth, smoothOver, canPushSequel, pushSequel, vouchFor, canOpenShelf, openShelf } from './systems/career/favours.js';
+import { FAVOURS, FAVOUR_ORDER, canUse, costOf, asksLeft, ASKS_A_YEAR, canSmooth, smoothOver, vouchFor, canOpenShelf, openShelf } from './systems/career/favours.js';
 import { sequelDue } from './systems/career/franchise.js';
 import { knownFor, isHit, isFlop, theHits, theFlops } from './systems/meta/knownFor.js';
 import { boxedInto, isUniversal } from './systems/meta/typecast.js';
 import { liveBubbles, backTheCampaign, canBack as canBackShow, BACK_COST } from './systems/career/bubble.js';
-import { liveEndorsement, dutiesDue, attendDuty, canAttend as canAttendDuty, clauseBlocks } from './systems/career/endorsement.js';
+import { liveEndorsement, dutiesDue, attendDuty, canAttend as canAttendDuty } from './systems/career/endorsement.js';
 import { heirLine } from './systems/life/origin.js';
 import { liveStandoff, takeTheRoom, askFor, walkTheRoom, roomDue, canPush, PUSH_COST } from './systems/career/standoff.js';
 import { openSeason, askerLine, campaignable, canCampaign, startCampaign, campaignKind,
   liveCampaign, ownCampaignCost, CAMPAIGN_ENERGY, CAMPAIGN_MONTHS } from './systems/career/awards.js';
 import { townOpen, townFor, goOut } from './systems/life/town.js';
-import { LABELS, labelInfo, activeLabels, isStrong } from './systems/meta/typecast.js';
+import { labelInfo, activeLabels, isStrong } from './systems/meta/typecast.js';
 import { liveRisks } from './systems/meta/risk.js';
 import { activeStories } from './systems/meta/stories.js';
 import { ambitionProgress } from './systems/meta/ambition.js';
@@ -66,9 +65,9 @@ import { genreXP, genreBonus, genreLabel } from './systems/career/genres.js';
 import { Phone } from './phone/Phone.jsx';
 import { an, count } from './engine/text.js';
 import { inCareer } from './engine/stage.js';
-import { hostName, anniversaryMonth, anniversaryYears } from './systems/life/dating.js';
+import { hostName } from './systems/life/dating.js';
 import { onCooldown } from './engine/cooldown.js';
-import { combo, comboOf, COMBOS, agentDropped } from './systems/meta/standing.js';
+import { comboOf, COMBOS, agentDropped } from './systems/meta/standing.js';
 import { theme, setSkin, skinId, onSkinChange } from './ui/theme.js';
 import { THEMES, THEME_ORDER } from './ui/skins.js';
 import { FONT, FONT_DISPLAY } from './ui/chrome.js';
@@ -79,21 +78,20 @@ import { Stat } from './ui/components/Stat.jsx';
 import { Poster } from './ui/components/Poster.jsx';
 import { Avatar, Garment } from './ui/components/Avatar.jsx';
 import { PARTIES, PARTY_ORDER, partyRisk, canThrowParty, throwParty } from './systems/life/party.js';
-import { lookOf, lookOfPerson, companionOf, HAIRSTYLES, HAIR_ORDER, hairChoices, HAIR_COLORS, EYES, EYE_COLOURS, LIPS, OUTFITS, OUTFIT_ORDER, SKINS, buyHair, setHairColour, wearOutfit, ownsOutfit, DRESS_UP_AGE } from './systems/life/appearance.js';
+import { lookOf, lookOfPerson, companionOf, HAIRSTYLES, hairChoices, HAIR_COLORS, EYE_COLOURS, LIPS, OUTFITS, OUTFIT_ORDER, SKINS, wearOutfit } from './systems/life/appearance.js';
 import { classOf } from './systems/life/origin.js';
 import { mentalReport, closestPerson, canCall, callSomebody, canGetAway, getAway } from './systems/life/mood.js';
 import { HOME_PRICE, canBuyHome, buyHome, sellHome, STAFF, STAFF_ORDER, hasStaff, canHire, hire, fire, staffBill,
   THINGS, THING_ORDER, owns, canBuyThing, buyThing, sellThing, resaleOf, upkeepBill,
-  supportCost, canSupport, support, backingCost, canBack, backChild, livingBelow } from './systems/life/money.js';
+  livingBelow } from './systems/life/money.js';
 import { interactionsFor, interact, findPerson, GROUPS } from './systems/life/interactions.js';
-import { kindFor, canPropose, odds as collabOdds, why as collabWhy, liveCollabs, KINDS } from './systems/career/collab.js';
+import { kindFor, canPropose, odds as collabOdds, why as collabWhy, liveCollabs } from './systems/career/collab.js';
 import { relBand } from './systems/life/bonds.js';
-import { regardOf, regardBand, regardNote, whyClosed, opensDoors } from './systems/life/regard.js';
+import { regardOf, regardBand, regardNote } from './systems/life/regard.js';
 import { BigMoment } from './ui/components/BigMoment.jsx';
-import { stabilityBand } from './systems/career/stability.js';
-import { strainBand, burnedOut, unreliable, depressed, seeSomebody } from './systems/life/strain.js';
+import { strainBand, unreliable, depressed, seeSomebody } from './systems/life/strain.js';
 import { monthsIn, slotsLost, owedSlots, standingOf, onMeds, TALK, WEEK_TASKS, CHECKPOINTS, EVERY_MONTHS, MIN_MONTHS,
-  answerCheckpoint, inRehab, enterRehab, rehabCost, rehabMonths, needsRehab, therapyProgress, THERAPY_FOR_A_SLOT,
+  answerCheckpoint, inRehab, enterRehab, rehabCost, rehabMonths, therapyProgress, THERAPY_FOR_A_SLOT,
   takeTheUltimatum } from './systems/life/depression.js';
 import { drinkThrough, drankThisMonth, level as drinkLevel, band as drinkBand, dependent, bottlesInHouse,
   answerUltimatum, GRACE_MONTHS } from './systems/life/drink.js';
@@ -374,7 +372,6 @@ function OnSetNow({ g, p }) {
   const worked = p._workedMonth === stamp;
   // A lesson costs COST.train, not COST.rehearse. Between 15 and 19 energy the button was
   // bright and the lesson refused. career/training.js
-  const noEnergy = !canAfford(g, COST.train);
   const b = lead ? lead.bond : 50;
   const mood = b >= 70 ? ['warm to you', '#4fc07f'] : b >= 45 ? ['fine with you', theme.muted] : b >= 26 ? ['cooling on you', '#f0b429'] : ['done with you', '#ff5a72'];
   const st = stanceOf(p);
@@ -2844,11 +2841,10 @@ function CreditRow({ group, g }) {
       {c.sequelDead && <div style={{ fontSize: 11, color: theme.muted, margin: '4px 0 2px', fontWeight: 700 }}>📝 The sequel was announced and never made. Three writers, a director who left, and a studio that stopped answering.</div>}
       {(() => { const sq = sequelDue(g, c.title); if (!sq) return null; const MONS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
         return (<div style={{ fontSize: 11, color: theme.gold, margin: '4px 0 2px', fontWeight: 700 }}>📝 "{String(sq.title).replace('⭐ ', '')}" is greenlit — cameras around {MONS[sq.due % 12]} {Math.floor(sq.due / 12)}; the contract comes half a year before. They want you back.</div>); })()}
-      {false && canPushSequel(g, c.id) && (() => { const fit = canUse(g, 'sequel');
-        return (<button onClick={() => dispatch(pushSequel, c.id)} disabled={!fit.ok} title={fit.ok ? FAVOURS.sequel.blurb : fit.why}
-          style={{ marginTop: 6, border: `1px solid ${fit.ok ? theme.gold + '66' : 'transparent'}`, borderRadius: 9, padding: '5px 9px', fontSize: 10.5, fontWeight: 800, cursor: fit.ok ? 'pointer' : 'default', background: fit.ok ? 'rgba(255,209,102,.10)' : 'rgba(120,110,150,.12)', color: fit.ok ? theme.gold : '#6b6390' }}>
-          ◆ Push for a sequel · −{costOf(g, 'sequel')} standing
-        </button>); })()}
+      {/* The "push for a sequel" favour lived here behind `false &&` for a year. It was not
+          broken, it was REPLACED (c3aefbb): a sequel is offered to you when a picture earns
+          one, or pitched yourself from your own sofa. Disabling a thing and leaving it is how
+          a codebase fills with features nobody can reach and nobody dares delete. */}
       {/* the marks that never come off, and what it made */}
       {(group.worldHit || hit || group.askers > 0 || group.askerNoms > 0 || c.comeback > 0 || group.boxOffice > 0 || group.viewers > 0 || c.festival) && (
         <div style={{ fontSize: 10.5, marginTop: 4, display: 'flex', gap: 7, alignItems: 'center', flexWrap: 'wrap' }}>
@@ -2913,15 +2909,7 @@ const VERDICT_COL = { smash: theme.gold, profitable: theme.good, 'broke even': t
 // showing it next to the money is that the two of them disagree.
 const CRIT_COL = { acclaimed: theme.gold, 'well received': theme.good, mixed: theme.muted,
   'poorly reviewed': theme.bad, panned: theme.bad };
-const BACKING_COL = { locked: theme.good, solid: theme.accent, shaky: theme.gold, fragile: theme.bad };
 // The same fact the OpenCall board shows, in the one line an offer card has room for.
-function OfferBacking({ o }) {
-  if (o.stability == null || (o.months || 1) < 2) return null;
-  const band = stabilityBand(o.stability);
-  return (<div style={{ fontSize: 10.5, fontWeight: 700, color: BACKING_COL[band.id] || theme.muted, margin: '0 0 6px' }}>
-    {band.label} — {band.note}
-  </div>);
-}
 function CreditsList({ g, credits, label }) {
   const shooting = allSets(g);
   return (<div>

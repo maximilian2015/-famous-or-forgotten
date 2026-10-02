@@ -24,10 +24,9 @@
 //   · And it can end with no show. A network decides the economics no longer work, and the
 //     thing that was renewed simply is not made. That happens, and it is the real ending to
 //     this argument rather than a recast.
-import { rint, chance, pick } from '../../engine/rng.js';
+import { rint, chance } from '../../engine/rng.js';
 import { addTimeline } from '../../engine/timeline.js';
-import { inCareer } from '../../engine/stage.js';
-import { COST, canAfford, spend, tooTired } from '../../engine/energy.js';
+import { canAfford, spend, tooTired } from '../../engine/energy.js';
 import { setRespect } from '../meta/status.js';
 import { applyBond } from '../life/bonds.js';
 import { fameTier } from '../meta/status.js';
@@ -581,7 +580,8 @@ export function walkTheRoom(s) {
     let r = Math.random() * Object.values(odds).reduce((x, y) => x + y, 0);
     let pick = null;
     for (const kk of Object.keys(odds)) { if ((r -= odds[kk]) <= 0) { pick = kk; break; } }
-    const res = itFails(s, { ...o, _forced: pick });
+    // The call, not its answer: itFails writes what became of the show into the state.
+    itFails(s, { ...o, _forced: pick });
     setRespect(s, (s.respect || 0) + 2);   // leaving on your own terms reads as a spine
     return s;
   }

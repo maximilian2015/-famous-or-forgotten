@@ -15,7 +15,7 @@ import { uid } from '../../engine/id.js';
 import { rint, chance, pick } from '../../engine/rng.js';
 import { onCooldown, markUsed } from '../../engine/cooldown.js';
 import { addTimeline, showMoment } from '../../engine/timeline.js';
-import { canRaiseChild, HOUSING, hostOf } from '../../engine/economy.js';
+import { HOUSING, hostOf } from '../../engine/economy.js';
 import { applyBond, clampRel, relBand } from './bonds.js';
 import { level as drinkLevel, dependent } from './drink.js';
 
@@ -23,7 +23,6 @@ const clamp = (v) => Math.max(0, Math.min(100, v));
 const MFIRST = ['Jonas','Marco','Idris','Felix','Ren','Cole','Adrian','Nico','Sami','Leo'];
 const FFIRST = ['Sasha','Iris','Noor','Elin','Priya','Wren','Yara','Freya','Talia','Mira'];
 const LAST = ['Vale','Kade','Roy','Mercer','Onyx','Frost','Dune','Salt','Wren','Bright','Hale'];
-const JOBS = ['barista','architect','nurse','photographer','teacher','chef','personal trainer','graphic designer','musician','accountant'];
 const CONNECTED_JOBS = ['film producer', 'studio executive', 'runs a production company', 'a director, actually', 'head of a talent agency'];
 export const connected = (p) => !!(p && (p.industryWeight || 0) >= 80);
 

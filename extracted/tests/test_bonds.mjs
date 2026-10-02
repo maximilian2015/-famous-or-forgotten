@@ -1,5 +1,5 @@
 import { applyBond, bondsTick, relBand, BANDS, REL_MIN, REL_MAX } from '../src/systems/life/bonds.js';
-import { interact, interactionsFor } from '../src/systems/life/interactions.js';
+import { interact } from '../src/systems/life/interactions.js';
 import { inheritFrom } from '../src/systems/life/family.js';
 import { applyMonthly } from '../src/engine/economy.js';
 

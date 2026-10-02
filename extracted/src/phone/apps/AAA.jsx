@@ -5,7 +5,6 @@ import { boardFor, putForward } from '../../systems/career/tentpoles.js';
 import { COST } from '../../engine/energy.js';
 import { canAfford } from '../../engine/energy.js';
 
-const MON = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
 const money = (n) => (n >= 1e6 ? `€${(n / 1e6).toFixed(n >= 1e7 ? 0 : 1)}m` : `€${Math.round(n / 1000)}k`);
 
 // The tentpole board. Nobody auditions for these: there is a picture in development with a

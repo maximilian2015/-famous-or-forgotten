@@ -3,7 +3,7 @@ import { uid } from '../../engine/id.js';
 // franchise you could not get out of are the things a life is remembered for.
 //
 // Nothing here existed: a series wrapped and vanished, a film never had a sequel.
-import { rint, chance, pick } from '../../engine/rng.js';
+import { rint, chance } from '../../engine/rng.js';
 import { addTimeline } from '../../engine/timeline.js';
 import { quoteBand } from '../meta/status.js';
 import { priceYoungReturn } from './youngblood.js';
@@ -145,7 +145,6 @@ function sequelTitle(title, n) {
 // Reviews are the smaller half of this. A studio greenlights a sequel off the opening
 // weekend, which is why beloved films die and stupid ones run five parts — the verdict
 // can rescue a mediocre picture and can bury a well-reviewed one that nobody bought.
-const SEQUEL_MONEY = { smash: 45, profitable: 18, 'broke even': -8, bomb: -55 };
 // And what KIND of picture it was. Maxi: "if it is a success they shoot part two straight
 // away — in life not everyone gets a part two." A tentpole is built to continue; a studio
 // drama that made its money is left alone; nobody makes a sequel to a small picture. And

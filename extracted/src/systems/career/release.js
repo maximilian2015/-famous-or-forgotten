@@ -14,7 +14,7 @@ import { newTitle } from '../world/titles.js';
 import { addTimeline, showMoment } from '../../engine/timeline.js';
 import { regardAfterWorking } from '../life/regard.js';
 import { markReleased } from '../../engine/economy.js';
-import { hotGenre, GENRES } from '../meta/news.js';
+import { GENRES } from '../meta/news.js';
 import { appetiteFor, marketAfterRelease } from '../meta/market.js';
 import { maybeContinue } from './franchise.js';
 import { appealShift } from './story.js';
@@ -729,7 +729,6 @@ function open(s, rel) {
   }
   rel.boxOffice = 0;
   const verdict = verdictOf({ ...rel, boxOffice: rel.finalGross || 0 });
-  const score = (rel.rating / 10).toFixed(1);
 
   // The credit exists the night it opens. What it WAS does not — the score and the money
   // land when the run ends, which is the difference between a premiere and a verdict.

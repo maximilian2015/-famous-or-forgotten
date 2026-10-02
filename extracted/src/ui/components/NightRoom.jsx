@@ -17,7 +17,6 @@ import { GENRES, hotGenre } from '../../systems/meta/news.js';
 // zone and you spend the hour there. Underneath: the glass in your hand as a bar, what
 // has happened, and the talk when you are in one.
 const TONE = { good: '#6fc98d', bad: '#e5566f', note: null };
-const KIND_ICON = { actor: '🎭', industry: '💼', contact: '🤝', press: '📰', prospect: '💫' };
 const W = 360, H = 240;
 const ZONE_BOX = {
   bar: { x: 8, y: 8, w: 214, h: 62 },

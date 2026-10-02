@@ -39,7 +39,7 @@ import { maybeYoungOffer } from '../systems/career/youngblood.js';
 import { agingNote } from '../systems/career/age.js';
 import { iconTick, quoteTick } from '../systems/meta/status.js';
 import { strainTick } from '../systems/life/strain.js';
-import { slotsLost, rehabTick, inRehab } from '../systems/life/depression.js';
+import { slotsLost, rehabTick } from '../systems/life/depression.js';
 import { drinkTick } from '../systems/life/drink.js';
 import { addTimeline } from './timeline.js';
 import { maybeGenerateEvent, eventsTick } from '../systems/social/events.js';

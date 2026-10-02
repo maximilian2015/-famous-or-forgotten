@@ -4,7 +4,7 @@
 //
 // Nothing here invents new money. Your band is your band; negotiation decides where
 // in it you land, and how far past it you dare to reach.
-import { chance, rint } from '../../engine/rng.js';
+import { chance } from '../../engine/rng.js';
 import { fameTier, quoteBand, setQuote } from '../meta/status.js';
 
 const clamp = (v, a, b) => Math.max(a, Math.min(b, v));

@@ -1,4 +1,4 @@
-import { hype, hypeSource, addHype, bumpHype, showBump, hypeTick, hypeReach, hypeDemand, hypePrice, hypeBrands, flopHype, canGoQuiet, goQuiet, SHOW_STEPS } from '../src/systems/meta/hype.js';
+import { hype, hypeSource, addHype, bumpHype, showBump, hypeTick, hypeReach, hypeDemand, hypePrice, hypeBrands, flopHype, canGoQuiet, SHOW_STEPS } from '../src/systems/meta/hype.js';
 import { reach } from '../src/systems/career/castings.js';
 import { quoteBand, quoteFor } from '../src/systems/meta/status.js';
 import { availableActions, runAction } from '../src/systems/career/actions.js';

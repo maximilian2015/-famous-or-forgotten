@@ -4,7 +4,7 @@
 //   node tests/probe_market.mjs
 import { marketOf, marketYear, marketAfterRelease, appetiteFor, genreShare, totalDemand,
   totalWord, fatigueOf, exposureOf, ageMarket, GENRES } from '../src/systems/meta/market.js';
-import { boxOfficeFor, audienceFor, verdictOf, criticalOf, breakEvenFor, studioCampaign }
+import { boxOfficeFor, audienceFor, verdictOf, studioCampaign }
   from '../src/systems/career/release.js';
 import { castingExpectation, roleAcceptance } from '../src/systems/meta/typecast.js';
 

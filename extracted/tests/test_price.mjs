@@ -1,7 +1,6 @@
-import { recognised, theLens, driftTick, quietTick, priceTick, priceLine, closeOnes } from '../src/systems/meta/price.js';
+import { recognised, theLens, driftTick, quietTick, priceLine, closeOnes } from '../src/systems/meta/price.js';
 import { maybeBrandOffer, acceptOffer } from '../src/systems/career/offers.js';
 import { goOut } from '../src/systems/life/town.js';
-import { interact } from '../src/systems/life/interactions.js';
 
 let fails = 0;
 const ok = (n, c, e = '') => { if (!c) { fails++; console.log('FAIL  ' + n + (e ? ' :: ' + e : '')); } else console.log('ok    ' + n); };

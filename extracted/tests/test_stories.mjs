@@ -1,4 +1,4 @@
-import { CHAINS, CHAIN_ORDER, storiesTick, resolveStory, activeStories, storyOf, noteSequelLoss, noteRefusal, holdsAGrudge, hiding, storyCastFactor, storyOfferFactor } from '../src/systems/meta/stories.js';
+import { CHAINS, CHAIN_ORDER, storiesTick, activeStories, storyOf, holdsAGrudge, hiding, storyCastFactor, storyOfferFactor } from '../src/systems/meta/stories.js';
 import { resolveArc } from '../src/systems/life/arcs.js';
 import { storyTick } from '../src/systems/meta/trouble.js';
 import { riskTick } from '../src/systems/meta/risk.js';

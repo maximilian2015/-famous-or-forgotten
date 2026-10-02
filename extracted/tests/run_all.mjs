@@ -27,4 +27,20 @@ for (const f of files) {
   console.log(`${ok ? 'PASS' : 'FAIL'}  ${f}${ok ? '' : '\n      ' + fails}`);
 }
 console.log(`\n${files.length - failed}/${files.length} passed`);
-process.exit(failed ? 1 : 0);
+
+// ── and the linter, which was here all along and nobody ran ───────────────────
+// oxlint has been a devDependency with an npm script since the start of this project. The first
+// time anybody ran it, it found 314 things — including TWO whole features switched off behind
+// `false &&` that no player could reach, and one of them (the awards campaign) had just been
+// rebuilt without anybody noticing the door was locked. It had been telling the truth into an
+// empty room for a year. A check nobody runs is not a check, so it runs here.
+//
+// .oxlintrc.json keeps only the rules that catch a real mistake and turns the matters-of-taste
+// off, because a warning nobody acts on teaches you to scroll past the output.
+const lint = spawnSync('npx', ['oxlint'], { cwd: path.join(here, '..'), encoding: 'utf8', shell: true, timeout: 180000 });
+const lintOut = (lint.stdout || '') + (lint.stderr || '');
+const lintBad = / error /.test(lintOut) || /Found \d+ error/.test(lintOut);
+console.log(`${lintBad ? 'FAIL' : 'PASS'}  lint`);
+if (lintBad) console.log('      ' + lintOut.split('\n').filter((l) => / error /.test(l)).slice(0, 6).join('\n      '));
+
+process.exit(failed || lintBad ? 1 : 0);

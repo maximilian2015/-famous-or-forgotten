@@ -1,4 +1,3 @@
-import { theme } from '../theme.js';
 import { FONT, FONT_DISPLAY } from '../chrome.js';
 import { dispatch } from '../../state/store.js';
 import { emailAct } from '../../systems/meta/email.js';

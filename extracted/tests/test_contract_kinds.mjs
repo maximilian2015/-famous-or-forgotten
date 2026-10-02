@@ -1,8 +1,7 @@
-import { draftContract, markClause, sendContract, contractsTick, signContract } from '../src/systems/career/contract.js';
+import { draftContract, signContract } from '../src/systems/career/contract.js';
 import { declineOffer } from '../src/systems/career/offers.js';
-import { startProduction } from '../src/systems/career/production.js';
 import { maybeContinue } from '../src/systems/career/franchise.js';
-import { collapseProject, freezeProject } from '../src/systems/career/stability.js';
+import { collapseProject } from '../src/systems/career/stability.js';
 import { scheduleRelease, releaseTick, runTick } from '../src/systems/career/release.js';
 
 let fails = 0;

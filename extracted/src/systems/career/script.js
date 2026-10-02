@@ -7,7 +7,7 @@
 // fee. Now the premise is on the offer, with a name and a person attached to it, and the
 // same line follows the part all the way through: the paper, the set, the credit, and the
 // brief for the next one.
-import { pick, rint } from '../../engine/rng.js';
+import { pick } from '../../engine/rng.js';
 import { makePremise } from './story.js';
 import { FIRST_F, FIRST_M, LAST } from '../world/names.js';
 

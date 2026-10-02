@@ -2,7 +2,6 @@
 // friendly buttons in one month was a valid strategy. It is now a living thing:
 // it fades when you are not there, it resists being farmed in a single evening,
 // and it can go below zero, where people start acting like it.
-import { rint } from '../../engine/rng.js';
 import { addTimeline } from '../../engine/timeline.js';
 import { monthStamp } from '../../engine/cooldown.js';
 

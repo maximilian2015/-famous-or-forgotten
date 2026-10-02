@@ -1,6 +1,6 @@
-import { maybeContinue, sequelGap, laterOffersTick, renewalOdds, sequelOdds, seasonRaise, seasonBase, performanceFactor, trendFactor, sequelRaise, seasonCap, SEASON_CAP } from '../src/systems/career/franchise.js';
+import { maybeContinue, renewalOdds, sequelOdds, seasonRaise, seasonBase, performanceFactor, trendFactor, seasonCap, SEASON_CAP } from '../src/systems/career/franchise.js';
 import * as F2 from '../src/systems/career/franchise.js';
-import { bubbleTick, onTheBubble } from '../src/systems/career/bubble.js';
+import { bubbleTick } from '../src/systems/career/bubble.js';
 import { startProduction, productionTick } from '../src/systems/career/production.js';
 import { releaseTick } from '../src/systems/career/release.js';
 

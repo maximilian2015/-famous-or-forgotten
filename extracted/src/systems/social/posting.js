@@ -27,7 +27,7 @@ import { rint, chance, pick } from '../../engine/rng.js';
 import { onCooldown, markUsed } from '../../engine/cooldown.js';
 import { addTimeline } from '../../engine/timeline.js';
 import { inCareer } from '../../engine/stage.js';
-import { COST, canAfford, spend, tooTired } from '../../engine/energy.js';
+import { canAfford, spend, tooTired } from '../../engine/energy.js';
 import { addHype, hype } from '../meta/hype.js';
 import { setRespect } from '../meta/status.js';
 import { strongLabels, typecastBump, labelInfo } from '../meta/typecast.js';

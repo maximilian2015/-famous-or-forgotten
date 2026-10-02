@@ -14,7 +14,7 @@ import { count } from '../../engine/text.js';
 // to play. Each one is a scene with a choice, and it resolves on what you have actually
 // been doing for those five months — the pills, the sessions, the resting, and whether
 // there is anybody left who is close to you.
-import { rint, chance, pick } from '../../engine/rng.js';
+import { rint, chance } from '../../engine/rng.js';
 import { addTimeline, showMoment } from '../../engine/timeline.js';
 import { drinkingCoversSlots, level as drinkLevel, dependent, rehabMonthsFor, rehabCostFor,
   answerUltimatum } from './drink.js';
@@ -62,7 +62,6 @@ export function medsNote(s) {
 export function standingOf(s) {
   const d = s.depression;
   if (!d) return { score: 0, parts: [] };
-  const window = Math.max(1, d.windowMonths || 1);
   const closest = Math.max(0, ...[...(s.family || []), ...(s.people || [])]
     .map((p) => (p.alive === false ? 0 : p.relationship || 0)), s.partner ? (s.partner.relationship || 0) : 0);
   const parts = [

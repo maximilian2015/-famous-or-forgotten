@@ -10,7 +10,6 @@
 // seventy — and small things (a show, a post, a reply in the trades) add a little, less
 // each time. It decays by a tenth a month and a point, so a hit is a year of being asked
 // about and a show is a fortnight.
-import { chance } from '../../engine/rng.js';
 import { addTimeline } from '../../engine/timeline.js';
 
 const clamp = (v, a = 0, b = 100) => Math.max(a, Math.min(b, v));

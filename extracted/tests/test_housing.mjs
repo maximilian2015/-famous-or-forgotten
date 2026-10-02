@@ -1,4 +1,4 @@
-import { HOUSING, HOUSING_ORDER, applyMonthly, homeIllness, homeEnergy, homeBond, canRaiseChild } from '../src/engine/economy.js';
+import { HOUSING, HOUSING_ORDER, applyMonthly, homeEnergy, canRaiseChild } from '../src/engine/economy.js';
 import { infectionOdds } from '../src/systems/life/health.js';
 import { spendWithFamily } from '../src/systems/life/family.js';
 import { tryForBaby } from '../src/systems/life/dating.js';

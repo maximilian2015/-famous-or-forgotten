@@ -1,5 +1,5 @@
-import {refreshCastingPool, auditionFor, castingChance, scaleOf, submissionsTick } from '../src/systems/career/castings.js';
-import { productionTick, rehearse, startProduction } from '../src/systems/career/production.js';
+import { refreshCastingPool, auditionFor, scaleOf, submissionsTick } from '../src/systems/career/castings.js';
+import { productionTick, startProduction } from '../src/systems/career/production.js';
 
 let fails = 0;
 const ok = (n, c, e = '') => { if (!c) { fails++; console.log('FAIL  ' + n + (e ? ' :: ' + e : '')); } else console.log('ok    ' + n); };

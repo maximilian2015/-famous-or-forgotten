@@ -30,7 +30,7 @@ import { uid } from '../../engine/id.js';
 import { rint, chance, pick } from '../../engine/rng.js';
 import { addTimeline } from '../../engine/timeline.js';
 import { inCareer } from '../../engine/stage.js';
-import { COST, canAfford, spend, tooTired } from '../../engine/energy.js';
+import { canAfford, spend, tooTired } from '../../engine/energy.js';
 // franchise.js reads this file, so the numbers it would import are repeated here rather than
 // imported back — the same rule trouble.js and risk.js already follow. If SLOT_NORM,
 // SEASON_CAP or tvMonths move over there, they move here too.

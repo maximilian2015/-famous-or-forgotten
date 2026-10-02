@@ -17,7 +17,6 @@ import { uid } from '../../engine/id.js';
 import { rint, chance } from '../../engine/rng.js';
 import { addTimeline, showMoment } from '../../engine/timeline.js';
 
-const clamp = (v, a = 0, b = 100) => Math.max(a, Math.min(b, v));
 
 // How solid the money is, by what kind of thing it is. A studio does not lose its own
 // blockbuster; a first-time producer loses everything.

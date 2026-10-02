@@ -1,11 +1,10 @@
 import { useState, useRef, useEffect } from 'react';
 import { theme } from '../../ui/theme.js';
-import { dispatch, getState } from '../../state/store.js';
+import { dispatch } from '../../state/store.js';
 
 // A tiny flappy-style tap game. Playing it relieves stress (mental).
 export function ArcadeGame({ g }) {
   const [y, setY] = useState(120);
-  const [vy, setVy] = useState(0);
   const [pipes, setPipes] = useState([{ x: 300, gap: 110 }]);
   const [score, setScore] = useState(0);
   const [best, setBest] = useState(g.arcadeBest || 0);
@@ -16,7 +15,7 @@ export function ArcadeGame({ g }) {
 
   const W = 300, H = 260, BIRD = 22, PIPE_W = 44;
 
-  function reset() { st.current = { y: 120, vy: 0, pipes: [{ x: 300, gap: 110 }], score: 0 }; setY(120); setVy(0); setPipes([{ x: 300, gap: 110 }]); setScore(0); setDead(false); setRunning(true); }
+  function reset() { st.current = { y: 120, vy: 0, pipes: [{ x: 300, gap: 110 }], score: 0 }; setY(120); setPipes([{ x: 300, gap: 110 }]); setScore(0); setDead(false); setRunning(true); }
   function flap() { if (dead) { reset(); return; } if (!running) { setRunning(true); } st.current.vy = -4.2; }
 
   useEffect(() => {

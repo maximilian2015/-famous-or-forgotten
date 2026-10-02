@@ -1,5 +1,5 @@
 import { setFame, setRespect } from './status.js';
-import { rint, chance } from '../../engine/rng.js';
+import { chance } from '../../engine/rng.js';
 import { addTimeline } from '../../engine/timeline.js';
 // Both of these used to live here, and hotGenre was a calendar: it walked the genre list one
 // per month, forever, so a player could count the months and know which date to open on. It is

@@ -8,8 +8,6 @@ import { markReleased } from '../../engine/economy.js';
 import { paid } from './agent.js';
 import { GENRES } from '../meta/news.js';
 import { addGenreXP, genreBonus } from './genres.js';
-import { startProduction } from './production.js';
-import { canTakeSet } from '../../engine/sets.js';
 import { facePenalty } from '../life/face.js';
 import { quoteFor, episodeRate, setFame, setRespect, isForgotten } from '../meta/status.js';
 import { directorFor, isOneOfTheFive, ensureDirectors, bandOf } from '../world/directors.js';
@@ -23,7 +21,7 @@ import { sendMail } from '../meta/email.js';
 import { newTitle } from '../world/titles.js';
 import { seasonCap, slotNorm, tvMonths } from './franchise.js';
 import { rumourFactor } from '../meta/trouble.js';
-import { typeFit, typeFactor, typecastAfterDayWork, strongLabels, isStrong, activeLabels, boxedInto } from '../meta/typecast.js';
+import { typeFit, typeFactor, typecastAfterDayWork, isStrong, activeLabels, boxedInto } from '../meta/typecast.js';
 import { storyCastFactor, hiding } from '../meta/stories.js';
 import { hypeReach, hypeBrands } from '../meta/hype.js';
 import { socialReach } from '../social/posting.js';
@@ -437,7 +435,6 @@ export function addPrestigeListing(s) {
 // craft, a name the poster can sell — and two to six other people are reading for it, drawn
 // from the business at the part's level. Your odds are your fit against theirs. Learning
 // the sides tells you what they want; the field you see only as a count.
-const WANTS = ['looks', 'charisma', 'craft', 'name'];
 function wantFor(type, scale, genre) {
   if (scale === 'blockbuster') return chance(55) ? 'name' : 'looks';
   if (scale === 'prestige' || /Prestige|Festival/.test(type)) return chance(75) ? 'craft' : 'charisma';

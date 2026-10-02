@@ -18,7 +18,7 @@
 //
 // Nothing here changes a number. It is the business talking, which is most of what the
 // business does.
-import { rint, chance, pick } from '../../engine/rng.js';
+import { chance, pick } from '../../engine/rng.js';
 import { slotNorm } from '../career/franchise.js';
 
 const stamp = (s) => (s.year || 0) * 12 + (s.month || 0);

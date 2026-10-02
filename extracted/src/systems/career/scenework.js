@@ -4,7 +4,7 @@
 // Everything here is generated per shoot from the picture's own premise and character, so
 // two films never throw the same day — Maxi's rule for the whole set system: "minigames,
 // different every time, so they do not repeat."
-import { rint, pick } from '../../engine/rng.js';
+import { pick } from '../../engine/rng.js';
 
 const her = (p) => ((p && p.character && p.character.name) ? p.character.name.split(' ')[0] : 'she');
 const shuffle = (a) => { const o = [...a]; for (let i = o.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [o[i], o[j]] = [o[j], o[i]]; } return o; };

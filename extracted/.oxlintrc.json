@@ -1,0 +1,25 @@
+{
+  "$schema": "./node_modules/oxlint/configuration_schema.json",
+  "categories": { "correctness": "error" },
+  "rules": {
+    "no-constant-binary-expression": "error",
+    "no-self-assign": "error",
+    "no-unused-vars": ["error", {
+      "args": "none",
+      "varsIgnorePattern": "^_",
+      "caughtErrors": "none"
+    }],
+    "unicorn/prefer-string-starts-ends-with": "off",
+    "unicorn/no-useless-spread": "off",
+    "unicorn/no-useless-fallback-in-spread": "off"
+  },
+  "overrides": [
+    {
+      "files": ["tests/**"],
+      "rules": {
+        "no-unused-vars": ["warn", { "args": "none", "varsIgnorePattern": "^_", "caughtErrors": "none" }]
+      }
+    }
+  ],
+  "ignorePatterns": ["dist/**", "node_modules/**", "tests/probes/**"]
+}

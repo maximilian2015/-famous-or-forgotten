@@ -1,5 +1,5 @@
 import { inCareer } from '../../engine/stage.js';
-import { rint, chance, pick } from '../../engine/rng.js';
+import { chance, pick } from '../../engine/rng.js';
 import { addTimeline } from '../../engine/timeline.js';
 import { setFame, setRespect } from '../meta/status.js';
 import { takeJob, JOBS } from './work.js';

@@ -3,8 +3,8 @@
 // is press-the-month with half the energy wasted." These are the cheap things an actor
 // with an evening and no work actually does: a reading night, the bar where the crews
 // drink, a post. Each once a month, each a roll, each capable of nothing at all.
-import { COST, canAfford, spend, tooTired } from '../../engine/energy.js';
-import { rint, chance, pick } from '../../engine/rng.js';
+import { canAfford, spend, tooTired } from '../../engine/energy.js';
+import { chance, pick } from '../../engine/rng.js';
 import { addTimeline } from '../../engine/timeline.js';
 import { onCooldown, markUsed } from '../../engine/cooldown.js';
 import { makePerson } from './relationships.js';

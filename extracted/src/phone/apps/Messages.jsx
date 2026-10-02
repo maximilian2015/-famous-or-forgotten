@@ -127,8 +127,13 @@ export function Messages({ g }) {
           {o.campaign && <span style={{ fontSize: 10.5, fontWeight: 800, padding: '3px 8px', borderRadius: 20, background: 'rgba(255,209,102,.18)', color: theme.gold }}>📣 campaign running</span>}
         </div>
         {/* The Asker push. Maxi: "what does 'run the campaign' mean?" — it said nothing. */}
-        {false && <button onClick={() => dispatch(runCampaign, o.id)} style={{ ...btn(''), width: '100%', marginTop: 8 }}>🏆 Asker campaign · €{cost.toLocaleString()}</button>}
-        {o.tier !== 'supporting' && !o.campaign && <div style={{ fontSize: 10.5, color: theme.muted, marginTop: 5, lineHeight: 1.45 }}>A "for your consideration" push when it comes out: the studio's awards people work your name for the season. Better odds of a nomination if the film is any good — nothing if it is not. Paid now, out of your own pocket.</div>}
+        {o.tier !== 'supporting' && !o.campaign && <button onClick={() => dispatch(runCampaign, o.id)}
+          style={{ ...btn(''), width: '100%', marginTop: 8, textAlign: 'left', lineHeight: 1.35 }}>
+          🏆 Run an awards campaign · €{cost.toLocaleString()}
+          <div style={{ fontSize: 10.5, fontWeight: 500, opacity: .75, marginTop: 2 }}>
+            Out of your own pocket. Nearly doubles the odds of a nomination for this one — and buys
+            nothing at all if the work is not there.</div>
+        </button>}
         {o.campaign && <div style={{ fontSize: 10.5, color: theme.gold, marginTop: 8 }}>🏆 Asker campaign paid — the push runs when it comes out.</div>}
         {/* A season or a part that continues something: the brief, and where it goes.
             career/chapter.js */}

@@ -30,10 +30,9 @@ import { uid } from '../../engine/id.js';
 import { rint, chance, pick } from '../../engine/rng.js';
 import { addTimeline } from '../../engine/timeline.js';
 import { inCareer } from '../../engine/stage.js';
-import { COST, canAfford, spend, tooTired } from '../../engine/energy.js';
+import { canAfford, spend, tooTired } from '../../engine/energy.js';
 import { setRespect } from '../meta/status.js';
 
-const clamp = (v, a = 0, b = 100) => Math.max(a, Math.min(b, v));
 const stamp = (s) => (s.year || 0) * 12 + (s.month || 0);
 
 // What they will want from you, and what it takes out of the month. None of it is hard.

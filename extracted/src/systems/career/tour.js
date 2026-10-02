@@ -13,14 +13,12 @@ import { rint, chance } from '../../engine/rng.js';
 import { COST, canAfford, spend, tooTired } from '../../engine/energy.js';
 import { addTimeline } from '../../engine/timeline.js';
 import { setFame, setRespect } from '../meta/status.js';
-import { STUDIOS } from '../world/names.js';
+
 const clamp = (v) => Math.max(0, Math.min(100, v));
-const stamp = (s) => (s.year || 0) * 12 + (s.month || 0);
 
 // Who gets one. The studio's money, the studio's tour; nobody tours a short.
 export const TOURED = ['feature', 'blockbuster', 'prestige'];
 export function toursFor(rel) { return TOURED.includes(rel.scale) && (rel.tier === 'lead' || rel.tier === 'tentpole'); }
-function studioOf(rel) { let h = 0; for (const ch of String(rel.title || '')) h = (h * 31 + ch.charCodeAt(0)) >>> 0; return STUDIOS[h % STUDIOS.length]; }
 
 // The letter itself is written by emailTick (meta/email.js) — the tour is a picture's
 // business, the post is the post's. This answers it.

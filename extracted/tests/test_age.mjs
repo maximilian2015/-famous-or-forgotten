@@ -1,4 +1,4 @@
-import { ageFit, seenForIt, bandFor, agingNote, womensPenalty, SEEN_AT }
+import { ageFit, bandFor, agingNote, womensPenalty }
   from '../src/systems/career/age.js';
 import { refreshCastingPool, castingChance, boardSize } from '../src/systems/career/castings.js';
 import { agingTick } from '../src/systems/life/mortality.js';

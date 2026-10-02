@@ -11,7 +11,7 @@ import { setQuote, setFame, setRespect } from '../meta/status.js';
 import { addTimeline, showMoment } from '../../engine/timeline.js';
 import { actorById, maybeIcon } from '../world/world.js';
 import { addHype } from '../meta/hype.js';
-import { COST, canAfford, spend, tooTired } from '../../engine/energy.js';
+import { canAfford, spend, tooTired } from '../../engine/energy.js';
 
 const clamp = (v, a = 0, b = 100) => Math.max(a, Math.min(b, v));
 // The same diminishing curve the premieres use. Five nominations at a flat +6 each put a

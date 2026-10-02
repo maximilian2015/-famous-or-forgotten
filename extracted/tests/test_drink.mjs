@@ -1,6 +1,6 @@
 import { drinkThrough, drinkTick, level, band, dependent, drankThisMonth, drinkingCoversSlots,
   rehabMonthsFor, DEPENDENT_AT, buyBottle, bottlesInHouse, BOTTLES } from '../src/systems/life/drink.js';
-import { slotsLost, enterRehab, rehabTick, rehabMonths, rehabCost, inRehab }
+import { slotsLost, enterRehab, rehabTick, rehabMonths, inRehab }
   from '../src/systems/life/depression.js';
 import { startProduction, productionTick } from '../src/systems/career/production.js';
 import { releaseTick } from '../src/systems/career/release.js';

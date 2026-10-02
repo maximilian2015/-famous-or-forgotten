@@ -1,6 +1,4 @@
-import { addTimeline } from '../../engine/timeline.js';
 import { AMBITIONS, AMBITION_ORDER } from '../meta/ambition.js';
-const clamp = (v) => Math.max(0, Math.min(100, v));
 export const YOUTH_EVENTS = [
   { age: 6, id: 'firstStage', build: () => ({ speaker: 'The school play', text: `Your class is putting on a play. The teacher asks who wants the lead. Your heart pounds. Little hand — up or down?`,
     choices: [ { label: 'Raise your hand — take the lead', fx: { confidence: 6, acting: 3 }, reply: 'You forget two lines and love every second. Something just woke up in you.' },

@@ -50,7 +50,6 @@ export const FACTIONS = {
     return { score, line: grudges ? `${grudges} director${grudges === 1 ? '' : 's'} will not call you again. The business is small.` : score >= 75 ? 'They come back for you. A director in your phone is a set that starts warm.' : score >= 50 ? 'Some of them would work with you again. Some of them would need asking.' : 'The word between them is not a kind one. Sets start cold.' };
   } },
   fans: { label: 'The fans', read: (s) => {
-    const now = stamp(s);
     const hit = (s.filmography || []).find((c) => !c.minor && (c.verdict === 'smash' || (c.rating || 0) >= 85) && (c.year || 0) >= (s.year || 0) - 3);
     const furious = (s.timeline || []).slice(0, 60).some((x) => /Fans are furious/.test(x.text));
     const forgotten = (s.peakFame || 0) >= 35 && (s.fame || 0) < 15;

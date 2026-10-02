@@ -8,7 +8,7 @@ import { setFame } from '../meta/status.js';
 import { rint, chance, pick } from '../../engine/rng.js';
 import { addTimeline } from '../../engine/timeline.js';
 import { onCooldown, markUsed } from '../../engine/cooldown.js';
-import { home, HOUSING } from '../../engine/economy.js';
+import { HOUSING } from '../../engine/economy.js';
 import { applyBond } from './bonds.js';
 import { makePerson } from './relationships.js';
 

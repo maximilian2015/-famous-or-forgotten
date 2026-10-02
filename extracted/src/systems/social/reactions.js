@@ -23,7 +23,6 @@
 // what they think of the THING, and what they think of YOU in it. Those come apart constantly
 // — the most common sentence in this business is that somebody was the best thing in
 // something bad, and the second most common is the reverse.
-import { rint, chance, pick } from '../../engine/rng.js';
 
 const stamp = (s) => (s.year || 0) * 12 + (s.month || 0);
 const HANDLES = ['@nightbus', '@kestrel_', '@four_walls', '@oleander', '@mtn_time', '@spare_room',

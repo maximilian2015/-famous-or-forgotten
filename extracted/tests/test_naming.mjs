@@ -1,7 +1,6 @@
 import { rename, canRename, whyNot, renameable, TITLE_MAX } from '../src/systems/career/naming.js';
-import { startProduction, productionTick } from '../src/systems/career/production.js';
+import { startProduction } from '../src/systems/career/production.js';
 import { scheduleRelease, releaseTick, runTick } from '../src/systems/career/release.js';
-import { maybeContinue } from '../src/systems/career/franchise.js';
 import { signContract, startSigned } from '../src/systems/career/contract.js';
 
 let fails = 0;

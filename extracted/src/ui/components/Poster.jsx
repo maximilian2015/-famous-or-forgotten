@@ -1,4 +1,3 @@
-import { theme } from '../theme.js';
 import { FONT_DISPLAY } from '../chrome.js';
 
 // A one-sheet, drawn. The game ships as one html file and cannot carry an image, so every

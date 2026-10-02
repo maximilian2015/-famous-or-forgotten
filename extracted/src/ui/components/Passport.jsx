@@ -6,7 +6,7 @@ import { fameTier, isForgotten } from '../../systems/meta/status.js';
 import { yourRank } from '../../systems/world/world.js';
 import { HOUSING, ledger } from '../../engine/economy.js';
 import { THINGS, HOME_PRICE, owns } from '../../systems/life/money.js';
-import { LABELS, labelInfo, activeLabels, scoreOf, STRONG_AT, ACTIVE_AT, tendency } from '../../systems/meta/typecast.js';
+import { labelInfo, activeLabels, scoreOf, STRONG_AT, tendency } from '../../systems/meta/typecast.js';
 import { apparentAge, height, weightKg } from '../../systems/life/face.js';
 import { band as drinkBand, dependent } from '../../systems/life/drink.js';
 import { strainBand } from '../../systems/life/strain.js';

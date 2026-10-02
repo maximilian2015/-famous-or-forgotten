@@ -66,7 +66,9 @@ const byTag = (s, tag) => (s.sms || []).find((m) => m.tag === tag);
   ok('and the divorce takes the house with it', !m.hostedBy && E.monthlyCosts(m).rent > 0);
   // the drink takes them too
   const d = actor({ partner: partner() }); D.moveInWithThem(d);
-  d.partner = d.partner; // present
+  // This was 'd.partner = d.partner; // present' - a sentence pretending to be a check.
+  // The linter found it. It asserts something now.
+  ok('moving in keeps the partner on the save', !!d.partner);
   const who = { where: 'partner' };
   ok('an old save with no hostedBy is fine', E.hostOf(actor()) === null && E.monthlyCosts(actor()).rent > 0);
 }

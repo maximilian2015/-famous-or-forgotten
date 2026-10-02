@@ -58,7 +58,6 @@ const month = (s) => { s.month++; if (s.month > 11) { s.month = 0; s.year++; } }
   const most = Math.max(...counts), some = counts.filter((n) => n > 0).length;
   ok('never more than three in a picture', most <= 3, String(most));
   ok('and most pictures get at least one', some >= 28, `${some}/40`);
-  fails = fails;   // the per-month spacing assertions above are counted already
 }
 // ── what a day is worth ────────────────────────────────────────────────────────
 {

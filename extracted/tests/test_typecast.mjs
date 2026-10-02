@@ -1,4 +1,4 @@
-import { typecastAfterCredit, typecastYear, typeFit, typeFactor, activeLabels, isStrong, typecastScandal, LABELS, labelInfo, GENRE_LABEL } from '../src/systems/meta/typecast.js';
+import { typecastAfterCredit, typecastYear, typeFit, typeFactor, activeLabels, isStrong, typecastScandal, LABELS, labelInfo } from '../src/systems/meta/typecast.js';
 import { refreshCastingPool, castingChance } from '../src/systems/career/castings.js';
 
 let fails = 0;
