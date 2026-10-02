@@ -1514,18 +1514,21 @@ function RoomModal({ g }) {
 
       {/* One thing, once. */}
       {!k.asked && <Card style={{ marginBottom: 10 }}>
-        <div style={{ fontSize: 11, fontWeight: 900, letterSpacing: '.08em', textTransform: 'uppercase', color: theme.muted, marginBottom: 5 }}>
+        <div style={{ fontSize: 11, fontWeight: 900, letterSpacing: '.08em', textTransform: 'uppercase', color: fit.ok ? theme.muted : theme.bad, marginBottom: 5 }}>
           Ask for one thing · {PUSH_COST} energy
         </div>
+        {/* The reason goes ABOVE the list, where it is read before the pressing rather than
+            after it. Underneath, it read as a footnote to buttons that looked live. */}
+        {!fit.ok && fit.why && <div style={{ fontSize: 11.5, color: theme.bad, lineHeight: 1.45, marginBottom: 7 }}>{fit.why}</div>}
         {k.asks.map((x) => (
           <button key={x.id} onClick={() => dispatch(askFor, x.id)} disabled={!fit.ok}
             style={{ width: '100%', textAlign: 'left', border: 'none', borderRadius: 10, padding: '8px 11px', marginBottom: 5,
-              cursor: fit.ok ? 'pointer' : 'default', background: fit.ok ? 'rgba(158,116,255,.15)' : 'rgba(120,110,150,.12)', color: fit.ok ? '#d9cffa' : '#6b6390' }}>
+              cursor: fit.ok ? 'pointer' : 'not-allowed', opacity: fit.ok ? 1 : 0.45,
+              background: fit.ok ? 'rgba(158,116,255,.15)' : 'rgba(120,110,150,.12)', color: fit.ok ? '#d9cffa' : '#6b6390' }}>
             <div style={{ fontSize: 12.5, fontWeight: 800 }}>{x.label}</div>
             <div style={{ fontSize: 11, opacity: .8, lineHeight: 1.4, marginTop: 1 }}>{x.ask}</div>
           </button>
         ))}
-        {!fit.ok && fit.why && <div style={{ fontSize: 10.5, color: theme.muted, lineHeight: 1.45 }}>{fit.why}</div>}
       </Card>}
       {k.asked && <div style={{ fontSize: 11.5, color: k.gave ? theme.good : theme.muted, lineHeight: 1.5, marginBottom: 10 }}>
         {k.gave ? 'They gave you that. Everything on the table is what you leave with.' : 'You asked. They did not move. What is on the table is what is on the table.'}

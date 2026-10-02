@@ -458,7 +458,14 @@ export function askFor(s, id) {
   const spec = ASKS[id];
   const fit = canPush(s);
   if (!fit.ok) { if (fit.why) s.lastEvent = fit.why; return s; }
-  if (!k || !o || !spec) return s;
+  if (!k || !spec) return s;
+  if (!o) {
+    // Should not happen now that a booked part cannot lapse, but a button that does nothing
+    // teaches the player that the screen is broken, and they are right.
+    s.standoff = null;
+    s.lastEvent = `Somewhere between the invitation and the afternoon, ${k.title} stopped being a thing anybody was offering. Nobody in that room was going to say so first.`;
+    return s;
+  }
   spend(s, PUSH_COST);
   k.asked = id;
   k.rounds += 1;
@@ -513,7 +520,12 @@ export function askFor(s, id) {
 // Take what is on the table. The commonest ending, and usually the right one.
 export function takeTheRoom(s) {
   const k = standoff(s), o = standoffOffer(s);
-  if (!k || !o) { s.standoff = null; return s; }
+  if (!k) { s.standoff = null; return s; }
+  if (!o) {
+    s.standoff = null;
+    s.lastEvent = `You put your hand out and there was nothing on the table to shake on. ${k.title} had gone before the afternoon did.`;
+    return s;
+  }
   const p = k.pack;
   o.episodeFee = p.fee;
   o.episodes = p.episodes;

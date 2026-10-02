@@ -93,6 +93,9 @@ export function offersTick(s) {
     if (o.waitsForWrap && !canTakeSet(s, o).ok) { kept.push(o); continue; }
     // A signed paper does not expire, and one that is with them is waiting on them, not you.
     if (o.signed || (o.contract && o.contract.sent)) { kept.push(o); continue; }
+    // Nor does a part with a date in the diary. Everybody who can say yes has cleared an
+    // afternoon for it; nobody lets it lapse in the fortnight before. career/standoff.js
+    if (s.standoff && s.standoff.offerId === o.id) { kept.push(o); continue; }
     // A brand that called for the story (stories.js) goes quiet when the story does.
     // The morality clause, which every one of these contracts has and none of them mentions
     // out loud. A brand leaves the morning your name is in the wrong kind of headline.
