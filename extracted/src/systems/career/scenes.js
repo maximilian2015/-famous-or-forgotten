@@ -138,6 +138,61 @@ export const SCENES = {
 };
 export const SCENE_IDS = Object.keys(SCENES);
 
+// ── how each of them is actually played ───────────────────────────────────────
+// Maxi, looking at a nonogram: "вот как играть это, каждую игру надо объяснять?" Yes, and it
+// was not being done. Every scene had a `hint`, and the hints are mood — "the numbers are runs
+// of good takes" tells you what you are looking at and nothing about what to DO. For a timing
+// bar that is fine, because a bar moving across a green band explains itself. For a nonogram
+// it is not: the rule that makes it solvable is that "1 1" means two separate runs with at
+// least one bad take between them, and nobody who has not met one before will guess that.
+//
+// Rules belong to the MECHANIC, not the scene — sixteen scenes share twelve games, and the
+// take sheet and the crossword are the same puzzle wearing different clothes.
+// Written from the components, not from memory. The first pass of this had a long-press in
+// FrameCheck, a probe in FindTheLight, training widening the timing band, "one bad take ends
+// the scene" for a game that scores it zero, and a motive puzzle described as one question with
+// four answers when it is a consistency test across three. Every one of those was invented, and
+// a rule that is wrong is worse than no rule: the player trusts it and loses the scene by it.
+// If one of these games changes, this changes with it.
+export const RULES = {
+  timing: ['A marker runs back and forth across the bar. Tap the bar to stop it.',
+    'Anywhere in the green is a take, and dead centre is the best one.',
+    'The harder the day, the narrower the green.'],
+  grid: ['Twelve takes. Most of them work, some fall flat, and you cannot tell which until you tap it.',
+    'The more that work, the better the scene — but one that falls flat and the whole thing is a zero.',
+    'The first is always safe. After that you can stop and keep what you have at any point.'],
+  rhythm: ['A line appears and you press Say it. Then the next one.',
+    'The sooner after it appears, the better it lands. A line you never press is a line you dropped.'],
+  hold: ['Holding lifts the mark. Letting go lets it fall, and it drifts on its own besides.',
+    'Keep it in the gold band. You are scored on how much of the take it spent in there, not on where it ends up.'],
+  keys: ['The sequence plays once. Watch it, then tap it back in order.',
+    'There is a clock, and one wrong move ends the take where it stands.'],
+  quick: ['Three ways to play it and a few seconds to choose. None of them is wrong on the page.',
+    'Letting the clock run out is worse than any of them.'],
+  chrono: ['Six scenes in the order they are being SHOT, which is not the order they happen.',
+    'Tick every one that takes place AFTER she finds out, and leave the rest alone.',
+    'All six right is a different take from five.'],
+  lines: ['Three lines are missing and you choose them on the day.',
+    'No option is wrong. What is wrong is three that sound like three different people. Pick a reading and hold it for all three.'],
+  motive: ['First: why she does it. Every answer is defensible, so pick the one you believe.',
+    'Then the day asks you twice more. You are not scored on which motive you chose, only on whether the beats after it were played by the person who chose it.'],
+  frame: ['A grid of camera setups. Some have a boom or a cable in shot and are spoiled.',
+    'The ones the operator has cleared show a number: how many of the eight touching them are spoiled.',
+    'The rest show a ?. Flag the spoiled ones among those, and leave the clean ones alone: a wrong flag costs exactly what a miss costs.'],
+  light: ['The key is on one square and you cannot see it from in here.',
+    'Stand somewhere and they tell you how close: warm is one square off, cool is two, dark is further.',
+    'They never tell you which direction. A few goes, then they shoot it where you are standing.'],
+  cut: ['The assembly, shot by shot, in the wrong order. Tap two shots to swap them.',
+    'Three or four swaps, and fewer is better — lock it as soon as it reads right.'],
+  pairs: ['Every line on the page and everybody at the table, face down.',
+    'Turn over a line and then whoever says it. Wrong and they both turn back, and every wrong pair costs you.'],
+  nono: ['Twenty-five takes in a grid, and the numbers are RUNS of good ones.',
+    'A 3 on a row means three good takes together somewhere in it.',
+    '1 1 means two runs of one, with at least one bad take between them.',
+    'Tap a square to mark it good. Any answer that fits every number counts.'],
+};
+export function rulesFor(game) { return RULES[game] || null; }
+
 // Which scenes this shoot can throw at all — rolled once, so a picture has a character.
 // ── and what you decide to DO with the day ────────────────────────────────────
 // A relayed note, and it is the right criticism: a scene was a test of whether you could play

@@ -34,7 +34,7 @@ import { activeStories } from './systems/meta/stories.js';
 import { ambitionProgress } from './systems/meta/ambition.js';
 import { rename as renameProject, canRename, whyNot, TITLE_MAX } from './systems/career/naming.js';
 import { goals } from './systems/meta/goals.js';
-import { resolveScene, sceneState, approachesFor, chooseApproach, autoQuality } from './systems/career/scenes.js';
+import { resolveScene, sceneState, approachesFor, chooseApproach, autoQuality, rulesFor } from './systems/career/scenes.js';
 import { RhythmLine, HoldZone, KeySequence, QuickPick } from './ui/components/SceneGames.jsx';
 import { Chronology, ScriptLines, Motive } from './ui/components/SceneLogic.jsx';
 import { FrameCheck, FindTheLight, TheAssembly, WhoSaysIt, TakeSheet } from './ui/components/ScenePuzzles.jsx';
@@ -2289,7 +2289,17 @@ function SceneModal({ g }) {
                 {ap.open ? ap.blurb : ap.why}</div></button>))}
           </div></>)
       : state === 'ready'
-      ? (<><div style={{ fontSize: 12.5, color: theme.muted, lineHeight: 1.5, marginBottom: 16 }}>{sc.hint}</div>
+      ? (<>
+          <div style={{ fontSize: 12.5, color: theme.muted, lineHeight: 1.5, marginBottom: 10 }}>{sc.hint}</div>
+          {/* HOW IT IS PLAYED, before Action rather than discovered during it. Maxi, on a
+              nonogram: 'вот как играть это?' The hint is mood — it says what you are looking
+              at. A timing bar explains itself; a grid of numbers does not, and the rule that
+              makes it solvable (that 1 1 means two runs with a gap between) is not guessable
+              by anybody who has not met one before. career/scenes.js RULES. */}
+          {(() => { const r = rulesFor(sc.game); return r ? (<div style={{ background: 'rgba(158,116,255,.10)', border: '1px solid ' + theme.line, borderRadius: 11, padding: '10px 12px', marginBottom: 16 }}>
+            <div style={{ fontSize: 10, fontWeight: 900, letterSpacing: '.08em', textTransform: 'uppercase', color: theme.accent, marginBottom: 5 }}>How it is played</div>
+            {r.map((l, k) => (<div key={k} style={{ fontSize: 12, color: theme.text, opacity: .9, lineHeight: 1.5 }}>{l}</div>))}
+          </div>) : null; })()}
           <Button kind="pri" sfx="action" onClick={() => setState('play')}>Action</Button>
           <div style={{ height: 8 }} />
           <button onClick={auto} style={{ width: '100%', background: 'transparent', border: `1px solid ${theme.line}`,

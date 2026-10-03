@@ -68,6 +68,13 @@ cannot happen, say why on the control, before it is pressed, not in a footnote u
 way for a year, one of them rebuilt in the meantime without anybody noticing the door was
 locked. Delete it, or fix it.
 
+**Write the rules off the component, never off the comment above it.** Explaining the fourteen
+minigames, I wrote six of them from memory: a long-press that does not exist, a probe that does
+not exist, training that widens the timing band when it is difficulty, "one bad take ends the
+scene" for a game that scores it zero, a motive puzzle described as one question when it is a
+consistency test across three. A wrong rule is worse than no rule — the player trusts it and
+loses the scene by it. Open the file and read what the handler does.
+
 ## Working style
 
 - Be concise after tool use. Do not paste raw test or simulation output; print a summary and

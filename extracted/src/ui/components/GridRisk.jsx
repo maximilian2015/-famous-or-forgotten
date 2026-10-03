@@ -53,6 +53,15 @@ export function GridRisk({ cols = 4, rows = 3, bad = 4, full = 0, labelSafe = '�
   }
 
   return (<div>
+    {/* The rule nobody was ever told. Every screen that uses this says "stop while you are
+        ahead", which implies a cost without naming one — and the cost is not a smaller score,
+        it is a ZERO. The first tile being clean is the other unstated one. Both live here
+        rather than in the five wrappers: one source, and every caller inherits it. The scene
+        minigames say their rules from career/scenes.js RULES; this is the one that is also
+        every audition and every night shift, so it says its own. */}
+    <div style={{ fontSize: 11, color: theme.muted, lineHeight: 1.45, marginBottom: 8, opacity: .85 }}>
+      One that goes wrong and the whole thing is a zero — {revealed.length === 0 ? 'though the first is always safe.' : 'stop and you keep what you have.'}
+    </div>
     <div style={{ display: 'grid', gridTemplateColumns: `repeat(${cols}, 1fr)`, gap: 6, marginBottom: 8 }}>
       {Array.from({ length: total }).map((_, i) => {
         const isRevealed = revealed.includes(i); const isBust = busted === i;
