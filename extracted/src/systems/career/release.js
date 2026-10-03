@@ -582,6 +582,12 @@ export function scheduleRelease(s, credit, p) {
     scale: p.scale || 'feature', tier: p.tier || 'lead', season: p.season || 0,
     episodes: p.episodes || 0, part: p.part || 1, salary: credit.salary,
     rating: credit.rating, status: credit.status, worldHit: credit.status === 'World Hit',
+    // The shoot where everything landed (production.js). It has to ride all the way to the
+    // filmography, and the credit is REBUILT on opening night from this object — so a field
+    // that stops here is a field that does not exist. Mine stopped here and was dead from the
+    // moment it was committed: across six careers, 23 films rated 90+ and not one credit
+    // carried the flag at all, which is what the probe was for.
+    exceptional: !!credit.exceptional,
     // Carried for the Asker season: whether it was pushed, and how good the material was.
     campaign: !!p.campaign, prestigeScore: p.prestigeScore, director: credit.director || null,
     // And how the set went, because the business judges the performance, not only the film.
@@ -833,6 +839,7 @@ function open(s, rel) {
     scale: rel.scale, tier: rel.tier, prestigeScore: rel.prestigeScore, director: rel.director || null,
     premise: rel.premise || null, take: rel.take || null, potential: rel.potential || null,
     campaignShare: rel.campaign ? 0.65 : 0,
+    exceptional: !!rel.exceptional,
     with: rel.with || null, withId: rel.withId || null, withIcon: !!rel.withIcon, withFame: rel.withFame || 0,
     festival: fest,
   };

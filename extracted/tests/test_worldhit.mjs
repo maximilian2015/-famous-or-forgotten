@@ -101,6 +101,21 @@ const ok = (n, c, e = '') => { if (!c) { fails++; console.log('FAIL  ' + n + (e 
   ok('the scale bar sits above every break-even in the game', 700e6 > barBig, `€700m vs €${Math.round(barBig / 1e6)}m`);
 }
 
+// ── the field that did not exist ──────────────────────────────────────────────
+// `exceptional` was committed onto the wrap credit and was dead on arrival: release.js builds a
+// BRAND NEW credit on opening night out of the release object, so anything not copied twice —
+// wrap credit → rel → opening credit — is gone by the time the filmography sees it. The career
+// probe is what found it: across six lives, 23 films rated 90+ and not one credit carried the
+// flag at all. Both hops are checked here because a single missing line restores the bug in
+// silence, and nothing else in the suite walks a film from a set to a filmography.
+{
+  const rel = fs.readFileSync(new URL('../src/systems/career/release.js', import.meta.url), 'utf8');
+  ok('the wrap credit hands exceptional to the release', /exceptional: !!credit\.exceptional/.test(rel));
+  ok('and the release hands it to the credit the filmography keeps', /exceptional: !!rel\.exceptional/.test(rel));
+  const prod = fs.readFileSync(new URL('../src/systems/career/production.js', import.meta.url), 'utf8');
+  ok('and the set is what sets it', /status, year: s\.year, exceptional,/.test(prod));
+}
+
 // ── how often, which is the number that decides whether this is a career highlight ──
 {
   const GENRES = ['Drama', 'Crime', 'Romance', 'Musical', 'Thriller', 'Sci-Fi', 'Comedy', 'Horror'];
