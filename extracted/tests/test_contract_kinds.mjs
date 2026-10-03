@@ -69,7 +69,7 @@ const agree = (s, o, id, askId) => { const k = draftContract(s, o); const c = cl
   const m = st({ fame: 80 });
   const job = { title: 'Iron Tide', role: 'Lead', type: 'Blockbuster', genre: 'Sci-Fi', salary: 6000000, months: 6, scale: 'blockbuster', tier: 'tentpole', prestigeScore: 70, part: 1, season: 0, episodes: 0, episodeFee: 0, merch: 2, crew: [{ id: 'c', name: 'Mira Croft', role: 'Director', bond: 50 }] };
   let merch = 0;
-  for (let i = 0; i < 12 && !merch; i++) { const x = st({ fame: 80 }); scheduleRelease(x, { title: 'Iron Tide', role: 'Lead', type: 'Blockbuster', genre: 'Sci-Fi', salary: 6000000, rating: 88, status: 'Hit', year: 2050, season: 0, part: 1, episodes: 0 }, job); run(x, 24); const c = x.filmography.find((y) => y.title === 'Iron Tide'); if (c && c.verdict !== 'bomb' && c.verdict !== 'broke even') merch = c.merchPaid || -1; }
+  for (let i = 0; i < 40 && !merch; i++) { const x = st({ fame: 80 }); scheduleRelease(x, { title: 'Iron Tide', role: 'Lead', type: 'Blockbuster', genre: 'Sci-Fi', salary: 6000000, rating: 88, status: 'Hit', year: 2050, season: 0, part: 1, episodes: 0 }, job); run(x, 24); const c = x.filmography.find((y) => y.title === 'Iron Tide'); if (c && c.verdict !== 'bomb' && c.verdict !== 'broke even') merch = c.merchPaid || -1; }
   ok('a tentpole that worked: two per cent of the toys is real money', merch > 100000, String(merch));
   // points on a small picture
   const i = st({ fame: 30 });

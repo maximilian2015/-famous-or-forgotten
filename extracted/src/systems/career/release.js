@@ -1094,8 +1094,12 @@ function closeRun(s, credit, r) {
   // The gross means nothing on its own — "a billion" is only a triumph next to what it cost.
   // The industry never quotes one without the other and neither should this.
   const bud = budgetFor({ scale: r.scale });
+  // Past a billion it is written as a billion. "€1163m" is a number you have to stop and count
+  // the digits of, which is the opposite of what that line is for. This half came in with an
+  // uncommitted cut to the opening constant that was reverted — the cut made a billion
+  // impossible and broke three tests; saying the number properly was right and stayed.
   const money = film
-    ? `€${(credit.boxOffice / 1000000).toFixed(credit.boxOffice >= 100000000 ? 0 : 1)}m on a €${(bud / 1000000).toFixed(0)}m film, ${credit.weeksTotal} weeks`
+    ? `${credit.boxOffice >= 1e9 ? `€${(credit.boxOffice / 1e9).toFixed(2)}bn` : `€${(credit.boxOffice / 1000000).toFixed(credit.boxOffice >= 100000000 ? 0 : 1)}m`} on a €${(bud / 1000000).toFixed(0)}m film, ${credit.weeksTotal} weeks`
     : (credit.openViewers && credit.endViewers)
       ? `${credit.openViewers}m for the first, ${credit.endViewers}m for the last`
       : `${credit.viewers}m watching`;
