@@ -1,0 +1,240 @@
+// Does every screen still draw.
+//
+// This is step zero of taking App.jsx apart, and it exists because of a hole rather than a plan.
+// What protects the interface today:
+//
+//   build-singlefile.mjs  catches a JSX SYNTAX error and nothing else;
+//   oxlint                catches an unused import and nothing about rendering;
+//   autoplay.mjs          plays one life through the real interface — and never lands an acting
+//                         part, because an audition is a minigame, so it never once reaches the
+//                         career half of the game;
+//   test_filmography      one screen, through a seeded save;
+//   test_rules            one modal, through a seeded save.
+//
+// So the career side of the interface has no cover at all. That is not a theory: a change of
+// mine put `{c.character}` — an object — straight into JSX, React threw, the whole filmography
+// went black, and the build was fine and sixty tests were green. Moving components out of a
+// 3,459-line file is exactly the operation that breaks a screen while everything stays green.
+//
+// This visits every screen there is and asserts two things that are hard to fake: that nothing
+// threw, and that the screen has words on it. A React render exception leaves an empty root and
+// logs to console.error; both are failures here.
+//
+// Deterministic on purpose. Math.random is replaced with a seeded generator INSIDE the page
+// before a line of the bundle runs, so two runs of this file see the same game. A smoke test
+// that fails one run in ten teaches people to re-run it, which is worse than not having it.
+import { JSDOM, VirtualConsole } from 'jsdom';
+import fs from 'fs';
+import path from 'path';
+import { fileURLToPath } from 'url';
+import { visibleApps } from '../src/phone/apps/registry.js';
+
+const gameDir = fileURLToPath(new URL('../', import.meta.url));
+const HTML = path.join(gameDir, 'dist/game.html');
+let fails = 0;
+const ok = (n, c, e = '') => { if (!c) { fails++; console.log('FAIL  ' + n + (e ? ' :: ' + e : '')); } else console.log('ok    ' + n); };
+
+if (!fs.existsSync(HTML)) { console.log('FAIL  no dist/game.html — run node build-singlefile.mjs'); process.exit(1); }
+
+// store.js throws a save away in silence when the version does not match and starts a new life
+// instead, so every check would run against the birth screen and pass nothing. Read it out of
+// the source rather than writing it down here, where it would rot at the next bump.
+const VERSION = (fs.readFileSync(path.join(gameDir, 'src/state/store.js'), 'utf8')
+  .match(/CURRENT_VERSION = '([^']+)'/) || [])[1];
+if (!VERSION) { console.log('FAIL  could not read CURRENT_VERSION from store.js'); process.exit(1); }
+
+// ── a career with one of everything a screen knows how to draw ────────────────
+// Shaped the way the game really stores these: a character is an object, a festival film has a
+// festival, a season has episodes, a set has a crew with bonds on it.
+const SET = { id: 'p1', title: 'Buried Hunger', type: 'Feature Film', genre: 'Crime', scale: 'feature',
+  months: 6, monthsLeft: 3, prepLeft: 0, meter: 58, stability: 82, director: 'Rosalind Varga', role: 'Lead',
+  salary: 600000, tier: 'lead', prestigeScore: 60,
+  // Without a take on it, App.jsx shows the first-day StoryRoom over the whole screen and
+  // every check below reports "no button for it". That room is a real screen and it gets its
+  // own visit at the end, from a second set that has not been argued about yet.
+  take: 'straight', takeWon: true, premise: 'A harbour town, a disappearance, a sister who will not leave.',
+  crew: [{ id: 'c0', name: 'Rosalind Varga', role: 'Director', bond: 56, bond0: 50 },
+    { id: 'c1', name: 'Zora Sorensen', role: 'Co-star', bond: 44, bond0: 44 },
+    { id: 'c2', name: 'Ivo Prins', role: 'Camera Operator', bond: 49, bond0: 49 }] };
+
+const save = {
+  version: VERSION, created: true, stage: 'career', alive: true, dream: 'actor', gender: 'female',
+  name: 'Alex Moon', ageY: 44, year: 2066, month: 3, city: 'Amsterdam',
+  fame: 62, peakFame: 64, respect: 58, media: 24, scandal: 4, mental: 62, health: 78, strain: 14,
+  acting: 74, charisma: 58, looks: 60, luck: 50, cash: 820000, quote: 900000,
+  hasApartment: true, livingWith: 'own_place', housing: 'flat',
+  ap: 100, apMax: 100, apMaxEff: 100,
+  production: SET, productions: [SET],
+  offers: [
+    { id: 'o1', projectTitle: 'Sisters and Liars', role: 'Lead', type: 'Feature Film', genre: 'Drama',
+      tier: 'lead', scale: 'feature', months: 3, salary: 400000, deadline: 2, prestigeScore: 58, stability: 80,
+      director: 'Vera Salazar', via: 'agent' },
+    { id: 'o2', projectTitle: 'Night Shift · Season 4', role: 'Series regular', type: 'TV Series', genre: 'Drama',
+      tier: 'lead', scale: 'recurring', months: 5, salary: 300000, episodes: 10, season: 4, kind: 'renewal',
+      deadline: 3, signed: true, startAt: 2066 * 12 + 6, prestigeScore: 52, stability: 85, director: 'Mira Croft' },
+  ],
+  inbox: [
+    { id: 'm1', from: 'Aurora Films · business affairs', subj: 'A note about the schedule', tag: 'contract',
+      kind: 'contract', read: false, body: 'We are holding the dates and will write again.',
+      cta: [{ label: 'Understood', fx: {}, reply: 'Understood.' }] },
+  ],
+  filmography: [
+    { title: 'Buried Hunger', role: 'Lead', type: 'Feature Film', genre: 'Crime', year: 2064, scale: 'feature',
+      rating: 74, score: 7.4, status: 'Well-received', verdict: 'profitable', critical: 'well received',
+      boxOffice: 240000000, needed: 182000000, director: 'Rosalind Varga', running: false, tier: 'lead',
+      character: { name: 'Nadia Kerr', what: 'a detective who is also the suspect', tier: 'lead' },
+      premise: 'A harbour town, a disappearance, a sister who will not leave.',
+      onSet: ['In the film now: a four-minute monologue played in one.'],
+      career: 'the right people noticed', careerTone: 'good', careerRespect: 5, careerFame: 3 },
+    { title: 'WellPlanned', role: 'Lead', type: 'Festival Film', genre: 'Thriller', year: 2063, scale: 'festival',
+      rating: 68, score: 6.8, status: 'Released', verdict: 'unsold', critical: 'mixed', tier: 'lead',
+      director: 'Kaspar Hartigan', running: false, character: { name: 'Ilse Brandt', what: 'a forger', tier: 'lead' },
+      festival: { name: 'the Croisette', result: 'unsold' } },
+    { title: 'Night Shift · Season 3', role: 'Series regular', type: 'TV Series', genre: 'Drama', scale: 'recurring',
+      year: 2062, season: 3, episodes: 10, rating: 75, score: 7.5, status: 'Well-received', tier: 'lead',
+      verdict: 'watched', critical: 'well received', viewers: 6.4, running: false, director: 'Mira Croft',
+      character: { name: 'Prue Vance', what: 'the one who stayed', tier: 'lead' } },
+  ],
+  releases: [], discography: [], timeline: [{ text: 'A life began.', year: 2022, month: 4 }],
+  genreXP: { Crime: 40, Drama: 28 },
+  awards: { wins: [{ name: 'Best Actress', body: 'The Academy', year: 2065 }], nominations: [{ name: 'Best Actress', body: 'The Academy', year: 2063 }] },
+  people: [
+    { id: 'pp1', name: 'Juno Vance', role: 'friend', relationship: 62, met: 2052, cold: false },
+    { id: 'pp2', name: 'Rosalind Varga', role: 'director', relationship: 55, met: 2063, cold: false, weight: 70 },
+  ],
+  family: [
+    { id: 'f1', name: 'Marta Moon', relation: 'Mother', role: 'mother', alive: true, born: 1996, relationship: 58 },
+    { id: 'f2', name: 'Pelle Moon', relation: 'Brother', role: 'sibling', alive: true, born: 2024, relationship: 44 },
+  ],
+  partner: { id: 'f3', name: 'Tomas Berg', job: 'an architect', age: 46, relationship: 70, born: 2020 },
+  staff: { assistant: true },
+  castingPool: [], submissions: [], datingPool: [],
+};
+
+// ── booting it, with the dice nailed down ─────────────────────────────────────
+const SEED = '<script>(function(){var x=123456789;Math.random=function(){x^=x<<13;x>>>=0;x^=x>>17;x^=x<<5;x>>>=0;return (x>>>0)/4294967296;};})()</script>';
+const seeded = fs.readFileSync(HTML, 'utf8')
+  .replace('<div id="root"></div><script>',
+    `<div id="root"></div><script>try{localStorage.setItem('fof_react_save',${JSON.stringify(JSON.stringify(save))})}catch(e){}</script>${SEED}<script>`);
+
+const errors = [];
+const vc = new VirtualConsole();
+vc.on('jsdomError', (e) => { if (!/navigation to another Document/.test(e.message)) errors.push('jsdom: ' + e.message); });
+// React reports a render exception through console.error before the tree comes down. Without
+// this a screen could go black and the only sign would be a short page.
+vc.on('error', (...a) => errors.push('console: ' + a.join(' ').slice(0, 220)));
+const dom = new JSDOM(seeded, { runScripts: 'dangerously', resources: 'usable',
+  url: 'https://localhost/game.html', virtualConsole: vc });
+const W = dom.window, D = W.document;
+W.onerror = (m) => errors.push('onerror: ' + String(m).slice(0, 220));
+W.requestAnimationFrame = (f) => W.setTimeout(() => f(Date.now()), 16);
+if (W.URL && !W.URL.createObjectURL) W.URL.createObjectURL = () => 'blob:stub';
+W.confirm = () => false;   // nothing in a smoke test gets to end the life
+
+const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+await sleep(1200);
+
+// Only what a person can read. body.textContent includes the inline bundle source, and a search
+// through that once reported a bug that was not on the screen at all.
+const visible = () => [...D.body.querySelectorAll('*')]
+  .filter((el) => el.tagName !== 'SCRIPT' && el.tagName !== 'STYLE')
+  .map((el) => [...el.childNodes].filter((c) => c.nodeType === 3).map((c) => c.textContent).join(' '))
+  .join(' ').replace(/\s+/g, ' ').trim();
+const label = (b) => (b.textContent || '').replace(/\s+/g, ' ').trim();
+const click = async (b) => { if (!b) return false; b.dispatchEvent(new W.MouseEvent('click', { bubbles: true })); await sleep(260); return true; };
+// Emoji are surrogate pairs, so a pattern like /^📱?\s*Phone$/ without the u flag applies the ?
+// to half a character and never matches — which is how the phone came back unreachable. Worse
+// was what the matching ones were doing: the first button on the page reading "Home" belongs to
+// the Style tab bar, not the navigation, so those screens were being "covered" by accident.
+// So the navigation is addressed by what it IS — BottomNav marks every one of its buttons
+// data-sfx="nav" — and text is compared with the pictures stripped out.
+// ...and the pictures are not the only thing in a label. Career and Phone carry an unread
+// badge, so stripping emoji leaves "Career1" and "Phone2" and neither matched. A trailing
+// count is not part of the name.
+const plain = (b) => label(b).replace(/[^\x20-\x7E]/g, '').replace(/\s+/g, ' ').replace(/\d+$/, '').trim();
+// And data-sfx="nav" is not unique to the bottom bar — the Style tab strip uses it too, so
+// excluding everything with it also excluded four of the screens being looked for. The bottom
+// bar is the LAST six of them in document order, because it renders after everything else.
+const NAV6 = ['Home', 'Career', 'People', 'Style', 'Legacy', 'Phone'];
+const navs = () => [...D.querySelectorAll('button[data-sfx="nav"]')]
+  .filter((x) => !x.disabled && NAV6.includes(plain(x))).slice(-6);
+const goNav = (name) => () => click(navs().find((b) => plain(b) === name));
+// Anything that is not one of those six: a tab inside a screen, an app on the phone.
+const inside = (test) => { const bar = new Set(navs());
+  return [...D.querySelectorAll('button')].filter((x) => !x.disabled && !bar.has(x)).find((x) => test(plain(x))); };
+const press = (test) => () => click(inside(typeof test === 'function' ? test : (t) => t === test));
+
+ok('the save loaded into a career rather than a birth screen', /Alex Moon/.test(visible()), visible().slice(0, 90));
+ok('nothing threw while it booted', errors.length === 0, errors.slice(0, 2).join(' | '));
+
+// ── every screen ──────────────────────────────────────────────────────────────
+// A screen is covered when it draws words. The floor is deliberately low: this is not a test of
+// what a screen says, it is a test of whether React got through it. An exception leaves an empty
+// root, which is nowhere near 120 characters.
+const FLOOR = 120;
+// How much of what is on screen has to be NEW. Measuring the whole page instead does not work
+// and I had it that way first: a tab whose contents render as nothing still sits under a header,
+// a stat block and a tab strip, which is six hundred characters of chrome. Emptying a screen
+// entirely left the test green. What a dead screen actually looks like is a switch that brings
+// nothing with it, so what gets measured is the text that was not there a moment ago.
+const MIN_NEW = 40;
+const bag = (t) => { const m = new Map(); for (const w of t.split(' ')) if (w) m.set(w, (m.get(w) || 0) + 1); return m; };
+const freshChars = (before, after) => { const b = bag(before); let n = 0;
+  for (const w of after.split(' ')) { if (!w) continue; const have = b.get(w) || 0; if (have) b.set(w, have - 1); else n += w.length + 1; }
+  return n; };
+const seen = [], missed = [];
+const visit = async (name, go) => {
+  const errs = errors.length;
+  const was = visible();
+  const got = await go();
+  if (!got) { missed.push(name + ' (could not get there)'); ok(`${name}: reachable`, false, 'no button for it'); return; }
+  const text = visible();
+  const nodes = D.body.querySelectorAll('*').length;
+  const threw = errors.slice(errs);
+  if (threw.length) { missed.push(name + ' (threw)'); ok(`${name}: nothing threw`, false, threw[0]); return; }
+  if (text.length < FLOOR || nodes < 25) { missed.push(name + ' (blank)'); ok(`${name}: has something on it`, false, `${text.length} chars, ${nodes} nodes`); return; }
+  const fresh = freshChars(was, text);
+  if (fresh < MIN_NEW) { missed.push(name + ' (brought nothing)'); ok(`${name}: brought something of its own`, false, `${fresh} new characters`); return; }
+  seen.push(name);
+  ok(`${name}`, true);
+};
+
+ok('the navigation has all six of its tabs', navs().length === 6, navs().map(plain).join(', '));
+
+// The tab a screen opens ON is visited LAST. Pressing the tab you are already looking at brings
+// nothing new by definition, and that is indistinguishable from a tab that renders nothing.
+await visit('Career', goNav('Career'));
+for (const t of ['Training', 'Filmography', 'Events', 'Calendar']) await visit('Career · ' + t, press(t));
+await visit('People', goNav('People'));
+for (const t of ['Contacts', 'Family']) await visit('People · ' + t, press(t));
+await visit('Style', goNav('Style'));
+for (const t of ['People', 'Things', 'Body', 'Home']) await visit('Style · ' + t, press(t));
+await visit('Legacy', goNav('Legacy'));
+await visit('Home', goNav('Home'));
+await visit('Phone', goNav('Phone'));
+
+// The phone's apps come from a registry, so the test knows what SHOULD be there rather than
+// only what it happened to find — an app added later is reported as uncovered instead of
+// quietly never being visited.
+const apps = visibleApps(save).filter((a) => !(a.lock && a.lock(save)));
+for (const app of apps) {
+  await visit('Phone · ' + app.name, async () => {
+    await click(inside((t) => t === 'Apps'));                  // out of whichever app is open
+    await click(navs().find((b) => plain(b) === 'Phone'));     // and onto the phone itself
+    return click(inside((t) => t === app.name || t.endsWith(app.name)));
+  });
+}
+
+console.log();
+console.log('      covered (' + seen.length + '): ' + seen.join(', '));
+console.log('      NOT covered (' + missed.length + '): ' + (missed.join(', ') || 'nothing'));
+// What this file still does not reach, said out loud so nobody reads a green run as more than
+// it is. These need a state the save cannot simply assert into being, or a flow to walk.
+console.log('      still uncovered by any test: the contract room, the negotiation, the scene');
+console.log('      minigames themselves, the awards night, the end-of-life screen, the creator.');
+
+ok('every screen that exists was reached and drew something', missed.length === 0, missed.join(', '));
+ok('and nothing threw anywhere in the whole walk', errors.length === 0, errors.slice(0, 3).join(' | '));
+
+console.log(fails ? `\n${fails} failed` : '\nall passed');
+process.exit(fails ? 1 : 0);
