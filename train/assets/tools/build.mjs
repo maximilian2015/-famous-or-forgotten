@@ -29,9 +29,11 @@ const TRAINS = { red: '#d9534f', blue: '#3b7dd8', green: '#2e9e5b', yellow: '#e2
 
 // ---------- мелкие помощники ----------
 const disc = (img, cx, cy, r, c) => { for (let y = -r; y <= r; y++) for (let x = -r; x <= r; x++) if (x * x + y * y <= r * r + r * 0.4) img.set(cx + x, cy + y, c); };
-// «крапинка»: детерминированный шум, чтобы плитки не были плоскими
+// «крапинка»: детерминированный шум, чтобы плитки не были плоскими.
+// Хеш, а не (i*7+j*13)%n — иначе по тайлам идут диагональные полосы, и шов видно.
+const hash = (x, y, s) => { let n = (x * 374761393 + y * 668265263 + s * 2654435761) | 0; n = Math.imul(n ^ (n >>> 13), 1274126177); return ((n ^ (n >>> 16)) >>> 0) / 4294967296; };
 const noise = (img, x, y, w, h, c, step, seed = 1) => {
-  for (let j = 0; j < h; j++) for (let i = 0; i < w; i++) { const n = (i * 7 + j * 13 + seed * 29) % step; if (n === 0) img.set(x + i, y + j, c); }
+  for (let j = 0; j < h; j++) for (let i = 0; i < w; i++) if (hash(i, j, seed) < 1 / step) img.set(x + i, y + j, c);
 };
 
 // ---------- поезд сбоку ----------
@@ -44,7 +46,7 @@ function bogie(img, x, y) {
 
 // вагон 96×48, двери открыты или закрыты
 function carriage(color, open) {
-  const c = hex(color), img = new Img(96, 48);
+  const c = hex(color), img = new Img(96, 52);
   img.rect(3, 2, 90, 4, P.roof); img.hline(5, 1, 86, P.roofLight); img.hline(3, 5, 90, dark(P.roof, 0.2));
   img.rect(1, 6, 94, 30, P.cream);
   img.rect(1, 30, 94, 6, c); img.hline(1, 30, 94, light(c, 0.3)); img.hline(1, 35, 94, dark(c, 0.3));   // цветная полоса
@@ -73,7 +75,7 @@ function carriage(color, open) {
 
 // локомотив 64×48, носом вправо: скошенный лоб, кабина, буферный брус
 function loco(color) {
-  const c = hex(color), img = new Img(64, 48);
+  const c = hex(color), img = new Img(64, 52);
   const topAt = x => x < 44 ? 7 : Math.min(18, 7 + Math.round((x - 44) * 0.62));
   for (let x = 2; x <= 60; x++) { const t = topAt(x); img.vline(x, t, 36 - t, c); img.set(x, t, light(c, 0.35)); }
   img.rect(4, 2, 30, 6, dark(c, 0.4)); img.hline(5, 1, 28, dark(c, 0.2)); img.hline(4, 7, 30, dark(c, 0.55));   // крыша над кабиной
@@ -84,10 +86,10 @@ function loco(color) {
   img.rect(24, 12, 11, 9, light(c, 0.25)); img.rect(25, 13, 9, 7, dark(c, 0.3));   // щиток для номера
   img.rect(2, 27, 58, 4, P.white); img.hline(2, 27, 58, light(P.white, 0.4)); img.hline(2, 30, 58, P.creamDark);   // белая полоса
   img.rect(2, 36, 58, 3, P.metal);
-  img.rect(50, 33, 12, 5, P.yellow); for (let x = 51; x < 62; x += 4) { img.vline(x, 33, 5, P.wheel); img.vline(x + 1, 33, 5, P.wheel); }   // буферный брус
-  wheel(img, 13, 41); wheel(img, 28, 41); wheel(img, 43, 41);
-  img.rect(10, 38, 36, 2, dark(P.metal, 0.2));
-  disc(img, 56, 24, 2, hex('#ffe9a0')); img.set(56, 24, P.white);        // фара
+  wheel(img, 13, 44); wheel(img, 28, 44); wheel(img, 43, 44);
+  img.rect(10, 39, 36, 2, dark(P.metal, 0.2));
+  for (const hx of [50, 56]) { img.rect(hx, 31, 4, 3, P.metalLight); img.rect(hx + 1, 32, 2, 1, hex('#fff3c4')); }   // фары
+  img.rect(48, 36, 14, 4, P.yellow); for (let x = 49; x < 62; x += 4) img.rect(x, 36, 2, 4, P.wheel);   // буферный брус в «зебре»
   img.rect(0, 38, 3, 3, P.metal);
   return img.outline(P.outline);
 }
@@ -102,51 +104,53 @@ function tileSheet(tiles, cols) {
 }
 const tile = fn => { const img = new Img(T, T); fn(img); return img; };
 
-function stationTiles() {
+function stationTileList() {
   const t = [];
   // 0 перрон
   t.push(tile(i => { i.rect(0, 0, T, T, P.plat); noise(i, 0, 0, T, T, P.platLight, 11, 2); i.vline(0, 0, T, P.platDark); i.hline(0, 0, T, P.platDark); }));
   // 1 перрон, край с жёлтой линией сверху
   t.push(tile(i => { i.rect(0, 0, T, T, P.plat); noise(i, 0, 0, T, T, P.platLight, 11, 3); i.rect(0, 0, T, 3, P.yellow); i.hline(0, 3, T, P.yellowDark); }));
-  // 2 тактильная плитка
+  // 2 перрон, край с жёлтой линией снизу (сторона пути)
+  t.push(tile(i => { i.rect(0, 0, T, T, P.plat); noise(i, 0, 0, T, T, P.platLight, 11, 3); i.rect(0, 13, T, 3, P.yellow); i.hline(0, 12, T, P.yellowDark); }));
+  // 3 тактильная плитка
   t.push(tile(i => { i.rect(0, 0, T, T, P.yellow); for (let y = 2; y < T; y += 4) for (let x = 2; x < T; x += 4) i.rect(x, y, 2, 2, P.yellowDark); }));
-  // 3 обрыв перрона вниз (бетон)
+  // 4 обрыв перрона вниз (бетон)
   t.push(tile(i => { i.rect(0, 0, T, T, P.platDark); i.hline(0, 0, T, P.plat); noise(i, 0, 2, T, 14, dark(P.platDark, 0.18), 7, 5); }));
-  // 4 балласт
+  // 5 балласт
   t.push(tile(i => { i.rect(0, 0, T, T, P.ballast); noise(i, 0, 0, T, T, P.ballastDark, 5, 1); noise(i, 0, 0, T, T, light(P.ballast, 0.25), 9, 4); }));
-  // 5 рельсы (горизонтально)
+  // 6 рельсы (горизонтально)
   t.push(tile(i => {
     i.rect(0, 0, T, T, P.ballast); noise(i, 0, 0, T, T, P.ballastDark, 5, 1);
     for (const x of [1, 9]) { i.rect(x, 2, 6, 12, P.sleeper); i.hline(x, 13, 6, P.sleeperDark); }
     i.hline(0, 4, T, P.railDark); i.hline(0, 5, T, P.rail); i.hline(0, 10, T, P.railDark); i.hline(0, 11, T, P.rail);
   }));
-  // 6 трава
+  // 7 трава
   t.push(tile(i => { i.rect(0, 0, T, T, P.grass); noise(i, 0, 0, T, T, P.grassDark, 6, 2); noise(i, 0, 0, T, T, light(P.grass, 0.2), 13, 7); }));
-  // 7 кирпичная стена
+  // 8 кирпичная стена
   t.push(tile(i => {
     i.rect(0, 0, T, T, P.brick);
     for (let y = 0; y < T; y += 4) { i.hline(0, y, T, P.brickDark); for (let x = (y % 8 ? 0 : 4); x < T; x += 8) i.vline(x, y, 4, P.brickDark); }
   }));
-  // 8 стена с окном
+  // 9 стена с окном
   t.push(tile(i => {
     i.rect(0, 0, T, T, P.brick);
     for (let y = 0; y < T; y += 4) i.hline(0, y, T, P.brickDark);
     i.rect(2, 2, 12, 12, P.white); i.rect(3, 3, 10, 10, P.glass); i.hline(3, 3, 10, P.glassLight); i.vline(8, 3, 10, P.white); i.hline(3, 8, 10, P.white);
   }));
-  // 9 крыша
+  // 10 крыша
   t.push(tile(i => { i.rect(0, 0, T, T, P.tile); for (let y = 0; y < T; y += 4) { i.hline(0, y, T, P.tileDark); for (let x = (y % 8 ? 2 : 6); x < T; x += 8) i.vline(x, y, 4, P.tileDark); } }));
-  // 10 край крыши (свес)
+  // 11 край крыши (свес)
   t.push(tile(i => { i.rect(0, 4, T, 12, P.tile); i.hline(0, 4, T, light(P.tile, 0.25)); i.rect(0, 12, T, 4, P.tileDark); }));
-  // 11 дверь вокзала (верх)
+  // 12 дверь вокзала (верх)
   t.push(tile(i => { i.rect(0, 0, T, T, P.brick); for (let y = 0; y < T; y += 4) i.hline(0, y, T, P.brickDark); i.rect(2, 4, 12, 12, P.wood); i.rect(3, 6, 10, 8, P.glass); i.hline(3, 6, 10, P.glassLight); }));
-  // 12 дверь вокзала (низ)
+  // 13 дверь вокзала (низ)
   t.push(tile(i => { i.rect(0, 0, T, T, P.brick); for (let y = 0; y < T; y += 4) i.hline(0, y, T, P.brickDark); i.rect(2, 0, 12, 14, P.wood); i.rect(3, 1, 10, 12, P.woodDark); i.set(11, 7, P.yellow); i.rect(0, 14, T, 2, P.plat); }));
-  // 13 асфальт/плитка привокзальная
+  // 14 асфальт/плитка привокзальная
   t.push(tile(i => { i.rect(0, 0, T, T, P.platDark); i.hline(0, 0, T, P.plat); i.vline(0, 0, T, P.plat); noise(i, 1, 1, 15, 15, dark(P.platDark, 0.12), 8, 6); }));
-  return tileSheet(t, 7);
+  return t;
 }
 
-function interiorTiles(color) {
+function interiorTileList(color) {
   const c = hex(color), t = [];
   // 0 пол
   t.push(tile(i => { i.rect(0, 0, T, T, P.floor); noise(i, 0, 0, T, T, P.floorDark, 9, 3); }));
@@ -172,7 +176,63 @@ function interiorTiles(color) {
   t.push(tile(i => { i.rect(0, 0, T, T, P.floor); noise(i, 0, 0, T, T, P.floorDark, 9, 3); i.rect(7, 0, 2, T, P.metalLight); i.vline(7, 0, T, P.metal); }));
   // 11 тамбур / гармошка между вагонами
   t.push(tile(i => { i.rect(0, 0, T, T, dark(P.metal, 0.1)); for (let x = 1; x < T; x += 3) { i.vline(x, 0, T, P.metalLight); i.vline(x + 1, 0, T, dark(P.metal, 0.3)); } }));
-  return tileSheet(t, 6);
+  return t;
+}
+
+// Салон в разрезе: 160×96, один вагон. Отдаётся двумя слоями, чтобы пассажиры были «внутри»:
+//   back  — потолок, окна, спинки дальнего ряда, пол;  front — подушки дальнего ряда и спинки ближнего.
+// Порядок в Godot: back → пассажиры → front. Координаты мест — в anchors.json.
+const SEAT_X = [20, 60, 100, 140];           // центры мест дальнего ряда
+const STAND_X = [34, 60, 86, 112, 138];      // где стоят в проходе
+function carriageInterior(color, opts = {}) {
+  const c = hex(color), img = new Img(160, 96);
+  const night = !!opts.night, layer = opts.layer || 'flat';
+  const back = layer !== 'front', front = layer !== 'back';
+  if (back) {
+    img.rect(0, 0, 160, 96, P.cream);
+    img.rect(0, 0, 160, 5, P.creamLight);                                   // потолок
+    for (let x = 14; x < 160; x += 36) { img.rect(x, 1, 14, 3, hex('#fff1b8')); img.hline(x, 0, 14, P.creamDark); }
+    img.rect(0, 6, 160, 2, P.metalLight); img.hline(0, 7, 160, P.metal);     // багажная полка
+    for (let x = 4; x < 160; x += 6) img.vline(x, 3, 3, P.metalLight);
+    for (let i = 0; i < 4; i++) {                                            // окна
+      const x = 8 + i * 38;
+      img.rect(x, 12, 30, 22, P.creamDark);
+      img.rect(x + 1, 13, 28, 20, night ? P.glassNight : P.glass);
+      if (!night) { img.rect(x + 1, 13, 28, 9, P.glassLight); img.rect(x + 1, 22, 28, 11, hex('#8fae5a')); img.hline(x + 1, 22, 28, hex('#a9c46d')); }
+      else for (let k = 0; k < 6; k++) img.set(x + 4 + k * 5, 16 + (k % 3) * 4, hex('#ffe9a0'));
+      img.frame(x, 12, 30, 22, P.creamDark);
+    }
+    img.hline(0, 35, 160, P.creamDark);
+    for (const sx of SEAT_X) {                                               // спинки дальнего ряда
+      img.rect(sx - 15, 38, 30, 20, dark(c, 0.12)); img.hline(sx - 15, 38, 30, light(c, 0.3));
+      img.vline(sx - 15, 38, 20, dark(c, 0.4)); img.vline(sx + 14, 38, 20, dark(c, 0.4));
+    }
+    img.rect(0, 58, 160, 22, P.floor);                                       // пол и проход
+    noise(img, 0, 58, 160, 22, P.floorDark, 7, 11);
+    img.hline(0, 58, 160, P.floorDark);
+    for (const [x, w] of [[0, 6], [154, 6]]) { img.rect(x, 8, w, 56, P.creamDark); img.rect(x + 1, 12, w - 2, 24, night ? P.glassNight : P.glass); }
+  }
+  if (front) {
+    for (const sx of SEAT_X) {                                               // подушки дальнего ряда
+      img.rect(sx - 15, 56, 30, 8, c); img.hline(sx - 15, 56, 30, light(c, 0.35)); img.hline(sx - 15, 63, 30, dark(c, 0.35));
+      img.vline(sx - 15, 56, 8, dark(c, 0.4)); img.vline(sx + 14, 56, 8, dark(c, 0.4));
+    }
+    for (const sx of SEAT_X) {                                               // ближний ряд спинками к нам
+      img.rect(sx - 17, 80, 34, 16, dark(c, 0.3)); img.hline(sx - 17, 80, 34, dark(c, 0.05));
+      img.vline(sx - 17, 80, 16, dark(c, 0.5)); img.vline(sx + 16, 80, 16, dark(c, 0.5));
+      img.rect(sx - 2, 80, 4, 16, dark(c, 0.45));
+    }
+    for (const x of [46, 120]) { img.vline(x, 8, 72, P.metal); img.vline(x + 1, 8, 72, P.metalLight); }   // поручни
+  }
+  return img;
+}
+// Демонстрация: тот же салон, но с людьми на местах и в проходе.
+function salonDemo(color, seatCities, standCities) {
+  const img = carriageInterior(color, { layer: 'back' });
+  seatCities.forEach((city, i) => { if (!city) return; img.blit(character(person(city, i)).crop(16, 0, 16, 32), SEAT_X[i] - 8, 30); });
+  img.blit(carriageInterior(color, { layer: 'front' }), 0, 0);
+  standCities.forEach((city, i) => { if (!city) return; img.blit(character(person(city, i + 3)).crop((i % 3) * 16, 32, 16, 32), STAND_X[i] - 8, 46); });
+  return img;
 }
 
 // ---------- предметы ----------
@@ -200,7 +260,7 @@ function props() {
 function icons() {
   const list = [];
   const ic = fn => { const i = new Img(T, T); fn(i); list.push(i); };
-  ic(i => { i.rect(4, 3, 3, 11, P.yellow); i.rect(7, 3, 4, 2, P.yellow); i.rect(10, 5, 2, 3, P.yellow); i.rect(7, 8, 4, 2, P.yellow); i.rect(2, 9, 6, 2, P.yellow); });            // ₽
+  ic(i => { i.rect(4, 2, 2, 12, P.yellow); i.rect(6, 2, 4, 2, P.yellow); i.rect(9, 3, 2, 4, P.yellow); i.rect(6, 6, 4, 2, P.yellow); i.rect(2, 9, 7, 2, P.yellow); });            // ₽
   ic(i => { const pts = [[7, 2], [6, 5], [3, 5], [5, 8], [4, 12], [7, 10], [10, 12], [9, 8], [11, 5], [8, 5]]; star(i, pts, P.yellow); });                                         // ★
   ic(i => { const pts = [[7, 2], [6, 5], [3, 5], [5, 8], [4, 12], [7, 10], [10, 12], [9, 8], [11, 5], [8, 5]]; star(i, pts, mix(P.yellow, P.ink, 0.65)); });                        // ☆
   ic(i => { i.rect(3, 6, 10, 5, hex('#d9534f')); i.rect(3, 11, 10, 3, dark(hex('#d9534f'), 0.3)); i.rect(2, 4, 3, 10, P.metal); });                                                 // место
@@ -209,7 +269,7 @@ function icons() {
   ic(i => { i.rect(7, 2, 3, 8, hex('#d9534f')); i.rect(7, 11, 3, 3, hex('#d9534f')); });                                                                                            // !
   ic(i => { i.rect(2, 4, 12, 7, P.cream); i.rect(2, 11, 12, 2, hex('#3b7dd8')); i.rect(4, 6, 3, 4, P.glass); i.rect(9, 6, 3, 4, P.glass); disc(i, 5, 14, 1, P.wheel); disc(i, 11, 14, 1, P.wheel); });  // поезд
   ic(i => { disc(i, 8, 8, 6, P.yellow); disc(i, 8, 8, 4, light(P.yellow, 0.35)); i.vline(8, 5, 7, P.yellowDark); });                                                                // монета
-  ic(i => { for (let k = 0; k < 5; k++) { i.vline(5 + k, 8 - k, 1 + k * 2, P.white); } i.rect(4, 3, 1, 10, P.white); });                                                            // стрелка →
+  ic(i => { i.rect(2, 7, 9, 3, P.white); for (let k = 0; k < 4; k++) i.vline(10 + k, 4 + k, 9 - k * 2, P.white); });                                                                // стрелка →
   ic(i => { disc(i, 8, 5, 3, hex('#f1d3b3')); i.rect(5, 9, 7, 6, hex('#2fb37a')); });                                                                                              // человек
   ic(i => { i.rect(3, 3, 3, 3, hex('#d9534f')); i.rect(10, 3, 3, 3, hex('#d9534f')); i.rect(6, 6, 4, 4, hex('#d9534f')); i.rect(3, 10, 3, 3, hex('#d9534f')); i.rect(10, 10, 3, 3, hex('#d9534f')); });   // ✕
   return tileSheet(list, 6);
@@ -246,14 +306,18 @@ const peopleOf = cloth => Array.from({ length: 8 }, (_, i) => person(cloth, i));
 
 for (const [name, color] of Object.entries(CITY)) OUT[`passengers_${name}.png`] = sheet(peopleOf(color));
 for (const [name, color] of Object.entries(TRAINS)) {
-  const strip = new Img(96 * 2 + 64 + 8, 48);
+  const strip = new Img(96 * 2 + 64 + 8, 52);
   strip.blit(carriage(color, false), 0, 0);
   strip.blit(carriage(color, true), 100, 0);
   strip.blit(loco(color), 200, 0);
   OUT[`train_${name}.png`] = strip;
-  OUT[`interior_${name}.png`] = interiorTiles(color);
+  OUT[`interior_tiles_${name}.png`] = tileSheet(interiorTileList(color), 6);
+  OUT[`salon_${name}_back.png`] = carriageInterior(color, { layer: 'back' });
+  OUT[`salon_${name}_back_night.png`] = carriageInterior(color, { layer: 'back', night: true });
+  OUT[`salon_${name}_front.png`] = carriageInterior(color, { layer: 'front' });
 }
-OUT['station_tiles.png'] = stationTiles();
+const ST = stationTileList();
+OUT['station_tiles.png'] = tileSheet(ST, 8);
 OUT['props.png'] = props();
 OUT['icons.png'] = icons();
 { // пассажиры в салоне сбоку: сидят и стоят, по цвету города
@@ -265,6 +329,55 @@ OUT['icons.png'] = icons();
   });
   OUT['salon_people.png'] = img;
 }
+
+// ---------- собранная сцена: доказательство, что тайлы стыкуются ----------
+function scene() {
+  const COLS = 26, ROWS = 14, img = new Img(COLS * T, ROWS * T);
+  img.rect(0, 0, img.w, img.h, hex('#8fb6cc'));                 // небо за крышей
+  const row = (r, idx) => { for (let c = 0; c < COLS; c++) img.blit(ST[idx], c * T, r * T); };
+  const put = (c, r, idx) => img.blit(ST[idx], c * T, r * T);
+  row(0, 10); row(1, 10); row(2, 11);                           // крыша и свес
+  row(3, 8); row(4, 8);                                         // стена
+  for (let c = 1; c < COLS; c += 3) put(c, 3, 9);                // окна
+  put(12, 3, 12); put(12, 4, 13);                                // дверь
+  row(5, 0); row(6, 2);                                          // перрон и край с жёлтой линией
+  row(7, 5); row(8, 5); row(9, 6);                               // балласт и путь
+  row(10, 7); row(11, 7); row(12, 7); row(13, 7);                // трава
+  // поезд у платформы: колёса (cy 44) ложатся на ближний рельс
+  const trainY = 9 * T - 34;
+  img.blit(carriage(TRAINS.red, false), 6, trainY);
+  img.blit(carriage(TRAINS.red, true), 102, trainY);
+  img.blit(loco(TRAINS.red), 198, trainY);
+  // мелочь на перроне
+  const pr = props();
+  img.blit(pr.crop(2, 18, 32, 28), 2 * T + 4, 6 * T - 32);        // скамейка
+  img.blit(pr.crop(36, 0, 16, 48), 6 * T + 6, 6 * T - 50);        // фонарь
+  img.blit(pr.crop(54, 0, 18, 48), 19 * T, 6 * T - 50);           // часы
+  img.blit(pr.crop(114, 4, 24, 44), 23 * T + 4, 6 * T - 46);      // расписание
+  img.blit(pr.crop(140, 0, 34, 48), 22 * T, 11 * T);              // дерево
+  // пассажиры ждут поезд
+  const cities = Object.values(CITY);
+  const stand = [[64, 0, 1], [120, 1, 0], [176, 0, 2], [248, 2, 1], [312, 0, 0], [352, 1, 2]];
+  stand.forEach(([x, r, fr], i) => {
+    img.blit(character(person(cities[i % cities.length], i + 2)).crop(fr * 16, r * 32, 16, 32), x, 6 * T - 30);
+  });
+  return img;
+}
+OUT['scene_example.png'] = scene();
+{ // салон с людьми: полный и полупустой
+  const cs = Object.values(CITY);
+  const full = salonDemo(TRAINS.red, [cs[0], cs[1], cs[3], cs[2]], [cs[4], cs[2], cs[5], cs[1], cs[0]]);
+  const half = salonDemo(TRAINS.blue, [cs[2], null, cs[6], null], []);
+  const img = new Img(160, 96 * 2 + 4);
+  img.blit(full, 0, 0); img.blit(half, 0, 100);
+  OUT['salon_demo.png'] = img;
+}
+// якоря мест — чтобы в Godot сажать пассажиров ровно туда же
+fs.writeFileSync(path.join(ROOT, 'anchors.json'), JSON.stringify({
+  salon: { size: [160, 96], seats: SEAT_X.map(x => [x - 8, 30]), standing: STAND_X.map(x => [x - 8, 46]), note: 'рисовать: salon_*_back → пассажиры → salon_*_front' },
+  passenger: { cell: [16, 32], rows: ['down', 'left', 'right', 'up'], frames: 3, idle: 1 },
+  train: { carriage: [96, 52], loco: [64, 52], wheelCenterY: 44, doorX: 48 },
+}, null, 2));
 
 // ---------- запись ----------
 for (const [file, img] of Object.entries(OUT)) {
@@ -287,22 +400,23 @@ function label(img, s, x, y) { drawText(img, s, x, y, hex('#cfd6e2')); }
   label(pv, 'ROWS: DOWN LEFT RIGHT UP   COLS: 3 WALK FRAMES', 8, pv.h - 12);
   writePNG(path.join(ROOT, 'preview_people.png'), pv);
 }
-{ // мир: поезд, тайлы, предметы, иконки — 2x
-  const pv = new Img(680, 420);
+{ // мир: поезд, тайлы, предметы, иконки, салон — 2x
+  const pv = new Img(700, 760);
   pv.rect(0, 0, pv.w, pv.h, hex('#1c2028'));
   let y = 10;
-  label(pv, 'TRAIN 96X48 + 64X48', 10, y); y += 10;
-  pv.blit(OUT['train_red.png'].scale(2), 10, y); y += 100;
-  label(pv, 'STATION TILES 16X16', 10, y); y += 10;
+  label(pv, 'TRAIN  CAR 96X52  LOCO 64X52', 10, y); y += 12;
+  pv.blit(OUT['train_red.png'].scale(2), 10, y); y += 112;
+  label(pv, 'STATION TILES 16X16', 10, y);
+  label(pv, 'INTERIOR TILES 16X16', 290, y); y += 12;
   pv.blit(OUT['station_tiles.png'].scale(2), 10, y);
-  label(pv, 'INTERIOR 16X16', 250, y - 10);
-  pv.blit(OUT['interior_red.png'].scale(2), 250, y); y += 80;
-  label(pv, 'PROPS', 10, y); y += 10;
-  pv.blit(props().scale(2), 10, y); y += 100;
-  label(pv, 'ICONS 16X16', 10, y);
-  pv.blit(OUT['icons.png'].scale(2), 10, y + 10);
-  label(pv, 'SALON SIDE', 250, y);
-  pv.blit(OUT['salon_people.png'].scale(2), 250, y + 10);
+  pv.blit(OUT['interior_tiles_red.png'].scale(2), 290, y); y += 76;
+  label(pv, 'PROPS', 10, y);
+  label(pv, 'ICONS 16X16', 390, y); y += 12;
+  pv.blit(OUT['props.png'].scale(2), 10, y);
+  pv.blit(OUT['icons.png'].scale(2), 390, y); y += 104;
+  label(pv, 'SALON 160X96  BACK + PEOPLE + FRONT', 10, y); y += 12;
+  pv.blit(OUT['salon_demo.png'].scale(2), 10, y);
+  label(pv, 'FULL', 340, y + 10); label(pv, 'HALF EMPTY', 340, y + 210);
   writePNG(path.join(ROOT, 'preview_world.png'), pv);
 }
 
