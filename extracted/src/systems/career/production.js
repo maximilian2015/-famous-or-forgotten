@@ -12,6 +12,7 @@ import { scheduleRelease } from './release.js';
 import { rollStability, productionTrouble, volatileSwing, roughness } from './stability.js';
 import { makePremise, prestigeShift, ratingShift, swingShift, apartShift } from './story.js';
 import { setLife } from './setlife.js';
+import { rollDemand, expireDemands } from './demands.js';
 import { skillCap } from './actions.js';
 import { bandLift } from '../world/directors.js';
 import { coldStart } from '../meta/standing.js';
@@ -233,44 +234,45 @@ export function walkOffSet(s, setId, forTitle) {
 const REHEARSAL_GAIN = [[4, 9], [3, 6], [1, 3]];
 function monthKey(s) { return (s.year || 0) * 12 + (s.month || 0); }
 export function rehearsalsThisMonth(s, id) { const p = setById(s, id); return p && p._rehearsedMonth === monthKey(s) ? (p._rehearsals || 0) : 0; }
-// How you take a set. Maxi: "every month I have to press it? Over a five-month shoot that
-// is tedious and not interesting." So the month's work on a set is a stance, chosen once
-// and changed whenever: coast (nothing, and the director sees it), turn up prepared (a
-// pass on the pages every month — the first rehearsal, done for you, at its cost), or all
-// in (the pages and the crew, every month, at more than twice the cost). The buttons stay
-// for the months you want to push past that. The stance is charged at the top of the
-// month from the month's energy (time.js), never below zero: a month you cannot afford is
-// a month you coasted, and the card says so.
-export const STANCES = {
-  coast: { label: 'Coast', cost: 0, blurb: 'Turn up, say the lines, go home. The set is what it is, and the director notices.' },
-  steady: { label: 'Turn up prepared', cost: COST.rehearse, blurb: 'A pass on the pages every month. Quality climbs; the director sees the work.' },
-  allin: { label: 'All in', cost: COST.rehearse + COST.bond + 10, blurb: 'The pages, the takes and the crew, every month. It costs, and it shows — on the set and on you.' },
-};
-export const STANCE_ORDER = ['coast', 'steady', 'allin'];
-export function stanceOf(p) { return STANCES[p && p.stance] ? p.stance : 'steady'; }
-export function setStance(s, id, stance) {
-  const p = setById(s, id); if (!p || !STANCES[stance]) return s;
-  p.stance = stance;
-  s.lastEvent = stance === 'coast' ? `"${p.title}": you will coast. The month's energy is yours; the set is what it is.` : stance === 'allin' ? `"${p.title}": all in. ${STANCES.allin.cost} energy a month, and the set will know it.` : `"${p.title}": you turn up prepared. ${STANCES.steady.cost} energy a month, taken at the top of the month.`;
-  return s;
-}
-// The top of the month: the stance does its work from the month's fresh energy.
-export function stanceTick(s) {
+// ── the month on a set ────────────────────────────────────────────────────────
+// There used to be a STANCE here: coast, turn up prepared, all in, at 0, 15 and 35 energy.
+// Maxi, three pictures in: "я вообще не хочу эту систему, надо убрать всё и предложи что-то
+// другое вообще." The diagnosis is in the numbers rather than the words — all three did the
+// same thing, meter up and bonds up, more for more, so "all in" beat the other two at every
+// moment you could afford it. One question, "am I tired?", asked eight months running.
+//
+// Two things replace it, and the split is the whole idea:
+//
+//   The WORK is not a decision. An actor does not choose whether to act; they turn up and
+//   the film gets made. So the meter rises on its own, out of your craft and how the director
+//   is with you, at no energy cost and with no button. This is roughly what the middle stance
+//   used to pay for, which is why a picture made by somebody who answers nothing still comes
+//   out about as well as it used to.
+//
+//   The CHOICE is what the production asks of you — nights, a stunt, your own money for a
+//   dialect coach, whose side you take when the money wants a week out. Different currency
+//   every time, nothing to optimise, and no is a real answer. career/demands.js.
+export function shootTick(s) {
+  expireDemands(s);
   for (const p of sets(s)) {
     if ((p.prepLeft || 0) > 0 || p.paused) continue;
-    const id = stanceOf(p); const st = STANCES[id];
-    p._stanceDone = null;
-    if (!st.cost) continue;
-    if (!canAfford(s, st.cost)) { p._stanceDone = 'broke'; (s.apWhy = s.apWhy || []).push(`no energy for "${p.title}" — coasted`); continue; }
-    spend(s, st.cost);
-    const gain = rint(REHEARSAL_GAIN[0][0], REHEARSAL_GAIN[0][1]) + (id === 'allin' ? rint(3, 6) : 0);
-    p.meter = clamp(p.meter + gain);
-    p._workedMonth = monthKey(s); p._rehearsedMonth = monthKey(s); p._rehearsals = 1;
+    // What a month of competent work is worth: your craft, and whether the person directing
+    // it is getting anything out of you. Nobody is charged for this and nobody chooses it.
     const lead = (p.crew || [])[0];
-    if (id === 'allin') { for (const c of p.crew || []) c.bond = clamp(c.bond + rint(4, 8)); s.strain = clamp((s.strain || 0) + 2); }
-    else if (lead) lead.bond = clamp(lead.bond + rint(1, 3));
-    p._stanceDone = id;
-    (s.apWhy = s.apWhy || []).push(`"${p.title}" −${st.cost}`);
+    const craft = Math.round((s.acting || 0) / 28);
+    const warmth = Math.round(((lead ? lead.bond : 45) - 45) / 22);
+    p.meter = clamp(p.meter + Math.max(2, rint(3, 6) + craft + warmth));
+    // `_workedMonth` is NOT set here, although the first version of this set it. Turning up is
+    // not putting something into the picture, and the director is meant to notice the actor who
+    // only turns up. A scene day sets it (career/scenes.js) and so does answering them when
+    // they ask you for something (career/demands.js), which since the stance went are the two
+    // ways there are.
+    // The director's opinion is NOT nudged here either, although the first version did that too.
+    // productionTick already owns it and owns it correctly — they read the work, warming above
+    // 55 and cooling below it. A second quiet +1 a month from here fought that rule and won,
+    // and test_scales caught it the only way it could: an actor who did nothing for four
+    // months ended up with a director who liked him slightly more.
+    rollDemand(s, p);
   }
   return s;
 }
@@ -390,6 +392,12 @@ function tickSet(s, p) {
   // And only if it SHOWS. A director does not care how you got there if the takes are
   // good — unpreparedness is something they see in the work, not in your diary. Below 55
   // the set is not going well and they start to wonder why; above it, nobody is asking.
+  // `_workedMonth` is a month you put something INTO the picture — a scene day, or an answer
+  // when they asked you for one. Turning up is not that, which is why shootTick does not set
+  // it: the whole point of taking the dial out was that showing up stopped being a purchase.
+  // Reading the meter alone instead was worse, and test_scales said so — a picture starts at
+  // 20, so nobody is above 55 in month two and every director cooled on every actor for doing
+  // nothing wrong at all.
   if (lead && p._workedMonth !== stamp - 1 && (p.months - p.monthsLeft) >= 1 && (p.meter || 0) < 55) {
     p._winged = (p._winged || 0) + 1;
     // A pattern, not a bad week. The first month everybody gets; the second they notice; from
@@ -397,7 +405,7 @@ function tickSet(s, p) {
     // A-lister who rehearsed every OTHER month at −8 standing by sixty, which is nonsense.
     const cool = p._winged === 1 ? 0 : p._winged === 2 ? rint(3, 5) : rint(5, 8);
     lead.bond = clamp(lead.bond - cool);
-    if (p._winged === 2) addTimeline(s, `${lead.name} has noticed you turn up not knowing the pages.`, true);
+    if (p._winged === 2) addTimeline(s, `${lead.name} has stopped expecting much of what you bring in.`, true);
   }
   // And the reverse, which was missing. The director's opinion only ever moved DOWN on its
   // own — up took an evening with them, one energy at a time — so a player who rehearsed
@@ -418,7 +426,7 @@ function tickSet(s, p) {
     if (p.drunkMonths === 1) addTimeline(s, `Forty people waited two hours for you this month. ${lead.name} did not say anything, which was worse.`, true);
   }
   // A month on a set costs something of you, and how much depends on how you are taking
-  // it (STANCES). Nothing here used to touch mental at all, so an actor could shoot back to
+  // it (the month on a set). Nothing here used to touch mental at all, so an actor could shoot back to
   // back for forty years in a penthouse and never once feel it.
   {
     const st = p.stance === 'allin' ? 1.3 : p.stance === 'coast' ? 0.3 : 0.7;

@@ -1,4 +1,4 @@
-import { startProduction, stanceTick, setStance, stanceOf, STANCES, rehearse, rehearsalsThisMonth } from '../src/systems/career/production.js';
+import { startProduction, shootTick, rehearse, rehearsalsThisMonth } from '../src/systems/career/production.js';
 import { draftContract, signContract, startSigned, contractsTick } from '../src/systems/career/contract.js';
 import { AMBITIONS, AMBITION_ORDER, ambitionProgress, ambitionVerdict } from '../src/systems/meta/ambition.js';
 import { YOUTH_EVENTS } from '../src/systems/life/youth.js';
@@ -10,22 +10,36 @@ const st = (over) => ({ version: 'x', name: 'Mira Vale', ageY: 30, stage: 'caree
 const offer = (over) => ({ id: 'o1', via: 'casting', projectTitle: 'Golden Echo', role: 'Lead', type: 'Feature Film', genre: 'Thriller', salary: 300000, months: 4, tier: 'lead', scale: 'feature', prestigeScore: 60, stability: 90, deadline: 3, ...over });
 const month = (s) => { s.month++; if (s.month > 11) { s.month = 0; s.year++; } };
 
-// ── the stance does the month's work ────────────────────────────────────────────
+// ── the month's work, which is not a decision ───────────────────────────────────
+// This block used to test the STANCE: coast / turn up prepared / all in, at 0, 15 and 35
+// energy. Maxi: "я вообще не хочу эту систему, надо убрать всё." The three differed only in
+// price and the dearest won whenever you could afford it, so the card never asked anything.
+// What is left is the half of it that was never a decision in the first place — an actor does
+// not choose whether to act — and it must cost nothing, because being charged for turning up
+// is what made the dial look like a choice. The choice is career/demands.js now.
 {
   const s = st(); startProduction(s, offer()); const p = s.productions[0];
-  ok('a set turns up prepared by default', stanceOf(p) === 'steady');
-  const m0 = p.meter, b0 = p.crew[0].bond; s.ap = 100;
-  stanceTick(s);
-  ok('the top of the month: energy taken, quality up, the director warmer', s.ap === 100 - STANCES.steady.cost && p.meter > m0 && p.crew[0].bond > b0 && p._workedMonth === s.year * 12 + s.month, `${s.ap} ${p.meter - m0}`);
-  ok('it counts as the first rehearsal', rehearsalsThisMonth(s, p.id) === 1);
-  const m1 = p.meter; rehearse(s, p.id);
-  ok('and you can still push past it', p.meter > m1 && rehearsalsThisMonth(s, p.id) === 2);
-  setStance(s, p.id, 'coast'); s.ap = 100; p._workedMonth = null; stanceTick(s);
-  ok('coast: nothing taken, nothing done', s.ap === 100 && !p._workedMonth);
-  setStance(s, p.id, 'allin'); s.ap = 100; const b1 = p.crew[2].bond; const st0 = s.strain; stanceTick(s);
-  ok('all in: the crew too, and it costs', s.ap === 100 - STANCES.allin.cost && p.crew[2].bond > b1 && s.strain > st0);
-  s.ap = 10; stanceTick(s);
-  ok('a month you cannot afford is a month you coasted, and it says so', s.ap === 10 && p._stanceDone === 'broke' && (s.apWhy || []).some((w) => /coasted/.test(w)));
+  const m0 = p.meter; s.ap = 100;
+  shootTick(s);
+  ok('the month does its own work and the picture moves', p.meter > m0, String(p.meter - m0));
+  // And it does NOT count as having put something in. That distinction is the whole of the new
+  // model: the picture gets made whether or not you engage with it, and the director notices
+  // the actor who only turns up. A scene day stamps this, and so does answering them.
+  ok('but turning up is not the same as working, and the month does not pretend it is', !p._workedMonth);
+  ok('and it takes no energy, because turning up is the job', s.ap === 100);
+  const m1 = p.meter; s.ap = 100; rehearse(s, p.id);
+  ok('and you can still put a morning into it on top', p.meter > m1 && rehearsalsThisMonth(s, p.id) === 1);
+  // A better actor gets more out of the same month. This is what carries a picture now that
+  // nobody is paying energy for it, so it has to actually depend on the craft.
+  const gain = (acting) => { let t = 0; for (let i = 0; i < 160; i++) { const u = st({ acting }); startProduction(u, offer()); const q = u.productions[0]; const b = q.meter; shootTick(u); t += q.meter - b; } return t / 160; };
+  const poor = gain(20), good = gain(90);
+  ok('and a better actor gets more out of the same month', good > poor + 1.5, `${poor.toFixed(1)} vs ${good.toFixed(1)}`);
+  // The director's opinion belongs to productionTick, which reads the work. shootTick must not
+  // have a second quiet channel into it — the first version did, at +0..2 a month, and it beat
+  // the rule that was supposed to own it.
+  let moved = 0;
+  for (let i = 0; i < 200; i++) { const u = st(); startProduction(u, offer()); const q = u.productions[0]; const b = q.crew[0].bond; shootTick(u); if (q.crew[0].bond !== b) moved++; }
+  ok('and the month itself never touches what the director thinks of you', moved === 0, String(moved));
 }
 // ── the date on the paper is the month the shoot starts ─────────────────────────
 {

@@ -58,7 +58,10 @@ ok('but not on all of them — the quiet weeks are what make the others land', n
     if ((p.stability ?? 80) !== 80) stabilityMoved++;
   }
   ok('the director can warm to you over an ordinary month', warmer > 20, String(warmer));
-  ok('and can cool', cooler > 10, String(cooler));
+  // > 3 of 800, not > 10: the only event that can cool the director is w3 of about 44, fires
+  // on roughly half of months, and goes down three times in ten — an expected nine. A threshold
+  // sitting on its own mean fails one run in two or three and says nothing when it does.
+  ok('and can cool', cooler > 3, String(cooler));
   ok('but the picture itself is never touched', meterMoved === 0, String(meterMoved));
   ok('and neither is whether it gets finished', stabilityMoved === 0, String(stabilityMoved));
 }

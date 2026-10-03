@@ -102,7 +102,9 @@ ok('and nobody went through the floor', minR >= S.RESPECT_FLOOR, String(minR));
   }
   // rehearse every month vs never — b coasts (production.js STANCES); the default stance rehearses for you
   let a = shoot(), b = shoot();
-  b.production.stance = 'coast';
+  // b does nothing at all: there is no "coast" to set any more, because the month on a set
+  // is no longer a dial. Doing nothing is simply not rehearsing, and what the director reads
+  // is the picture that comes out of it.
   const bondA0 = a.production.crew[0].bond, bondB0 = b.production.crew[0].bond;
   a.production.crew[0].bond = 45; b.production.crew[0].bond = 45;
   // Same isolation as test_standing: setlife.js is a second channel into the director's bond
@@ -111,16 +113,19 @@ ok('and nobody went through the floor', minR >= S.RESPECT_FLOOR, String(minR));
   // advanceMonth increments the month BEFORE it ticks, so the month setlife would call "last"
   // is this one. Getting that off by one left the isolation doing nothing and the test still
   // failing, which looked for a moment like the model rather than the helper.
-  const quiet = (st) => { if (st.production) st.production._lifeMonth = st.year * 12 + st.month; return st; };
+  // ...and demands.js is a THIRD: a question nobody answered resolves to its passive answer,
+  // and some of those cost the director five to fourteen points. Both are pinned shut here, so
+  // what is left moving the bond is the thing this block is about.
+  const quiet = (st) => { if (st.production) { st.production._lifeMonth = st.year * 12 + st.month; st.production._demandMonth = st.year * 12 + st.month; st.production.demand = null; } return st; };
   for (let m = 0; m < 4; m++) {
     a.ap = 100; PR.rehearse(a); a = advanceMonth(quiet(a));
     b.ap = 100; b = advanceMonth(quiet(b));
   }
   const bondA = a.production ? a.production.crew[0].bond : -1, bondB = b.production ? b.production.crew[0].bond : -1;
   ok('a director you rehearse for stays where they were', bondA >= 44, String(bondA));
-  // Three skipped months of four: nothing, then −3..−5, then −5..−8 — about −10 from 45.
-  ok('and one you turn up unprepared for cools', bondB <= 37, String(bondB));
-  ok('and says so', (b.timeline || []).some((x) => /not knowing the pages/.test(x.text)), (b.timeline || []).slice(0, 3).map((x) => x.text).join(' | '));
+  // Four months of a picture going nowhere: nothing, then −3..−5, then −5..−8 twice.
+  ok('and one who puts nothing into it cools', bondB <= 37, String(bondB));
+  ok('and says so', (b.timeline || []).some((x) => /stopped expecting much/.test(x.text)), (b.timeline || []).slice(0, 3).map((x) => x.text).join(' | '));
 
   // a party mid-shoot
   let c = shoot({ cash: 50000 });

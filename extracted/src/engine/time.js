@@ -22,7 +22,7 @@ import { declineTick } from '../systems/career/decline.js';
 import { datingYear } from '../systems/life/dating.js';
 import { childhoodTick, adoptionTick } from '../systems/life/children.js';
 import { spotlightYear } from '../systems/social/spotlight.js';
-import { productionTick, setsTick, stanceTick } from '../systems/career/production.js';
+import { productionTick, setsTick, shootTick } from '../systems/career/production.js';
 import { maybeScene } from '../systems/career/scenes.js';
 import { releaseTick, runTick, cultTick } from '../systems/career/release.js';
 import { frozenTick } from '../systems/career/stability.js';
@@ -224,7 +224,7 @@ export function advanceMonth(state) {
   s.apMaxEff = monthEnergy(s, { home: homeEnergy(s), staff: staffEnergy(s), jobSlots: jobSlots(s), lostSlots: slotsLost(s), extraSets: setLoad(s) });
   s.apWhy = energyWhy(s, { home: homeEnergy(s), staff: staffEnergy(s), jobSlots: jobSlots(s), lostSlots: slotsLost(s), extraSets: setLoad(s), setCount: sets(s).length });
   s.ap = s.apMaxEff;
-  stanceTick(s);      // the month's work on every set, the way you said you would take it
+  shootTick(s);       // the work every set does on its own, and what it asks of you this month
   showQueued(s);
   return s;
 }

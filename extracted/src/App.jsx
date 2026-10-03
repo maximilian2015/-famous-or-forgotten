@@ -11,7 +11,8 @@ import { seeDoctor, treatmentCost, pushThrough, PILLS, usePills, infectionOdds }
 import { resolveArc } from './systems/life/arcs.js';
 import { computeLegacy, getHall, heirsOf, heirOpts, enshrine } from './systems/meta/legacy.js';
 import { fameTier, setHousing, FAME_TIERS, fameCeiling, ladderBlurb, TIER_OPENS, alistKey, iconKey, scandalReport, respectReport, RESPECT_MOVES, RESPECT_TIERS, RESPECT_OPENS, respectTier, FORGOTTEN, FORGOTTEN_OPENS, isForgotten, forgottenDepth } from './systems/meta/status.js';
-import { STANCES, STANCE_ORDER, stanceOf, setStance, meterTier } from './systems/career/production.js';
+import { meterTier } from './systems/career/production.js';
+import { demandOf, optionsFor, answerDemand } from './systems/career/demands.js';
 // Every set you are on. Three at most — see engine/sets.js; g.production is the first.
 const allSets = (g) => (g.productions && g.productions.length ? g.productions : (g.production ? [g.production] : []));
 import { agentCut, agentLine, fireAgent } from './systems/career/agent.js';
@@ -375,7 +376,6 @@ function OnSetNow({ g, p }) {
   // bright and the lesson refused. career/training.js
   const b = lead ? lead.bond : 50;
   const mood = b >= 70 ? ['warm to you', '#4fc07f'] : b >= 45 ? ['fine with you', theme.muted] : b >= 26 ? ['cooling on you', '#f0b429'] : ['done with you', '#ff5a72'];
-  const st = stanceOf(p);
   return (<div style={{ marginTop: 8 }}>
     {/* THE MONTH FIRST. It used to sit fifth, under four lines of mechanics that read the same
         every month for six months — which is why a card with something new on it still looked
@@ -385,16 +385,17 @@ function OnSetNow({ g, p }) {
       {lead.name}, directing, is <b style={{ color: mood[1] }}>{mood[0]}</b>.
       {b < 45 && ' A cold director is what costs you standing at wrap.'}
     </div>}
-    <StanceRow g={g} p={p} />
+    {/* What you said last time they asked, so an answer is a thing that happened rather than
+        a button that vanished. */}
+    {p._lastAnswer && !p.demand && <div style={{ fontSize: 11.5, color: theme.muted, lineHeight: 1.5, marginBottom: 8, fontStyle: 'italic' }}>{p._lastAnswer}</div>}
+    <DemandRow g={g} p={p} />
     {(() => { const sc = sceneState(g, p); return sc && sc.left > 0 ? (<div style={{ fontSize: 11, color: theme.gold, marginTop: 6, lineHeight: 1.45 }}>🎬 {sc.line}</div>) : null; })()}
-    <div style={{ fontSize: 11, color: p._stanceDone === 'broke' ? theme.bad : theme.muted, marginTop: 6, lineHeight: 1.45 }}>
-      {p._stanceDone === 'broke' ? 'No energy for the set this month — you coasted. The director noticed.'
-        // This used to end 'Push harder under Career if you want to' and pointed at Rehearse
-        // and Risky Take, which were removed when the month became a stance and the DAYS
-        // became the game. An instruction to press a button that is not there any more is
-        // worse than no instruction: the player goes looking and thinks the screen is broken.
-        : worked ? `✓ This month's work is done${st !== 'coast' ? ` (${STANCES[st].cost} energy, taken at the top of the month)` : ''}. The rest of the month is yours.`
-        : st === 'coast' ? 'Coasting. Live the month like this and you turned up not knowing the pages; a pattern, the director notices.' : 'The set is under Career.'}
+    <div style={{ fontSize: 11, color: theme.muted, marginTop: 6, lineHeight: 1.45 }}>
+      {/* The month costs you nothing to work any more. You turn up and the film gets made; what
+          the month asks of you is the card above, when it asks anything at all. */}
+      {p.demand ? 'Nothing else is needed from you this month.'
+        : worked ? 'The work is done. Nobody has asked you for anything this month.'
+        : 'The set is under Career.'}
     </div>
   </div>);
 }
@@ -2436,8 +2437,15 @@ function PersonSheet({ g, id, onClose }) {
           <div style={{ fontSize: 12, fontWeight: 800, color: theme.gold }}>{al.desk} · {al.cut}% of everything you earn</div>
           <div style={{ fontSize: 12, lineHeight: 1.5, marginTop: 4 }}>{al.blurb}</div>
           <div style={{ fontSize: 11.5, color: theme.muted, lineHeight: 1.5, marginTop: 3 }}>Right now: {al.doing}. What they bring lands in Messages under their name.</div>
-          <button onClick={() => { if (window.confirm('Let ' + al.name + ' go? Offers dry up until somebody else asks.')) { dispatch(fireAgent); onClose(); } }}
-            style={{ marginTop: 8, border: `1px solid ${theme.bad}55`, borderRadius: 9, padding: '6px 10px', fontSize: 11, fontWeight: 800, cursor: 'pointer', background: 'rgba(255,90,122,.10)', color: '#ffa8bb' }}>Let them go</button>
+          {/* Maxi, on a red button in the middle of somebody's profile: "что значит эта кнопка?"
+              It fired his agent. It said "Let them go" and nothing else — the warning was inside
+              a confirm, which is to say after the decision. What it costs goes on the control.
+              agent.js fireAgent: three months before anybody else asks. */}
+          <button onClick={() => { if (window.confirm('Leave ' + al.name + '? Nobody else will ask for three months.')) { dispatch(fireAgent); onClose(); } }}
+            style={{ marginTop: 8, border: `1px solid ${theme.bad}55`, borderRadius: 9, padding: '7px 10px', fontSize: 11, fontWeight: 800, cursor: 'pointer', background: 'rgba(255,90,122,.10)', color: '#ffa8bb', textAlign: 'left' }}>
+            Leave {al.name} — stop being represented
+            <div style={{ fontSize: 10.5, fontWeight: 500, opacity: .85, marginTop: 2 }}>No agent brings you anything for three months. Parts you have signed are yours.</div>
+          </button>
         </Card>); })()}
       {/* A child who went into the business has a career of their own, and watching it is
           most of the point of having raised one. See systems/life/children.js. */}
@@ -3288,16 +3296,28 @@ function TitleLine({ g, kind, id, title, size = 15 }) {
     </div>
   </div>);
 }
-// The stance chips: one tap, and it holds for the rest of the shoot.
-function StanceRow({ g, p }) {
-  const st = stanceOf(p);
-  return (<div>
-    <div style={{ display: 'flex', gap: 6 }}>
-      {STANCE_ORDER.map((id) => (<button key={id} onClick={() => dispatch(setStance, p.id, id)} style={{ flex: 1, border: `1px solid ${st === id ? theme.gold : theme.line}`, borderRadius: 10, padding: '7px 6px', background: st === id ? 'rgba(255,209,102,.16)' : theme.panel, color: st === id ? theme.gold : theme.text, fontSize: 11.5, fontWeight: 800, cursor: 'pointer' }}>
-        {STANCES[id].label}{STANCES[id].cost ? <div style={{ fontSize: 10, fontWeight: 600, color: theme.muted }}>{STANCES[id].cost} energy / mo</div> : <div style={{ fontSize: 10, fontWeight: 600, color: theme.muted }}>free</div>}
-      </button>))}
+// What the production wants of you this month, and what each answer costs. This replaced the
+// three stance chips, which differed only in price and so were never a decision — see
+// career/demands.js for the whole of why.
+function DemandRow({ g, p }) {
+  const d = demandOf(p);
+  if (!d) return null;
+  const opts = optionsFor(g, p);
+  return (<div style={{ background: 'rgba(255,209,102,.07)', border: `1px solid ${theme.gold}44`, borderRadius: 12, padding: '10px 11px', margin: '2px 0 4px' }}>
+    <div style={{ fontSize: 10, fontWeight: 900, letterSpacing: '.08em', textTransform: 'uppercase', color: theme.gold, marginBottom: 5 }}>They want an answer</div>
+    <div style={{ fontSize: 12.5, lineHeight: 1.5, marginBottom: 9 }}>{d.ask(p)}</div>
+    {opts.map((o) => (<button key={o.id} onClick={() => dispatch(answerDemand, p.id, o.id)}
+      style={{ display: 'block', width: '100%', textAlign: 'left', marginBottom: 5, border: `1px solid ${theme.line}`,
+        borderRadius: 10, padding: '8px 10px', background: theme.panel, color: theme.text, font: 'inherit',
+        fontSize: 12, fontWeight: 800, cursor: 'pointer' }}>
+      {o.label}
+      {/* The price, before it is pressed. Every one of these costs something different, which
+          is the point: there is no answer that is simply better. */}
+      <div style={{ fontSize: 10.5, fontWeight: 500, color: theme.muted, marginTop: 2 }}>{o.hint}</div>
+    </button>))}
+    <div style={{ fontSize: 10.5, color: theme.muted, marginTop: 2, lineHeight: 1.4 }}>
+      Live the month without answering and they take it as {opts.find((o) => o.passive) ? `"${opts.find((o) => o.passive).label.toLowerCase()}"` : 'a no'}.
     </div>
-    <div style={{ fontSize: 11, color: theme.muted, marginTop: 5, lineHeight: 1.45 }}>{STANCES[st].blurb}</div>
   </div>);
 }
 function ProductionCard({ g, p }) {
@@ -3326,7 +3346,7 @@ function ProductionCard({ g, p }) {
         {row('Production', ...[press(p.stability)].flatMap((x) => x))}
       </div>);
     })()}
-    {p.prepLeft > 0 ? null : <div style={{ marginBottom: 10 }}><StanceRow g={g} p={p} /></div>}
+    {p.prepLeft > 0 ? null : <div style={{ marginBottom: 10 }}><DemandRow g={g} p={p} /></div>}
     {/* The days on this shoot that are a scene rather than a month — see career/scenes.js. */}
     {p.prepLeft > 0 ? null : (() => { const sc = sceneState(g, p); if (!sc) return null; return (<div style={{ marginBottom: 10, padding: '8px 10px', borderRadius: 10, background: 'rgba(255,209,102,.06)', border: `1px solid ${theme.line}` }}>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', gap: 8 }}>

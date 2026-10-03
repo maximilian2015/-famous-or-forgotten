@@ -211,7 +211,11 @@ function actor(over) {
   ok('a set going very well warms them +3..5', hot.every((d) => d >= 3 && d <= 5), [...new Set(hot)].join(','));
   // and a month you did NOT turn up for still cools, as before
   const skip = shoot(); skip.production.meter = 40; skip.production._workedMonth = null; skip.production.monthsLeft = 4; skip.production._winged = 1;
-  skip.month = 4; PR.productionTick(skip);
+  // setLife can warm the director on an ordinary month, and this check is about a month in
+  // which you did nothing — so it is pinned shut here the same way monthAt pins it above.
+  // Without it this failed about one run in six on a good month, which is noise wearing the
+  // clothes of a regression.
+  skip.month = 4; skip.production._lifeMonth = skip.year * 12 + skip.month - 1; PR.productionTick(skip);
   ok('a month you skipped still cools them', skip.production.crew[0].bond < 45, String(skip.production.crew[0].bond));
 
   // at wrap: who gets the good word
