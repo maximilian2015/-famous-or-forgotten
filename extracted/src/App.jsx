@@ -50,6 +50,7 @@ import { Reviews } from './ui/components/BigMoment.jsx';
 import { WalkOfFame } from './ui/components/WalkOfFame.jsx';
 import { Diary, INK } from './ui/components/Diary.jsx';
 import { canTakeSet, monthsUntilFree } from './engine/sets.js';
+import { pushState, askToPush } from './systems/career/contract.js';
 import { FamilyTree } from './ui/components/FamilyTree.jsx';
 import { ContractRoom } from './ui/components/ContractRoom.jsx';
 import { NightRoom } from './ui/components/NightRoom.jsx';
@@ -2998,10 +2999,28 @@ function CreditsList({ g, credits, label }) {
                 const dies = (o.startAt || 0) + 2;
                 if (!o.startAt || canTakeSet(g, o).ok || dies < now) return null;
                 const late = start > dies;
-                return (<div style={{ fontSize: 11, color: late ? theme.bad : theme.gold, lineHeight: 1.4, marginBottom: 2 }}>
-                  {late ? `⚠ They cast somebody else in ${MONS[dies % 12]} — you are not free until ${MONS[start % 12]}.`
-                    : `They hold it until ${MONS[dies % 12]}.`}
-                </div>); })()}
+                // And the move you have, which until now there was not one of. The letter from
+                // business affairs says they will recast; this card said the same thing in
+                // fewer words; neither of them let you do anything about a set running long
+                // that you did not choose either. pushState says whether there is an ask left
+                // and what it is worth, and the odds go on the button before it is pressed.
+                const ps = pushState(g, o);
+                return (<>
+                  <div style={{ fontSize: 11, color: late ? theme.bad : theme.gold, lineHeight: 1.4, marginBottom: 2 }}>
+                    {late ? `⚠ They cast somebody else in ${MONS[dies % 12]} — you are not free until ${MONS[start % 12]}.`
+                      : `They hold it until ${MONS[dies % 12]}.`}
+                  </div>
+                  {late && ps && (ps.asked
+                    ? <div style={{ fontSize: 11, color: theme.muted, lineHeight: 1.4, marginBottom: 3 }}>
+                        {ps.asked === 'yes' ? 'The agent asked and they moved it once. Not twice.' : 'The agent asked. They said the date stands.'}
+                      </div>
+                    : <button onClick={() => dispatch(askToPush, o.id)} style={{ width: '100%', textAlign: 'left', marginBottom: 4,
+                        background: 'transparent', border: `1px solid ${theme.line}`, borderRadius: 9, padding: '6px 9px',
+                        cursor: 'pointer', color: theme.text, font: 'inherit', fontSize: 11.5, fontWeight: 700 }}>
+                        Have the agent ask them to move it to {MONS[ps.free % 12]}
+                        <div style={{ fontSize: 10.5, fontWeight: 500, color: theme.muted, marginTop: 1 }}>{ps.odds}% · you only get to ask once</div>
+                      </button>)}
+                </>); })()}
               <div style={{ fontSize: 11.5, color: theme.muted }}>{o.role}{o.genre ? ` · ${o.genre}` : ''}</div>
             </div>
           </div>);

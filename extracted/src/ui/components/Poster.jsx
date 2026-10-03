@@ -1,4 +1,5 @@
 import { FONT_DISPLAY } from '../chrome.js';
+import { hash, rng, one, palette, G } from './poster-spec.js';
 
 // A one-sheet, drawn. The game ships as one html file and cannot carry an image, so every poster
 // is an SVG — the same film always gets the same one, seeded by its title.
@@ -13,41 +14,6 @@ import { FONT_DISPLAY } from '../chrome.js';
 //
 // It still has to work at forty-four pixels in the filmography, which is most of where anybody
 // sees it, so every layer is one big readable shape and the fine detail is weather, not subject.
-
-function hash(str) { let h = 2166136261; for (let i = 0; i < str.length; i++) { h ^= str.charCodeAt(i); h = Math.imul(h, 16777619) >>> 0; } return h; }
-function rng(seed) { let x = seed || 1; return () => { x ^= x << 13; x >>>= 0; x ^= x >> 17; x ^= x << 5; x >>>= 0; return (x % 10000) / 10000; }; }
-const one = (arr, r) => arr[Math.floor(r() * arr.length) % arr.length];
-
-// ── colour ────────────────────────────────────────────────────────────────────
-// A genre is a hue and a mood, not a fixed pair of hex codes — two horror films used to be
-// exactly the same red. The seed moves the hue within the genre's range and decides how dark it
-// sits, so a genre still reads as itself and no two pictures in it are the same colour.
-const HUE = {
-  Drama: [262, 26], Crime: [212, 22], Romance: [336, 24], Musical: [28, 26],
-  Thriller: [188, 24], 'Sci-Fi': [206, 30], Comedy: [44, 22], Horror: [356, 20],
-};
-// Spread properly now. These used to sit inside ten degrees of each other for half the genres.
-const LIGHT_HUE = { Drama: 36, Crime: 196, Romance: 342, Musical: 318, Thriller: 172, 'Sci-Fi': 190, Comedy: 50, Horror: 4 };
-// How bright the picture itself is, which is the thing that was identical everywhere. A
-// comedy is a bright poster and a horror film is nearly a black one; a drama is somewhere in
-// between and should be allowed to be either.
-const TONE = {
-  Comedy: [46, 26], Musical: [42, 24], Romance: [34, 24], 'Sci-Fi': [22, 20],
-  Drama: [24, 24], Thriller: [16, 16], Crime: [15, 15], Horror: [9, 12],
-};
-function palette(genre, r) {
-  const [h0, spread] = HUE[genre] || HUE.Drama;
-  const h = Math.round(h0 + (r() - 0.5) * spread * 2);
-  const sat = 26 + Math.round(r() * 24);
-  const [lo, span] = TONE[genre] || TONE.Drama;
-  const top = lo + Math.round(r() * span);
-  const lh = LIGHT_HUE[genre] ?? 40;
-  return {
-    sky: [`hsl(${h} ${sat}% ${top}%)`, `hsl(${h} ${Math.round(sat * 0.8)}% 5%)`],
-    light: `hsl(${lh} ${55 + Math.round(r() * 30)}% ${66 + Math.round(r() * 20)}%)`,
-    ink: `hsl(${h} ${Math.round(sat * 0.7)}% 7%)`,
-  };
-}
 
 // ── the backdrop ──────────────────────────────────────────────────────────────
 const BACK = {
@@ -105,6 +71,25 @@ const BACK = {
   grid: (r, c) => (<g>
     {[0, 1, 2, 3, 4, 5].map((i) => <path key={i} d={`M0 ${100 + i * 9} L100 ${100 + i * 9}`} stroke={c.light} strokeWidth=".6" opacity={0.3 - i * 0.04} />)}
     {[0, 1, 2, 3, 4, 5, 6].map((i) => <path key={'v' + i} d={`M50 100 L${-30 + i * 27} 150`} stroke={c.light} strokeWidth=".6" opacity=".18" />)}
+  </g>),
+  // ── four more, because "чем больше тем лучше" and because the ones above are all
+  // architecture and weather. These are graphic: they read at forty-four pixels as a SHAPE,
+  // which is what a one-sheet is supposed to do.
+  sunburst: (r, c) => { const cy = 56 + r() * 20; return (<g>
+    {Array.from({ length: 16 }, (_, i) => <path key={i} d={`M50 ${cy} L${50 + Math.cos(i * 0.3927) * 120} ${cy + Math.sin(i * 0.3927) * 120} L${50 + Math.cos((i + 0.45) * 0.3927) * 120} ${cy + Math.sin((i + 0.45) * 0.3927) * 120} Z`} fill={c.light} opacity=".16" />)}
+  </g>); },
+  blocks: (r, c) => (<g>
+    {Array.from({ length: 5 }, (_, i) => <rect key={i} x={r() * 70} y={14 + i * 27} width={22 + r() * 44} height={11 + r() * 9} fill={i % 2 ? c.light : c.ink} opacity={i % 2 ? 0.5 : 0.8} />)}
+  </g>),
+  arch: (r, c) => { const w = 26 + r() * 12, y = 40 + r() * 14; return (<g>
+    <path d={`M${50 - w} 150 L${50 - w} ${y + w} a${w} ${w} 0 0 1 ${w * 2} 0 L${50 + w} 150 Z`} fill={c.light} opacity=".17" />
+    <path d={`M${50 - w} 150 L${50 - w} ${y + w} a${w} ${w} 0 0 1 ${w * 2} 0 L${50 + w} 150`} stroke={c.ink} strokeWidth="3" fill="none" opacity=".8" />
+    <rect x="0" y="134" width="100" height="16" fill={c.ink} opacity=".85" />
+  </g>); },
+  wires: (r, c) => (<g>
+    {[0, 1, 2].map((i) => <path key={i} d={`M-4 ${44 + i * 13 + r() * 6} q50 ${10 + r() * 12} 108 0`} stroke={c.ink} strokeWidth="1.3" fill="none" opacity=".75" />)}
+    {[0, 1].map((i) => <path key={'p' + i} d={`M${20 + i * 56} 150 L${20 + i * 56} ${36 + r() * 8}`} stroke={c.ink} strokeWidth="3.4" opacity=".85" />)}
+    <rect x="0" y={126 + r() * 10} width="100" height="26" fill={c.ink} opacity=".7" />
   </g>),
 };
 
@@ -164,6 +149,23 @@ const SUBJ = {
     <circle cx="50" cy={y} r={rad} fill={c.light} opacity=".2" />
     <circle cx="50" cy={y} r={rad} stroke={c.light} strokeWidth="1.4" fill="none" opacity=".65" />
   </g>); },
+  // A head in profile, filling most of the sheet. After the figure seen from behind this is
+  // the commonest one-sheet there is, and it reads at any size at all.
+  profile: (r, c) => { const s = 1 + r() * 0.25, x = 50, y = 62; return (<g transform={`translate(${x} ${y}) scale(${s}) translate(${-x} ${-y})`}>
+    <path d="M62 14 c-17 0 -28 13 -29 29 -1 9 -5 13 -7 18 -2 4 2 6 5 6 1 6 0 11 4 14 4 3 10 3 14 2 l0 17 -22 10 c-9 4 -13 11 -13 20 l0 20 h66 l0 -92 c0 -25 -9 -44 -18 -44 z" fill={c.ink} />
+  </g>); },
+  // The ensemble: five of them in a row, which is a comedy poster and nothing else.
+  group: (r, c) => (<g>
+    {Array.from({ length: 5 }, (_, i) => { const h = 0.62 + (i === 2 ? 0.14 : 0) + r() * 0.1; return (<g key={i}>
+      <circle cx={13 + i * 18.5} cy={70 - h * 10} r={6.4 * h + 2} fill={c.ink} />
+      <path d={`M${13 + i * 18.5} ${78 - h * 10} c-9 0 -11 16 -11 26 l0 ${34 + h * 12} h22 l0 ${-34 - h * 12} c0 -10 -2 -26 -11 -26 z`} fill={c.ink} />
+    </g>); })}
+  </g>),
+  // Somebody falling, read from the top of the frame. Thriller, horror, the odd sci-fi.
+  fall: (r, c) => { const x = 36 + r() * 24; return (<g transform={`rotate(${152 + r() * 50} ${x} 56)`}>
+    <circle cx={x} cy="40" r="8.5" fill={c.ink} />
+    <path d={`M${x} 50 c-13 0 -17 20 -17 32 l0 26 h34 l0 -26 c0 -12 -4 -32 -17 -32 z`} fill={c.ink} />
+  </g>); },
 };
 
 // ── the light ─────────────────────────────────────────────────────────────────
@@ -186,26 +188,6 @@ const WEATHER = {
   fog: (r, c) => (<g>{[0, 1, 2].map((i) => <rect key={i} x="0" y={56 + i * 18 + r() * 8} width="100" height={8 + r() * 6} fill={c.light} opacity=".07" />)}</g>),
   scan: (r, c) => (<g>{Array.from({ length: 14 }, (_, i) => <rect key={i} x="0" y={i * 11} width="100" height="1" fill={c.light} opacity=".09" />)}</g>),
 };
-
-// ── which of them a genre is allowed ──────────────────────────────────────────
-// The gate is the whole point. A musical does not get rain on a motorway and a horror film does
-// not get three people in a sunbeam. Inside the gate the seed does as it likes.
-const G = {
-  Drama: { back: ['room', 'horizon', 'hills', 'plain', 'stairs', 'bridge'], subj: ['figure', 'pair', 'chair', 'window', 'back', 'apart'], lit: ['shaft', 'halo', 'pool', 'rim'], wx: ['none', 'fog', 'rain'] },
-  Crime: { back: ['skyline', 'road', 'corridor', 'horizon', 'bridge', 'stairs'], subj: ['figure', 'car', 'pair', 'looming', 'back', 'apart'], lit: ['cone', 'pool', 'rim', 'none'], wx: ['rain', 'fog', 'none'] },
-  Romance: { back: ['room', 'sea', 'hills', 'plain', 'bridge', 'moonrise'], subj: ['pair', 'window', 'figure', 'chair', 'apart', 'back'], lit: ['sun', 'halo', 'shaft'], wx: ['snow', 'none', 'rain'] },
-  Musical: { back: ['room', 'plain', 'skyline', 'horizon', 'stairs', 'crowd'], subj: ['three', 'figure', 'pair', 'chair', 'back'], lit: ['cone', 'pool', 'halo', 'sun'], wx: ['none', 'stars', 'snow'] },
-  Thriller: { back: ['corridor', 'road', 'room', 'skyline', 'stairs', 'bridge'], subj: ['figure', 'door', 'looming', 'car', 'back', 'hand'], lit: ['shaft', 'rim', 'none', 'cone'], wx: ['rain', 'fog', 'none'] },
-  'Sci-Fi': { back: ['grid', 'horizon', 'hills', 'plain', 'moonrise', 'crowd'], subj: ['orb', 'figure', 'looming', 'none', 'back'], lit: ['halo', 'rim', 'sun'], wx: ['stars', 'scan', 'none'] },
-  Comedy: { back: ['room', 'hills', 'plain', 'skyline', 'sea', 'crowd', 'stairs'], subj: ['three', 'pair', 'figure', 'car', 'apart'], lit: ['sun', 'halo', 'pool', 'shaft'], wx: ['none', 'snow', 'rain'] },
-  Horror: { back: ['trees', 'room', 'corridor', 'plain', 'moonrise', 'stairs'], subj: ['door', 'looming', 'figure', 'window', 'back', 'hand'], lit: ['none', 'shaft', 'pool'], wx: ['fog', 'rain', 'none'] },
-};
-// For anybody counting: how many one-sheets a genre can actually produce, before the hue and the
-// dozen seeded positions inside each layer are counted at all.
-export function posterCount(genre) {
-  const g = G[genre] || G.Drama;
-  return g.back.length * g.subj.length * g.lit.length * g.wx.length;
-}
 
 export function Poster({ title, type, genre, director, size = 52, tall, compact }) {
   const w = tall ? Math.round(size) : 44, h = Math.round(w * 1.5);
@@ -231,8 +213,11 @@ export function Poster({ title, type, genre, director, size = 52, tall, compact 
         <linearGradient id={id + 'sky'} x1="0" y1="0" x2="0" y2="1">
           <stop offset="0" stopColor={c.sky[0]} /><stop offset="1" stopColor={c.sky[1]} />
         </linearGradient>
+        {/* The title block. It used to fade to c.ink, which was black on every poster ever
+            drawn; on a high-key or washed sheet that is a bar of tar across the bottom of it.
+            Each scheme says what its own foot fades to and what the type is legible in. */}
         <linearGradient id={id + 'fade'} x1="0" y1="0" x2="0" y2="1">
-          <stop offset="0" stopColor={c.ink} stopOpacity="0" /><stop offset="1" stopColor={c.ink} stopOpacity=".95" />
+          <stop offset="0" stopColor={c.fade} stopOpacity="0" /><stop offset="1" stopColor={c.fade} stopOpacity=".95" />
         </linearGradient>
       </defs>
       <rect width="100" height="150" fill={`url(#${id}sky)`} />
@@ -255,17 +240,17 @@ export function Poster({ title, type, genre, director, size = 52, tall, compact 
       {mini && finish === 'split' && <rect x="0" y="0" width="9" height="150" fill={c.light} opacity=".85" />}
       {!mini && <rect x="0" y="92" width="100" height="58" fill={`url(#${id}fade)`} />}
       {!mini && <text x="50" y={long ? 120 : 124} textAnchor="middle" fontFamily={FONT_DISPLAY} fontWeight="700"
-        fontSize={long ? 9 : 11.5} fill="#f6f1e6" letterSpacing=".04em" style={{ textTransform: 'uppercase' }}>
+        fontSize={long ? 9 : 11.5} fill={c.type} letterSpacing=".04em" style={{ textTransform: 'uppercase' }}>
         {long ? <>
           <tspan x="50" dy="-6">{words.slice(0, Math.ceil(words.length / 2)).join(' ')}</tspan>
           <tspan x="50" dy="10">{words.slice(Math.ceil(words.length / 2)).join(' ')}</tspan>
         </> : words.join(' ')}
       </text>}
       {/* the credits block: a line of tiny type nobody can read, exactly like the real thing */}
-      {!mini && <text x="50" y="136" textAnchor="middle" fontSize="3.2" fill="#f6f1e6" opacity=".55" letterSpacing=".08em" fontFamily="system-ui, sans-serif">
+      {!mini && <text x="50" y="136" textAnchor="middle" fontSize="3.2" fill={c.type} opacity=".55" letterSpacing=".08em" fontFamily="system-ui, sans-serif">
         {(director ? 'A FILM BY ' + director.toUpperCase() : 'A FILM').slice(0, 30)}
       </text>}
-      {!mini && <text x="50" y="142" textAnchor="middle" fontSize="2.4" fill="#f6f1e6" opacity=".35" letterSpacing=".05em" fontFamily="system-ui, sans-serif">
+      {!mini && <text x="50" y="142" textAnchor="middle" fontSize="2.4" fill={c.type} opacity=".35" letterSpacing=".05em" fontFamily="system-ui, sans-serif">
         EXECUTIVE PRODUCER · MUSIC BY · EDITED BY · CASTING · PRODUCTION DESIGN
       </text>}
       {tv && <>

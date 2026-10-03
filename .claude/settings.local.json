@@ -342,7 +342,8 @@
       "Bash(\"/c/Program Files/nodejs/node.exe\" \"C:/Users/MAXIMI~1/AppData/Local/Temp/claude/C--Users-maximilian-Desktop-game/c6338e03-964b-4add-ba0d-c7905acab615/scratchpad/hook_watch.cjs\")",
       "Bash(\"/c/Program Files/nodejs/node.exe\" \"C:/Users/MAXIMI~1/AppData/Local/Temp/claude/C--Users-maximilian-Desktop-game/c6338e03-964b-4add-ba0d-c7905acab615/scratchpad/hook_offerui.cjs\")",
       "Bash(\"/c/Program Files/nodejs/node.exe\" \"C:/Users/MAXIMI~1/AppData/Local/Temp/claude/C--Users-maximilian-Desktop-game/c6338e03-964b-4add-ba0d-c7905acab615/scratchpad/hook_buzz.cjs\")",
-      "Bash(\"/c/Program Files/nodejs/node.exe\" tests/test_chapter.mjs)"
+      "Bash(\"/c/Program Files/nodejs/node.exe\" tests/test_chapter.mjs)",
+      "Bash(node tools/build.mjs)"
     ],
     "defaultMode": "acceptEdits",
     "additionalDirectories": [

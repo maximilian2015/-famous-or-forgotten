@@ -300,6 +300,67 @@ export function proposeStart(s, id, month) {
 }
 export function openTalks(o) { return ((o.contract && o.contract.clauses) || []).filter((c) => c.stance === 'talk'); }
 
+// ── asking them to push it, after you have signed ─────────────────────────────
+// Maxi, holding a letter from business affairs: "я подписал свой месяц и потом возможности нет
+// вернуться, и они ждут, а потом пишут. я не понимаю как это работает."
+//
+// He had read it exactly right. proposeStart refuses once `o.signed` is set, silently, so the
+// month you picked at the table was the last word you ever got on it — and the set you were on
+// ran long, which is not something you chose either. The letter that followed had one button
+// and the button said "Understood". That is the shape CLAUDE.md warns about: not a refusal, a
+// dead end, in the one month where a person would actually be on the phone about it.
+//
+// In life the agent rings them and asks them to move the start. Sometimes they do. The odds are
+// the same holdOdds the negotiation already uses — how long you are asking for, who you are,
+// and whether the thing is about you — because this is the same question asked later, and a
+// second scale for it would be a second source of truth. What is new is only that you can ask
+// at all, and that you can ask once.
+export function pushState(s, o) {
+  if (!o || !o.signed) return null;
+  const now = (s.year || 0) * 12 + (s.month || 0);
+  const fit = canTakeSet(s, o);
+  if (fit.ok) return null;                       // you are free; there is nothing to ask for
+  const free = now + monthsUntilFree(s, o);      // the month the set you are on lets you go
+  const held = (o.startAt || now) + 2;           // how long they have already said they will hold
+  const extra = Math.max(0, free - held);        // what you are asking for on top of that
+  return {
+    free, held, extra, why: fit.why, until: (fit.until || s.production || {}).title || 'the set you are on',
+    asked: o._pushed || null,
+    odds: extra === 0 ? 100 : holdOdds(extra, s, o),
+  };
+}
+// The letter's own button, dispatched straight from Email.jsx the way the tour and festival
+// letters already are. Routing it through emailAct instead would mean meta/email.js importing
+// this file, and this file already imports sendMail from it — a cycle, for one branch.
+export function answerPushMail(s, mailId) {
+  const m = (s.inbox || []).find((x) => x.id === mailId); if (!m) return s;
+  const c = (m.cta || [])[0] || {};
+  askToPush(s, c.offerId || m.offerId);
+  s.inbox = (s.inbox || []).filter((x) => x.id !== mailId);
+  return s;
+}
+export function askToPush(s, id) {
+  const o = (s.offers || []).find((x) => x.id === id); if (!o) return s;
+  const t0 = String(o.projectTitle || 'it').replace('⭐ ', '');
+  const st = pushState(s, o);
+  if (!st) { s.lastEvent = `Nothing to ask about on "${t0}" — you are free when they want you.`; return s; }
+  if (st.asked) { s.lastEvent = `You have already asked about "${t0}". Asking twice in a month is how a part goes to somebody else.`; return s; }
+  if (chance(st.odds)) {
+    o._pushed = 'yes';
+    o.startAt = st.free;
+    addTimeline(s, `${studioOf(o)} moved the start of "${t0}" to ${MON[st.free % 12]} — they will wait for you.`);
+    s.lastEvent = `Business affairs on "${t0}": they will move it. Cameras in ${MON[st.free % 12]}, when "${st.until}" lets you go. Nobody is pretending it cost them nothing.`;
+    sendMail(s, { from: `${studioOf(o)} · business affairs`, subj: `"${t0}" — new date`, tag: 'contract', kind: 'contract',
+      body: `We have moved ${t0} to ${MON[st.free % 12]}. We would rather wait for you than shoot it with somebody else. Please do not make us do this twice.`,
+      cta: [{ label: 'Thank them', fx: {}, reply: 'A date you can actually make.' }] });
+  } else {
+    o._pushed = 'no';
+    addTimeline(s, `${studioOf(o)} would not move "${t0}". The date stands.`, true);
+    s.lastEvent = `Business affairs on "${t0}": no. The money is placed, the crew is booked and the date stands. They will hold it to ${MON[st.held % 12]} as they said, and not a month further.`;
+  }
+  return s;
+}
+
 // ── sending it ────────────────────────────────────────────────────────────────
 export function sendContract(s, id) {
   const o = (s.offers || []).find((x) => x.id === id); if (!o) return s;
@@ -330,9 +391,19 @@ export function contractsTick(s) {
       const until = (canTakeSet(s, o).until || s.production || {}).title || 'the set you are on';
       addTimeline(s, `${studioOf(o)} asked when you will be free for "${t0}". They will not hold it past ${MON[(o.startAt + 2) % 12]} — you are still on "${until}".`, true);
       s.lastEvent = `Business affairs rang about "${t0}". They have held it since ${MON[(o.startAt || now) % 12]} and they will hold it one more month. After that they cast somebody else, and you are still on "${until}".`;
+      // The letter used to state their side of it and stop. It did not say why you were not
+      // free, or when you would be, or that anything could be done — and the only button on it
+      // agreed with them. All three facts existed; none of them were on the page a person read.
+      const st = pushState(s, o) || { free: now, extra: 0, odds: 0, why: '' };
+      const late = Math.max(0, st.free - ((o.startAt || now) + 2));
       sendMail(s, { from: `${studioOf(o)} · business affairs`, subj: `"${t0}" — one more month`, tag: 'contract', kind: 'contract',
         body: `We have held ${t0} since ${MON[(o.startAt || now) % 12]}. We can hold it through ${MON[(o.startAt + 2) % 12]} and no longer. If you are not free by then we will have to cast elsewhere, which none of us wants.`,
-        cta: [{ label: 'Understood', fx: {}, reply: 'Understood. It does not make you free.' }] });
+        note: `You are on "${until}" until ${MON[st.free % 12]}${late ? `, which is ${late} month${late === 1 ? '' : 's'} past the date they can hold to` : ''}. ${st.why || ''}`,
+        offerId: o.id,
+        cta: late > 0
+          ? [{ label: `Have the agent ask them to move it to ${MON[st.free % 12]}`, push: true, offerId: o.id, hint: `${st.odds}% — and you only get to ask once`, reply: 'The agent is on the phone about it.' },
+            { label: 'Understood', fx: {}, reply: 'Understood. It does not make you free.' }]
+          : [{ label: 'Understood', fx: {}, reply: 'Understood. It does not make you free.' }] });
     }
     if (!o.signed || (o.startAt || 0) + 2 > now || canTakeSet(s, o).ok) continue;
     const title = String(o.projectTitle || 'it').replace('⭐ ', '');
