@@ -595,17 +595,26 @@ function wrapProduction(s, p) {
   }
   // Both ends of the scale, compressed rather than cut off, so neither one piles up.
   rating = clamp(topOut(bottomOut(rating)));
-  // A genuine cultural moment should be a career highlight, not a monthly occurrence.
-  let worldHit = false;
+  // The rare shoot where everything lands. This used to declare the picture a WORLD HIT right
+  // here — at wrap, months before release, off the rating — and release.js paid out for it.
+  // So a €1.163bn picture rated 7.7 could never be one and a festival film rated 9.2 that took
+  // forty million always could. Whether a film becomes one of the few everybody has heard of is
+  // not knowable on a set; it is settled by the run (career/release.js isWorldHit).
+  //
+  // The roll itself is kept, because it is not about the world — it is about the work, and it
+  // is the only thing in the game that says this shoot was exceptional. It still lifts the
+  // picture the way it always did. It is marked on the credit so it can be given its own name
+  // later; it no longer claims to know what the world will make of it.
+  let exceptional = false;
   if (rating >= 90 && p.tier !== 'supporting') {
     let odds = 1.5 + (rating - 90) * 0.4;
     if (p.genre === hotGenre(s)) odds += 7;
     if (p.campaign) odds += 5;
-    worldHit = chance(Math.min(18, odds));
+    exceptional = chance(Math.min(18, odds));
   }
-  if (worldHit) rating = Math.max(rating, 96);
-  const status = worldHit ? 'World Hit' : rating >= 85 ? 'Hit' : rating >= 70 ? 'Well-received' : rating >= 50 ? 'Released' : 'Flop';
-  const credit = { title: p.title, role: p.role, type: p.type, genre: p.genre, salary: p.salary, rating, status, year: s.year,
+  if (exceptional) rating = Math.max(rating, 96);
+  const status = rating >= 85 ? 'Hit' : rating >= 70 ? 'Well-received' : rating >= 50 ? 'Released' : 'Flop';
+  const credit = { title: p.title, role: p.role, type: p.type, genre: p.genre, salary: p.salary, rating, status, year: s.year, exceptional,
     season: p.season || 0, part: p.part > 1 ? p.part : 0, episodes: p.episodes || 0,
     // Who directed it, and how long it ran. The crew is thrown away at wrap, and the
     // filmography had no director on it — every real one lists them under the title.
@@ -668,7 +677,8 @@ function wrapProduction(s, p) {
   // most of a life as the liability, three points a wrap, because every set below the
   // line tripped this. Twelve points colder than they started, on a set that went badly.
   else if (lead.bond <= 25 && lead.bond <= (lead.bond0 ?? 100) - 12 && (p.meter || 0) < 45) { setRespect(s, (s.respect || 0) - 3); verdictNote = ` ${lead.name} has quietly started telling a different story about you.`; startRumour(s, lead.name); }
-  if (worldHit) s.worldHits = (s.worldHits || 0) + 1;
+  // s.worldHits is counted by release.js now, when the run closes and the gross is known.
+  // Counting it here counted films that had not opened.
   keepTheCrew(s, p);
   // What the months on set left in you. Computed AFTER the rating, so this shoot is judged
   // on the actor you were when you walked on — not the one you walked off as.

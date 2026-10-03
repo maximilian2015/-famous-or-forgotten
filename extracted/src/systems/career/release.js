@@ -491,6 +491,36 @@ export function previousRating(s, rel) {
 // right decision. Take the word "flop" away and there is nothing left to understand. The same
 // in reverse for a sequel that takes €690m and is worth 31 to the column: commercial triumph,
 // prestige damage, and the typecasting tightens another notch.
+// Whether a picture became one of the few everybody has heard of. Read AFTER the run closes,
+// from the final worldwide gross and from what the crowd made of it — never before, and never
+// from the reviews alone.
+//
+// The bars are read off the distribution rather than picked: measured over 6,000 pictures in
+// the mix a year of cinema is actually made in, €700m is the top 2.5% of everything and about
+// one blockbuster in eight. That is the right order of magnitude for "the film of the year",
+// and it is deliberately NOT a billion — a billion is the Billion Club, which is a louder thing
+// and does not exist yet.
+const WORLD_GROSS = 700e6;        // the scale route
+const SLEEPER_GROSS = 150e6;      // the floor under the phenomenon route
+const SLEEPER_OVER = 12;          // ...and how many times its own costs it has to go
+export function isWorldHit(credit, rel) {
+  const gross = credit.boxOffice || 0;
+  if (gross <= 0) return false;
+  // The same word of mouth the legs are made of: the crowd first, the column second. The crowd's
+  // number does not survive onto _rel — the file warns about exactly this a few lines down from
+  // where _rel is built — but it is written onto the credit at opening as `audience`, so it is
+  // read from there. Without it this would be the reviews again, which is the bug being fixed.
+  const word = wordFor({ reception: rel.reception != null ? rel.reception : credit.audience,
+    rating: rel.rating != null ? rel.rating : credit.rating });
+  const needed = credit.needed || breakEvenFor(rel) || 0;
+  // Enormous, and not hated. A tentpole people disliked makes its money in a fortnight and is
+  // forgotten by spring; that is a smash, not a phenomenon.
+  if (gross >= WORLD_GROSS && word >= 58) return true;
+  // Or it went somewhere nothing of its size goes, and people loved it. Twelve times what it
+  // had to make, past a hundred and fifty million, and a crowd that sent their friends.
+  if (needed > 0 && gross >= needed * SLEEPER_OVER && gross >= SLEEPER_GROSS && word >= 75) return true;
+  return false;
+}
 export function criticalOf(rating) {
   const r = rating || 0;
   if (r >= 85) return 'acclaimed';
@@ -975,6 +1005,26 @@ function closeRun(s, credit, r) {
 
   // The score buys respect; the money buys reach. They are different currencies, and both
   // of them are settled here rather than on opening night.
+  // ── was it enormous ──────────────────────────────────────────────────────────
+  // It used to be decided on the set, months before anybody saw it: production.js rolled a die
+  // on the RATING at wrap and wrote 'World Hit' onto the credit, and everything below read that
+  // flag. So a €1.163bn picture rated 7.7 could never be one, and a festival film rated 9.2
+  // that took forty million always could. The game's idea of an enormous film was the critics'
+  // idea of a good one, settled before release.
+  //
+  // It is settled here instead, which is after the run has closed and the final worldwide gross
+  // is on the credit — the rewards were always paid from here, only the flag arrived early.
+  // Two ways in, because there are two ways in life:
+  //   the scale of it — three quarters of a billion, and a crowd that did not hate it;
+  //   the phenomenon  — a smaller picture that went enormously past what it was built for and
+  //                     that people loved, which is how a five-million comedy takes four hundred.
+  // Neither one is the money alone: both read the crowd, because a film nobody enjoyed does not
+  // become the thing people talk about however many tickets the first weekend sold.
+  r.worldHit = film ? isWorldHit(credit, r) : false;
+  if (r.worldHit) {
+    credit.status = 'World Hit';
+    s.worldHits = (s.worldHits || 0) + 1;
+  }
   // What the three of them say, measured across this close rather than inferred from the money.
   credit.critical = criticalOf(r.rating);
   const _fameBefore = s.fame || 0, _respBefore = s.respect || 0;
