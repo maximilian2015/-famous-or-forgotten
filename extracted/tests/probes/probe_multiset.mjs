@@ -34,6 +34,8 @@ const byCount = [0, 1, 2, 3].map(() => ({ months: 0, ap: 0, apMax: 0, mental: 0,
   fame: 0, health: 0, films: 0, ratingSum: 0, ratings: 0, broke: 0, ill: 0, burnout: 0 }));
 // Every film with the craft and the load it was made under, so the two can be told apart.
 const shots = [];
+const wrapped = [];        // { title, load, meter, craft } — measured across the SHOOT
+const loadOf = new Map();  // production id -> [months at each load]
 
 function career() {
   let s = actor();
@@ -57,6 +59,15 @@ function career() {
     }
     const long = SETS.sets(s).filter((p) => !SETS.isShort(p)).length;
     const n = Math.min(3, SETS.sets(s).length);
+    // Every month, every running set notes how crowded that month was for it.
+    for (const p of SETS.sets(s)) {
+      if ((p.prepLeft || 0) > 0 || p.paused) continue;
+      if (!loadOf.has(p.id)) loadOf.set(p.id, { loads: [], craft: Math.round(s.acting || 0), title: p.title, scale: p.scale, meter: p.meter });
+      const rec = loadOf.get(p.id);
+      rec.loads.push(Math.min(3, SETS.sets(s).filter((q) => !SETS.isShort(q) && (q.prepLeft || 0) <= 0 && !q.paused).length));
+      rec.meter = p.meter;          // the last one seen is the one it wrapped on
+      rec.craft = Math.round(s.acting || 0);
+    }
     const b = byCount[n];
     b.months++; b.ap += s.apMaxEff || 0; b.apMax += s.apMax || 100;
     b.mental += s.mental || 0; b.strain += s.strain || 0; b.health += s.health || 0;
@@ -78,6 +89,12 @@ function career() {
         shots.push({ load: n, craft: Math.round(s.acting || 0), fame: Math.round(s.fame || 0), rating: c.rating || 0, scale: c.scale, meter: c.meter || 0 }); }
     }
     seen = film.length;
+    for (const [id, rec] of loadOf) {
+      if (SETS.sets(s).some((p) => p.id === id)) continue;
+      const avg = rec.loads.reduce((x, y) => x + y, 0) / Math.max(1, rec.loads.length);
+      wrapped.push({ load: Math.round(avg), avg, craft: rec.craft, scale: rec.scale, meter: rec.meter, months: rec.loads.length });
+      loadOf.delete(id);
+    }
     void long;
   }
   return s;
@@ -110,24 +127,16 @@ for (let n = 0; n <= 3; n++) {
 // sheet until they are respected, skilled, rich and past the years of taking anything going.
 // Split by craft, and ask again.
 console.log();
-console.log('SAME QUESTION, CRAFT HELD STILL  ·  average rating of a film by how many sets were running');
-console.log('  craft        0 sets    1 set    2 sets    3+ sets');
+console.log('SAME QUESTION, CRAFT HELD STILL  ·  the PERFORMANCE delivered (meter at wrap)');
+console.log('  craft          1 set      2 sets      3 sets     (load averaged across the shoot; it enters the score as (meter-45)x0.32)');
 const CRAFT = [[0, 49], [50, 69], [70, 84], [85, 100]];
 for (const [lo, hi] of CRAFT) {
-  const row = [0, 1, 2, 3].map((L) => {
-    const g = shots.filter((x) => x.load === L && x.craft >= lo && x.craft <= hi);
-    return g.length ? `${(g.reduce((n, x) => n + x.rating, 0) / g.length).toFixed(1)} (${g.length})` : '—';
+  const row = [1, 2, 3].map((L) => {
+    const g = wrapped.filter((x) => x.load === L && x.craft >= lo && x.craft <= hi && x.months >= 2);
+    return g.length ? `${(g.reduce((n, x) => n + x.meter, 0) / g.length).toFixed(1)} (${g.length})` : '—';
   });
-  console.log(`  ${String(lo + '-' + hi).padEnd(10)} ${row.map((r) => r.padStart(9)).join(' ')}`);
+  console.log(`  ${String(lo + '-' + hi).padEnd(10)} ${row.map((r) => r.padStart(11)).join(' ')}`);
 }
 // And the performance itself — the meter is what the actor put into the picture, before the
 // script and the director are added. If spreading yourself thin costs anything, it is here.
-console.log();
-console.log('  and the performance (meter) the actor delivered, by craft and load:');
-for (const [lo, hi] of CRAFT) {
-  const row = [0, 1, 2, 3].map((L) => {
-    const g = shots.filter((x) => x.load === L && x.craft >= lo && x.craft <= hi && x.meter > 0);
-    return g.length ? `${(g.reduce((n, x) => n + x.meter, 0) / g.length).toFixed(1)} (${g.length})` : '—';
-  });
-  console.log(`  ${String(lo + '-' + hi).padEnd(10)} ${row.map((r) => r.padStart(9)).join(' ')}`);
-}
+

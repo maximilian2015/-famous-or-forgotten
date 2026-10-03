@@ -23,7 +23,7 @@ import { holdsAGrudge } from '../meta/stories.js';
 import { rollPotential } from './franchise.js';
 import { dirBump, dirSwing, pitchAftermath } from './chapter.js';
 import { youngAfterCredit } from './youngblood.js';
-import { sets, addSet, removeSet, setById, canTakeSet, slotsFree, MAX_SETS, SET_RESPECT } from '../../engine/sets.js';
+import { sets, addSet, removeSet, setById, canTakeSet, slotsFree, isShort, MAX_SETS, SET_RESPECT } from '../../engine/sets.js';
 export { sets, canTakeSet, slotsFree, MAX_SETS, SET_RESPECT };
 const clamp = (v) => Math.max(0, Math.min(100, v));
 // A shoot opens on 20 and 20 used to be labelled "Disaster", so the very first thing the
@@ -261,7 +261,27 @@ export function shootTick(s) {
     const lead = (p.crew || [])[0];
     const craft = Math.round((s.acting || 0) / 28);
     const warmth = Math.round(((lead ? lead.bond : 45) - 45) / 22);
-    p.meter = clamp(p.meter + Math.max(2, rint(3, 6) + craft + warmth));
+    // ── and what it costs to be somewhere else as well ────────────────────────
+    // Three pictures at once used to cost twenty energy each and nothing whatever that
+    // mattered. Measured across twelve careers with craft held still, a film shot under three
+    // call sheets was rated the same as one shot under none — so an actor who took everything
+    // got three times the releases, three times the fame and three times the chances at an
+    // enormous hit, for a currency they stopped being short of around year twelve.
+    //
+    // The penalty goes HERE, on the work the actor puts in, and nowhere near the rating: the
+    // picture is worse because you were not there, and the reviews follow from that the way
+    // they always have ((meter − 45) × 0.32 at wrap). Only LONG sets count — a commercial or a
+    // voice session on a Saturday is not what spreads anybody thin — and a big picture feels
+    // it more, which is the same 1.25-ish weighting the month's mental cost already uses
+    // rather than a second mechanic with its own idea of what a big picture is.
+    const longRunning = sets(s).filter((q) => !isShort(q) && (q.prepLeft || 0) <= 0 && !q.paused).length;
+    const over = Math.max(0, longRunning - 1);
+    const demanding = (p.scale === 'blockbuster' || p.scale === 'prestige') ? 1.35 : 1;
+    // Not rounded: at two sets round(1.6) and round(1.6 x 1.35) are both 2, so a blockbuster
+    // and a short feature were paying exactly the same and the difference only appeared at three.
+    const spread = over * 1.6 * demanding;
+    p.spreadThin = spread;
+    p.meter = clamp(p.meter + Math.max(1, rint(3, 6) + craft + warmth - spread));
     // `_workedMonth` is NOT set here, although the first version of this set it. Turning up is
     // not putting something into the picture, and the director is meant to notice the actor who
     // only turns up. A scene day sets it (career/scenes.js) and so does answering them when
@@ -429,13 +449,21 @@ function tickSet(s, p) {
   // it (the month on a set). Nothing here used to touch mental at all, so an actor could shoot back to
   // back for forty years in a penthouse and never once feel it.
   {
-    const st = p.stance === 'allin' ? 1.3 : p.stance === 'coast' ? 0.3 : 0.7;
+    // `p.stance` has not existed since the month on a set stopped being a dial, so this read
+    // 0.7 on every picture in the game — which is not a bug that needed a new number, because
+    // 0.7 was `steady`, and `steady` was the default every production started on and most
+    // never left. The varying part of it has a home: what the month costs you now is what you
+    // say yes to when the production asks (career/demands.js), and every one of those charges
+    // mental explicitly, in the open, with the price on the button. So the dial's old job is
+    // done elsewhere and what is left here is the baseline it always was. Deleted rather than
+    // replaced: inventing a fresh constant here would be a second opinion about the same
+    // month, and the behaviour does not change by a tenth of a point.
     const big = p.scale === 'blockbuster' || p.scale === 'prestige' ? 1.25 : 1;
     const many = 1 + Math.max(0, sets(s).length - 1) * 0.4;
     // Rested, the work is fine. It is the work on top of the work that costs you, which is
     // why a month off is the answer and not a luxury.
     const worn = 0.45 + Math.min(1.1, (s.strain || 0) / 90);
-    p._mentalCost = Math.round(st * big * many * worn * 10) / 10;
+    p._mentalCost = Math.round(0.7 * big * many * worn * 10) / 10;
     s.mental = clamp((s.mental || 50) - p._mentalCost);
   }
   // What the month on the set was actually like. No decision, no click — the shoot simply has
