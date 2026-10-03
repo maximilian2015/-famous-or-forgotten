@@ -98,8 +98,7 @@ let adoredFlops = 0, panneHits = 0;
 for (let i = 0; i < 600; i++) {
   const a = { scale: 'feature', rating: 90, genre: 'Drama' }; a.boxOffice = boxOfficeFor(st({ fame: 30, month: 3 }), a);
   if (verdictOf(a) === 'bomb' || verdictOf(a) === 'broke even') adoredFlops++;
-  // reception is always set on a real release (audienceFor); horror crowds are kinder than the column.
-  const b = { scale: 'feature', rating: 62, reception: 72, genre: 'Horror' }; b.boxOffice = boxOfficeFor(st({ fame: 90, month: 3 }), b);
+  const b = { scale: 'feature', rating: 62, genre: 'Horror' }; b.boxOffice = boxOfficeFor(st({ fame: 90, month: 3 }), b);
   if (verdictOf(b) === 'smash' || verdictOf(b) === 'profitable') panneHits++;
 }
 ok('a beloved drama can still lose money', adoredFlops > 0, `${adoredFlops}/600`);
@@ -124,7 +123,7 @@ function openWith(rating, scale, fame = 40) {
 }
 let hitGain = 0, flopGain = 0;
 for (let i = 0; i < 200; i++) { hitGain += openWith(92, 'blockbuster').gained; flopGain += openWith(30, 'blockbuster').gained; }
-ok('a hit makes you famous', hitGain / 200 > 5, `+${(hitGain / 200).toFixed(1)} fame`);
+ok('a hit makes you famous', hitGain / 200 > 8, `+${(hitGain / 200).toFixed(1)} fame`);
 ok('a flop does much less, and can cost you', flopGain / 200 < hitGain / 200 * 0.6, `+${(flopGain / 200).toFixed(1)} fame`);
 console.log(`      opening a blockbuster — rated 92: +${(hitGain / 200).toFixed(1)} fame · rated 30: +${(flopGain / 200).toFixed(1)} fame`);
 let respectUp = 0, respectDown = 0;
@@ -133,8 +132,7 @@ ok('the score buys respect', respectUp / 100 > 40 && respectDown / 100 < 40, `${
 
 // a commercial smash raises what you can ask for
 let raised = 0;
-// A blockbuster: a very good mid-budget feature no longer reaches 3x its costs, which is the real-world rule (box office recalibrated).
-for (let i = 0; i < 300; i++) { const r = openWith(95, 'blockbuster', 95); if (r.s.quote > 0) raised++; }
+for (let i = 0; i < 300; i++) { const r = openWith(88, 'feature', 70); if (r.s.quote > 0) raised++; }
 ok('a smash raises your quote', raised > 0, `${raised}/300 openings moved the quote`);
 
 // ── you are not forgotten while a film is in post ─────────────────────────────
