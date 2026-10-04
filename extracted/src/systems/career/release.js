@@ -168,6 +168,10 @@ export function breakEvenFor(rel) {
 // How wide it can physically go. THIS is what the budget buys instead of buying tickets, and
 // the real gap between a platform release and a global day-and-date is enormous.
 const SCREENS = { small: 0.012, festival: 0.02, indie: 0.09, prestige: 0.12, feature: 0.55, blockbuster: 0.78 };
+// Worldwide opening per unit of demand, raised to the power below. ONE source of truth: this
+// number existed twice as a bare literal — once here and once inside grossFor — and when
+// somebody changed it they changed one of them.
+const OPEN_K = 0.46;
 const isPlatform = (scale) => (SCREENS[scale] ?? 0.09) < 0.2;
 // There is no studio entity in this game, so distribution muscle is read off what the picture
 // is — which is most of what it would say anyway. Named honestly as a stand-in.
@@ -191,46 +195,65 @@ export function castDraw(names) {
 // ── 1. DEMAND ─────────────────────────────────────────────────────────────────
 // Quality is deliberately absent. Nobody has seen the film. If anything in here moved with how
 // good it is, the model would be lying about what an opening weekend measures.
-export function demandFor(s, rel) {
+// ── the one calculation ───────────────────────────────────────────────────────
+// Every film in this world goes through here: yours and the twenty a year the rest of the
+// industry makes. It used to be two functions. grossFor held a second copy of this arithmetic
+// AND a second copy of the opening, down to its own literal 0.46 — which is not a theory about
+// technical debt: somebody cut the opening constant to 0.29 this week and patched only one of
+// the two, and what caught it was a probe measuring something else entirely.
+//
+// What belongs here is what any film has: who is on the poster, what was spent selling it, the
+// muscle behind it, the appetite for its genre, what kind of film it is, and whether anybody
+// liked the last one. What does NOT belong here is what a PERSON did — the month's hype, the
+// press tour, the reminders, the question an odd piece of casting makes people ask out loud.
+// Those arrive as numbers and default to nothing, because a world film has no press tour and
+// inventing one for it would be worse than leaving it out.
+//
+// The order of operations is exactly what demandFor did, because a refactor that moves a
+// player's results is not a refactor. test_demandcore holds that to the decimal.
+export function demandCore({ scale, genre, cast = [], appetite = 1, campaignTier = null,
+  part = 1, lastRating = 65, appealMod = 1, buzz = 0, anticipation = 0, tour = 1, remind = 1 } = {}) {
   let d = 6;
-  d += castDraw([s.fame || 0, rel.withFame || 0]) * 0.52;          // who is on the poster
-  // What is being said this month — and the existing rule that scandal is not the kind of
-  // talk that sells a ticket is kept, because it is right. See meta/hype.js hypeReach.
-  d += (hypeSource(s) === 'scandal' ? 0 : hype(s)) * 0.28;
-  d += Math.min(26, Math.sqrt(Math.max(0, campaignSpend(rel))) * 2.1);   // the campaign
-  // Weighted heavily on purpose, because this is the one thing the old formula had no room for
-  // at all: the bigger the picture, the LESS of it is the actor. Nobody buys a ticket to a
-  // tentpole for whoever is third on the poster - the franchise, the studio and the campaign sell
-  // it. Measured at a tenth, a €220m picture rated 9.2 fronted by somebody at forty points of
-  // fame came out exactly level, which says the lead carries a tentpole. They do not.
-  d += (MUSCLE[rel.scale] ?? 40) * 0.22;                           // distribution muscle
-  // The genre, as a market with a memory rather than a calendar. See meta/market.js.
-  d *= 0.52 + appetiteFor(s, rel.genre) * 0.48;
+  d += castDraw(cast) * 0.52;                                      // who is on the poster
+  d += buzz * 0.28;                                                // what is being said this month
+  d += Math.min(26, Math.sqrt(Math.max(0, campaignSpend({ scale, campaignTier }))) * 2.1);
+  // Weighted heavily on purpose: the bigger the picture, the LESS of it is the actor. Nobody
+  // buys a ticket to a tentpole for whoever is third on the poster — the franchise, the studio
+  // and the campaign sell it.
+  d += (MUSCLE[scale] ?? 40) * 0.22;                               // distribution muscle
+  d *= 0.52 + appetite * 0.48;                                     // the genre market
   // And the kind of film it is, which is not the same question: horror is structurally cheap
-  // and popular whatever the fashion is doing. APPEAL has always said that and still does.
-  d *= 0.45 + ((APPEAL[rel.genre] || 1) * 0.55);
+  // and popular whatever the fashion is doing.
+  d *= 0.45 + ((APPEAL[genre] || 1) * 0.55);
   // Familiarity, and then fatigue — and a good last one buys the fatigue back. A fourth
   // instalment nobody liked is a harder sell than a first nobody has heard of.
-  const part = rel.part || 1;
   if (part > 1) {
     const fam = [0, 0, 16, 19, 19, 16, 13][Math.min(6, part)] ?? 11;
     const tired = [0, 0, 0, 4, 10, 18, 26][Math.min(6, part)] ?? 30;
-    const last = rel.lastRating ?? 65;
+    const last = lastRating ?? 65;
     d += fam - tired * (last >= 75 ? 0.25 : last >= 60 ? 0.6 : 1.2);
   }
-  // What people make of the casting BEFORE they have seen it. Small on purpose: it moves the
-  // trailer response and a little of the demand, and nothing else. An odd choice is a question
-  // people ask out loud, and with a big enough name the question itself sells some tickets.
-  d += castingExpectation(s, rel) * 2.5;
-  // The press tour and anything bought to remind people it exists both belong HERE and not on
-  // the final total. A digital campaign says so in its own blurb: the first night is enormous
-  // and the people it brings are the people who leave first. See career/chapter.js REMINDERS.
-  d *= tourMultiplier(rel) * remindLift(rel);
+  d += anticipation * 2.5;                                         // what the casting makes people ask
+  d *= tour * remind;                                              // the tour, and being reminded
   // A festival prize or a buyer is the only thing that makes anybody aware of a small picture.
-  d *= 0.55 + (rel.appealMod ?? 1) * 0.45;
-  // No ceiling. Demand is an index, not a percentage: an event picture with a star, a genre on
-  // the rise and a campaign behind it reaches 110, and a tentpole nobody asked for sits at 70.
+  d *= 0.55 + (appealMod ?? 1) * 0.45;
+  // No ceiling. Demand is an index, not a percentage.
   return Math.max(2, Math.round(d));
+}
+
+// Your film: the same calculation, plus the four things only a person does.
+export function demandFor(s, rel) {
+  return demandCore({
+    scale: rel.scale, genre: rel.genre,
+    cast: [s.fame || 0, rel.withFame || 0],
+    appetite: appetiteFor(s, rel.genre),
+    campaignTier: rel.campaignTier,
+    part: rel.part || 1, lastRating: rel.lastRating, appealMod: rel.appealMod,
+    // Scandal is not the kind of talk that sells a ticket, which was always the rule here.
+    buzz: hypeSource(s) === 'scandal' ? 0 : hype(s),
+    anticipation: castingExpectation(s, rel),
+    tour: tourMultiplier(rel), remind: remindLift(rel),
+  });
 }
 
 // ── 2. OPENING ────────────────────────────────────────────────────────────────
@@ -238,7 +261,7 @@ export function openingFor(s, rel, demand) {
   const wide = SCREENS[rel.scale] ?? 0.09;
   // Superlinear, because the gap between seventy and ninety matters far more than the gap
   // between twenty and forty. The top of this market is winner-take-most and always was.
-  const base = Math.pow(Math.max(2, demand), 1.45) * 0.46 * wide;
+  const base = Math.pow(Math.max(2, demand), 1.45) * OPEN_K * wide;
   if (rel._window == null) rel._window = windowFor(s.month || 0);
   if (rel._against == null) rel._against = againstYou(rel.scale);
   return base * rel._window * rel._against * (0.9 + Math.random() * 0.2);
@@ -288,23 +311,22 @@ export function expansionFor(rel) {
 // The commercial result, for anybody. Your films and the ones the rest of the world makes in
 // the same year sit on the same list, so they are priced by the same arithmetic — the world
 // simply has fewer things to say about its own pictures, so it takes the defaults.
-export function grossFor({ scale, rating, genre, fame = 0, trend = 1, appealMod = 1, crowd = null, campaignTier = null }) {
+// A film the rest of the industry made, priced by the same arithmetic as yours. It used to
+// carry its own copy of the demand AND its own copy of the opening, literal 0.46 and all; both
+// are gone. What a world film genuinely has it now passes in — the name on the poster, a second
+// name when there is one, which part of a series it is and how the last one was received. What
+// it does not have stays absent rather than being invented: no monthly hype, no press tour, no
+// reminders, because nobody is doing any of that for it.
+export function grossFor({ scale, rating, genre, fame = 0, withFame = 0, trend = 1, appealMod = 1,
+  crowd = null, campaignTier = null, part = 1, lastRating = 65 }) {
   if (!BUDGET[scale]) return 0;
   const rel = { scale, genre, rating, reception: crowd != null ? crowd : rating,
-    appealMod, part: 1, campaignTier: campaignTier || studioCampaign(scale) };
-  // A world film has no hype, no tour and nobody else on the poster; its genre appetite
-  // arrives as a number from the caller, who has the market in hand.
-  let d = 6;
-  d += castDraw([fame]) * 0.52;
-  d += Math.min(26, Math.sqrt(Math.max(0, campaignSpend(rel))) * 2.1);
-  d += (MUSCLE[scale] ?? 40) * 0.22;
-  d *= 0.52 + (Number.isFinite(trend) ? trend : 1) * 0.48;
-  d *= 0.45 + ((APPEAL[genre] || 1) * 0.55);
-  d *= 0.55 + (appealMod ?? 1) * 0.45;
-  const demand = Math.max(2, Math.round(d));
-  const wide = SCREENS[scale] ?? 0.09;
-  const opening = Math.pow(demand, 1.45) * 0.46 * wide
-    * windowFor(rint(0, 11)) * againstYou(scale) * (0.9 + Math.random() * 0.2);
+    appealMod, part, lastRating, campaignTier: campaignTier || studioCampaign(scale) };
+  const demand = demandCore({ scale, genre, cast: [fame, withFame], appetite: trend,
+    campaignTier: rel.campaignTier, part, lastRating, appealMod });
+  // The same opening every one of your films goes through — the window is rolled rather than
+  // read off a calendar, because a world film is not released in any particular month of yours.
+  const opening = openingFor({ month: rint(0, 11) }, rel, demand);
   return Math.round(opening * legsFor(rel) * expansionFor(rel) * 1000000);
 }
 // ── what the room thought ─────────────────────────────────────────────────────
