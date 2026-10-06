@@ -95,7 +95,9 @@ function career(kind) {
 }
 
 const q = (a, p) => (a.length ? a.slice().sort((x, y) => x - y)[Math.min(a.length - 1, Math.floor(a.length * p))] : 0);
-const M = (n) => '€' + Math.round(n / 1e6) + 'm';
+// Past a thousand million, say it in billions. "€1299m" is a number you have to stop and
+// count the digits of, which is the opposite of what a table is for.
+const M = (n) => (n >= 1e9 ? '€' + (n / 1e9).toFixed(3) + 'bn' : '€' + Math.round(n / 1e6) + 'm');
 const pc = (a, over) => (a.length ? Math.round(a.filter((x) => x >= over).length / a.length * 100) : 0);
 const avg = (a) => (a.length ? a.reduce((n, x) => n + x, 0) / a.length : 0);
 const band = (l) => { const b = [0, 0, 0, 0, 0]; for (const x of l) b[Math.min(4, x)]++; return b.map((n) => Math.round(n / l.length * 100)); };

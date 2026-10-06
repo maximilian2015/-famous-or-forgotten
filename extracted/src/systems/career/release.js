@@ -271,6 +271,14 @@ export function openingFor(s, rel, demand) {
 // How long it lasts, and it is almost entirely the crowd. A tentpole the audience dislikes
 // finishes at twice its opening; one they love finishes at five. The column moves this a little
 // and moves it most for the small ones, where a review is still how anybody hears of it.
+// Where the word-of-mouth multiplier starts and how far it reaches, by scale.
+const LEGS = {
+  small: [1.85, 4.60], festival: [1.85, 4.60], indie: [1.85, 4.60],   // 1.85 … 6.45
+  feature: [1.80, 4.00],                                              // 1.80 … 5.80
+  blockbuster: [1.65, 2.35],                                          // 1.65 … 4.00
+};
+const LEGS_DEFAULT = [1.75, 3.50];
+
 export function wordFor(rel) {
   const crowd = rel.reception != null ? rel.reception : (rel.rating || 50);
   return crowd * 0.6 + (rel.rating || 50) * 0.4;
@@ -279,7 +287,24 @@ export function legsFor(rel) {
   const w = wordFor(rel);
   // Continuous: 1.8x for something nobody enjoyed, about 3.5x for a picture people like, and
   // five and a half for one they carry. Those are the real multiples of a worldwide opening.
-  let m = 1.75 + Math.pow(Math.max(0, w - 35) / 60, 1.5) * 3.5;
+  // How far word of mouth can carry a picture depends on what KIND of picture it is, and one
+  // range for all of them forced a choice nobody should have to make. Compressing it until a
+  // billion was rare also made a feature rated 8.8 a smash zero times in twenty thousand;
+  // leaving it where it was made a billion the ordinary result of a tentpole.
+  //
+  // They are not the same story. A tentpole opens enormous and saturates — everybody who was
+  // ever going to see it went in the first fortnight, and there is nobody left to tell. A small
+  // picture opens on nothing and can be carried a very long way by people telling each other,
+  // which is the only way it was ever going to reach anybody.
+  //
+  // Swept four candidate sets before choosing (tests/probes/probe_legs_scale.mjs). This one is
+  // the first that holds both promises at once: a feature rated 8.8 at fame 70 becomes a smash
+  // about a quarter of the time, and a Midnight Talker tentpole lands around €739m with a
+  // billion at roughly 6% and €1.163bn in its top half-percent.
+  //
+  // Anything not listed keeps the old single range, so nothing unlisted moves by accident.
+  const [lo, span] = LEGS[rel.scale] || LEGS_DEFAULT;
+  let m = lo + Math.pow(Math.max(0, w - 35) / 60, 1.5) * span;
   // Frontloading, which is a mechanism and not a punishment: everybody who was ever going to
   // see a bad blockbuster goes on the first weekend, and then it falls off a cliff.
   if (!isPlatform(rel.scale) && w < 60) m *= 0.78;

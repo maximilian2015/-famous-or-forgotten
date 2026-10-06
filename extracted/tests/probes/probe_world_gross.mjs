@@ -35,10 +35,12 @@ for (let i = 0; i < N; i++) {
   rows.push({ gross, rating });
 }
 const g = rows.map((r) => r.gross).sort((a, b) => a - b);
-const q = (p) => Math.round(g[Math.floor(g.length * p)] / 1e6);
+// Past a thousand million, say it in billions. "€1299m" is a number you have to stop and
+// count the digits of, which is the opposite of what a table is for.
+const q = (p) => { const v = g[Math.floor(g.length * p)]; return v >= 1e9 ? (v / 1e9).toFixed(3) + 'bn' : Math.round(v / 1e6) + 'm'; };
 const over = (x) => (rows.filter((r) => r.gross >= x).length / rows.length * 100);
 console.log(`EVERY BLOCKBUSTER THE GAME MAKES  ·  ${N} of them, the world's as well as yours`);
-console.log(`  median €${q(0.5)}m   P75 €${q(0.75)}m   P90 €${q(0.9)}m   P95 €${q(0.95)}m   P99 €${q(0.99)}m`);
+console.log(`  median €${q(0.5)}   P75 €${q(0.75)}   P90 €${q(0.9)}   P95 €${q(0.95)}   P99 €${q(0.99)}`);
 console.log(`  over €700m ${over(700e6).toFixed(1)}%   ·   over €1bn ${over(1e9).toFixed(1)}%   (the business: about 5-7% of tentpoles)`);
 console.log();
 console.log('  by what the crowd and the column made of it:');
