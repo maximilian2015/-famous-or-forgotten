@@ -2804,7 +2804,8 @@ function groupCredits(list) {
       // A franchise's gross is the whole run; a show's audience is the best season it had.
       boxOffice: g.parts.reduce((n, p) => n + (p.boxOffice || 0), 0),
       viewers: g.parts.reduce((n, p) => Math.max(n, p.viewers || 0), 0),
-      worldHit: g.parts.some((p) => p.status === 'World Hit') };
+      worldHit: g.parts.some((p) => p.status === 'World Hit'),
+      billion: g.parts.some((p) => p.billion) };
   }).sort((a, b) => b.to - a.to);
 }
 export function money(n) {
@@ -2896,6 +2897,11 @@ function CreditRow({ group, g }) {
           {c.verdict && <span style={{ color: VERDICT_COL[c.verdict] || theme.muted }}>
             {c.verdict === 'unsold' ? 'never released' : c.verdict}</span>}
           {c.critical && <span style={{ color: CRIT_COL[c.critical] || theme.muted, fontWeight: 700, letterSpacing: 0, textTransform: 'none', fontSize: 11 }}>{c.critical}</span>}
+          {/* A billion euros is not a verdict and does not replace one — it stands beside it,
+              and a picture is allowed to read PROFITABLE · WORLD HIT · BILLION CLUB all at
+              once. On the collapsed row, because it is the loudest thing about a film and
+              should not need a tap to find. career/billion.js */}
+          {group.billion && <span style={{ color: theme.gold }}>💰 billion club</span>}
         </div>)}
       {open && <>
       {/* the marks that never come off, and what it made */}

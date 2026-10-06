@@ -5,6 +5,7 @@ import { emailAct, markRead } from '../../systems/meta/email.js';
 import { answerTourMail } from '../../systems/career/tour.js';
 import { answerFestMail } from '../../systems/career/release.js';
 import { answerPushMail } from '../../systems/career/contract.js';
+import { answerBillionMail } from '../../systems/career/billion.js';
 export function Email({ g }) {
   const [openId, setOpenId] = useState(null);
   const box = g.inbox || [];
@@ -21,7 +22,7 @@ export function Email({ g }) {
                and the refusal went with it, so nothing appeared to have happened at all. */
             /* The odds go ON the control, before it is pressed. A button whose cost you only
                learn from the result is the same dead end as a button that does nothing. */
-            : (m.cta || []).map((c, i) => (<button key={i} onClick={() => { const had = (g.inbox || []).length; dispatch(c.tour ? answerTourMail : c.fest ? answerFestMail : c.push ? answerPushMail : emailAct, m.id, i); if ((g.inbox || []).length !== had) setOpenId(null); }} style={btn(i === 0 ? 'pri' : '')}>{c.label}
+            : (m.cta || []).map((c, i) => (<button key={i} onClick={() => { const had = (g.inbox || []).length; dispatch(c.tour ? answerTourMail : c.fest ? answerFestMail : c.push ? answerPushMail : c.billion ? answerBillionMail : emailAct, m.id, i); if ((g.inbox || []).length !== had) setOpenId(null); }} style={btn(i === 0 ? 'pri' : '')}>{c.label}
               {c.hint && <div style={{ fontSize: 11, fontWeight: 600, opacity: .8, marginTop: 2 }}>{c.hint}</div>}</button>))}</div></div></div>); }
   if (!box.length) return <div style={{ fontSize: 12.5, color: theme.muted, textAlign: 'center', padding: 24, lineHeight: 1.6 }}>Inbox zero.<br />Bills and invitations land here as life happens.</div>;
   return (<div>{box.map((m) => { const chip = m.kind === 'bill' ? ['bill', theme.gold] : m.kind === 'agent' ? ['representation', theme.gold] : m.kind === 'contract' ? ['contract', theme.gold] : m.kind === 'reply' ? ['casting', theme.accent] : m.kind === 'fan' ? ['fan mail', theme.good] : m.kind === 'hate' ? ['forwarded', theme.bad || '#ff5a72'] : m.kind === 'spam' ? ['spam', theme.muted] : m.tag === 'vip' ? ['VIP', theme.good] : ['invite', theme.accent];

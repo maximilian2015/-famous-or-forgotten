@@ -163,7 +163,11 @@ function guestsFor(s, ev, tier) {
     const top = tier.id === 'gala' && i === 0 ? byTier.filter((x) => (x.rank || 999) <= 12 && !taken.has(x.id)) : [];
     const a = pick(top.length ? top : byTier.filter((x) => !taken.has(x.id))); if (!a) break; taken.add(a.id); out.push(actorGuest(s, a, tier.id));
   }
-  const roles = tier.roles.filter((r) => r !== 'Fellow Actor' && r !== 'A-list Star');
+  // An event may carry its own list. A gala thrown BY a studio FOR a picture has a different
+  // room in it than a gala in general — the director and the money are there because it is
+  // their film, and a music producer is not, unless somebody already knows them. The pool is
+  // still the same pool and the night is still the same night; only who was invited changes.
+  const roles = (ev.roles || tier.roles).filter((r) => r !== 'Fellow Actor' && r !== 'A-list Star');
   const nInd = tier.id === 'local' ? (chance(40) ? 1 : 0) : 2;
   for (let i = 0; i < nInd && roles.length; i++) out.push(industryGuest(s, pick(roles), tier.id));
   const known = (s.people || []).filter((p) => (p.industryWeight || 0) >= 45 && (p.relationship || 0) >= 10 && !p.agent && !p.drifted);

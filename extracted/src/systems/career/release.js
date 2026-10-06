@@ -1,4 +1,5 @@
 import { count } from '../../engine/text.js';
+import { markBillion } from './billion.js';
 import { uid } from '../../engine/id.js';
 // Nothing you shoot comes out the day you finish shooting. A film wraps, sits in post
 // for months, and then opens — and THAT is the day you find out what you made.
@@ -1074,6 +1075,10 @@ function closeRun(s, credit, r) {
   //                     that people loved, which is how a five-million comedy takes four hundred.
   // Neither one is the money alone: both read the crowd, because a film nobody enjoyed does not
   // become the thing people talk about however many tickets the first weekend sold.
+  // A thousand million euros, which is not a verdict about anything and does not pretend to
+  // be one. It sits beside the verdict and the world hit, and all three can be true at once.
+  // career/billion.js — and it is marked only here, which is after the run has closed.
+  if (film) markBillion(s, credit);
   r.worldHit = film ? isWorldHit(credit, r) : false;
   if (r.worldHit) {
     credit.status = 'World Hit';

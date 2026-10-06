@@ -51,6 +51,19 @@ function reachableTiers(s) {
   const idx = EVENT_TIERS.reduce((acc, t, i) => (fame >= t.minFame ? i : acc), 0);
   return EVENT_TIERS.slice(0, Math.min(idx + 2, EVENT_TIERS.length));
 }
+// A night that happens for a REASON rather than because the month rolled one. Everything
+// about walking the room, going over to one person and running out of evening already lives
+// in social/night.js; this only puts the night on the calendar. career/billion.js is the
+// first caller — a studio holding a party for a picture that passed a billion.
+export function addEvent(s, tierId, over = {}) {
+  if (!inCareer(s)) return null;
+  s.events = s.events || [];
+  const ev = { ...makeEvent(s, tierById(tierId)), ...over };
+  ev.monthsLeft = Math.max(1, (ev.at ?? stampOf(s)) - stampOf(s) + 1);
+  s.events.push(ev);
+  return ev;
+}
+
 export function maybeGenerateEvent(s) {
   if (!inCareer(s)) return;
   s.events = s.events || [];
