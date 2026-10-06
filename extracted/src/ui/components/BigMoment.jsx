@@ -101,6 +101,26 @@ function Scene({ id, look, accent, moment }) {
     </svg>);
   }
   // The year in film: the trade's year-end issue, a ranked column with one line lit.
+  // A thousand million euros. A cinema seen from the back of the house, every seat taken, and
+  // the number on the screen — because that is what the money IS: a room like this, filled
+  // again and again in places you will never go. With no artwork of its own the billion fell
+  // back on the default, which is somebody arriving with a suitcase, and a generic picture
+  // under those words is worse than none. career/billion.js
+  if (id === 'billion') {
+    return (<svg viewBox="0 0 200 120" style={{ width: '100%', maxWidth: 300, display: 'block', margin: '0 auto' }}>
+      <rect x="26" y="8" width="148" height="62" rx="2" fill={theme.ink} stroke={accent} strokeWidth="2" />
+      <rect x="30" y="12" width="140" height="54" rx="1" fill={accent} opacity=".14" />
+      <text x="100" y="44" textAnchor="middle" fontSize="26" fontWeight="900" fill={accent} letterSpacing="1">€1bn</text>
+      {/* the house, filling away from you */}
+      {[0, 1, 2, 3].map((row) => (<g key={row} opacity={0.95 - row * 0.16}>
+        {Array.from({ length: 11 + row }, (_, i) => (
+          <rect key={i} x={20 + i * (160 / (11 + row)) + row * 2} y={80 + row * 10}
+            width={160 / (11 + row) - 3.5} height="7" rx="2.5" fill={theme.ink2} stroke={theme.edge} strokeWidth=".8" />))}
+      </g>))}
+      {/* the few faces the light catches */}
+      {[24, 61, 103, 147].map((x, i) => (<circle key={i} cx={x} cy={78 + i * 2} r="2.4" fill={accent} opacity={0.75 - i * 0.12} />))}
+    </svg>);
+  }
   if (id === 'yearbook') {
     return (<svg viewBox="0 0 200 120" style={{ width: '100%', maxWidth: 300, display: 'block', margin: '0 auto' }}>
       <rect x="40" y="10" width="120" height="104" rx="3" fill={theme.ink} stroke={theme.edge} strokeWidth="2" />
@@ -273,6 +293,7 @@ function headFor(m) {
   if (m.id === 'booked') return 'They rang back';
   if (m.id === 'sets') return 'They trust you to turn up';
   if (m.id === 'shutdown') return m.frozen ? 'The shoot has stopped' : 'The project is dead';
+  if (m.id === 'billion') return m.first ? 'A thousand million euros' : `Billion number ${m.nth}`;
   if (m.id === 'nomination') return 'The Askers';
   if (m.id === 'yearbook') return 'The year in film';
   if (m.id === 'contract') return m.walked ? 'They walked' : 'The paper came back';

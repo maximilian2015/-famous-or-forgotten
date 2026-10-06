@@ -3219,10 +3219,12 @@ function EventsScreen({ g }) {
       const t = tierById(ev.tier); const onList = isInvited(g, ev) || ev.invited;
       return (<Card key={ev.id} style={{ marginBottom: 10, borderColor: onList ? 'rgba(95,206,138,.35)' : theme.line }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline' }}>
-          <div style={{ fontSize: 14, fontWeight: 800 }}>{t.label}</div>
+          {/* An event may know what it is. A studio holding a party for a picture that passed a
+              billion is not "Awards gala", which is the tier it happens to be built from. */}
+          <div style={{ fontSize: 14, fontWeight: 800 }}>{ev.label || t.label}</div>
           <div style={{ fontSize: 11, color: isTonight(g, ev) ? theme.gold : theme.muted, fontWeight: isTonight(g, ev) ? 800 : 400 }}>{isTonight(g, ev) ? 'This month' : monthName(atOf(g, ev))}</div>
         </div>
-        <div style={{ fontSize: 11.5, color: theme.muted, margin: '3px 0 6px' }}>{ev.venue} · hosted by {ev.host}</div>
+        <div style={{ fontSize: 11.5, color: theme.muted, margin: '3px 0 6px' }}>{ev.venue} · hosted by {ev.host}{ev.why ? ` · ${ev.why}` : ''}</div>
         {/* Who is expected. The names, and a role only where you would know it — the room
             has a crowd in it and the figures do not wear name tags. */}
         <div style={{ fontSize: 11, color: theme.muted, marginBottom: 8, lineHeight: 1.5 }}><span style={{ fontWeight: 800, color: theme.text }}>Expected:</span> {expectedAt(g, ev, t).map((x, i) => (<span key={i}>{i ? ' · ' : ''}{x.heavy ? <b style={{ color: theme.gold }}>★ {x.name} — {x.why}</b> : x.name + (x.role ? ` (${x.role})` : '')}</span>))} — and a room full of people who are nobody in particular. <span style={{ color: theme.gold }}>{energyFor(ev.tier)} energy.</span></div>

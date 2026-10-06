@@ -34,12 +34,12 @@ export function isFlop(c) {
   return c.verdict === 'bomb' || c.verdict === 'ignored' || scoreOf(c) < 4.5;
 }
 function whyOf(s, c) {
+  // A billion first: it is the rarer of the two and the louder. A picture can be a world hit
+  // at €700m and this at a thousand million, and the line has room for one word.
+  if (c.billion || (c.boxOffice || 0) >= 1e9) return '€' + ((c.boxOffice || 0) / 1e9).toFixed(2) + 'bn';
   if (c.worldHit || c.status === 'World Hit') return 'world hit';
   if ((c.asker || 0) > 0) return (c.asker || 0) > 1 ? `${c.asker} Askers` : 'Asker';
   if ((c.nominated || 0) > 0) return 'Asker nominee';
-  // A billion is the loudest thing a picture can be known for, louder than the verdict: a
-  // film can read 'profitable' and still be the one everybody has heard of. career/billion.js
-  if (c.billion || (c.boxOffice || 0) >= 1e9) return '€' + ((c.boxOffice || 0) / 1e9).toFixed(2) + 'bn';
   if (c.verdict === 'smash') return 'smash';
   if ((c.boxOffice || 0) >= 200e6) return '€' + Math.round((c.boxOffice || 0) / 1e6) + 'm';
   if (rankOf(s, c) <= 10) return '#' + rankOf(s, c) + ' of ' + c.year;

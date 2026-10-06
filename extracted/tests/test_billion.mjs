@@ -56,9 +56,13 @@ const cr = (over = {}) => ({ title: 'Midnight Talker', scale: 'blockbuster', cam
   s.bigMoment = null; s.moments = [];
   markBillion(s, cr({ boxOffice: 1.4e9, title: 'Two' }));
   const second = s.bigMoment;
-  ok('the first billion gets its own screen', first && first.id === 'billion-first', first ? first.id : 'nothing');
-  ok('and the second does not replay it', second && second.id === 'billion-again', second ? second.id : 'nothing');
-  ok('they do not say the same thing', first.lines.join(' ') !== second.lines.join(' '));
+  // One id, because the screen switches its own artwork on it; what tells them apart is the
+  // flag, and what matters is that they do not say the same thing.
+  ok('the first billion is marked as the first', first && first.id === 'billion' && first.first === true, first ? JSON.stringify({ id: first.id, first: first.first }) : 'nothing');
+  ok('and the second knows which number it is', second && second.id === 'billion' && second.nth === 2 && !second.first, second ? JSON.stringify({ nth: second.nth, first: second.first }) : 'nothing');
+  ok('they do not say the same thing', first.body !== second.body);
+  ok('and both actually have words on them', (first.body || '').length > 40 && (second.body || '').length > 40,
+    `${(first.body || '').length} / ${(second.body || '').length}`);
   ok('and the counter knows which one this is', s.billions === 2, String(s.billions));
 }
 
@@ -83,12 +87,28 @@ const cr = (over = {}) => ({ title: 'Midnight Talker', scale: 'blockbuster', cam
   markBillion(s, cr({ boxOffice: 1.3e9 }));
   ok('the studio writes', (s.inbox || []).length === 1, String((s.inbox || []).length));
   const m = s.inbox[0];
-  ok('and offers the show, the party, and neither', (m.cta || []).length === 3 && m.cta.every((c) => c.billion));
+  // Four, because the letter says "both, either, or neither" and the controls have to mean it.
+  // They offered three, and the playtest is what noticed the copy promising what the buttons
+  // refused.
+  ok('and offers both, either, or neither — all four', (m.cta || []).length === 4
+    && ['both', 'talkshow', 'party', 'no'].every((k) => m.cta.some((c) => c.billion === k)),
+    (m.cta || []).map((c) => c.billion).join(', '));
   const i = m.cta.findIndex((c) => c.billion === 'no');
   answerBillionMail(s, m.id, i);
   ok('saying no to both leaves the milestone where it was', s.billions === 1);
   ok('and leaves nothing on the calendar', (s.events || []).length === 0 && (s.castingPool || []).length === 0);
   ok('and the letter is answered rather than sitting there', (s.inbox || []).length === 0);
+}
+
+{
+  const s = st();
+  markBillion(s, cr({ boxOffice: 1.3e9 }));
+  answerBillionMail(s, s.inbox[0].id, s.inbox[0].cta.findIndex((c) => c.billion === 'both'));
+  ok('and saying both gets both', (s.events || []).length === 1 && (s.castingPool || []).length === 1,
+    `${(s.events || []).length} nights, ${(s.castingPool || []).length} appearances`);
+  ok('and the card says what the night is, not which tier it was built from',
+    /night for/i.test(((s.events || [])[0] || {}).label || ''), ((s.events || [])[0] || {}).label || 'no label');
+  ok('and why it is being held', !!((s.events || [])[0] || {}).why);
 }
 
 // ── and saying yes reuses what already exists ────────────────────────────────
@@ -127,6 +147,10 @@ const cr = (over = {}) => ({ title: 'Midnight Talker', scale: 'blockbuster', cam
 {
   const src = fs.readFileSync(new URL('../src/systems/career/billion.js', import.meta.url), 'utf8');
   const copy = src.slice(src.indexOf('showMoment(s, first'), src.indexOf('addTimeline(s,'));
+  // And the words must be in the field the screen reads. BigMoment renders `body` and only looks
+  // at `lines` for a contract and an awards night, so three good sentences in `lines` show as
+  // nothing at all — which is what the first version did, through a green suite.
+  ok('the copy is in the field the screen renders', /body:/.test(copy) && !/lines:/.test(copy));
   ok('the milestone copy quotes no frequency', !/(four|five|six|seven|ten|[0-9]+)s+(pictures|films|movies)s+as+year/i.test(copy));
 }
 
