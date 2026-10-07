@@ -301,6 +301,10 @@ await inState('The drink ultimatum', { drink: { level: 62, thisMonth: false,
 await inState('The first day', { productions: [{ ...SET, take: undefined, takeWon: undefined }],
   production: { ...SET, take: undefined, takeWon: undefined } }, /They listen to standing, not volume/);
 await inState('The end of a life', { alive: false, ageY: 81, year: 2103, causeOfDeath: 'old age' }, /A life, ended/);
+// With somebody left to carry it on: the heirs only draw when there is a child alive.
+await inState('The end of a life · heirs', { alive: false, ageY: 81, year: 2103, causeOfDeath: 'old age',
+  family: [...save.family, { id: 'f9', name: 'Ines Moon', relation: 'Child', role: 'child', alive: true, born: 2070,
+    relationship: 66, looks: 60, acting: 30, charisma: 50 }] }, /They are still here/);
 // The cards on Home that draw only when there is something to say. Where you stand is about
 // the save as it is; the other three need the state their own system writes.
 await inState('Home · where you stand', {}, /Where you stand/);

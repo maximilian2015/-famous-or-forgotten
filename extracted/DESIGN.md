@@ -59,10 +59,16 @@ src/
     social/      sms (texts from people), events, spotlight (school friends)
   phone/         the Phone apps: OpenCall, Messages, Email, Dating, Guide, AAA, Work,
                  News, Shopping, Spotlight, Arcade; registry.js lists them
-  ui/            theme/skins (live `theme` object), chrome (fonts), sfx, components
-                 (Poster = generated SVG film posters)
-  App.jsx        every screen: Home, Career (Calendar/Training/Filmography/Events),
-                 People, Style, Legacy; the ladder screens (Fame, Respect, Mental)
+  ui/            theme/skins (live `theme` object), chrome (fonts), sfx, helpers (allSets,
+                 money), components — one screen or card per file, each importing
+                 `dispatch`, `theme` and the systems it names (Passport is the pattern):
+                 the ladder screens (Fame, Standing, Mental, Genres), Filmography,
+                 Training, the Style screen and its tabs, the Home cards, the set, the
+                 negotiation room, the first day, the ultimatum, the end of a life.
+                 Poster = generated SVG film posters. Nothing in ui/ imports App.jsx.
+  App.jsx        the router (which screen takes the page), Home, the Career tabs frame,
+                 People, Legacy, the creator, and the pieces that hold state not yet
+                 moved (PersonSheet, SceneModal, CheckpointModal, EventsScreen, …)
 ```
 
 Conventions: state is a plain object mutated by systems; `dispatch(fn, ...args)` from the
