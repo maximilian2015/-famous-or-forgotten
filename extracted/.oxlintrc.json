@@ -1,7 +1,9 @@
 {
   "$schema": "./node_modules/oxlint/configuration_schema.json",
   "categories": { "correctness": "error" },
+  "env": { "browser": true, "es2024": true },
   "rules": {
+    "no-undef": "error",
     "no-constant-binary-expression": "error",
     "no-self-assign": "error",
     "no-unused-vars": ["error", {
@@ -15,7 +17,8 @@
   },
   "overrides": [
     {
-      "files": ["tests/**"],
+      "files": ["tests/**", "*.mjs"],
+      "env": { "node": true, "browser": true, "es2024": true },
       "rules": {
         "no-unused-vars": ["warn", { "args": "none", "varsIgnorePattern": "^_", "caughtErrors": "none" }]
       }

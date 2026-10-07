@@ -1,5 +1,5 @@
-import { scheduleRelease, releaseTick, runTick, postProduction, boxOfficeFor, budgetFor, verdictOf, isFilm }
-  from '../src/systems/career/release.js';
+import { scheduleRelease, releaseTick, runTick, postProduction, boxOfficeFor, budgetFor, verdictOf, isFilm,
+  answerFestival, FEST_ENERGY } from '../src/systems/career/release.js';
 import { startProduction, productionTick } from '../src/systems/career/production.js';
 import { relevanceDrift } from '../src/engine/economy.js';
 
@@ -274,6 +274,21 @@ ok('an icon never falls below 75', wasIcon.fame === 75, String(wasIcon.fame));
 const wasNot = st({ fame: 60, peakFame: 60, _idleMonths: 60 });
 for (let i = 0; i < 300; i++) relevanceDrift(wasNot);
 ok('but anyone short of icon can be forgotten completely', wasNot.fame < 5, wasNot.fame.toFixed(1));
+
+// ── going to the festival yourself ────────────────────────────────────────────
+// The GO answer called canAfford, spend and tooTired without importing them, so the button
+// threw a ReferenceError the first time anybody pressed it. Nothing here had ever pressed it.
+{
+  const fest = (ap) => { const s = st({ ap, releases: [{ id: 'r1', title: 'Low Tide' }] }); return [s, { releaseId: 'r1' }]; };
+  const [s1, m1] = fest(40);
+  let threw = null; let done;
+  try { done = answerFestival(s1, m1, 'go'); } catch (e) { threw = e; }
+  ok('going to the festival does not throw', !threw, threw && threw.message);
+  ok('going costs the energy and marks the film', done === true && s1.ap === 40 - FEST_ENERGY && s1.releases[0].festPush === 'went', `ap ${s1.ap}, push ${s1.releases[0].festPush}`);
+  const [s2, m2] = fest(FEST_ENERGY - 1);
+  const refused = answerFestival(s2, m2, 'go');
+  ok('too tired to go says so and spends nothing', refused === false && s2.ap === FEST_ENERGY - 1 && /energy/.test(s2.lastEvent || ''), s2.lastEvent);
+}
 
 console.log(fails ? `\n${fails} FAILED` : '\nall passed');
 process.exit(fails ? 1 : 0);

@@ -15,6 +15,7 @@ import { newTitle } from '../world/titles.js';
 import { addTimeline, showMoment } from '../../engine/timeline.js';
 import { regardAfterWorking } from '../life/regard.js';
 import { markReleased } from '../../engine/economy.js';
+import { canAfford, spend, tooTired } from '../../engine/energy.js';
 import { GENRES } from '../meta/news.js';
 import { appetiteFor, marketAfterRelease } from '../meta/market.js';
 import { maybeContinue } from './franchise.js';
