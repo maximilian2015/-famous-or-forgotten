@@ -56,6 +56,23 @@ function grudgeView(g, now) {
   return { kind, title, since: g.since, until: g.until, forGood: kind === 'shut', monthsLeft: kind === 'shut' ? null : ends - now, reason, expires, ifHit };
 }
 
+const span = (m) => (m < 24 ? `${m} month${m === 1 ? '' : 's'}` : `${Math.floor(m / 12)} years`);
+// Why somebody is cold, when no grudge says so. The state keeps only the closeness and the last
+// time you were in touch (p.lastSeen: a wrap together or anything you did with them; s._seen: an
+// interaction), so that is all this says. life/bonds.js runs closeness down every month on
+// everybody, to nothing, and makes a contact cold at nothing after ten months unseen; when both
+// hold, that is the reason whatever else happened before it. A walk-off whose grudge has run out
+// leaves nothing behind but a sentence on the timeline, so it is not claimed.
+function coldWhy(s, p, now, latest) {
+  const seen = Math.max(p.lastSeen ?? -Infinity, (s._seen && s._seen[p.id]) ?? -Infinity);
+  const last = Number.isFinite(seen) ? seen : latest && latest.year ? latest.year * 12 : null;
+  const lifts = 'Cold lifts once closeness is back above ten.';
+  if ((p.relationship || 0) <= 0 && last != null && now - last >= 10) {
+    return { label: 'Faded', text: `No word between you since ${monthName(last)} — ${span(now - last)}. Closeness runs down by itself every month, and at nothing, after ten months without a word, a contact stops picking up. ${lifts}` };
+  }
+  return { label: 'Cold', text: `At ${Math.round(p.relationship || 0) || 0}, and what made them cold is not on record any more. ${lifts}` };
+}
+
 // What a director in your phone will and will not do, in their own rules' words.
 function lineFor(s, p, grudge) {
   const n = first(p.name);
@@ -107,6 +124,8 @@ export function yourDirectors(s) {
       state: p ? stateOf(p) : null, relationship: p ? Math.round(p.relationship || 0) || 0 : null,   // drift leaves -0.001, which prints "-0"
       fromSet: p ? p.fromSet || null : null, weight: p ? p.industryWeight || null : null,
       films: mine.length + post.length, last, grudge,
+      // A grudge is its own reason; a cold director without one gets what the state can say.
+      why: p && p.cold && !grudge ? coldWhy(s, p, now, latest) : null,
       line: p ? lineFor(s, p, grudge) : `Not in your phone. Offers, tentpoles and sets only bring back people who are.`,
     };
   }).sort((a, b) => rank(a) - rank(b) || (b.relationship || 0) - (a.relationship || 0) || b.films - a.films);

@@ -333,11 +333,13 @@ await inState('Home · for your consideration', { filmography: [...save.filmogra
 // reaches it, through the face and the bar.
 {
   const people = [{ id: 'dw', name: 'Rosalind Varga', role: 'Film Director', relationship: 72, industryWeight: 70, fromSet: 'Buried Hunger' },
-    { id: 'dc', name: 'Kaspar Hartigan', role: 'Film Director', relationship: 8, industryWeight: 76, cold: true, fromSet: 'WellPlanned' }];
+    { id: 'dc', name: 'Kaspar Hartigan', role: 'Film Director', relationship: 8, industryWeight: 76, cold: true, fromSet: 'WellPlanned' },
+    // Cold with no grudge: the screen says what the state can say (yourDirectors.js coldWhy).
+    { id: 'dz', name: 'Zora Whitlock', role: 'Film Director', relationship: 0, industryWeight: 70, cold: true, fromSet: 'Night Shift', lastSeen: NOW - 30 }];
   const grudges = [{ who: 'Kaspar Hartigan', title: 'North Window', scale: 'feature', since: NOW - 49, due: NOW - 49 + 9999, until: NOW + 11, hit: false, gross: 0, opened: true }];
   const tap = async (W2, find) => { const el = find(W2.document); if (el) el.dispatchEvent(new W2.MouseEvent('click', { bubbles: true })); await sleep(300); };
   await inState('Passport · the directors, warm, cold and a grudge', { people, grudges },
-    /(?=[\s\S]*Rosalind Varga Warm)(?=[\s\S]*Relationship · 72)(?=[\s\S]*Kaspar Hartigan Cold)(?=[\s\S]*Relationship · 8)(?=[\s\S]*Grudge · Until Mar 2067 · 11 months left)(?=[\s\S]*Walked off the set of "North Window")(?=[\s\S]*on set now: "Buried Hunger")/,
+    /^(?=[\s\S]*Rosalind Varga Warm)(?=[\s\S]*Relationship · 72)(?=[\s\S]*Kaspar Hartigan Cold)(?=[\s\S]*Relationship · 8)(?=[\s\S]*Grudge · Until Mar 2067 · 11 months left)(?=[\s\S]*Walked off the set of "North Window")(?=[\s\S]*on set now: "Buried Hunger")(?=[\s\S]*Kaspar Hartigan holds a grudge until Mar 2067\.)(?=[\s\S]*Faded No word between you since Oct 2063 — 2 years\.)(?![\s\S]*call you again)/,
     async (W2) => {
       await tap(W2, (d) => d.querySelector('div[title="Who you are"]'));
       await tap(W2, (d) => [...d.querySelectorAll('button')].find((b) => /^The directors/.test((b.textContent || '').trim())));

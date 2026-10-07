@@ -128,6 +128,24 @@ const row = (s, name) => yourDirectors(s).find((r) => r.name === name);
   ok('several with one for good says so', line([walk, shut]) === '2 directors hold a grudge — 1 of them for good. The business is small.', line([walk, shut]));
   ok('nowhere does a timed grudge say "again"', ![[walk], [refused], [walk, refused]].some((g) => /again/.test(line(g))));
 }
+// ── a cold director without a grudge gets what the state can say, and no more ──
+{
+  const s = st({ people: [
+    dir({ id: 'z1', name: 'Zora Whitlock', relationship: 0, cold: true, lastSeen: NOW - 30 }),
+    dir({ id: 'z2', name: 'Ruben Rune', relationship: 0, cold: true, lastSeen: NOW - 40 }),
+    dir({ id: 'z3', name: 'Esme Brandt', relationship: 6, cold: true, lastSeen: NOW - 3 }),
+    dir({ id: 'z4', name: 'Kaspar Hartigan', relationship: 4, cold: true, lastSeen: NOW - 50 }),
+    dir({ id: 'z5', name: 'Odile Brandt', relationship: 0, cold: false, lastSeen: NOW - 50 })],
+    _seen: { z2: NOW - 14 },
+    grudges: [{ who: 'Kaspar Hartigan', title: 'North Window', since: NOW - 20, due: NOW - 20 + 9999, until: NOW + 40, opened: true }] });
+  const z = row(s, 'Zora Whitlock').why;
+  ok('nothing at all and ten months unseen is the drift, said with its date', z && z.label === 'Faded' && z.text.startsWith(`No word between you since ${monthName(NOW - 30)} — 2 years.`), z && z.text);
+  ok('and the rule that lifts it', /Cold lifts once closeness is back above ten/.test(z.text));
+  ok('an interaction counts as a word, whichever store it is in', row(s, 'Ruben Rune').why.text.startsWith(`No word between you since ${monthName(NOW - 14)} — 14 months.`), row(s, 'Ruben Rune').why.text);
+  ok('cold that is not the drift is not given a made-up cause', row(s, 'Esme Brandt').why.label === 'Cold' && /not on record/.test(row(s, 'Esme Brandt').why.text), row(s, 'Esme Brandt').why.text);
+  ok('a grudge is its own reason, so no second one', row(s, 'Kaspar Hartigan').why === null && row(s, 'Kaspar Hartigan').grudge);
+  ok('somebody who is not cold has no reason to be given', row(s, 'Odile Brandt').why === null);
+}
 // ── an old save with none of it ────────────────────────────────────────────────
 {
   const bare = { year: 2040, month: 0 };

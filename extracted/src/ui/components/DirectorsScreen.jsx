@@ -32,6 +32,10 @@ function Row({ r }) {
       <div style={{ fontSize: 11.5, color: theme.text, opacity: .85, marginTop: 2, lineHeight: 1.4 }}>{r.grudge.reason}</div>
       {r.grudge.ifHit && <div style={{ fontSize: 11, color: theme.muted, marginTop: 2, lineHeight: 1.4 }}>{r.grudge.ifHit}</div>}
     </div>)}
+    {r.why && (<div style={{ marginTop: 6, padding: '6px 9px', borderRadius: 9, background: 'rgba(255,255,255,.04)', border: `1px solid ${theme.line}` }}>
+      <div style={{ fontSize: 11.5, fontWeight: 900, color: theme.bad }}>{r.why.label}</div>
+      <div style={{ fontSize: 11.5, color: theme.text, opacity: .85, marginTop: 2, lineHeight: 1.4 }}>{r.why.text}</div>
+    </div>)}
     {r.inPhone && <div style={{ fontSize: 11.5, color: theme.muted, marginTop: 6, lineHeight: 1.45 }}>{r.line}</div>}
   </div>);
 }
