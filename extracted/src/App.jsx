@@ -12,26 +12,21 @@ import { resolveArc } from './systems/life/arcs.js';
 import { computeLegacy, getHall, heirsOf, heirOpts, enshrine, isMinor } from './systems/meta/legacy.js';
 import { fameTier, setHousing, FAME_TIERS, fameCeiling, ladderBlurb, isForgotten } from './systems/meta/status.js';
 import { meterTier } from './systems/career/production.js';
-import { demandOf, optionsFor, answerDemand } from './systems/career/demands.js';
 import { allSets, money } from './ui/helpers.js';
-import { agentCut, agentLine, fireAgent } from './systems/career/agent.js';
+import { agentLine, fireAgent } from './systems/career/agent.js';
 import { COST, canAfford } from './engine/energy.js';
 import { EnergyBar } from './ui/components/EnergyBar.jsx';
-import { FAVOURS, canUse, costOf, canSmooth, smoothOver, vouchFor } from './systems/career/favours.js';
+import { FAVOURS, canUse, costOf, vouchFor } from './systems/career/favours.js';
 import { sequelDue } from './systems/career/franchise.js';
 import { knownFor, isHit, isFlop, theHits, theFlops } from './systems/meta/knownFor.js';
-import { liveBubbles, backTheCampaign, canBack as canBackShow, BACK_COST } from './systems/career/bubble.js';
-import { liveEndorsement, dutiesDue, attendDuty, canAttend as canAttendDuty } from './systems/career/endorsement.js';
 import { heirLine } from './systems/life/origin.js';
 import { liveStandoff, roomDue } from './systems/career/standoff.js';
-import { openSeason, askerLine, campaignable, canCampaign, startCampaign, campaignKind,
-  liveCampaign, ownCampaignCost, CAMPAIGN_ENERGY, CAMPAIGN_MONTHS } from './systems/career/awards.js';
+import { openSeason, askerLine } from './systems/career/awards.js';
 import { townOpen, townFor, goOut } from './systems/life/town.js';
 import { labelInfo, activeLabels, isStrong } from './systems/meta/typecast.js';
 import { activeStories } from './systems/meta/stories.js';
 import { ambitionProgress } from './systems/meta/ambition.js';
-import { rename as renameProject, canRename, whyNot, TITLE_MAX } from './systems/career/naming.js';
-import { resolveScene, sceneState, approachesFor, chooseApproach, autoQuality, rulesFor } from './systems/career/scenes.js';
+import { resolveScene, approachesFor, chooseApproach, autoQuality, rulesFor } from './systems/career/scenes.js';
 import { RhythmLine, HoldZone, KeySequence, QuickPick } from './ui/components/SceneGames.jsx';
 import { Chronology, ScriptLines, Motive } from './ui/components/SceneLogic.jsx';
 import { FrameCheck, FindTheLight, TheAssembly, WhoSaysIt, TakeSheet } from './ui/components/ScenePuzzles.jsx';
@@ -55,7 +50,7 @@ import { TourRoom } from './ui/components/TourRoom.jsx';
 import { OptionPaper } from './ui/components/OptionPaper.jsx';
 import { tierById, isInvited, attendEvent, askForInvite, sneakIntoEvent, answerDoor, stairsResult, inviteHelpers, helperOdds, hasAsked, expectedAt, energyFor, canHost, hostNight, isTonight, atOf, monthName } from './systems/social/events.js';
 import { invitees, inviteBand, hostFatigue } from './systems/social/night.js';
-import { HOUSING, HOUSING_ORDER, monthlyCosts, DIET, GYM_COST, setDiet, toggleGym } from './engine/economy.js';
+import { HOUSING, HOUSING_ORDER, DIET, GYM_COST, setDiet, toggleGym } from './engine/economy.js';
 import { hotGenre } from './systems/meta/news.js';
 import { Phone } from './phone/Phone.jsx';
 import { an, count } from './engine/text.js';
@@ -82,8 +77,7 @@ import { kindFor, canPropose, odds as collabOdds, why as collabWhy, liveCollabs 
 import { relBand } from './systems/life/bonds.js';
 import { regardOf, regardBand, regardNote } from './systems/life/regard.js';
 import { BigMoment } from './ui/components/BigMoment.jsx';
-import { strainBand, unreliable, depressed } from './systems/life/strain.js';
-import { monthsIn, TALK, WEEK_TASKS, answerCheckpoint } from './systems/life/depression.js';
+import { TALK, WEEK_TASKS, answerCheckpoint } from './systems/life/depression.js';
 import { RespectScreen } from './ui/components/RespectScreen.jsx';
 import { FameScreen } from './ui/components/FameScreen.jsx';
 import { DepressionCard } from './ui/components/DepressionCard.jsx';
@@ -93,6 +87,12 @@ import { GenreScreen } from './ui/components/GenreScreen.jsx';
 import { RoomModal } from './ui/components/RoomModal.jsx';
 import { RoomScreen } from './ui/components/RoomScreen.jsx';
 import { StandingCard } from './ui/components/StandingCard.jsx';
+import { TitleLine } from './ui/components/TitleLine.jsx';
+import { OnSetNow, ProductionCard } from './ui/components/ProductionCard.jsx';
+import { CampaignCard } from './ui/components/CampaignCard.jsx';
+import { EndorsementCard } from './ui/components/EndorsementCard.jsx';
+import { BubbleCard } from './ui/components/BubbleCard.jsx';
+import { LifeCard } from './ui/components/LifeCard.jsx';
 // Big moments live on state so a system can raise one; the UI only clears it.
 function clearBigMoment(s) {
   // The paper that came back opens itself once you have read the answer.
@@ -361,39 +361,6 @@ function ScreenToast({ g, screen }) {
   useEffect(() => { seenRef.current = g.lastEvent; setToast(null); }, [screen]);
   if (!toast) return null;
   return (<div onClick={() => setToast(null)} className="fof-in" style={{ fontSize: 12.5, color: theme.text, padding: '9px 13px', marginBottom: 12, background: `${theme.accent}1f`, border: `1px solid ${theme.accent}44`, borderRadius: 10, lineHeight: 1.5, cursor: 'pointer', whiteSpace: 'pre-line' }}>{toast}</div>);
-}
-// What this month on set needs from you, and how the director feels about you — on the
-// home screen, where the month actually gets lived.
-function OnSetNow({ g, p }) {
-  const lead = (p.crew || [])[0];
-  const stamp = (g.year || 0) * 12 + (g.month || 0);
-  const worked = p._workedMonth === stamp;
-  // A lesson costs COST.train, not COST.rehearse. Between 15 and 19 energy the button was
-  // bright and the lesson refused. career/training.js
-  const b = lead ? lead.bond : 50;
-  const mood = b >= 70 ? ['warm to you', '#4fc07f'] : b >= 45 ? ['fine with you', theme.muted] : b >= 26 ? ['cooling on you', '#f0b429'] : ['done with you', '#ff5a72'];
-  return (<div style={{ marginTop: 8 }}>
-    {/* THE MONTH FIRST. It used to sit fifth, under four lines of mechanics that read the same
-        every month for six months — which is why a card with something new on it still looked
-        like a card with nothing on it. career/setlife.js */}
-    {p._lifeLine && <div style={{ fontSize: 13, color: theme.text, lineHeight: 1.55, marginBottom: 8 }}>{p._lifeLine}</div>}
-    {lead && <div style={{ fontSize: 11.5, color: theme.muted, marginBottom: 8 }}>
-      {lead.name}, directing, is <b style={{ color: mood[1] }}>{mood[0]}</b>.
-      {b < 45 && ' A cold director is what costs you standing at wrap.'}
-    </div>}
-    {/* What you said last time they asked, so an answer is a thing that happened rather than
-        a button that vanished. */}
-    {p._lastAnswer && !p.demand && <div style={{ fontSize: 11.5, color: theme.muted, lineHeight: 1.5, marginBottom: 8, fontStyle: 'italic' }}>{p._lastAnswer}</div>}
-    <DemandRow g={g} p={p} />
-    {(() => { const sc = sceneState(g, p); return sc && sc.left > 0 ? (<div style={{ fontSize: 11, color: theme.gold, marginTop: 6, lineHeight: 1.45 }}>🎬 {sc.line}</div>) : null; })()}
-    <div style={{ fontSize: 11, color: theme.muted, marginTop: 6, lineHeight: 1.45 }}>
-      {/* The month costs you nothing to work any more. You turn up and the film gets made; what
-          the month asks of you is the card above, when it asks anything at all. */}
-      {p.demand ? 'Nothing else is needed from you this month.'
-        : worked ? 'The work is done. Nobody has asked you for anything this month.'
-        : 'The set is under Career.'}
-    </div>
-  </div>);
 }
 
 function ComboStrip({ g }) {
@@ -792,84 +759,6 @@ function StandoffCard({ g }) {
   </Card>);
 }
 
-// Being somebody's face, which is twelve months rather than a cheque. The dates are theirs
-// and they are counting. career/endorsement.js
-function EndorsementCard({ g }) {
-  const e = liveEndorsement(g);
-  if (!e) return null;
-  const due = dutiesDue(g);
-  return (<Card style={{ marginBottom: 14, borderColor: e.strikes ? 'rgba(255,141,158,.35)' : 'rgba(255,209,102,.28)' }}>
-    <div style={{ fontSize: 11, fontWeight: 900, letterSpacing: '.09em', textTransform: 'uppercase', color: theme.gold, marginBottom: 4 }}>
-      The face of {e.house}
-    </div>
-    <div style={{ fontSize: 11.5, color: theme.muted, lineHeight: 1.45 }}>
-      {e.what}{e.abroad ? ` · ${e.abroad} only` : ''} · {e.monthsLeft} month{e.monthsLeft === 1 ? '' : 's'} to run · {e.done} of {e.total} appearances done
-    </div>
-    {e.clause && <div style={{ fontSize: 11, color: theme.muted, marginTop: 3 }}>📄 {e.clause}, while it runs.</div>}
-    {e.strikes > 0 && <div style={{ fontSize: 11, color: theme.bad, marginTop: 3, fontWeight: 700 }}>One date missed. Another and they tear it up.</div>}
-    {due.map((d) => {
-      const fit = canAttendDuty(g, d.id);
-      return (<div key={d.id} style={{ marginTop: 8, paddingTop: 7, borderTop: `1px solid ${theme.line}` }}>
-        <div style={{ fontSize: 12.5, fontWeight: 800 }}>{d.label} · this month</div>
-        <div style={{ fontSize: 11.5, color: theme.muted, lineHeight: 1.45, marginTop: 2 }}>{d.line}</div>
-        <button onClick={() => dispatch(attendDuty, d.id)} disabled={!fit.ok}
-          style={{ marginTop: 5, border: 'none', borderRadius: 9, padding: '6px 11px', fontSize: 11.5, fontWeight: 800,
-            cursor: fit.ok ? 'pointer' : 'default', background: fit.ok ? 'rgba(255,209,102,.18)' : 'rgba(120,110,150,.15)', color: fit.ok ? theme.gold : '#6b6390' }}>
-          Turn up · {d.ap} energy
-        </button>
-        {!fit.ok && fit.why && <div style={{ fontSize: 10.5, color: theme.muted, marginTop: 3 }}>{fit.why}</div>}
-      </div>);
-    })}
-    {!due.length && e.next && <div style={{ fontSize: 10.5, color: theme.muted, marginTop: 6 }}>
-      Next: {e.next.label.toLowerCase()}, {e.next.inMonths <= 1 ? 'next month' : `in ${e.next.inMonths} months`}.
-    </div>}
-  </Card>);
-}
-
-// The season for a picture, which is the thing Maxi paid six million for and never
-// understood. It is not bought on an offer any more and it is not bought with money: a
-// distributor funds its own campaign, and what it wants from you is three months of your
-// calendar. The exception is a small picture nobody is spending on, where the money is
-// genuinely yours. career/awards.js
-function CampaignCard({ g }) {
-  const live = liveCampaign(g);
-  const open = campaignable(g);
-  if (!live && !open.length) return null;
-  return (<Card style={{ marginBottom: 14, borderColor: 'rgba(158,116,255,.32)' }}>
-    <div style={{ fontSize: 11, fontWeight: 900, letterSpacing: '.09em', textTransform: 'uppercase', color: theme.accent, marginBottom: 4 }}>For your consideration</div>
-    {live
-      ? (<div>
-          <div style={{ fontSize: 12.5, fontWeight: 800 }}>"{String(live.title).replace('⭐ ', '')}"</div>
-          <div style={{ fontSize: 11.5, color: theme.muted, lineHeight: 1.45, marginTop: 2 }}>{live.line}</div>
-          <div style={{ fontSize: 11.5, color: theme.accent, marginTop: 4, fontWeight: 700 }}>
-            {live.months} of {CAMPAIGN_MONTHS} months done · {live.cost} energy a month, taken automatically
-          </div>
-          {live.missed > 0 && <div style={{ fontSize: 10.5, color: theme.bad, marginTop: 3 }}>You did not turn up last month. Miss it again and it is a poster.</div>}
-        </div>)
-      : open.map((c, i) => {
-          const kind = campaignKind(c);
-          const fit = canCampaign(g, c);
-          return (<div key={c.id || i} style={{ padding: '6px 0', borderTop: i ? `1px solid ${theme.line}` : 'none' }}>
-            <div style={{ fontSize: 12.5, fontWeight: 800 }}>"{String(c.title).replace('⭐ ', '')}" · {c.score}/10</div>
-            <div style={{ fontSize: 11.5, color: theme.muted, lineHeight: 1.45, marginTop: 2 }}>
-              {kind === 'studio'
-                ? `The studio wants to put it up for the season. They pay for all of it; what they want is ${CAMPAIGN_MONTHS} months of lunches, panels and the same four questions.`
-                : `Nobody is spending anything on this one. You could: €${ownCampaignCost(g).toLocaleString()} of your own, and it does rather less than a studio would.`}
-            </div>
-            <button onClick={() => dispatch(startCampaign, c.title)} disabled={!fit.ok}
-              style={{ marginTop: 5, border: 'none', borderRadius: 9, padding: '6px 11px', fontSize: 11.5, fontWeight: 800,
-                cursor: fit.ok ? 'pointer' : 'default', background: fit.ok ? 'rgba(158,116,255,.18)' : 'rgba(120,110,150,.15)', color: fit.ok ? '#d9cffa' : '#6b6390' }}>
-              {kind === 'studio' ? `Do the season · ${CAMPAIGN_ENERGY} energy a month` : `Fund it yourself · €${ownCampaignCost(g).toLocaleString()}`}
-            </button>
-            {!fit.ok && fit.why && <div style={{ fontSize: 10.5, color: theme.muted, marginTop: 3 }}>{fit.why}</div>}
-          </div>);
-        })}
-    <div style={{ fontSize: 10.5, color: theme.muted, marginTop: 6, lineHeight: 1.45 }}>
-      A season does not buy the award. It buys the nomination, which is the part that is for sale.
-    </div>
-  </Card>);
-}
-
 // The six months between the nominations and the night. They used to be silent.
 function SeasonCard({ g }) {
   const season = openSeason(g);
@@ -887,44 +776,6 @@ function SeasonCard({ g }) {
       {season.monthsLeft <= 1
         ? 'The night is this month. Everybody you know has an opinion about what you should say.'
         : `${season.monthsLeft} months until the night. Between now and then it is lunches, panels, and the same four questions.`}
-    </div>
-  </Card>);
-}
-
-// A season nobody has decided about. Maxi: "they do not decide straight away, and the
-// player should hear it from the news first — and with fifteen million watching, the fans
-// should be insisting. Petitions?" The one move an actor has is to say something, and it
-// is worth most when there is already something to say it about. See career/bubble.js.
-function BubbleCard({ g }) {
-  const list = liveBubbles(g);
-  if (!list.length) return null;
-  return (<Card style={{ marginBottom: 14, borderColor: 'rgba(255,209,102,.3)' }}>
-    <div style={{ fontSize: 11, fontWeight: 900, letterSpacing: '.09em', textTransform: 'uppercase', color: theme.gold, marginBottom: 4 }}>Nobody has decided</div>
-    {list.map((b, i) => {
-      const fit = canBackShow(g, b);
-      return (<div key={b.id} style={{ padding: '6px 0', borderTop: i ? `1px solid ${theme.line}` : 'none' }}>
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', gap: 10 }}>
-          <div style={{ fontSize: 12.5, fontWeight: 800 }}>"{b.root}" · season {(b.season || 1) + 1}</div>
-          <div style={{ fontSize: 10.5, color: theme.muted, flex: 'none' }}>{b.monthsLeft <= 1 ? 'any week now' : `~${b.monthsLeft} mo`}</div>
-        </div>
-        <div style={{ fontSize: 11.5, color: theme.muted, lineHeight: 1.45, marginTop: 2 }}>{b.line}</div>
-        <div style={{ fontSize: 11, color: b.odds >= 70 ? theme.good : b.odds >= 45 ? theme.gold : theme.bad, marginTop: 3, fontWeight: 700 }}>{b.mood}</div>
-        {/* The honest line. A campaign barely touches the network above; what it moves is
-            this one, and this one is what has ever saved a show. See career/bubble.js. */}
-        <div style={{ fontSize: 11, color: (b.shopped || 0) >= 30 ? theme.gold : theme.muted, marginTop: 2, lineHeight: 1.45 }}>{b.elsewhere}</div>
-        {b.backed
-          ? <div style={{ fontSize: 10.5, color: theme.muted, marginTop: 4 }}>You said your piece. Saying it twice is a different story.</div>
-          : <button onClick={() => dispatch(backTheCampaign, b.id)} disabled={!fit.ok}
-              style={{ marginTop: 5, border: 'none', borderRadius: 9, padding: '6px 11px', fontSize: 11.5, fontWeight: 800,
-                cursor: fit.ok ? 'pointer' : 'default', background: fit.ok ? 'rgba(255,209,102,.18)' : 'rgba(120,110,150,.15)', color: fit.ok ? theme.gold : '#6b6390' }}>
-              Say something about it · {BACK_COST} energy
-            </button>}
-      </div>);
-    })}
-    <div style={{ fontSize: 10.5, color: theme.muted, marginTop: 5, lineHeight: 1.45 }}>
-      A network has never once changed its mind because an actor posted. What the noise does is
-      tell every other buyer that the audience is already assembled and currently free — which
-      is how a cancelled show ends up somewhere else, with fewer episodes and less money.
     </div>
   </Card>);
 }
@@ -962,35 +813,6 @@ function StoriesCard({ g }) {
         {x.line && <div style={{ fontSize: 11.5, color: theme.muted, lineHeight: 1.45 }}>{x.line}</div>}
       </div>))}
     </div>
-  </Card>);
-}
-function LifeCard({ g }) {
-  const c = monthlyCosts(g);
-  // A month's income is the wage AND the shoot you are on. The balance used to show −€1,170
-  // to somebody being paid €2,000 a month by a picture. Net of the agent's cut, as paid.
-  const shootPay = g.production ? Math.round(((g.production.salary || 0) / Math.max(1, g.production.months || 1)) * (1 - agentCut(g))) : 0;
-  const income = (g.job ? g.job.pay : 0) + shootPay;
-  const net = income - c.total;
-  const row = (k, v, tint) => (<div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 12.5, padding: '5px 0', borderBottom: `1px solid ${theme.line}` }}>
-    <span style={{ color: theme.muted }}>{k}</span><span style={{ fontWeight: 700, color: tint || theme.text }}>{v}</span></div>);
-  return (<Card style={{ marginBottom: 14 }}>
-    <div style={{ fontSize: 11, fontWeight: 900, letterSpacing: '.09em', textTransform: 'uppercase', color: theme.muted, marginBottom: 6 }}>Your life right now</div>
-    {row('Living', g.homeless ? 'Nowhere — on the street' : hostName(g) ? `At ${hostName(g)}'s · no rent` : g.inheritedHome ? `${HOUSING[g.housing || 'room'].label} · yours outright` : g.hasApartment ? HOUSING[g.housing || 'room'].label : "At your parents'")}
-    {g.hasApartment && row('Eating', `${DIET[g.diet || 'cook'].label}${g.gym ? ' · gym' : ''}`)}
-    {row('Work', g.job ? `${g.job.title} · ${g.job.employer}` : (inCareer(g) ? 'No job' : '—'), g.job ? theme.text : theme.muted)}
-    {allSets(g).map((p, i) => row(i ? '' : 'Filming', `${p.title} · ${p.prepLeft > 0 ? `preparing, ${p.prepLeft} mo` : `${p.monthsLeft} mo left`}`, theme.gold))}
-    {/* The number your agent says out loud. It only means anything if you can see it. */}
-    {(g.quote || 0) > 0 && row('Your quote', money(g.quote), theme.gold)}
-    {/* What the work is costing you. Only shown once it is worth knowing about. */}
-    {g.burnout ? row('Signed off', `${g.burnout.left} month${g.burnout.left === 1 ? '' : 's'} left`, theme.bad)
-      : (g.strain || 0) >= 34 && row('Energy', strainBand(g.strain).label, (g.strain || 0) >= 82 ? theme.bad : (g.strain || 0) >= 60 ? theme.gold : theme.muted)}
-    {/* Once you have shut down three sets, that is a thing about you. */}
-    {unreliable(g) && row('Insurers', `${g.burnouts} shoots stopped because of you`, theme.bad)}
-    {depressed(g) && row('Carrying', `${monthsIn(g)} month${monthsIn(g) === 1 ? '' : 's'} of it`, theme.bad)}
-    {!depressed(g) && (g.scarred || 0) > 0 && row('It kept', `${g.scarred} hour${g.scarred === 1 ? '' : 's'} a month`, theme.bad)}
-    {g.hasApartment && row('Out each month', `€${c.total.toLocaleString()}`, theme.bad)}
-    {income > 0 && row('In each month', `€${income.toLocaleString()}${shootPay ? ' · incl. the shoot' : ''}`, theme.good)}
-    {g.hasApartment && row('Balance', `${net >= 0 ? '+' : ''}€${net.toLocaleString()}`, net >= 0 ? theme.good : theme.bad)}
   </Card>);
 }
 const CAREER_TABS = [['calendar', 'Calendar'], ['training', 'Training'], ['credits', 'Filmography'], ['events', 'Events']];
@@ -2314,111 +2136,6 @@ function EventsScreen({ g }) {
       </Card>);
     })}
   </div>);
-}
-// The working title. Maxi: "let the player write their own names — much more interesting."
-// Anything that has not opened yet can be renamed; the night it opens, the name is the name.
-// See systems/career/naming.js.
-function TitleLine({ g, kind, id, title, size = 15 }) {
-  const [editing, setEditing] = useState(false);
-  const [draft, setDraft] = useState('');
-  const fit = canRename(g, kind, id);
-  const bad = editing ? whyNot(g, kind, id, draft) : null;
-  if (!editing) return (<div style={{ display: 'flex', alignItems: 'baseline', gap: 7 }}>
-    <div style={{ fontSize: size, fontWeight: 800, minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{title}</div>
-    {fit.ok && <button onClick={() => { setDraft(String(title).replace(/(\s*·\s*season\s+\d+)+\s*$/i, '')); setEditing(true); }}
-      title="Name it yourself — a title is provisional until it opens"
-      style={{ flex: 'none', background: 'none', border: 'none', color: theme.muted, fontSize: 11.5, fontWeight: 700, cursor: 'pointer', padding: 0 }}>✎ name it</button>}
-  </div>);
-  return (<div>
-    <div style={{ display: 'flex', gap: 6 }}>
-      <input autoFocus value={draft} maxLength={TITLE_MAX} onChange={(e) => setDraft(e.target.value)}
-        onKeyDown={(e) => { if (e.key === 'Enter' && !bad) { dispatch(renameProject, kind, id, draft); setEditing(false); } if (e.key === 'Escape') setEditing(false); }}
-        style={{ flex: 1, minWidth: 0, background: theme.bg, border: `1px solid ${bad ? theme.bad : theme.gold}`, borderRadius: 8, padding: '7px 9px', color: theme.text, fontSize: 14, fontWeight: 800, fontFamily: 'inherit' }} />
-      <button disabled={!!bad} onClick={() => { dispatch(renameProject, kind, id, draft); setEditing(false); }}
-        style={{ flex: 'none', border: 'none', borderRadius: 8, padding: '7px 11px', background: bad ? 'rgba(120,110,150,.2)' : theme.gold, color: bad ? '#6b6390' : '#241a05', fontSize: 12, fontWeight: 900, cursor: bad ? 'default' : 'pointer' }}>Set</button>
-      <button onClick={() => setEditing(false)} style={{ flex: 'none', background: 'none', border: 'none', color: theme.muted, fontSize: 12, fontWeight: 700, cursor: 'pointer' }}>✕</button>
-    </div>
-    <div style={{ fontSize: 11, color: bad ? theme.bad : theme.muted, marginTop: 4, lineHeight: 1.4 }}>
-      {bad || 'A working title, until the night it opens. Nothing is called what it was called on the first day.'}
-    </div>
-  </div>);
-}
-// What the production wants of you this month, and what each answer costs. This replaced the
-// three stance chips, which differed only in price and so were never a decision — see
-// career/demands.js for the whole of why.
-function DemandRow({ g, p }) {
-  const d = demandOf(p);
-  if (!d) return null;
-  const opts = optionsFor(g, p);
-  return (<div style={{ background: 'rgba(255,209,102,.07)', border: `1px solid ${theme.gold}44`, borderRadius: 12, padding: '10px 11px', margin: '2px 0 4px' }}>
-    <div style={{ fontSize: 10, fontWeight: 900, letterSpacing: '.08em', textTransform: 'uppercase', color: theme.gold, marginBottom: 5 }}>They want an answer</div>
-    <div style={{ fontSize: 12.5, lineHeight: 1.5, marginBottom: 9 }}>{d.ask(p)}</div>
-    {opts.map((o) => (<button key={o.id} onClick={() => dispatch(answerDemand, p.id, o.id)}
-      style={{ display: 'block', width: '100%', textAlign: 'left', marginBottom: 5, border: `1px solid ${theme.line}`,
-        borderRadius: 10, padding: '8px 10px', background: theme.panel, color: theme.text, font: 'inherit',
-        fontSize: 12, fontWeight: 800, cursor: 'pointer' }}>
-      {o.label}
-      {/* The price, before it is pressed. Every one of these costs something different, which
-          is the point: there is no answer that is simply better. */}
-      <div style={{ fontSize: 10.5, fontWeight: 500, color: theme.muted, marginTop: 2 }}>{o.hint}</div>
-    </button>))}
-    <div style={{ fontSize: 10.5, color: theme.muted, marginTop: 2, lineHeight: 1.4 }}>
-      Live the month without answering and they take it as {opts.find((o) => o.passive) ? `"${opts.find((o) => o.passive).label.toLowerCase()}"` : 'a no'}.
-    </div>
-  </div>);
-}
-function ProductionCard({ g, p }) {
-  const tier = meterTier(p.meter); const noEnergy = !canAfford(g, COST.rehearse);
-  const actBtn = (danger) => ({ flex: 1, border: 'none', borderRadius: 10, padding: '9px', fontSize: 12.5, fontWeight: 800, cursor: noEnergy ? 'default' : 'pointer', background: noEnergy ? 'rgba(120,110,150,.15)' : danger ? 'rgba(255,209,102,.18)' : `linear-gradient(135deg,${theme.accent2},${theme.accent})`, color: noEnergy ? '#6b6390' : danger ? theme.gold : '#fff' });
-  return (<Card style={{ marginBottom: 14, borderColor: 'rgba(255,209,102,.35)' }}>
-    <div style={{ fontSize: 11, fontWeight: 900, letterSpacing: '.08em', textTransform: 'uppercase', color: theme.gold, marginBottom: 6 }}>🎬 {p.prepLeft > 0 ? `Preparing · ${p.prepLeft} mo before the first day` : `On set · ${p.monthsLeft} mo left`}</div>
-    <TitleLine g={g} kind="set" id={p.id} title={p.title} />
-    <div style={{ fontSize: 11.5, color: theme.muted, margin: '3px 0 8px' }}>{p.role} · {p.type}</div>
-    <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 11.5, color: theme.muted, marginBottom: 4 }}><span>Your performance</span><span>{tier.label} · {Math.round(p.meter)}</span></div>
-    <div style={{ height: 7, background: 'rgba(255,255,255,.08)', borderRadius: 4, marginBottom: 8 }}><div style={{ width: p.meter + '%', height: '100%', background: theme.gold, borderRadius: 4 }} /></div>
-    {/* The other three, in words. A set is a story, not a progress bar. */}
-    {(() => {
-      const dir = (p.crew || [])[0], co = (p.crew || [])[1];
-      const row = (k, v, col) => (<div key={k} style={{ display: 'flex', justifyContent: 'space-between', fontSize: 11.5, padding: '2px 0' }}>
-        <span style={{ color: theme.muted }}>{k}</span><span style={{ color: col, fontWeight: 700 }}>{v}</span></div>);
-      const word = (b) => (b >= 72 ? ['Delighted with you', theme.gold] : b >= 55 ? ['Pleased', theme.good]
-        : b >= 38 ? ['Professional', theme.muted] : b >= 22 ? ['Cooling', theme.bad] : ['Has stopped looking at you', theme.bad]);
-      const chem = (b) => (b >= 70 ? ['You two have it', theme.gold] : b >= 52 ? ['Easy enough', theme.good]
-        : b >= 34 ? ['Polite', theme.muted] : ['Uneasy', theme.bad]);
-      const press = (st) => ((st ?? 70) >= 80 ? ['Running smoothly', theme.good] : (st ?? 70) >= 60 ? ['The usual chaos', theme.muted]
-        : (st ?? 70) >= 42 ? ['Behind schedule', theme.bad] : ['Falling apart', theme.bad]);
-      return (<div style={{ marginBottom: 10 }}>
-        {dir && row('Director', ...[word(dir.bond || 0)].flatMap((x) => x))}
-        {co && row('Chemistry', ...[chem(co.bond || 0)].flatMap((x) => x))}
-        {row('Production', ...[press(p.stability)].flatMap((x) => x))}
-      </div>);
-    })()}
-    {p.prepLeft > 0 ? null : <div style={{ marginBottom: 10 }}><DemandRow g={g} p={p} /></div>}
-    {/* The days on this shoot that are a scene rather than a month — see career/scenes.js. */}
-    {p.prepLeft > 0 ? null : (() => { const sc = sceneState(g, p); if (!sc) return null; return (<div style={{ marginBottom: 10, padding: '8px 10px', borderRadius: 10, background: 'rgba(255,209,102,.06)', border: `1px solid ${theme.line}` }}>
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', gap: 8 }}>
-        <div style={{ fontSize: 11, fontWeight: 900, letterSpacing: '.08em', textTransform: 'uppercase', color: theme.gold }}>The days</div>
-        <div style={{ fontSize: 10.5, color: theme.muted }}>{sc.done} of {sc.cap} shot</div>
-      </div>
-      {sc.days.map((d, k) => (<div key={k} style={{ display: 'flex', justifyContent: 'space-between', gap: 10, fontSize: 11.5, padding: '3px 0' }}>
-        <span style={{ fontWeight: 700 }}>{d.label}</span>
-        <span style={{ color: d.q >= 70 ? theme.gold : d.q >= 45 ? theme.muted : theme.bad }}>{d.word} · {d.q}</span>
-      </div>))}
-      <div style={{ fontSize: 11.5, color: theme.muted, lineHeight: 1.45, marginTop: 3 }}>{sc.line}</div>
-      {!!sc.moments.length && <div style={{ fontSize: 11.5, color: theme.text, lineHeight: 1.45, marginTop: 4 }}>★ In the film now: {sc.moments.join('; ')}.</div>}
-    </div>); })()}
-    {/* One favour, not a grind: somebody owes you and you spend it. The month itself is the
-        stance above, and the shooting is the days. */}
-    {canSmooth(g) && <div style={{ marginBottom: 12 }}>
-      <button onClick={() => dispatch(smoothOver)} disabled={!canUse(g, 'smooth').ok} title={canUse(g, 'smooth').ok ? FAVOURS.smooth.blurb : canUse(g, 'smooth').why}
-        style={{ ...actBtn(true), width: '100%', background: canUse(g, 'smooth').ok ? 'rgba(255,209,102,.18)' : 'rgba(120,110,150,.15)', color: canUse(g, 'smooth').ok ? theme.gold : '#6b6390' }}>◆ Have a word · −{costOf(g, 'smooth')}</button>
-    </div>}
-    <div style={{ fontSize: 10.5, fontWeight: 900, letterSpacing: '.08em', textTransform: 'uppercase', color: theme.muted, marginBottom: 6 }}>Crew</div>
-    {p.crew.map((c) => (<div key={c.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '6px 0', borderBottom: `1px solid ${theme.line}` }}>
-      <div><div style={{ fontSize: 12.5, fontWeight: 700 }}>{c.name}</div><div style={{ fontSize: 10.5, color: theme.muted }}>{c.role} · {c.trait} · bond {Math.round(c.bond || 0)}</div></div>
-
-    </div>))}
-  </Card>);
 }
 function AaaTracker({ g }) {
   const acc = computeAccess(g);

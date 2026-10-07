@@ -318,6 +318,11 @@ await inState('Home · for your consideration', { filmography: [...save.filmogra
   hangIt(t, t.filmography[2], { title: 'Night Shift · Season 4', role: 'Series regular' }, 48);
   await inState('Home · a season on the bubble', { bubbles: t.bubbles }, /Nobody has decided/);
 }
+// The set asking for something this month: the row with the answers, on Home and in the Calendar.
+{
+  const asked = { ...SET, demand: { id: 'nights', at: NOW } };
+  await inState('Home · they want an answer', { productions: [asked], production: asked }, /Three weeks of nights/);
+}
 
 console.log();
 console.log('      covered (' + seen.length + '): ' + seen.join(', '));
