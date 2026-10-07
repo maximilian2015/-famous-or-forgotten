@@ -1,9 +1,12 @@
 import { estateValue } from '../life/money.js';
 import { ambitionVerdict } from './ambition.js';
 // Ads and voice sessions are not a legacy. They paid for a room; they do not go on the
-// stone. Kept in step with the Other work split in the filmography.
+// stone. A commercial, a voice session, a day as an extra: real work, real money, but not the
+// filmography either — giving them a score out of ten made a career of eight films look like
+// a career of thirteen mediocre ones. The filmography's Other work split reads this same one.
+// Saves written before the flag existed are recognised by what the job was called.
 const MINOR_TYPES = /^(Brand Campaign|Commercial|Jingle|Brand Song|TV Extra|Voice Session|Open Mic|Festival Slot|Session Work|Music Video)$/;
-const isMinor = (c) => c.minor === true || (c.minor === undefined && MINOR_TYPES.test(c.type || ''));
+export const isMinor = (c) => c.minor === true || (c.minor === undefined && MINOR_TYPES.test(c.type || ''));
 export function computeLegacy(s) {
   const all = [...(s.filmography || []), ...(s.discography || [])].filter((c) => !isMinor(c));
   const credits = all.length;

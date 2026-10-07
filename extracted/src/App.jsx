@@ -9,16 +9,15 @@ import { SCHOOLS, train, trainingKey } from './systems/career/training.js';
 import { skillCap, lessonCap, talentHint } from './systems/career/actions.js';
 import { seeDoctor, treatmentCost, pushThrough, PILLS, usePills, infectionOdds } from './systems/life/health.js';
 import { resolveArc } from './systems/life/arcs.js';
-import { computeLegacy, getHall, heirsOf, heirOpts, enshrine } from './systems/meta/legacy.js';
-import { fameTier, setHousing, FAME_TIERS, fameCeiling, ladderBlurb, TIER_OPENS, alistKey, iconKey, scandalReport, respectReport, RESPECT_MOVES, RESPECT_TIERS, RESPECT_OPENS, respectTier, FORGOTTEN, FORGOTTEN_OPENS, isForgotten, forgottenDepth } from './systems/meta/status.js';
+import { computeLegacy, getHall, heirsOf, heirOpts, enshrine, isMinor } from './systems/meta/legacy.js';
+import { fameTier, setHousing, FAME_TIERS, fameCeiling, ladderBlurb, isForgotten } from './systems/meta/status.js';
 import { meterTier } from './systems/career/production.js';
 import { demandOf, optionsFor, answerDemand } from './systems/career/demands.js';
-// Every set you are on. Three at most — see engine/sets.js; g.production is the first.
-const allSets = (g) => (g.productions && g.productions.length ? g.productions : (g.production ? [g.production] : []));
+import { allSets, money } from './ui/helpers.js';
 import { agentCut, agentLine, fireAgent } from './systems/career/agent.js';
 import { COST, canAfford } from './engine/energy.js';
 import { EnergyBar } from './ui/components/EnergyBar.jsx';
-import { FAVOURS, FAVOUR_ORDER, canUse, costOf, asksLeft, ASKS_A_YEAR, canSmooth, smoothOver, vouchFor, canOpenShelf, openShelf } from './systems/career/favours.js';
+import { FAVOURS, canUse, costOf, canSmooth, smoothOver, vouchFor } from './systems/career/favours.js';
 import { sequelDue } from './systems/career/franchise.js';
 import { knownFor, isHit, isFlop, theHits, theFlops } from './systems/meta/knownFor.js';
 import { boxedInto, isUniversal } from './systems/meta/typecast.js';
@@ -41,9 +40,8 @@ import { Chronology, ScriptLines, Motive } from './ui/components/SceneLogic.jsx'
 import { FrameCheck, FindTheLight, TheAssembly, WhoSaysIt, TakeSheet } from './ui/components/ScenePuzzles.jsx';
 import { chronologyFor, linesFor, motiveFor, assemblyFor, readFor } from './systems/career/scenework.js';
 import { priceLine } from './systems/meta/price.js';
-import { hype, hypeSource, hypeLine, SOURCES, hypeReach, hypeDemand, hypePrice, showsThisYear } from './systems/meta/hype.js';
+import { hype, hypeSource, SOURCES } from './systems/meta/hype.js';
 import { tendency } from './systems/meta/typecast.js';
-import { addPrestigeListing } from './systems/career/castings.js';
 import { TimingBar } from './ui/components/TimingBar.jsx';
 import { GridRisk } from './ui/components/GridRisk.jsx';
 import { StairsGame } from './ui/components/StairsGame.jsx';
@@ -97,6 +95,8 @@ import { monthsIn, slotsLost, owedSlots, standingOf, onMeds, TALK, WEEK_TASKS, C
   takeTheUltimatum } from './systems/life/depression.js';
 import { drinkThrough, drankThisMonth, level as drinkLevel, band as drinkBand, dependent, bottlesInHouse,
   answerUltimatum, GRACE_MONTHS } from './systems/life/drink.js';
+import { RespectScreen } from './ui/components/RespectScreen.jsx';
+import { FameScreen } from './ui/components/FameScreen.jsx';
 // Big moments live on state so a system can raise one; the UI only clears it.
 function clearBigMoment(s) {
   // The paper that came back opens itself once you have read the answer.
@@ -412,18 +412,6 @@ function ComboStrip({ g }) {
     </div>
   </div>);
 }
-// The full card, for the two ladder screens: what the combination is and what it does.
-function ComboCard({ g }) {
-  const id = comboOf(g), c = COMBOS[id];
-  const col = c.tone === 'bad' ? '#ff8d9e' : c.tone === 'good' ? theme.gold : theme.accent;
-  return (<Card style={{ marginBottom: 14, borderColor: col + '44' }}>
-    <div style={{ fontSize: 11, fontWeight: 900, letterSpacing: '.08em', textTransform: 'uppercase', color: col, marginBottom: 4 }}>Fame × Standing · {c.label}</div>
-    <div style={{ fontSize: 12.5, color: theme.muted, lineHeight: 1.55 }}>{c.long}</div>
-    {c.fx.length > 0 && <div style={{ marginTop: 8 }}>
-      {c.fx.map((l, i) => <div key={i} style={{ fontSize: 11.5, color: theme.text, lineHeight: 1.5, display: 'flex', gap: 6, opacity: .9 }}><span style={{ color: col }}>·</span><span>{l}</span></div>)}
-    </div>}
-  </Card>);
-}
 
 // The two settings the game has: what it looks like, and whether it makes a sound. Kept
 // out of the save on purpose — both should survive starting a new life.
@@ -510,326 +498,10 @@ function SettingsRow() {
 }
 function LockedScreen({ label }) { return (<div style={{ fontSize: 13, color: theme.muted, textAlign: 'center', padding: '40px 20px', lineHeight: 1.7 }}>🔒 {label} unlocks once you move out and start your career.<br /><br />Grow up, rent your own place, and this opens up.</div>); }
 function ChildPhoneLocked() { return (<div style={{ fontSize: 13, color: theme.muted, textAlign: 'center', padding: '40px 20px', lineHeight: 1.7 }}>📱 You're too young for a phone.<br /><br />You'll get your first one as a teenager (13).</div>); }
-// Tapping Health opens the body: the bar, what you've got, and the three ways out —
-// pay a doctor, push through it yourself, or reach into the medicine cabinet.
+
 // Tapping Mental used to do nothing at all, while five systems read the number behind it.
 // This screen answers the only two questions worth answering: why is it that, and what can
 // I do about it this month. The arithmetic is the real arithmetic — see systems/life/mood.js.
-// The whole ladder, laid out, because "15 to Rising Star" told you the next rung and
-// nothing about the shape of the climb — and the two doors above Star are not a number of
-// points away at all, so counting down to them was a lie. Every line under a rung is a real
-// gate somewhere in the game; see TIER_OPENS in systems/meta/status.js.
-// Respect is moved by twelve things and read by six, and tapping it did nothing. The one
-// worth knowing is that it is the biggest single term in whether a director shoots your
-// version of the film — fame gets you into the room, standing is what makes them listen.
-function Move({ m, col }) {
-  return (<div style={{ display: 'flex', gap: 10, padding: '8px 0', borderBottom: `1px solid ${theme.line}` }}>
-    <span style={{ color: col, fontWeight: 900, fontSize: 13, width: 30, flexShrink: 0, textAlign: 'right', fontVariantNumeric: 'tabular-nums' }}>{m.by}</span>
-    <span style={{ fontSize: 12.2, lineHeight: 1.45 }}>{m.what}<span style={{ color: theme.muted }}> — {m.note}</span></span>
-  </div>);
-}
-// Standing spends. Maxi: "respect as a currency." One number, and it goes down when you
-// use it — every ask costs the asking, whether it works or not. See favours.js.
-function UseYourName({ g }) {
-  const where = { lead: 'on a supporting film listing in OpenCall', sequel: 'on a film in your Filmography the studio passed on', smooth: 'on the set, when the director has cooled', vouch: 'on a contact in People', shelf: 'here' };
-  const now = { lead: (g.castingPool || []).some((c) => (c.shelf === 'film' || c.shelf === 'indie') && c.role !== 'Lead'), sequel: (g.filmography || []).some((c) => c.pushable && !c.pushed), smooth: canSmooth(g), vouch: (g.people || []).length > 0, shelf: canOpenShelf(g) };
-  return (<Card style={{ marginBottom: 14, borderColor: theme.gold + '44' }}>
-    <div style={{ fontSize: 11, fontWeight: 900, letterSpacing: '.08em', textTransform: 'uppercase', color: theme.gold, marginBottom: 4 }}>◆ Use your name</div>
-    <div style={{ fontSize: 12, color: theme.muted, lineHeight: 1.55, marginBottom: 8 }}>
-      Standing is not only a ladder. It spends — and every ask costs the asking, whether it works or not, because the business notices you had to. Three asks a year, and each one in the last two years makes the next dearer.{g.nameSpent ? ` Spent so far: ${g.nameSpent}.` : ''} {asksLeft(g)} of {ASKS_A_YEAR} left this year.
-    </div>
-    {FAVOUR_ORDER.map((id) => { const f = FAVOURS[id]; const fit = canUse(g, id); const open = fit.ok && now[id];
-      return (<div key={id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', gap: 8, padding: '6px 0', borderTop: `1px solid ${theme.line}`, opacity: open ? 1 : .55 }}>
-        <div style={{ minWidth: 0 }}>
-          <div style={{ fontSize: 12.5, fontWeight: 800, color: open ? theme.text : theme.muted }}>{f.label}<span style={{ color: theme.muted, fontWeight: 600 }}> · from {f.min}</span></div>
-          <div style={{ fontSize: 11, color: theme.muted, lineHeight: 1.4 }}>{!fit.ok ? fit.why : now[id] ? (id === 'shelf' ? 'Available now.' : `Available now — ${where[id]}.`) : `Nothing to spend it on right now. It lives ${where[id]}.`}</div>
-        </div>
-        {id === 'shelf' && open
-          ? <button onClick={() => dispatch(openShelf, addPrestigeListing)} style={{ border: 'none', borderRadius: 9, padding: '6px 10px', fontSize: 11, fontWeight: 800, cursor: 'pointer', background: 'rgba(255,209,102,.18)', color: theme.gold, whiteSpace: 'nowrap' }}>−{costOf(g, id)} · open it</button>
-          : <div style={{ fontSize: 12, fontWeight: 900, color: theme.gold, whiteSpace: 'nowrap' }}>−{costOf(g, id)}</div>}
-      </div>); })}
-  </Card>);
-}
-function RespectScreen({ g, onBack }) {
-  const r = Math.round(g.respect || 0);
-  const rt = respectTier(r);
-  const band = [rt.label, r >= 60 ? '#4fc07f' : r >= 40 ? theme.accent : r >= 30 ? theme.gold : r >= 12 ? theme.muted : '#ff5a72'];
-  const lines = respectReport(g);
-  const wins = ((g.awards && g.awards.wins) || []).length;
-  const noms = ((g.awards && g.awards.nominations) || []).length;
-  // Who could actually open a door for you. computeAccess wants weight 80 and closeness 60.
-  const industry = [...(g.people || [])]
-    .filter((p) => (p.industryWeight || 0) > 0)
-    .sort((a, b) => (b.industryWeight || 0) - (a.industryWeight || 0))
-    .slice(0, 5);
-  const best = [...(g.filmography || []), ...(g.discography || [])]
-    .filter((c) => !c.minor && c.score != null)
-    .sort((a, b) => (b.rating || 0) - (a.rating || 0))[0];
-  return (<div style={{ maxWidth: 440, margin: '0 auto', minHeight: '100vh', background: 'transparent', color: theme.text, padding: 16, paddingBottom: 40, fontFamily: FONT }}>
-    <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 14 }}>
-      <button onClick={onBack} data-sfx="back" style={{ background: 'rgba(255,255,255,.1)', border: 'none', color: theme.text, borderRadius: 9, padding: '6px 11px', fontSize: 13, fontWeight: 800, cursor: 'pointer', fontFamily: 'inherit' }}>‹ Back</button>
-      <div style={{ fontSize: 16, fontWeight: 900 }}>How the business sees you</div>
-    </div>
-
-    <Card style={{ marginBottom: 14 }}>
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', gap: 8 }}>
-        <div style={{ fontFamily: FONT_DISPLAY, fontSize: 30, fontWeight: 700 }}>{r}</div>
-        <div style={{ fontSize: 12.5, fontWeight: 800, color: band[1], textAlign: 'right' }}>{band[0]}</div>
-      </div>
-      <div style={{ height: 9, background: 'rgba(255,255,255,.08)', borderRadius: 5, margin: '9px 0 8px', overflow: 'hidden' }}>
-        <div style={{ width: r + '%', height: '100%', background: `linear-gradient(90deg, ${band[1]}aa, ${band[1]})`, borderRadius: 5, transition: 'width .5s' }} />
-      </div>
-      <div style={{ fontSize: 12, color: theme.muted, lineHeight: 1.55 }}>
-        Fame is how many people know the name. This is what the people who hire you think of it,
-        and the two move for completely different reasons.
-      </div>
-      {(wins > 0 || noms > 0) && <div style={{ fontSize: 12, color: theme.gold, marginTop: 7, fontWeight: 700 }}>
-        {wins > 0 ? `🏆 ${count(wins, 'Asker')}` : ''}{wins > 0 && noms > 0 ? ' · ' : ''}{noms > 0 ? `${count(noms, 'nomination')}` : ''}
-        {' — worth '}{wins * 22 + Math.min(18, noms * 5)}{' on top of your fame in every casting office.'}
-      </div>}
-      {best && <div style={{ fontSize: 12, color: theme.muted, marginTop: 6 }}>
-        Your best is <b style={{ color: theme.text }}>{best.title}</b> at {best.score}/10. That is the one people mean.
-      </div>}
-    </Card>
-
-    <ComboCard g={g} />
-    <UseYourName g={g} />
-    <div style={{ fontSize: 11, fontWeight: 900, letterSpacing: '.09em', textTransform: 'uppercase', color: theme.muted, marginBottom: 8 }}>The whole climb</div>
-    <Ladder tiers={RESPECT_TIERS} opens={RESPECT_OPENS} value={g.respect} />
-    <div style={{ fontSize: 11, fontWeight: 900, letterSpacing: '.09em', textTransform: 'uppercase', color: theme.muted, marginBottom: 4 }}>What it is worth</div>
-    <Card style={{ marginBottom: 14, padding: '4px 14px' }}>
-      {lines.map((l) => (
-        <div key={l.id} style={{ padding: '9px 0', borderBottom: `1px solid ${theme.line}` }}>
-          <div style={{ fontSize: 12.5, fontWeight: 800 }}>{l.label}</div>
-          <div style={{ fontSize: 11.5, color: theme.muted, lineHeight: 1.5, marginTop: 2 }}>{l.why}</div>
-        </div>))}
-    </Card>
-
-    <div style={{ fontSize: 11, fontWeight: 900, letterSpacing: '.09em', textTransform: 'uppercase', color: theme.muted, marginBottom: 8 }}>People who could open a door</div>
-    {industry.length ? (<div style={{ display: 'grid', gap: 7, marginBottom: 14 }}>
-      {industry.map((p) => { const opens = (p.industryWeight || 0) >= 80 && (p.relationship || 0) >= 60;
-        return (<div key={p.id} style={{ background: theme.panel, border: `1px solid ${opens ? 'rgba(79,192,127,.35)' : theme.line}`, borderRadius: 12, padding: '10px 12px' }}>
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', gap: 8 }}>
-            <div style={{ fontSize: 13.5, fontWeight: 800 }}>{p.name}</div>
-            <div style={{ fontSize: 11, fontWeight: 800, color: opens ? '#7fd6a2' : theme.muted, flexShrink: 0 }}>
-              {opens ? '★ opens doors' : `weight ${Math.round(p.industryWeight || 0)}`}
-            </div>
-          </div>
-          <div style={{ fontSize: 11.5, color: theme.muted, marginTop: 2 }}>
-            {p.role} · {relBand(p.relationship).label}
-            {!opens && (p.industryWeight || 0) >= 80 ? ' — powerful enough, not close enough' : ''}
-          </div>
-        </div>); })}
-    </div>) : <div style={{ fontSize: 12, color: theme.muted, textAlign: 'center', padding: '8px 10px 16px', lineHeight: 1.6 }}>
-      Nobody in the business is in your phone yet. They come from parties and events, under Career.
-    </div>}
-
-    <div style={{ fontSize: 11, fontWeight: 900, letterSpacing: '.09em', textTransform: 'uppercase', color: theme.muted, marginBottom: 8 }}>What moves it</div>
-    <div style={{ display: 'grid', gap: 8 }}>
-      <Card style={{ padding: '4px 14px' }}>{RESPECT_MOVES.up.map((m, i) => <Move key={i} m={m} col="#4fc07f" />)}</Card>
-      <Card style={{ padding: '4px 14px' }}>{RESPECT_MOVES.down.map((m, i) => <Move key={i} m={m} col="#ff5a72" />)}</Card>
-    </div>
-    <div style={{ fontSize: 11.5, color: theme.muted, textAlign: 'center', padding: '16px 10px', lineHeight: 1.6 }}>
-      None of this can be bought. It is the only number in the game that money does not touch.
-    </div>
-  </div>);
-}
-
-function FameScreen({ g, onBack }) {
-  const f = Math.round(g.fame || 0);
-  const tier = fameTier(g.fame);
-  const ceil = fameCeiling(g);
-  const aKey = alistKey(g), iKey = iconKey(g);
-  const sc = Math.round(g.scandal || 0);
-  const scLines = scandalReport(g);
-  const media = Math.round(g.media || 0);
-  const idle = g._idleMonths || 0;
-  return (<div style={{ maxWidth: 440, margin: '0 auto', minHeight: '100vh', background: 'transparent', color: theme.text, padding: 16, paddingBottom: 40, fontFamily: FONT }}>
-    <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 14 }}>
-      <button onClick={onBack} data-sfx="back" style={{ background: 'rgba(255,255,255,.1)', border: 'none', color: theme.text, borderRadius: 9, padding: '6px 11px', fontSize: 13, fontWeight: 800, cursor: 'pointer', fontFamily: 'inherit' }}>‹ Back</button>
-      <div style={{ fontSize: 16, fontWeight: 900 }}>Your name</div>
-    </div>
-
-    <Card style={{ marginBottom: 14 }}>
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline' }}>
-        <div style={{ fontFamily: FONT_DISPLAY, fontSize: 30, fontWeight: 700 }}>{f}</div>
-        <div style={{ fontSize: 12.5, fontWeight: 800, color: isForgotten(g) ? '#ff8d9e' : theme.accent }}>{isForgotten(g) ? 'Forgotten' : tier.label}</div>
-      </div>
-      <div style={{ height: 9, background: 'rgba(255,255,255,.08)', borderRadius: 5, margin: '9px 0 8px', overflow: 'hidden', position: 'relative' }}>
-        <div style={{ width: f + '%', height: '100%', background: `linear-gradient(90deg, ${theme.accent}aa, ${theme.accent})`, borderRadius: 5, transition: 'width .5s' }} />
-        {/* Where the wall is, if there is one above you. */}
-        {ceil < 100 && <div style={{ position: 'absolute', left: ceil + '%', top: -2, width: 2, height: 13, background: '#ff5a72' }} />}
-      </div>
-      <div style={{ fontSize: 12, color: theme.muted, lineHeight: 1.55 }}>
-        {idle >= 4
-          ? `Nothing of yours has come out in ${count(idle, 'month')}. You are being forgotten at about ${((f / 55 + (g.scandal || 0) / 45) * (1 - Math.min(0.55, media / 130))).toFixed(2)} a month.`
-          : 'Working keeps you where you are. It is the quiet years that take it back.'}
-      </div>
-    </Card>
-
-    <ComboCard g={g} />
-    <div style={{ fontSize: 11, fontWeight: 900, letterSpacing: '.09em', textTransform: 'uppercase', color: theme.muted, marginBottom: 8 }}>The whole climb</div>
-    <Ladder tiers={[FORGOTTEN, ...FAME_TIERS]} opens={{ ...TIER_OPENS, forgotten: FORGOTTEN_OPENS }} value={g.fame}
-      sunkAt={isForgotten(g) ? { id: 'forgotten', fill: forgottenDepth(g) } : null}
-      gateFor={(t) => t.id === 'alist' ? { open: !!aKey, need: 'A hit you carried, or a nomination',
-          got: aKey === 'led' ? 'You carried one, and it was good.' : 'The season put your name on the list.' }
-        : t.id === 'icon' ? { open: !!iKey, need: 'A world hit, or an Asker',
-          got: iKey === 'hit' ? 'The whole world saw one of yours.' : 'They read your name out.' }
-        : null} />
-    <div style={{ fontSize: 11, fontWeight: 900, letterSpacing: '.09em', textTransform: 'uppercase', color: theme.muted, marginBottom: 8 }}>The press</div>
-    <Card style={{ marginBottom: 10 }}>
-      <div style={{ display: 'flex', gap: 10 }}>
-        <Meter label="Scandal" value={sc} col={sc >= 45 ? '#ff5a72' : sc >= 20 ? '#f0b429' : theme.muted} />
-        <Meter label={hypeSource(g) ? `Hype · from ${SOURCES[hypeSource(g)].label}` : 'Hype'} value={media} col={hypeSource(g) === 'scandal' ? '#ff8d9e' : media >= 30 ? '#4fc07f' : theme.muted} />
-      </div>
-      {/* Hype is access, demand and price — the rooms, the phone, the fee — and it comes from
-          somewhere. The tabloid kind buys none of those; it sells the brand shelf. meta/hype.js */}
-      <div style={{ fontSize: 11.5, color: theme.muted, lineHeight: 1.55, marginTop: 9 }}>{hypeLine(g)}</div>
-      {media >= 12 && (<div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, marginTop: 8 }}>
-        {[hypeReach(g) >= 1 ? `reads as +${Math.round(hypeReach(g))} fame in the room` : null,
-          hypeDemand(g) > 1 ? `the phone rings ${Math.round((hypeDemand(g) - 1) * 100)}% more` : null,
-          hypePrice(g) > 1 ? `asks ${Math.round((hypePrice(g) - 1) * 100)}% more` : null,
-          hypeSource(g) === 'scandal' ? 'the brands are calling; the serious rooms are not' : null,
-          showsThisYear(g) ? `${showsThisYear(g)} sofa${showsThisYear(g) > 1 ? 's' : ''} this year — each one worth less` : null,
-        ].filter(Boolean).map((t) => <span key={t} style={{ fontSize: 10.5, fontWeight: 700, padding: '3px 8px', borderRadius: 20, background: 'rgba(255,255,255,.07)', color: theme.text }}>{t}</span>)}
-      </div>)}
-      <div style={{ fontSize: 11, color: theme.muted, lineHeight: 1.5, marginTop: 8 }}>It fades by a tenth a month. A hit, the season or a night that went everywhere replaces it; a show tops it up a little, less each time. A month out of sight (under What now) puts it down on purpose.</div>
-    </Card>
-    {scLines.length > 0
-      ? <Card style={{ marginBottom: 14, padding: '4px 14px', borderColor: sc >= 45 ? '#ff5a7244' : theme.line }}>
-          {scLines.map((l) => (
-            <div key={l.id} style={{ padding: '8px 0', borderBottom: `1px solid ${theme.line}` }}>
-              <div style={{ fontSize: 12.5, fontWeight: 800 }}>{l.label}</div>
-              <div style={{ fontSize: 11.5, color: theme.muted, lineHeight: 1.5, marginTop: 2 }}>{l.why}</div>
-            </div>))}
-        </Card>
-      : <div style={{ fontSize: 11.5, color: theme.muted, textAlign: 'center', padding: '4px 10px 14px', lineHeight: 1.6 }}>
-          Nothing is being said about you that you would mind. That is worth more than it looks.
-        </div>}
-
-    <div style={{ fontSize: 11.5, color: theme.muted, textAlign: 'center', padding: '6px 10px', lineHeight: 1.6 }}>
-      The nights that raise your name are invitations in your Phone and events under Career.
-      A publicist, under Style, makes bad press die nearly three times faster.
-    </div>
-  </div>);
-}
-
-
-// The climb, drawn once. Fame and standing are the same shape — rungs, a tube filling from
-// the bottom, and what each one opens — so they are the same component rather than two that
-// look alike until somebody edits one of them.
-//
-// `gateFor` is optional: fame has two doors that points alone will not open, standing has
-// none, and a ladder with no gates simply does not draw any.
-// `sunkAt` is for a rung you do not reach by the number at all — you are pushed into it from
-// above. Forgotten is the one: fame never goes below zero, but a name that fell is sitting
-// under Unknown, and the ladder has to show that. { id, fill } — which rung, and how deep.
-function Ladder({ tiers, opens, value, gateFor, sunkAt }) {
-  // The bullet points under every rung took the whole screen — Maxi: "they take a lot of
-  // space, put them in a guide". They are in the Guide app now; here they are one tap away.
-  const [showOpens, setShowOpens] = useState(false);
-  const v = Math.round(value || 0);
-  let cur = tiers[0];
-  for (const t of tiers) if (v >= t.min) cur = t;
-  if (sunkAt) cur = tiers.find((t) => t.id === sunkAt.id) || cur;
-  return (<div style={{ marginBottom: 16 }}>
-    <button onClick={() => setShowOpens(!showOpens)} data-sfx="toggle" style={{ background: 'none', border: 'none', color: theme.accent, fontSize: 11.5, fontWeight: 800, cursor: 'pointer', padding: '0 0 8px', fontFamily: 'inherit' }}>
-      {showOpens ? '▾ Hide what each rung opens' : '▸ Show what each rung opens · full rules in Phone › Guide'}</button>
-    <div style={{ display: 'grid', gap: 8 }}>
-    {[...tiers].reverse().map((t, ri, arr) => {
-      const here = t.id === cur.id;
-      const above = arr[ri - 1];
-      const top = above ? above.min : 100;
-      // A rung below zero is not something you climb, it is something you sink into. Its
-      // tube fills from the top, in red, by how far down you have gone — and it never gets a
-      // tick, because being above it is not an achievement, it is the default.
-      const sunk = t.min < 0;
-      // Pushed into a rung from above: nothing above it is an achievement any more.
-      const done = !sunk && !sunkAt && v >= t.min;
-      const fill = sunkAt && sunkAt.id === t.id ? sunkAt.fill * 100
-        : sunk
-        ? (v >= top ? 0 : v <= t.min ? 100 : ((top - v) / Math.max(1, top - t.min)) * 100)
-        : (v >= top ? 100 : v <= t.min ? 0 : ((v - t.min) / Math.max(1, top - t.min)) * 100);
-      const gate = gateFor ? gateFor(t) : null;
-      return (<div key={t.id} style={{ display: 'flex', gap: 10, alignItems: 'stretch' }}>
-        <Tube fill={fill} lit={done || (sunk && fill > 0)} here={here} sink={sunk} first={ri === 0} last={ri === arr.length - 1} />
-        <div style={{ flex: 1,
-          background: here ? (sunk ? 'rgba(255,90,114,.12)' : `${theme.accent}1e`) : theme.panel,
-          border: `1px solid ${here ? (sunk ? '#ff5a72' : theme.accent) : done ? theme.line : 'rgba(255,255,255,.05)'}`,
-          borderRadius: 12, padding: showOpens ? '11px 13px' : '9px 13px', opacity: done || here ? 1 : .62 }}>
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', gap: 8 }}>
-            <div style={{ fontSize: 14, fontWeight: 800, color: here ? (sunk ? '#ff8d9e' : theme.accent) : theme.text }}>
-              {done && !here ? '✓ ' : ''}{t.label}{here ? ' · you are here' : ''}
-            </div>
-            <div style={{ fontSize: 11.5, fontWeight: 800, color: theme.muted, flexShrink: 0 }}>
-              {t.note ? t.note : sunk ? (v < top ? `below ${top}` : `from ${top - 1} down`) : (done || v >= t.min) ? t.min : `${Math.ceil(t.min - v)} to go`}
-            </div>
-          </div>
-          {gate && (<div style={{ fontSize: 11.5, marginTop: 6, padding: '6px 9px', borderRadius: 8,
-            background: gate.open ? 'rgba(79,192,127,.12)' : 'rgba(255,90,114,.1)',
-            border: `1px solid ${gate.open ? 'rgba(79,192,127,.3)' : 'rgba(255,90,114,.25)'}`,
-            color: gate.open ? '#7fd6a2' : '#ff8d9e', fontWeight: 700 }}>
-            {gate.open ? `✓ ${gate.got}` : `🔒 ${gate.need} — points alone will not get you in`}
-          </div>)}
-          {showOpens && <div style={{ marginTop: 6 }}>
-            {(opens[t.id] || []).map((line, i) => (
-              <div key={i} style={{ fontSize: 11.5, color: theme.muted, lineHeight: 1.5, display: 'flex', gap: 6 }}>
-                <span style={{ opacity: .5 }}>·</span><span>{line}</span>
-              </div>))}
-          </div>}
-        </div>
-      </div>);
-    })}
-    </div>
-  </div>);
-}
-
-// One segment of the climb, drawn as a glass tube with a level in it. Fills from the bottom,
-// because that is the direction you are going.
-// One segment of the climb, drawn as a glass tube with a level in it. Fills from the
-// bottom, because that is the direction you are going. Segments rather than one long bar:
-// the cards are different heights, so a single fill would put the marks in the wrong
-// places, and a picture that does not line up with its own numbers is worse than none.
-function Tube({ fill, lit, here, sink, first, last }) {
-  // Below zero the level comes DOWN from the top in red. Above it, up from the bottom in
-  // the accent. Same glass, opposite direction — which is exactly the point.
-  const col = sink ? '#ff5a72' : theme.accent;
-  const col2 = sink ? '#b03246' : (theme.accent2 || theme.accent);
-  return (<div style={{ width: 16, flexShrink: 0, position: 'relative', display: 'flex', flexDirection: 'column' }}>
-    <div style={{ position: 'absolute', inset: 0,
-      background: 'rgba(255,255,255,.05)',
-      border: '1px solid rgba(255,255,255,.07)',
-      borderTopLeftRadius: first ? 9 : 0, borderTopRightRadius: first ? 9 : 0,
-      borderBottomLeftRadius: last ? 9 : 0, borderBottomRightRadius: last ? 9 : 0,
-      overflow: 'hidden' }}>
-      <div style={{ position: 'absolute', left: 0, right: 0, [sink ? 'top' : 'bottom']: 0, height: fill + '%',
-        background: sink ? 'linear-gradient(180deg, ' + col2 + ', ' + col + ')' : 'linear-gradient(180deg, ' + col + ', ' + col2 + ')',
-        boxShadow: fill > 0 ? '0 0 12px -2px ' + col : 'none',
-        transition: 'height .6s cubic-bezier(.2,.8,.3,1)' }} />
-      {/* the glass: a highlight down one side */}
-      <div style={{ position: 'absolute', left: 2, top: 0, bottom: 0, width: 3, borderRadius: 3,
-        background: 'linear-gradient(180deg, rgba(255,255,255,.16), rgba(255,255,255,.02))' }} />
-    </div>
-    {/* the mark at the rung itself, at the bottom of its own segment */}
-    <div style={{ position: 'absolute', bottom: -5, left: '50%', transform: 'translateX(-50%)',
-      width: here ? 14 : 10, height: here ? 14 : 10, borderRadius: 9,
-      background: lit ? col : theme.panel2,
-      border: '2px solid ' + (lit ? col : 'rgba(255,255,255,.14)'),
-      boxShadow: here ? '0 0 12px ' + col : 'none',
-      zIndex: 2, transition: 'all .3s' }} />
-  </div>);
-}
-
-function Meter({ label, value, col }) {
-  return (<div style={{ flex: 1 }}>
-    <div style={{ fontSize: 10.5, fontWeight: 800, letterSpacing: '.07em', textTransform: 'uppercase', color: theme.muted }}>{label}</div>
-    <div style={{ fontFamily: FONT_DISPLAY, fontSize: 20, fontWeight: 700, color: col }}>{value}</div>
-    <div style={{ height: 5, background: 'rgba(255,255,255,.07)', borderRadius: 3, marginTop: 4, overflow: 'hidden' }}>
-      <div style={{ width: Math.max(0, Math.min(100, value)) + '%', height: '100%', background: col, borderRadius: 3 }} />
-    </div>
-  </div>);
-}
-
 function MentalScreen({ g, onBack }) {
   const m = Math.round(g.mental || 0);
   const rep = mentalReport(g);
@@ -965,6 +637,8 @@ function ActRow({ label, blurb, cost, disabled, why, onClick }) {
   </button>);
 }
 
+// Tapping Health opens the body: the bar, what you've got, and the three ways out —
+// pay a doctor, push through it yourself, or reach into the medicine cabinet.
 function HealthScreen({ g, onBack }) {
   const [game, setGame] = useState(null);
   const ill = g.illness;
@@ -1444,10 +1118,6 @@ function StandingCard({ g }) {
     </div>))}
   </Card>);
 }
-// A season nobody has decided about. Maxi: "they do not decide straight away, and the
-// player should hear it from the news first — and with fifteen million watching, the fans
-// should be insisting. Petitions?" The one move an actor has is to say something, and it
-// is worth most when there is already something to say it about. See career/bubble.js.
 const SKIP_WHY = {
   'a day on set': 'they need you on set',
   'an offer': 'something came in',
@@ -1686,6 +1356,10 @@ function SeasonCard({ g }) {
   </Card>);
 }
 
+// A season nobody has decided about. Maxi: "they do not decide straight away, and the
+// player should hear it from the news first — and with fifteen million watching, the fans
+// should be insisting. Petitions?" The one move an actor has is to say something, and it
+// is worth most when there is already something to say it about. See career/bubble.js.
 function BubbleCard({ g }) {
   const list = liveBubbles(g);
   if (!list.length) return null;
@@ -2769,12 +2443,6 @@ function seriesRoot(c) {
   // "Lost Signal · season 2 · season 3" from before that bug was fixed.
   return String(c.title || '').replace(/(\s*·\s*season\s+\d+)+\s*$/i, '').trim();
 }
-// A commercial, a voice session, a day as an extra. Real work, real money, but not the
-// filmography — and giving them a score out of ten made a career of eight films look
-// like a career of thirteen mediocre ones. Saves written before the flag existed are
-// recognised by what the job was called.
-const MINOR_TYPES = /^(Brand Campaign|Commercial|Jingle|Brand Song|TV Extra|Voice Session|Open Mic|Festival Slot|Session Work|Music Video)$/;
-export function isMinor(c) { return c.minor === true || (c.minor === undefined && MINOR_TYPES.test(c.type || '')); }
 function groupCredits(list) {
   const out = [];
   const shows = new Map();
@@ -2807,12 +2475,6 @@ function groupCredits(list) {
       worldHit: g.parts.some((p) => p.status === 'World Hit'),
       billion: g.parts.some((p) => p.billion) };
   }).sort((a, b) => b.to - a.to);
-}
-export function money(n) {
-  if (n >= 1000000000) return `€${(n / 1000000000).toFixed(2)}bn`;
-  if (n >= 100000000) return `€${Math.round(n / 1000000)}m`;
-  if (n >= 1000000) return `€${(n / 1000000).toFixed(1)}m`;
-  return `€${Math.round(n / 1000)}k`;
 }
 function CreditRow({ group, g }) {
   const c = group.best;

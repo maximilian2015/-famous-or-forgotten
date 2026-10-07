@@ -28,6 +28,7 @@ import fs from 'fs';
 import path from 'path';
 import { fileURLToPath } from 'url';
 import { visibleApps } from '../src/phone/apps/registry.js';
+import { callTheRoom } from '../src/systems/career/standoff.js';
 
 const gameDir = fileURLToPath(new URL('../', import.meta.url));
 const HTML = path.join(gameDir, 'dist/game.html');
@@ -109,6 +110,10 @@ const save = {
   partner: { id: 'f3', name: 'Tomas Berg', job: 'an architect', age: 46, relationship: 70, born: 2020 },
   staff: { assistant: true },
   castingPool: [], submissions: [], datingPool: [],
+  // Back trouble rather than nothing: a healthy body is one line and a "take one" list, and the
+  // Health screen's real work — the bill, the ride-it-out, the pills — is all on the ill side.
+  illness: { id: 'back', name: 'Back trouble', drain: 2, cure: 420, months: 0, left: 2, serious: false },
+  meds: { painkillers: 2, antibiotics: 1 },
 };
 
 // ── booting it, with the dice nailed down ─────────────────────────────────────
@@ -136,10 +141,11 @@ await sleep(1200);
 
 // Only what a person can read. body.textContent includes the inline bundle source, and a search
 // through that once reported a bug that was not on the screen at all.
-const visible = () => [...D.body.querySelectorAll('*')]
+const textOf = (doc) => [...doc.body.querySelectorAll('*')]
   .filter((el) => el.tagName !== 'SCRIPT' && el.tagName !== 'STYLE')
   .map((el) => [...el.childNodes].filter((c) => c.nodeType === 3).map((c) => c.textContent).join(' '))
   .join(' ').replace(/\s+/g, ' ').trim();
+const visible = () => textOf(D);
 const label = (b) => (b.textContent || '').replace(/\s+/g, ' ').trim();
 const click = async (b) => { if (!b) return false; b.dispatchEvent(new W.MouseEvent('click', { bubbles: true })); await sleep(260); return true; };
 // Emoji are surrogate pairs, so a pattern like /^📱?\s*Phone$/ without the u flag applies the ?
@@ -211,6 +217,22 @@ await visit('Style', goNav('Style'));
 for (const t of ['People', 'Things', 'Body', 'Home']) await visit('Style · ' + t, press(t));
 await visit('Legacy', goNav('Legacy'));
 await visit('Home', goNav('Home'));
+
+// The numbers on Home that open a screen of their own, and the passport behind your face with
+// the room behind that. A Stat is a div with an onClick, not a button, so these are found by the
+// label they print. Each is left by its own back control, which puts Home back underneath for
+// the next one — and if it does not, the next tile is not there and that is the failure.
+const tile = (name) => () => click([...D.querySelectorAll('div')]
+  .find((d) => d.style.cursor === 'pointer' && d.firstElementChild && label(d.firstElementChild) === name));
+const back = () => click([...D.querySelectorAll('button')].find((b) => ['Back', 'Close the door'].includes(plain(b))));
+for (const [name, on] of [['Health', 'Health'], ['Mental', 'Mental'], ['Fame', 'Fame'], ['Genres', 'Acting'], ['Standing', 'Standing']]) {
+  await visit('Home · ' + name, tile(on));
+  await back();
+}
+await visit('Passport', () => click(D.querySelector('div[title="Who you are"]')));
+await visit('Passport · Your room', press('Your room'));
+await back();
+
 await visit('Phone', goNav('Phone'));
 
 // The phone's apps come from a registry, so the test knows what SHOULD be there rather than
@@ -225,13 +247,66 @@ for (const app of apps) {
   });
 }
 
+// ── screens that only exist in a particular state ─────────────────────────────
+// Some screens are not reached by pressing anything: they take the whole page over when the life
+// is in a certain state — an ultimatum about the drinking, a set nobody has argued about yet, a
+// death — and some cards on Home only draw when there is something to say. Each of these boots
+// the same save again with that state written into it and asserts what the walk asserts: nothing
+// threw, and words that only that component prints are on the page.
+const drawWith = async (patch) => {
+  const html = fs.readFileSync(HTML, 'utf8').replace('<div id="root"></div><script>',
+    `<div id="root"></div><script>try{localStorage.setItem('fof_react_save',${JSON.stringify(JSON.stringify({ ...save, ...patch }))})}catch(e){}</script>${SEED}<script>`);
+  const errs = [];
+  const vc2 = new VirtualConsole();
+  vc2.on('jsdomError', (e) => { if (!/navigation to another Document/.test(e.message)) errs.push('jsdom: ' + e.message); });
+  vc2.on('error', (...a) => errs.push('console: ' + a.join(' ').slice(0, 220)));
+  const d2 = new JSDOM(html, { runScripts: 'dangerously', resources: 'usable', url: 'https://localhost/game.html', virtualConsole: vc2 });
+  const W2 = d2.window;
+  W2.onerror = (m) => errs.push('onerror: ' + String(m).slice(0, 220));
+  W2.requestAnimationFrame = (f) => W2.setTimeout(() => f(Date.now()), 16);
+  if (W2.URL && !W2.URL.createObjectURL) W2.URL.createObjectURL = () => 'blob:stub';
+  W2.confirm = () => false;
+  await sleep(1200);
+  const text = textOf(W2.document);
+  W2.close();
+  return { text, errs };
+};
+const inState = async (name, patch, words) => {
+  const { text, errs } = await drawWith(patch);
+  if (errs.length) { missed.push(name + ' (threw)'); ok(`${name}: nothing threw`, false, errs[0]); return; }
+  if (!words.test(text)) { missed.push(name + ' (not drawn)'); ok(`${name}: drew its own words`, false, text.slice(0, 140)); return; }
+  seen.push(name);
+  ok(name, true);
+};
+const NOW = 2066 * 12 + 3;
+await inState('Home · not well', { mental: 30, depression: { since: NOW - 5, sessions: 1, checks: 0, passed: 0,
+  windowMonths: 2, windowSessions: 1, windowRests: 0, medMonths: 0, medsThisMonth: false, pending: null } }, /You are not well/);
+await inState('The drink ultimatum', { drink: { level: 62, thisMonth: false,
+  pending: { title: 'Tomas has had enough', body: 'He says it once, at the kitchen table, and then he waits.' } } }, /Tomas has had enough/);
+// The negotiation: opened by the system that opens it, on a renewal it would really call a
+// meeting about, rather than by writing a standoff out by hand that the game might not recognise.
+{
+  const s = JSON.parse(JSON.stringify(save));
+  const o = { id: 'o3', kind: 'renewal', tier: 'lead', projectTitle: 'Night Shift · Season 4', role: 'Series regular',
+    type: 'TV Series', genre: 'Drama', scale: 'recurring', season: 4, episodes: 10, episodeFee: 30000, salary: 300000, months: 5 };
+  s.offers = [...s.offers.filter((x) => x.id !== 'o2'), o];
+  callTheRoom(s, o);
+  ok('the negotiation was really called', !!s.standoff, s.lastEvent);
+  if (s.standoff) s.standoff.open = true;
+  await inState('The negotiation room', { offers: s.offers, standoff: s.standoff }, /Your leverage/);
+}
+// A set nobody has argued about yet opens on the first day, over everything.
+await inState('The first day', { productions: [{ ...SET, take: undefined, takeWon: undefined }],
+  production: { ...SET, take: undefined, takeWon: undefined } }, /They listen to standing, not volume/);
+await inState('The end of a life', { alive: false, ageY: 81, year: 2103, causeOfDeath: 'old age' }, /A life, ended/);
+
 console.log();
 console.log('      covered (' + seen.length + '): ' + seen.join(', '));
 console.log('      NOT covered (' + missed.length + '): ' + (missed.join(', ') || 'nothing'));
 // What this file still does not reach, said out loud so nobody reads a green run as more than
 // it is. These need a state the save cannot simply assert into being, or a flow to walk.
-console.log('      still uncovered by any test: the contract room, the negotiation, the scene');
-console.log('      minigames themselves, the awards night, the end-of-life screen, the creator.');
+console.log('      still uncovered by any test: the contract room, the scene minigames themselves,');
+console.log('      the awards night, the creator.');
 
 ok('every screen that exists was reached and drew something', missed.length === 0, missed.join(', '));
 ok('and nothing threw anywhere in the whole walk', errors.length === 0, errors.slice(0, 3).join(' | '));
