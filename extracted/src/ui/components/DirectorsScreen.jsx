@@ -78,17 +78,11 @@ export function DirectorsScreen({ g, onBack }) {
         {all ? 'Show fewer' : `Show all ${worked.length}`}
       </button>}
 
-      {/* Each line is the rule in the file named after it — read off the code, not the comment. */}
-      {head('How it works')}
-      {[
-        ['Offers', 'One agent offer in four comes from a director in your phone who is above 15 and not cold.'],
-        ['Tentpoles', 'One picture in four on the tentpole board is directed by somebody you know: above 35, not cold, no grudge.'],
-        ['Sets', 'One shoot in three is directed by somebody you met on a set: above 15, not cold, no grudge. The set starts where you left them.'],
-        ['A pitch', 'Fifty and up, not cold, no grudge, and they will hear one. A cold partner makes a project thirty points less likely to get made.'],
-        ['Grudges', 'Passing on a lead in a studio picture: two years, five if the film is a hit. Walking off their set: five years, and they go cold.'],
-      ].map(([k, v]) => (<div key={k} style={{ display: 'flex', gap: 10, padding: '6px 0', borderBottom: `1px solid ${theme.line}`, fontSize: 11.5, lineHeight: 1.45 }}>
-        <span style={{ width: 70, flex: 'none', fontWeight: 800, color: theme.text }}>{k}</span><span style={{ color: theme.muted }}>{v}</span>
-      </div>))}
+      {/* The rules live in the Guide now (phone/apps/Guide.jsx DirectorsGuide) — Maxi: "this
+          should be in our guide in the phone". One copy, so the two cannot drift apart. */}
+      <div style={{ fontSize: 11.5, color: theme.muted, lineHeight: 1.45, marginTop: 16, paddingTop: 10, borderTop: `1px solid ${theme.line}` }}>
+        How each of these works — offers, tentpoles, sets, a pitch, grudges, going cold — is in the Guide on your phone, under 🎥 Directors.
+      </div>
     </div>
   </div>);
 }

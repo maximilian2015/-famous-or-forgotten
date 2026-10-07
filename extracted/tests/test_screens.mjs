@@ -252,6 +252,14 @@ for (const app of apps) {
   });
 }
 
+// The Guide opens on Fame; the Directors section is where the Directors screen sends you.
+await visit('Phone · Guide · Directors', async () => {
+  await click(inside((t) => t === 'Apps'));
+  await click(navs().find((b) => plain(b) === 'Phone'));
+  await click(inside((t) => t === 'Guide' || t.endsWith('Guide')));
+  return click(inside((t) => t === 'Directors'));
+});
+
 // ── screens that only exist in a particular state ─────────────────────────────
 // Some screens are not reached by pressing anything: they take the whole page over when the life
 // is in a certain state — an ultimatum about the drinking, a set nobody has argued about yet, a

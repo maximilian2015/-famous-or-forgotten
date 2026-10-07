@@ -20,7 +20,7 @@ import { POSTS, natural, fmtFollowers } from '../../systems/social/posting.js';
 
 const SECTIONS = [
   ['fame', 'Fame', '★'], ['respect', 'Standing', '◆'], ['combo', 'Fame × Standing', '✕'], ['doors', 'The two doors', '🚪'],
-  ['set', 'On set', '🎬'], ['money', 'Money', '€'], ['press', 'The press', '🗞'], ['phone', 'The phone', '📱'],
+  ['set', 'On set', '🎬'], ['directors', 'Directors', '🎥'], ['money', 'Money', '€'], ['press', 'The press', '🗞'], ['phone', 'The phone', '📱'],
   ['social', 'Followers', '✨'],
 ];
 
@@ -44,6 +44,7 @@ export function Guide({ g }) {
     {sec === 'combo' && <ComboGuide g={g} />}
     {sec === 'doors' && <DoorsGuide />}
     {sec === 'set' && <SetGuide />}
+    {sec === 'directors' && <DirectorsGuide />}
     {sec === 'money' && <MoneyGuide />}
     {sec === 'social' && <SocialGuide g={g} />}
     {sec === 'press' && <PressGuide />}
@@ -153,6 +154,28 @@ function SetGuide() {
     <H>Every month after</H>
     <P>Rehearse, run a take, or spend an evening with the crew — each is one Energy and each counts as turning up prepared. A month you do none of them, the director notices, if the set is not going well: nothing the first time, then it cools them. A month you drink through, the whole set notices. A party during a shoot is a call you are late for.</P>
     <P>A set that is going well warms the director a little every month you turn up for it; a set that is going very well warms them faster. At wrap, a director who warmed to you tells people — +3 standing — and so does one who was never your friend but watched you carry a set to 85. One who went cold tells a different story — −3. The film is judged on the actor you were when you walked on; what the months taught you lands after.</P>
+  </div>);
+}
+
+// The rules behind the Directors screen (Passport → the directors bar), which used to sit at the
+// bottom of that screen. Maxi: "this should be in our guide in the phone." Each line is read off
+// the code named after it, not off the comment above it: offers.js sendsOffers, tentpoles.js
+// onTheBoard, production.js directsYouAgain and keepTheCrew, collab.js canPropose and
+// collabTick, stories.js noteRefusal, production.js walkOffSet, life/bonds.js bondsTick.
+function DirectorsGuide() {
+  return (<div>
+    <H>Directors you know</H>
+    <P>A director who ends a shoot with you at sixty or more stays in your phone. Fifty and up and not cold is warm; cold is cold; anybody else is neutral. The directors bar on your passport is read off them, and tapping it shows every name.</P>
+    <Rung label="Offers" min="above 15, not cold" lines={['One agent offer in four comes from a director in your phone']} />
+    <Rung label="Tentpoles" min="above 35, not cold, no grudge" lines={['One picture in four on the tentpole board is directed by somebody you know — once the board is open to you']} />
+    <Rung label="Sets" min="above 15, met on a set, not cold, no grudge" lines={['One shoot in three is directed by somebody you know, and the set starts where you left them']} />
+    <Rung label="A pitch" min="50 and up, not cold, no grudge" lines={['They will hear one', 'A cold partner makes a project in development thirty points less likely to get made']} />
+    <H>Grudges</H>
+    <Rung label="Passing on a part" min="a studio picture" lines={['Two years — five if the film turns out a hit, which nobody knows until it opens']} />
+    <Rung label="Walking off their set" min="five years" lines={['And they go cold']} />
+    <Rung label="Not coming back" min="for good" lines={['Pass on the sequel or the next season of one you led, and still say no after they ask to meet — they say so to the trades']} />
+    <H>Going cold</H>
+    <P>Closeness runs down by itself every month. At nothing, after ten months without a word, a contact stops picking up. Cold lifts once closeness is back above ten — they are under People, in Drifted away.</P>
   </div>);
 }
 
