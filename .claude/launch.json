@@ -28,6 +28,15 @@
         "train/serve.mjs"
       ],
       "port": 5175
+    },
+    {
+      "name": "fof-shipped",
+      "runtimeExecutable": "C:\\Program Files\\nodejs\\node.exe",
+      "runtimeArgs": [
+        "-e",
+        "require('http').createServer((q,r)=>{r.writeHead(200,{'content-type':'text/html; charset=utf-8'});require('fs').createReadStream('game.html').pipe(r)}).listen(5176,()=>console.log('game.html on http://localhost:5176'))"
+      ],
+      "port": 5176
     }
   ]
 }
