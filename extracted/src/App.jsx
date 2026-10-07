@@ -20,7 +20,6 @@ import { EnergyBar } from './ui/components/EnergyBar.jsx';
 import { FAVOURS, canUse, costOf, canSmooth, smoothOver, vouchFor } from './systems/career/favours.js';
 import { sequelDue } from './systems/career/franchise.js';
 import { knownFor, isHit, isFlop, theHits, theFlops } from './systems/meta/knownFor.js';
-import { boxedInto, isUniversal } from './systems/meta/typecast.js';
 import { liveBubbles, backTheCampaign, canBack as canBackShow, BACK_COST } from './systems/career/bubble.js';
 import { liveEndorsement, dutiesDue, attendDuty, canAttend as canAttendDuty } from './systems/career/endorsement.js';
 import { heirLine } from './systems/life/origin.js';
@@ -60,8 +59,7 @@ import { OptionPaper } from './ui/components/OptionPaper.jsx';
 import { tierById, isInvited, attendEvent, askForInvite, sneakIntoEvent, answerDoor, stairsResult, inviteHelpers, helperOdds, hasAsked, expectedAt, energyFor, canHost, hostNight, isTonight, atOf, monthName } from './systems/social/events.js';
 import { invitees, inviteBand, hostFatigue } from './systems/social/night.js';
 import { HOUSING, HOUSING_ORDER, monthlyCosts, DIET, GYM_COST, setDiet, toggleGym } from './engine/economy.js';
-import { GENRES, hotGenre } from './systems/meta/news.js';
-import { genreXP, genreBonus, genreLabel } from './systems/career/genres.js';
+import { hotGenre } from './systems/meta/news.js';
 import { Phone } from './phone/Phone.jsx';
 import { an, count } from './engine/text.js';
 import { inCareer } from './engine/stage.js';
@@ -80,7 +78,6 @@ import { Avatar, Garment } from './ui/components/Avatar.jsx';
 import { PARTIES, PARTY_ORDER, partyRisk, canThrowParty, throwParty } from './systems/life/party.js';
 import { lookOf, lookOfPerson, companionOf, HAIRSTYLES, hairChoices, HAIR_COLORS, EYE_COLOURS, LIPS, OUTFITS, OUTFIT_ORDER, SKINS, wearOutfit } from './systems/life/appearance.js';
 import { classOf } from './systems/life/origin.js';
-import { mentalReport, closestPerson, canCall, callSomebody, canGetAway, getAway } from './systems/life/mood.js';
 import { HOME_PRICE, canBuyHome, buyHome, sellHome, STAFF, STAFF_ORDER, hasStaff, canHire, hire, fire, staffBill,
   THINGS, THING_ORDER, owns, canBuyThing, buyThing, sellThing, resaleOf, upkeepBill,
   livingBelow } from './systems/life/money.js';
@@ -89,14 +86,14 @@ import { kindFor, canPropose, odds as collabOdds, why as collabWhy, liveCollabs 
 import { relBand } from './systems/life/bonds.js';
 import { regardOf, regardBand, regardNote } from './systems/life/regard.js';
 import { BigMoment } from './ui/components/BigMoment.jsx';
-import { strainBand, unreliable, depressed, seeSomebody } from './systems/life/strain.js';
-import { monthsIn, slotsLost, owedSlots, standingOf, onMeds, TALK, WEEK_TASKS, CHECKPOINTS, EVERY_MONTHS, MIN_MONTHS,
-  answerCheckpoint, inRehab, enterRehab, rehabCost, rehabMonths, therapyProgress, THERAPY_FOR_A_SLOT,
-  takeTheUltimatum } from './systems/life/depression.js';
-import { drinkThrough, drankThisMonth, level as drinkLevel, band as drinkBand, dependent, bottlesInHouse,
-  answerUltimatum, GRACE_MONTHS } from './systems/life/drink.js';
+import { strainBand, unreliable, depressed } from './systems/life/strain.js';
+import { monthsIn, TALK, WEEK_TASKS, answerCheckpoint } from './systems/life/depression.js';
 import { RespectScreen } from './ui/components/RespectScreen.jsx';
 import { FameScreen } from './ui/components/FameScreen.jsx';
+import { DepressionCard } from './ui/components/DepressionCard.jsx';
+import { MentalScreen } from './ui/components/MentalScreen.jsx';
+import { UltimatumModal } from './ui/components/UltimatumModal.jsx';
+import { GenreScreen } from './ui/components/GenreScreen.jsx';
 // Big moments live on state so a system can raise one; the UI only clears it.
 function clearBigMoment(s) {
   // The paper that came back opens itself once you have read the answer.
@@ -499,103 +496,6 @@ function SettingsRow() {
 function LockedScreen({ label }) { return (<div style={{ fontSize: 13, color: theme.muted, textAlign: 'center', padding: '40px 20px', lineHeight: 1.7 }}>🔒 {label} unlocks once you move out and start your career.<br /><br />Grow up, rent your own place, and this opens up.</div>); }
 function ChildPhoneLocked() { return (<div style={{ fontSize: 13, color: theme.muted, textAlign: 'center', padding: '40px 20px', lineHeight: 1.7 }}>📱 You're too young for a phone.<br /><br />You'll get your first one as a teenager (13).</div>); }
 
-// Tapping Mental used to do nothing at all, while five systems read the number behind it.
-// This screen answers the only two questions worth answering: why is it that, and what can
-// I do about it this month. The arithmetic is the real arithmetic — see systems/life/mood.js.
-function MentalScreen({ g, onBack }) {
-  const m = Math.round(g.mental || 0);
-  const rep = mentalReport(g);
-  const low = g._lowMonths || 0;
-  const band = m >= 70 ? ['Steady', '#4fc07f'] : m >= 45 ? ['Flat', '#f0b429'] : m >= 25 ? ['Running on empty', '#ff9d5a'] : ['Not getting up', '#ff5a72'];
-  const call = canCall(g), away = canGetAway(g);
-  const scarred = (g.scarred || 0) > 0;
-  const row = (l, sign) => (
-    <div key={l.id} style={{ display: 'flex', gap: 10, alignItems: 'flex-start', padding: '9px 0', borderBottom: `1px solid ${theme.line}` }}>
-      <div style={{ width: 46, flexShrink: 0, textAlign: 'right', fontSize: 13, fontWeight: 900, fontVariantNumeric: 'tabular-nums',
-        color: l.per > 0 ? '#4fc07f' : l.per < 0 ? '#ff5a72' : theme.muted }}>
-        {l.per === 0 ? '·' : (l.per > 0 ? '+' : '') + l.per}
-      </div>
-      <div style={{ flex: 1 }}>
-        <div style={{ fontSize: 13, fontWeight: 800 }}>{l.label}</div>
-        <div style={{ fontSize: 11.5, color: theme.muted, lineHeight: 1.5, marginTop: 2 }}>{l.why}</div>
-      </div>
-    </div>);
-  return (<div style={{ maxWidth: 440, margin: '0 auto', minHeight: '100vh', background: 'transparent', color: theme.text, padding: 16, paddingBottom: 40, fontFamily: FONT }}>
-    <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 14 }}>
-      <button onClick={onBack} data-sfx="back" style={{ background: 'rgba(255,255,255,.1)', border: 'none', color: theme.text, borderRadius: 9, padding: '6px 11px', fontSize: 13, fontWeight: 800, cursor: 'pointer', fontFamily: 'inherit' }}>‹ Back</button>
-      <div style={{ fontSize: 16, fontWeight: 900 }}>Your head</div>
-    </div>
-
-    <Card style={{ marginBottom: 14 }}>
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline' }}>
-        <div style={{ fontFamily: FONT_DISPLAY, fontSize: 30, fontWeight: 700 }}>{m}</div>
-        <div style={{ fontSize: 12.5, fontWeight: 800, color: band[1] }}>{band[0]}</div>
-      </div>
-      <div style={{ height: 9, background: 'rgba(255,255,255,.08)', borderRadius: 5, margin: '9px 0 8px', overflow: 'hidden' }}>
-        <div style={{ width: m + '%', height: '100%', background: band[1], borderRadius: 5, transition: 'width .5s' }} />
-      </div>
-      {/* The month-on-month sum, which is the number that actually decides where this ends up. */}
-      <div style={{ fontSize: 12, color: theme.muted }}>
-        As things stand you are <b style={{ color: rep.net > 0 ? '#4fc07f' : rep.net < 0 ? '#ff5a72' : theme.muted }}>
-        {rep.net > 0 ? 'gaining' : rep.net < 0 ? 'losing' : 'holding at'} {rep.net === 0 ? '' : Math.abs(rep.net)}</b>
-        {rep.net === 0 ? ' — nothing is pulling either way.' : ' a month, before anything that happens to you.'}
-      </div>
-      {low >= 2 && <div style={{ fontSize: 12, color: '#ff9d5a', marginTop: 7, fontWeight: 700 }}>
-        {count(low, 'month')} at the bottom now.{low >= 6 ? ' This has stopped being a bad patch.' : ''}
-      </div>}
-    </Card>
-
-    {g.depression && <Card style={{ marginBottom: 14, borderColor: '#ff5a7255' }}>
-      <div style={{ fontSize: 11, fontWeight: 900, letterSpacing: '.08em', textTransform: 'uppercase', color: '#ff5a72', marginBottom: 5 }}>This is not a bad month</div>
-      <div style={{ fontSize: 12.5, color: theme.muted, lineHeight: 1.55 }}>
-        It followed you home and it stayed. Nothing below fixes it — what moves it is the medication,
-        an hour a month with somebody, resting, and having one person left who is close to you.
-      </div>
-    </Card>}
-
-    {rep.down.length > 0 && (<>
-      <div style={{ fontSize: 11, fontWeight: 900, letterSpacing: '.09em', textTransform: 'uppercase', color: theme.muted, marginBottom: 4 }}>What is pulling you down</div>
-      <Card style={{ marginBottom: 14, padding: '4px 14px' }}>{rep.down.map((l) => row(l))}</Card>
-    </>)}
-    {rep.notes.length > 0 && (<>
-      <div style={{ fontSize: 11, fontWeight: 900, letterSpacing: '.09em', textTransform: 'uppercase', color: theme.muted, marginBottom: 4 }}>Worth knowing</div>
-      <Card style={{ marginBottom: 14, padding: '4px 14px' }}>{rep.notes.map((l) => row(l))}</Card>
-    </>)}
-    {rep.up.length > 0 && (<>
-      <div style={{ fontSize: 11, fontWeight: 900, letterSpacing: '.09em', textTransform: 'uppercase', color: theme.muted, marginBottom: 4 }}>What is holding you up</div>
-      <Card style={{ marginBottom: 14, padding: '4px 14px' }}>{rep.up.map((l) => row(l))}</Card>
-    </>)}
-
-    <div style={{ fontSize: 11, fontWeight: 900, letterSpacing: '.09em', textTransform: 'uppercase', color: theme.muted, marginBottom: 8 }}>What you can do this month</div>
-    <div style={{ display: 'grid', gap: 8 }}>
-      <ActRow label={call.ok ? `Ring ${(closestPerson(g) || {}).name?.split(' ')[0] || 'somebody'}` : 'Ring somebody'}
-        blurb="An hour on the phone. How much it helps is how close they actually are."
-        cost={`${COST.call} energy · free`} disabled={!call.ok} why={call.why} onClick={() => dispatch(callSomebody)} />
-      <ActRow label="See somebody about it"
-        blurb={scarred || g.depression ? 'The hour a month that is the only thing that actually moves this.' : 'An hour with a professional. Awkward, and it works.'}
-        cost={`${COST.therapy} energy · €260`} disabled={!canAfford(g, COST.therapy) || (g.cash || 0) < 260 || (!g.depression && !scarred)
-          /* and once a month, which life/strain.js has always enforced and this never asked */
-          || (g.depression ? !!g.depression.sessionThisMonth : !!g._therapyThisMonth)}
-        why={!g.depression && !scarred ? 'There is nothing to talk about right now.' : !canAfford(g, COST.therapy) ? 'Not enough energy left this month.' : 'You cannot cover it.'}
-        onClick={() => dispatch(seeSomebody)} />
-      {(g.meds || {}).sleeping > 0 && <ActRow label={`Take a sleeping pill · ${(g.meds || {}).sleeping} left`}
-        blurb="For the head, not the body. It buys you a week."
-        cost="free" onClick={() => dispatch(usePills, 'sleeping')} />}
-      <ActRow label="Get away on the boat" blurb="Two weeks where the phone does not work and nobody knows where you are."
-        cost={`${COST.therapy} energy`} disabled={!away.ok} why={away.why} onClick={() => dispatch(getAway)} />
-      {/* The other way out. It lived inside the depression card, which does not render for
-          anybody who is merely on the floor — so the one thing an ordinary tired actor
-          actually reaches for was two taps inside the Shop and never mentioned. It belongs
-          on the page you open when your head is at thirty. systems/life/drink.js */}
-      <DrinkButton g={g} />
-    </div>
-    <div style={{ fontSize: 11.5, color: theme.muted, textAlign: 'center', padding: '16px 10px', lineHeight: 1.6 }}>
-      Resting properly is under Home, and the pills and the bottles are in the Shop. A month
-      off is the only thing that pulls the strain down faster than time does.
-    </div>
-  </div>);
-}
-
 // What you are known for, which is not the same as what you did last. The line on the
 // front carries the newest big thing; this is the shelf behind it. Maxi: "so we understand
 // who she is and not by the most recent." A career is both columns — the hits people name
@@ -622,19 +522,6 @@ function HitsPopup({ g, onClose }) {
       {flops.slice(0, 8).map((fl) => row(fl.title, fl.year, fl.verdict === 'bomb' ? 'bomb' : 'ignored', fl.score.toFixed(1), theme.bad, false))}
     </div>
   </div>);
-}
-function ActRow({ label, blurb, cost, disabled, why, onClick }) {
-  return (<button onClick={disabled ? undefined : onClick} disabled={disabled}
-    data-sfx={disabled ? 'denied' : 'nav'}
-    style={{ textAlign: 'left', background: theme.panel, border: `1px solid ${disabled ? 'transparent' : theme.line}`,
-      borderRadius: 12, padding: '12px 14px', cursor: disabled ? 'default' : 'pointer', color: theme.text,
-      opacity: disabled ? .5 : 1, fontFamily: 'inherit', width: '100%' }}>
-    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', gap: 8 }}>
-      <div style={{ fontSize: 13.5, fontWeight: 800 }}>{label}</div>
-      <div style={{ fontSize: 11, fontWeight: 800, color: theme.gold, flexShrink: 0 }}>{cost}</div>
-    </div>
-    <div style={{ fontSize: 11.5, color: theme.muted, marginTop: 3, lineHeight: 1.5 }}>{disabled && why ? why : blurb}</div>
-  </button>);
 }
 
 // Tapping Health opens the body: the bar, what you've got, and the three ways out —
@@ -728,182 +615,8 @@ function fameSubBase(g) {
   const place = rank && rank <= 60 && (g.filmography || []).length ? ` · #${rank} in the business` : '';
   return next ? `${t.label} · ${Math.max(1, Math.ceil(next.min - (g.fame || 0)))} to ${next.label}${place}` : `${t.label}${place}`;
 }
-// Acting isn't one number — it's the lanes you've actually worked in. Genre experience
-// comes only from finished credits and pays back as a rating bonus in that genre.
-function GenreScreen({ g, onBack }) {
-  const key = g.dream === 'singer' ? 'Singing' : 'Acting';
-  return (<div style={{ maxWidth: 440, margin: '0 auto', minHeight: '100vh', background: 'transparent', color: theme.text, padding: 16, fontFamily: FONT }}>
-    <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 14 }}>
-      <button onClick={onBack} style={{ background: 'rgba(255,255,255,.1)', border: 'none', color: '#d8cff0', borderRadius: 9, padding: '6px 11px', fontSize: 13, fontWeight: 800, cursor: 'pointer' }}>‹ Back</button>
-      <div style={{ fontSize: 16, fontWeight: 900 }}>{key} · genres</div>
-    </div>
-    <div style={{ fontSize: 12, color: theme.muted, lineHeight: 1.6, marginBottom: 14 }}>
-      Every finished credit teaches its genre. Experience in a lane adds up to <span style={{ color: theme.gold, fontWeight: 700 }}>+10</span> to ratings when you work in it again — mastery of a lane is half a hit.
-    </div>
-    {/* The box, where it belongs. Maxi: "I think the typecast should be in Acting, it all
-        belongs there." It does — a label is a statement about genre, and it was a word on
-        the front of the life with nothing behind it. See systems/meta/typecast.js. */}
-    {(() => {
-      const labels = activeLabels(g);
-      const box = boxedInto(g);
-      const t = tendency(g);
-      const uni = isUniversal(g);
-      if (!labels.length && !t && !uni) return null;
-      return (<div style={{ background: 'rgba(255,209,102,.07)', border: `1px solid ${labels.length ? 'rgba(255,209,102,.34)' : theme.line}`, borderRadius: 12, padding: '11px 13px', marginBottom: 14 }}>
-        <div style={{ fontSize: 10.5, fontWeight: 900, letterSpacing: '.08em', textTransform: 'uppercase', color: labels.length ? theme.gold : theme.muted, marginBottom: 5 }}>
-          {labels.length ? 'What they call you' : uni ? 'No word for you' : 'What they are starting to think'}
-        </div>
-        {labels.map((id) => (<div key={id} style={{ marginBottom: 4 }}>
-          <div style={{ fontSize: 13.5, fontWeight: 800, color: isStrong(g, id) ? theme.gold : theme.text }}>{labelInfo(id).label}</div>
-          <div style={{ fontSize: 11.5, color: theme.muted, lineHeight: 1.45 }}>{labelInfo(id).blurb}</div>
-        </div>))}
-        {!labels.length && uni && <div style={{ fontSize: 11.5, color: theme.muted, lineHeight: 1.5 }}>
-          You have played enough different things that nobody has settled on a word for you. That is
-          a standing of its own, and it is the one every character actor wants.
-        </div>}
-        {!labels.length && !uni && t && <div style={{ fontSize: 11.5, color: theme.muted, lineHeight: 1.5 }}>
-          {t.line}. {t.need - t.score <= 1 ? 'One more like the last one and it sticks.' : 'Keep taking them and it sticks.'}
-        </div>}
-        {box && (<div style={{ marginTop: 8, paddingTop: 8, borderTop: `1px solid ${theme.line}` }}>
-          <div style={{ fontSize: 11.5, color: theme.text, lineHeight: 1.5 }}>
-            Most of what the board sends you now is <b>{box.toLowerCase()}</b>, and anything far from it
-            is marked <i>against type</i> and comes half as often.
-          </div>
-          <div style={{ fontSize: 11.5, color: theme.muted, lineHeight: 1.5, marginTop: 5 }}>
-            Two ways out, and they are the two the business actually uses. A first feature or one of
-            the five names — nothing they send is filtered by this. Or turn down the {box.toLowerCase()}{' '}
-            that keeps arriving: every refusal on type wears the word down, and four of them take it off.
-          </div>
-        </div>)}
-      </div>);
-    })()}
-    {GENRES.map((gr) => {
-      const xp = genreXP(g, gr); const bonus = genreBonus(g, gr);
-      return (<div key={gr} style={{ background: theme.panel, border: `1px solid ${theme.line}`, borderRadius: 12, padding: '10px 13px', marginBottom: 8 }}>
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline' }}>
-          <div style={{ fontSize: 13.5, fontWeight: 800 }}>{gr}</div>
-          <div style={{ fontSize: 11.5, fontWeight: 800, color: bonus > 0 ? theme.gold : theme.muted }}>{bonus > 0 ? `+${bonus} to ratings` : '—'}</div>
-        </div>
-        <div style={{ height: 6, background: 'rgba(255,255,255,.08)', borderRadius: 3, margin: '7px 0 5px' }}>
-          <div style={{ width: Math.min(100, xp * 5) + '%', height: '100%', background: theme.accent, borderRadius: 3 }} />
-        </div>
-        <div style={{ fontSize: 11, color: theme.muted }}>{genreLabel(xp)}</div>
-      </div>);
-    })}
-  </div>);
-}
-// The Home screen is a passport, not a button drawer: who you are, where you live, what
-// you do for money, what's on the horizon. Actions moved to the sections they belong to.
-// The state you are in after ignoring it four times. It is long and slow, so the one
-// thing it must not be is opaque — the player is told exactly what moves it and which of
-// those three things they are currently doing.
-const softBtn = (dead) => ({ width: '100%', marginTop: 8, border: 'none', borderRadius: 10, padding: '9px',
-  fontSize: 12.5, fontWeight: 800, cursor: dead ? 'default' : 'pointer',
-  background: dead ? 'rgba(120,110,150,.15)' : `linear-gradient(135deg,${theme.accent2},${theme.accent})`,
-  color: dead ? '#6b6390' : '#fff' });
-
-function DepressionCard({ g }) {
-  if (inRehab(g)) {
-    return (<div style={{ background: 'rgba(158,116,255,.08)', border: `1px solid ${theme.line}`, borderRadius: 12, padding: '12px 14px' }}>
-      <div style={{ fontSize: 14, fontWeight: 800, color: theme.accent }}>You are away</div>
-      <div style={{ fontSize: 11.5, color: theme.muted, marginTop: 5, lineHeight: 1.55 }}>
-        {g.rehab.left} month{g.rehab.left === 1 ? '' : 's'} left. No cameras, no phone, nobody watching. When you come
-        out you will have your Energy back.
-      </div>
-    </div>);
-  }
-  // Cured, but it kept something. The long road back, or living with it.
-  if (!depressed(g) && (g.scarred || 0) > 0) {
-    const noEnergy = !canAfford(g, COST.therapy), poor = (g.cash || 0) < 260, went = !!g._therapyThisMonth;
-    const canRehab = (g.cash || 0) >= rehabCost(g);
-    return (<div style={{ background: 'rgba(255,106,138,.06)', border: '1px solid rgba(255,106,138,.28)', borderRadius: 12, padding: '12px 14px' }}>
-      <div style={{ fontSize: 14, fontWeight: 800, color: theme.bad }}>What it left behind</div>
-      <div style={{ fontSize: 11.5, color: theme.muted, margin: '4px 0 8px', lineHeight: 1.55 }}>
-        {g.scarred} Energy a month you no longer have. Two ways back, and both are expensive:
-        a year in a clinic, or roughly two years of sessions for each one.
-      </div>
-      <div style={{ height: 6, background: 'rgba(255,255,255,.08)', borderRadius: 3, overflow: 'hidden' }}>
-        <div style={{ width: `${Math.round(therapyProgress(g) / THERAPY_FOR_A_SLOT * 100)}%`, height: '100%', background: theme.accent }} />
-      </div>
-      <div style={{ fontSize: 10.5, color: theme.muted, marginTop: 4 }}>{therapyProgress(g)} of {THERAPY_FOR_A_SLOT} sessions toward the next hour</div>
-      <button onClick={() => dispatch(seeSomebody)} disabled={noEnergy || poor || went} style={softBtn(noEnergy || poor || went)}>
-        {went ? 'You went this month' : poor ? 'An hour costs €260' : `A session · €260 · ${COST.therapy} energy`}
-      </button>
-      <button onClick={() => dispatch(enterRehab)} disabled={!canRehab} style={{ ...softBtn(!canRehab), background: canRehab ? 'rgba(255,106,138,.18)' : 'rgba(120,110,150,.15)', color: canRehab ? theme.bad : '#6b6390' }}>
-        {canRehab ? `${count(rehabMonths(g), 'month')} in a clinic · €${rehabCost(g).toLocaleString()}` : `A clinic costs €${rehabCost(g).toLocaleString()}`}
-      </button>
-      <DrinkButton g={g} />
-    </div>);
-  }
-  if (!depressed(g)) return null;
-
-  const st = standingOf(g);
-  const months = monthsIn(g);
-  const due = Math.max(0, EVERY_MONTHS - (g.depression.windowMonths || 0));
-  const line = (on, text) => (<div style={{ fontSize: 11.5, color: on ? theme.good : theme.muted, padding: '2px 0' }}>
-    {on ? '✓' : '·'} {text}
-  </div>);
-  const noEnergy = !canAfford(g, COST.therapy), poor = (g.cash || 0) < 260;
-  const went = !!g.depression.sessionThisMonth;
-  return (<div style={{ background: 'rgba(255,106,138,.08)', border: '1px solid rgba(255,106,138,.35)', borderRadius: 12, padding: '12px 14px' }}>
-    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline' }}>
-      <div style={{ fontSize: 14, fontWeight: 800, color: theme.bad }}>You are not well</div>
-      <div style={{ fontSize: 10.5, color: theme.muted }}>{g.depression.passed || 0} of {CHECKPOINTS} back</div>
-    </div>
-    <div style={{ fontSize: 11.5, color: theme.muted, margin: '4px 0 8px', lineHeight: 1.5 }}>
-      {months} month{months === 1 ? '' : 's'}. It is taking {slotsLost(g)} Energy of every month — you have {g.apMaxEff ?? g.apMax ?? 3} instead of {g.apMax || 3}.
-      {months >= MIN_MONTHS ? ` Something will come to a head in about ${due || 1} month${due === 1 ? '' : 's'}.` : ' Nothing is asked of you yet.'}
-    </div>
-    {st.parts.map((p) => <div key={p.id}>{line(p.on, p.label)}</div>)}
-    {!onMeds(g) && <div style={{ fontSize: 11, color: theme.bad, marginTop: 6, lineHeight: 1.45 }}>
-      Nothing else counts for much until you are on the medication. The Shop has it.
-    </div>}
-    <button onClick={() => dispatch(seeSomebody)} disabled={noEnergy || poor || went} style={softBtn(noEnergy || poor || went)}>
-      {went ? 'You went this month' : poor ? 'An hour costs €260' : `Go and talk to somebody · €260 · ${COST.therapy} energy`}
-    </button>
-    <DrinkButton g={g} />
-  </div>);
-}
-
-// The other way out. It is offered plainly, it works every single month, and the card
-// says exactly what it is taking while it does.
-function DrinkButton({ g }) {
-  const owed = owedSlots(g);
-  // It used to appear only once the months were already being taken from you — a clinical
-  // diagnosis, or a drink problem you somehow already had. Nobody starts there. They start
-  // on a bad month: the head is on the floor, the shoot is grinding, and there is a bottle
-  // in the kitchen. Mental runs at about 26 across a working life, so that month is most of
-  // them, and the one honest way out of it was hidden two taps inside the Shop.
-  const hard = (g.mental || 100) < 45 || (g.strain || 0) >= 60;
-  if (owed <= 0 && !drinkLevel(g) && !hard) return null;
-  const had = drankThisMonth(g);
-  const lv = drinkLevel(g), b = drinkBand(g);
-  const stocked = bottlesInHouse(g) > 0;
-  return (<div style={{ marginTop: 10, borderTop: `1px solid ${theme.line}`, paddingTop: 9 }}>
-    {lv > 0 && (<div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', marginBottom: 5 }}>
-      <span style={{ fontSize: 11, fontWeight: 800, color: lv >= 45 ? theme.bad : theme.gold }}>{b.label}</span>
-      <span style={{ fontSize: 10.5, color: theme.muted }}>craft −{(lv >= 78 ? 1.1 : lv >= 45 ? 0.7 : 0.35).toFixed(2)}/mo</span>
-    </div>)}
-    {lv > 0 && <div style={{ fontSize: 10.5, color: theme.muted, marginBottom: 6, lineHeight: 1.45 }}>{b.note}</div>}
-    {lv === 0 && <div style={{ fontSize: 10.5, color: theme.muted, marginBottom: 6, lineHeight: 1.45 }}>
-      A quiet evening on your own. It puts four points back on your head tonight and takes a
-      third of a point off the craft, every month, for as long as you keep doing it — and it climbs.
-    </div>}
-    <button onClick={() => dispatch(drinkThrough)} disabled={had || !stocked}
-      style={{ ...softBtn(had || !stocked), marginTop: 0, background: had || !stocked ? 'rgba(120,110,150,.15)' : 'rgba(255,209,102,.16)', color: had || !stocked ? '#6b6390' : theme.gold }}>
-      {had ? (owed > 0 ? `You drank. The month is open — ${owed} Energy back.` : 'You drank. The evening was easier than the day was.')
-        : !stocked ? 'Nothing in the house · the Shop delivers'
-        : dependent(g) ? 'Drink — you have to now'
-        : owed > 0 ? `Drink through it · opens ${owed} Energy`
-        : 'Drink through it · the evening lifts'}
-    </button>
-  </div>);
-}
 
 const DAYS = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
-// Three different trials in a random order, so nobody solves this once and coasts. The
-// week is a small puzzle; the names are a small memory; the conversation changes shape
-// depending on whether there is anybody left in your life.
 // Day one, and somebody says what they think the film is. You do not choose the plot —
 // an actor never does — you argue for a version of it, and whether anybody listens is what
 // your standing has been FOR all along. See systems/career/story.js.
@@ -951,44 +664,9 @@ function StoryRoom({ g, p }) {
     </div>);
 }
 
-// The one time anybody in your life says it out loud. Three answers, and the game holds you
-// to all three — see systems/life/drink.js.
-function UltimatumModal({ g }) {
-  const p = g.drink?.pending;
-  if (!p) return null;
-  const cost = rehabCost(g), months = rehabMonths(g);
-  const canPay = (g.cash || 0) >= cost;
-  const shooting = !!g.production;
-  const opt = (label, sub, onClick, off) => (
-    <button onClick={onClick} disabled={off} style={{ width: '100%', textAlign: 'left', marginTop: 9,
-      background: off ? 'rgba(120,110,150,.12)' : 'rgba(158,116,255,.14)', border: `1px solid ${off ? 'transparent' : theme.line}`,
-      borderRadius: 12, padding: '11px 13px', cursor: off ? 'default' : 'pointer', color: off ? '#6b6390' : theme.text }}>
-      <div style={{ fontSize: 13.5, fontWeight: 800 }}>{label}</div>
-      <div style={{ fontSize: 11.5, color: theme.muted, marginTop: 3, lineHeight: 1.45 }}>{sub}</div>
-    </button>);
-  return (
-    <div style={{ position: 'fixed', inset: 0, background: 'rgba(8,5,20,.96)', zIndex: 60, display: 'flex',
-      alignItems: 'center', justifyContent: 'center', padding: 16, color: theme.text, fontFamily: FONT }}>
-      <div style={{ maxWidth: 380, width: '100%', background: theme.panel, border: `1px solid ${theme.bad}55`, borderRadius: 20, padding: '22px 20px 18px' }}>
-        <div style={{ fontSize: 11, fontWeight: 900, letterSpacing: '.18em', textTransform: 'uppercase', color: theme.bad, marginBottom: 12, textAlign: 'center' }}>
-          The light is still on
-        </div>
-        <div style={{ fontSize: 17, fontWeight: 900, marginBottom: 8 }}>{p.title}</div>
-        <div style={{ fontSize: 12.5, color: theme.muted, lineHeight: 1.6 }}>{p.body}</div>
-        {opt(canPay ? `Go with them · €${cost.toLocaleString()}` : `You cannot cover the clinic · €${cost.toLocaleString()}`,
-          canPay ? `${count(months, 'month')}, starting tonight.${shooting ? ` "${g.production.title}" carries on without you.` : ''}`
-            : 'They looked it up too. Neither of you can find the money.',
-          () => dispatch(takeTheUltimatum), !canPay)}
-        {opt('Promise them you will stop',
-          `No drinking for ${GRACE_MONTHS} months. If they find a bottle before then, they go — and they will not ask again.`,
-          () => dispatch(answerUltimatum, 'promise'))}
-        {opt('Tell them to leave it alone',
-          'They will. Tonight.',
-          () => dispatch(answerUltimatum, 'refuse'))}
-      </div>
-    </div>);
-}
-
+// Three different trials in a random order, so nobody solves this once and coasts. The
+// week is a small puzzle; the names are a small memory; the conversation changes shape
+// depending on whether there is anybody left in your life.
 function CheckpointModal({ g }) {
   const p = g.depression?.pending;
   const [plan, setPlan] = useState(Array(7).fill(null));
@@ -1459,6 +1137,7 @@ function LifeCard({ g }) {
   </Card>);
 }
 const CAREER_TABS = [['calendar', 'Calendar'], ['training', 'Training'], ['credits', 'Filmography'], ['events', 'Events']];
+// The year ahead lives in ui/components/Diary.jsx — a row a month, every line written out.
 function CareerScreen({ g, teenOnly }) {
   const [tab, setTab] = useState(teenOnly ? 'training' : 'calendar');
   const credits = [...(g.filmography || []), ...(g.discography || [])];
@@ -2415,7 +2094,6 @@ function Heirs({ g }) {
     </div>
   </div>);
 }
-// Reads like a real filmography page: poster, title, star rating out of 10, role, year.
 // What a real listing prints under the title, derived the way a listing would: a runtime
 // from the size of the thing, and a certificate from the genre. Decoration, and it is what
 // makes a row read as a film rather than a database record.
@@ -2476,6 +2154,7 @@ function groupCredits(list) {
       billion: g.parts.some((p) => p.billion) };
   }).sort((a, b) => b.to - a.to);
 }
+// Reads like a real filmography page: poster, title, star rating out of 10, role, year.
 function CreditRow({ group, g }) {
   const c = group.best;
   const r = c.rating || 0;
@@ -2634,7 +2313,6 @@ const VERDICT_COL = { smash: theme.gold, profitable: theme.good, 'broke even': t
 // showing it next to the money is that the two of them disagree.
 const CRIT_COL = { acclaimed: theme.gold, 'well received': theme.good, mixed: theme.muted,
   'poorly reviewed': theme.bad, panned: theme.bad };
-// The same fact the OpenCall board shows, in the one line an offer card has room for.
 function CreditsList({ g, credits, label }) {
   const shooting = allSets(g);
   return (<div>
@@ -2813,7 +2491,6 @@ function OtherWork({ list }) {
     ))}
   </div>);
 }
-// The year ahead lives in ui/components/Diary.jsx — a row a month, every line written out.
 function TrainingScreen({ g }) {
   const key = trainingKey(g);
   const skill = Math.round(g[key] || 0), cap = lessonCap(), ceiling = skillCap(g);
