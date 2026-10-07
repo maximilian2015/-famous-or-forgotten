@@ -55,6 +55,39 @@ function whyOf(s, c) {
 // does not belong on this wall; it belongs in the filmography, where it already is. Only
 // what the business would name unprompted: the world hit, the Asker, the smash, the one in
 // the year's top ten. Five at the most, because a career has about that many.
+// WHY this one is on the wall, in words, and a different answer for each. The band used to come
+// off the weight alone, so four billion-euro pictures were four identical lines reading "The one
+// that printed money" — a wall of five that said one thing. Maxi: "это слабое место."
+//
+// Nothing new is stored for it. Every reason below is read off the credit the way `whyOf` reads
+// the number next to it: the money, the sequel, the Asker, the reviews, the year's table. The
+// reasons are tried in order of how much the business would lead with them, and a reason already
+// used on the wall is passed over for the next one — which is what makes the second billion say
+// something other than the first.
+function bandsFor(s, c, ctx) {
+  const bo = c.boxOffice || 0, sc = scoreOf(c);
+  const out = [];
+  if (bo >= 200e6 && bo === ctx.topGross) out.push('Your biggest picture');
+  if ((c.part || 1) > 1) out.push('The one they came back for');
+  // A career with four of them needs four different sentences, and the order they happened in
+  // is the one thing that genuinely differs: the first is the career event, the fourth is a
+  // Tuesday. Chronological, so it does not change when a later one out-grosses an earlier.
+  if (c.billion || bo >= 1e9) {
+    const n = ctx.billionRank[c.title] || 0;
+    out.push(n === 1 ? 'Your first billion' : n === 2 ? 'The second billion' : n >= 3 ? `Billion number ${n}` : 'Billion club', 'Billion club');
+  }
+  if ((c.asker || 0) > 0) out.push((c.asker || 0) > 1 ? 'The night it swept' : 'The one that won');
+  if ((c.nominated || 0) > 0) out.push('The performance they nominated');
+  if (c.worldHit || c.status === 'World Hit') out.push('The one the whole world saw');
+  if (sc >= 8 && sc === ctx.topScore) out.push('The best thing you have done');
+  if (c.verdict === 'smash') out.push('A smash', 'Another smash');
+  if (bo >= 300e6) out.push('The one that printed money');
+  const r = rankOf(s, c);
+  if (r <= 10) out.push(`Number ${r} of ${c.year}`);
+  if (sc >= 8.5) out.push('The reviews nobody expected');
+  if (c.genre) out.push(`The ${String(c.genre).toLowerCase()} everybody saw`);
+  return out;
+}
 export const CREAM_AT = 2, CREAM_MAX = 5;
 export function theHits(s, limit = CREAM_MAX) {
   const all = [...(s.filmography || []), ...(s.discography || [])].filter((c) => !minor(c) && !c.running);
@@ -65,13 +98,30 @@ export function theHits(s, limit = CREAM_MAX) {
   // The cream, and never an empty wall: if nothing has reached that shelf yet, the one
   // best thing stands in for it, which is the honest answer to "what are you known for".
   const cream = ranked.filter((x) => x.w >= CREAM_AT);
-  return (cream.length ? cream : ranked.slice(0, 1)).slice(0, limit)
-    .map((x) => ({
+  const shown = (cream.length ? cream : ranked.slice(0, 1)).slice(0, limit);
+  const ctx = {
+    topGross: Math.max(0, ...shown.map((x) => x.c.boxOffice || 0)),
+    topScore: Math.max(0, ...shown.map((x) => scoreOf(x.c))),
+    billionRank: {},
+  };
+  // Which billion each one was, counted over the whole career rather than the wall — the third
+  // is the third even if the second is not shown.
+  all.filter((c) => c.billion || (c.boxOffice || 0) >= 1e9)
+    .sort((a, b) => (a.year || 0) - (b.year || 0) || (a.boxOffice || 0) - (b.boxOffice || 0))
+    .forEach((c, i) => { ctx.billionRank[c.title] = i + 1; });
+  const used = new Set();
+  return shown.map((x) => {
+    // The weight bands are the floor, for a wall where every specific reason is already spoken
+    // for. They are allowed to repeat; the reasons above are not.
+    const floor = x.w >= 5 ? 'The one the whole world saw' : x.w >= 4 ? 'The one that won'
+      : x.w >= 3 ? 'The one that printed money' : x.w >= 2 ? 'A real hit' : 'It worked';
+    const band = bandsFor(s, x.c, ctx).find((b) => !used.has(b)) || floor;
+    used.add(band);
+    return {
       title: x.c.title, year: x.c.year, role: x.c.role, genre: x.c.genre, weight: x.w,
-      why: whyOf(s, x.c), score: scoreOf(x.c), boxOffice: x.c.boxOffice || 0,
-      band: x.w >= 5 ? 'The one the whole world saw' : x.w >= 4 ? 'The one that won'
-        : x.w >= 3 ? 'The one that printed money' : x.w >= 2 ? 'A real hit' : 'It worked',
-    }));
+      why: whyOf(s, x.c), score: scoreOf(x.c), boxOffice: x.c.boxOffice || 0, band,
+    };
+  });
 }
 // And the ones that are still brought up. A career is both shelves.
 export function theFlops(s) {
