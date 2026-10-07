@@ -231,7 +231,7 @@ export default function App() {
             sub={inCareer(g) ? 'tap for genres ›' : undefined} onClick={inCareer(g) ? () => setShowGenres(true) : undefined} />
           <Stat label="Charisma" value={g.charisma} />
           <Stat label="Looks" value={g.looks} />
-          <Stat label="Respect" value={g.respect} sub="tap ›" onClick={() => setShowRespect(true)} />
+          <Stat label="Standing" value={g.respect} sub="tap ›" onClick={() => setShowRespect(true)} />
         </div>
         {g.lastEvent && <Card style={{ marginBottom: 14, borderColor: 'rgba(255,209,102,.35)' }}><div style={{ fontSize: 13.5, lineHeight: 1.5, whiteSpace: 'pre-line' }}>{g.lastEvent}</div></Card>}
         {inCareer(g) && <StandingCard g={g} />}
@@ -417,7 +417,7 @@ function ComboCard({ g }) {
   const id = comboOf(g), c = COMBOS[id];
   const col = c.tone === 'bad' ? '#ff8d9e' : c.tone === 'good' ? theme.gold : theme.accent;
   return (<Card style={{ marginBottom: 14, borderColor: col + '44' }}>
-    <div style={{ fontSize: 11, fontWeight: 900, letterSpacing: '.08em', textTransform: 'uppercase', color: col, marginBottom: 4 }}>Fame × Respect · {c.label}</div>
+    <div style={{ fontSize: 11, fontWeight: 900, letterSpacing: '.08em', textTransform: 'uppercase', color: col, marginBottom: 4 }}>Fame × Standing · {c.label}</div>
     <div style={{ fontSize: 12.5, color: theme.muted, lineHeight: 1.55 }}>{c.long}</div>
     {c.fx.length > 0 && <div style={{ marginTop: 8 }}>
       {c.fx.map((l, i) => <div key={i} style={{ fontSize: 11.5, color: theme.text, lineHeight: 1.5, display: 'flex', gap: 6, opacity: .9 }}><span style={{ color: col }}>·</span><span>{l}</span></div>)}
@@ -1270,7 +1270,7 @@ function StoryRoom({ g, p }) {
           </button>);
         })}
         <div style={{ fontSize: 11, color: theme.muted, textAlign: 'center', lineHeight: 1.5, marginTop: 4 }}>
-          They listen to standing, not volume. Respect {Math.round(g.respect || 0)} · fame {Math.round(g.fame || 0)}
+          They listen to standing, not volume. Standing {Math.round(g.respect || 0)} · fame {Math.round(g.fame || 0)}
           {' · '}{room.director} at {Math.round(((p.crew || [])[0] || {}).bond || 40)}
         </div>
       </div>
@@ -2732,7 +2732,7 @@ function Heirs({ g }) {
           <span style={{ color: theme.good }}>starts famous {h.fame}</span>
           {h.craft > 0 && <span style={{ color: theme.good }}>craft +{h.craft}</span>}
           {h.estate > 0 && <span style={{ color: theme.gold }}>€{h.estate.toLocaleString()} behind them</span>}
-          <span style={{ color: theme.bad }}>respect {h.respect}</span>
+          <span style={{ color: theme.bad }}>standing {h.respect}</span>
         </div>
       </button>);
     })}
@@ -2940,7 +2940,7 @@ function CreditRow({ group, g }) {
             {c.critical}</span>}
           {c.career && !c.running && c.careerTone !== 'flat' && <span style={{ fontSize: 10.5, fontWeight: 700,
             color: c.careerTone === 'gold' ? theme.gold : c.careerTone === 'good' ? theme.good : theme.bad }}>
-            {c.career}{c.careerRespect ? ` · respect ${c.careerRespect > 0 ? '+' : ''}${c.careerRespect}` : ''}
+            {c.career}{c.careerRespect ? ` · standing ${c.careerRespect > 0 ? '+' : ''}${c.careerRespect}` : ''}
             {c.careerFame ? ` · fame ${c.careerFame > 0 ? '+' : ''}${c.careerFame}` : ''}</span>}
           {ranked && <span style={{ fontWeight: 900, letterSpacing: '.06em', color: ranked.rank <= 3 ? theme.gold : theme.muted }}>#{ranked.rank} OF {c.year}</span>}
           {/* What was written, on the same row as the marks — it used to cost every credit

@@ -32,7 +32,10 @@ opening `game.html` from disk and opening `localhost:5173` are two different sav
 
 - **Fame** — how many people know your name. Awareness, nothing more.
 - **Hype** (`s.media`) — what is being said this month. Scandal hype does not sell tickets.
-- **Respect** — prestige. Critics, awards, the people who can give you work you want.
+- **Standing** (`s.respect`) — what the people who hire you think of the name. The field is
+  still `respect` and `setRespect` is still the write point, because old saves keep loading; the
+  word on every screen is Standing. It is not critical prestige — the critics have their own
+  reading in `meta/factions.js`, computed from ratings and nominations and not from this.
 - **Heat** — `heatOf()` in `world/world.js`: recent gross and quality over a three-year window,
   plus awards, minus age. It drives world rank. **Fame is not Heat.**
 - Commercial, critical and career outcomes are three separate verdicts and are shown apart. A

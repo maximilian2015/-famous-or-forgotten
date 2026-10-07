@@ -19,7 +19,7 @@ import { POSTS, natural, fmtFollowers } from '../../systems/social/posting.js';
 // Nothing here is invented copy. Every number is read from the table that runs it.
 
 const SECTIONS = [
-  ['fame', 'Fame', '★'], ['respect', 'Respect', '◆'], ['combo', 'Fame × Respect', '✕'], ['doors', 'The two doors', '🚪'],
+  ['fame', 'Fame', '★'], ['respect', 'Standing', '◆'], ['combo', 'Fame × Standing', '✕'], ['doors', 'The two doors', '🚪'],
   ['set', 'On set', '🎬'], ['money', 'Money', '€'], ['press', 'The press', '🗞'], ['phone', 'The phone', '📱'],
   ['social', 'Followers', '✨'],
 ];

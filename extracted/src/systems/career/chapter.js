@@ -71,7 +71,7 @@ export function canPitch(s) { return (s.fame || 0) >= PITCH_FAME || (s.respect |
 export function pitchWhy(s) {
   if (canPitch(s)) return '';
   const f = Math.max(0, PITCH_FAME - (s.fame || 0)), r = Math.max(0, 55 - (s.respect || 0));
-  return `They do not take story notes from the cast. A-list does it — ${f} more fame — or a standing they cannot ignore, ${r} more respect.`;
+  return `They do not take story notes from the cast. A-list does it — ${f} more fame — or a standing they cannot ignore, ${r} more of it.`;
 }
 
 // Which offers have a next chapter at all: something that continues.

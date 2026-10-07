@@ -207,7 +207,7 @@ export function NightRoom({ g }) {
       <div ref={talkRef} />
       {n.done ? (<>
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 6, marginBottom: 12 }}>
-          {[['Contacts', n.gains.contacts.length], ['Leads', n.gains.leads], ['Numbers', n.gains.numbers], ['Fame', n.gains.fame ? `+${n.gains.fame}` : '—'], ['Respect', n.gains.respect ? `+${n.gains.respect}` : '—'], ['Rumours', n.gains.scandal ? `+${n.gains.scandal}` : '—']].map(([k, v]) => (
+          {[['Contacts', n.gains.contacts.length], ['Leads', n.gains.leads], ['Numbers', n.gains.numbers], ['Fame', n.gains.fame ? `+${n.gains.fame}` : '—'], ['Standing', n.gains.respect ? `+${n.gains.respect}` : '—'], ['Rumours', n.gains.scandal ? `+${n.gains.scandal}` : '—']].map(([k, v]) => (
             <div key={k} style={{ background: theme.panel2, border: `1px solid ${theme.line}`, borderRadius: 10, padding: '8px 6px', textAlign: 'center' }}>
               <div style={{ fontSize: 15, fontWeight: 900, color: k === 'Rumours' && v !== '—' ? theme.bad : theme.text }}>{v}</div>
               <div style={{ fontSize: 9.5, color: theme.muted, textTransform: 'uppercase', letterSpacing: '.06em', fontWeight: 800 }}>{k}</div>

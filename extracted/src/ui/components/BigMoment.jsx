@@ -54,7 +54,7 @@ function Scene({ id, look, accent, moment }) {
           {[0, 1, 2, 3].map((k) => <rect key={k} x={3 + k * 11} y="5" width="5" height="8" fill={on ? accent : theme.edge} opacity=".8" />)}
         </g>
         <path d="M6 28h32M6 36h22M6 44h28" stroke={theme.edge} strokeWidth="1.4" opacity=".7" />
-        <text x="22" y="70" textAnchor="middle" fontSize="8" fontWeight="900" fill={on ? accent : theme.edge} letterSpacing="1.4">{on ? 'SET ' + (i + 1) : 'RESPECT ' + [0, 25, 50][i]}</text>
+        <text x="22" y="70" textAnchor="middle" fontSize="8" fontWeight="900" fill={on ? accent : theme.edge} letterSpacing="1.4">{on ? 'SET ' + (i + 1) : 'STANDING ' + [0, 25, 50][i]}</text>
       </g>); })}
     </svg>);
   }
