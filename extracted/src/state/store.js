@@ -4,6 +4,7 @@ import { beginLife } from '../systems/life/origin.js';
 import { ageMarket } from '../systems/meta/market.js';
 import { ensureAppearance } from '../systems/life/appearance.js';
 import { dressOffers } from '../systems/career/script.js';
+import { settleBillions } from '../systems/career/billion.js';
 const KEY = 'fof_react_save';
 const CURRENT_VERSION = 'r0.8b';
 
@@ -61,6 +62,7 @@ function normalize(saved) {
   if (merged.talent == null) { const r = Math.random(); const roll = r < 0.17 ? 86 + Math.floor(Math.random() * 15) : r < 0.55 ? 72 + Math.floor(Math.random() * 14) : 55 + Math.floor(Math.random() * 17); merged.talent = Math.max(roll, Math.ceil(merged.acting || 0), Math.ceil(merged.singing || 0)); }
   if (merged.setsKnown == null) { const r = merged.respect || 0; merged.setsKnown = 1 + (r >= 25 ? 1 : 0) + (r >= 50 ? 1 : 0); }
   ensureAppearance(merged); // saves made before the avatar existed still need a face
+  settleBillions(merged);   // billions made before the billion club existed are in it — silently. career/billion.js
   return merged;
 }
 function sanitize(st) {

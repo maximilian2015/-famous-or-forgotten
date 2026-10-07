@@ -36,16 +36,26 @@ import { STUDIOS } from '../world/names.js';
 
 export const BILLION = 1e9;
 
-// Whether a credit is in the club. The flag is set by markBillion below — but only since this
-// file existed, and old saves keep loading: Maxi's Alex Moon had four pictures past a billion
-// made before it, none flagged, so the filmography showed no 💰 on any of them while "Known
-// for" (which read the money) listed all four. The money is the fact; the flag is a receipt.
-// Every reader asks here.
-export function isBillion(c) { return !!c && (!!c.billion || (c.boxOffice || 0) >= BILLION); }
-// How many there are, counted off the shelf rather than off a counter that started at nought
-// the day the counter was written — which would have welcomed that same life's fifth billion
-// as its first.
-function billionsIn(s) { return (s.filmography || []).filter(isBillion).length; }
+// Whether a credit is in the club: the flag markBillion sets, and nothing else. Every reader
+// asks here, so there is one definition. Old saves are made to agree with it at load, below.
+export function isBillion(c) { return !!c && !!c.billion; }
+
+// A life whose billions were made before this file existed (6 Oct) has the money on the credit
+// and no flag. Maxi's Alex Moon had four: the filmography showed no 💰 on any of them while
+// "Known for", which read the money, listed all four — and the counter stood at nought, so the
+// fifth would have been welcomed as the first.
+//
+// So at load (state/store.js normalize) a finished picture past a billion gets its flag, and the
+// count is the number of flags. Silently: no screen, no letter, no party, no talk show, no fame
+// or standing — what happened then has happened. A film still running is left alone; its run
+// closes through markBillion like any other, and that is its moment. Idempotent: a save already
+// in this shape comes out of it unchanged, which is also every save made since the flag existed.
+export function settleBillions(s) {
+  for (const c of s.filmography || []) if (c && !c.running && !c.billion && (c.boxOffice || 0) >= BILLION) c.billion = true;
+  const n = (s.filmography || []).filter(isBillion).length;
+  if (n || s.billions != null) s.billions = n;
+  return s;
+}
 
 // Invented, like everything else on this world's television. A real show's name in a game
 // where every studio, every director and every other actor is made up would be the one thing
@@ -70,7 +80,7 @@ export function markBillion(s, credit) {
   // calls this and however often.
   if (credit.billion) return null;
   credit.billion = true;
-  s.billions = Math.max((s.billions || 0) + 1, billionsIn(s));
+  s.billions = (s.billions || 0) + 1;
   const first = s.billions === 1;
   const studio = studioOf(credit);
   const gross = credit.boxOffice || 0;

@@ -9,7 +9,8 @@
 // The answer is not a fifth verdict or a lower bar. A billion is an absolute size, not a return
 // on investment: four or five pictures a year reach it and everybody hears about all of them,
 // whether or not the studio made money on them. So it sits beside the verdict.
-import { markBillion, answerBillionMail, BILLION, isBillion } from '../src/systems/career/billion.js';
+import { markBillion, answerBillionMail, BILLION, isBillion, settleBillions } from '../src/systems/career/billion.js';
+import { importSave, getState } from '../src/state/store.js';
 import { verdictOf, breakEvenFor, runTick } from '../src/systems/career/release.js';
 import { castingChance, auditionFor } from '../src/systems/career/castings.js';import fs from 'fs';
 
@@ -251,17 +252,53 @@ const cr = (over = {}) => ({ title: 'Midnight Talker', scale: 'blockbuster', cam
   ok('and it names the show', (s.lastEvent || '').includes(job.title), s.lastEvent);
   ok('and it still paid', (s.filmography || []).some((c) => c.type === 'Talk Show' && c.salary === 40000));
 }
-// ── a life with billions from before this file existed ───────────────────────
+// ── a life with billions from before this file existed, through the real load ─
 // Maxi's Alex Moon: four pictures past a billion, none flagged, no counter. The filmography
-// showed no 💰 on any of them, and the fifth would have been welcomed as the first.
+// showed no 💰 on any of them, and the fifth would have been welcomed as the first. Loading it
+// must flag them and count them — silently — and nothing else.
 {
-  const old = [1.04e9, 1.62e9, 1.31e9, 1.16e9].map((g, i) => cr({ title: 'Old ' + i, boxOffice: g, year: 2060 + i, verdict: 'smash' }));
-  ok('an old credit past a billion is in the club without the flag', old.every((c) => !c.billion && isBillion(c)));
-  ok('and one short of it is not', !isBillion(cr({ boxOffice: 999e6 })) && !isBillion(null));
-  const s = { ...st(), filmography: [...old] };
-  const c = cr({ title: 'The Fifth', boxOffice: 1.2e9 });
-  s.filmography.unshift(c);
-  ok('the fifth is counted as the fifth, off the shelf', markBillion(s, c) === 'again' && s.billions === 5, String(s.billions));
+  const VERSION = (fs.readFileSync(new URL('../src/state/store.js', import.meta.url), 'utf8').match(/CURRENT_VERSION = '([^']+)'/) || [])[1];
+  const old = [1.04e9, 1.62e9, 1.31e9, 1.16e9].map((g, i) => cr({ title: 'Old ' + i, boxOffice: g, year: 2060 + i, verdict: 'smash', running: false }));
+  const save = { version: VERSION, created: true, stage: 'career', alive: true, dream: 'actor', name: 'Alex Moon', ageY: 53, year: 2079, month: 3,
+    fame: 85, respect: 60, media: 20, cash: 5e6, inbox: [], timeline: [{ text: 'A life began.', when: 'Apr 2026' }], events: [], moments: [],
+    filmography: [...old, cr({ title: 'Short of it', boxOffice: 999e6, running: false }),
+      cr({ title: 'Still Playing', boxOffice: 1.05e9, running: true })] };
+  ok('the old save has no flags and no counter to start with', save.filmography.every((c) => !c.billion) && save.billions == null);
+  const why = importSave(JSON.stringify(save));
+  const g = getState();
+  ok('it loads', why === null && g.name === 'Alex Moon', String(why));
+  const club = g.filmography.filter(isBillion).map((c) => c.title).sort().join(',');
+  ok('after load the four are in the club, by their flag', club === 'Old 0,Old 1,Old 2,Old 3', club);
+  ok('and s.billions is four', g.billions === 4, String(g.billions));
+  ok('one short of a billion is not', !isBillion(g.filmography.find((c) => c.title === 'Short of it')));
+  ok('a film still playing is left for its own run to close', !g.filmography.find((c) => c.title === 'Still Playing').billion);
+  ok('silently: no screen queued', !g.bigMoment && !(g.moments || []).some((m) => /billion/i.test(String(m.id) + String(m.title))), JSON.stringify(g.bigMoment));
+  ok('no letter, no party, no talk show', !(g.inbox || []).some((m) => m.billionFor || (m.cta || []).some((c) => c.billion)) && !(g.events || []).length);
+  ok('no fame, no standing, nothing on the timeline', g.fame === 85 && g.respect === 60 && g.timeline.length === 1, `${g.fame} ${g.respect} ${g.timeline.length}`);
+  // Idempotent: loading the loaded save again changes nothing.
+  const once = JSON.stringify(g.filmography.map((c) => [c.title, !!c.billion])) + g.billions;
+  importSave(JSON.stringify(g));
+  const twice = JSON.stringify(getState().filmography.map((c) => [c.title, !!c.billion])) + getState().billions;
+  ok('and loading it twice is loading it once', once === twice);
+  // The next one, through the real end of a run, is the fifth.
+  const s = getState();
+  const c = { id: 'run5', title: 'The Fifth', role: 'Lead', type: 'Blockbuster', genre: 'Action', scale: 'blockbuster', year: 2079,
+    running: true, weeks: 8, weeksTotal: 12, openedAt: 2079 * 12, boxOffice: 9e8, rating: 80,
+    _rel: { rating: 80, worldHit: false, tier: 'lead', scale: 'blockbuster', salary: 1e7, finalGross: 1.2e9, film: true, genre: 'Action', part: 1 } };
+  s.filmography.unshift(c); s.running = [...(s.running || []), c.id];
+  runTick(s);
+  const shown = [s.bigMoment, ...(s.moments || [])].filter((m) => m && m.id === 'billion').map((m) => m.title);
+  ok('the next billion is the fifth, not "Welcome to the billion club"', c.billion && s.billions === 5 && shown.includes('Another billion') && !shown.includes('Welcome to the billion club'), JSON.stringify({ n: s.billions, shown }));
+}
+// ── a save made since the flag existed comes out of the load unchanged ─────────
+{
+  const flagged = [cr({ title: 'A', boxOffice: 1.1e9, billion: true }), cr({ title: 'B', boxOffice: 1.3e9, billion: true }), cr({ title: 'C', boxOffice: 4e8 })];
+  const s = { filmography: flagged.map((c) => ({ ...c })), billions: 2 };
+  settleBillions(s);
+  ok('a current save: same flags, same count', s.billions === 2 && s.filmography.map((c) => !!c.billion).join() === 'true,true,false');
+  const none = { filmography: [cr({ boxOffice: 3e8 })] };
+  settleBillions(none);
+  ok('and a life with none is not given a counter it never had', none.billions === undefined);
 }
 // ── through the end of a real run, not only markBillion on its own ────────────
 // Every check above calls markBillion directly; the path a film actually takes is runTick ->
