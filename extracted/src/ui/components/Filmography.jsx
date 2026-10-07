@@ -84,7 +84,9 @@ function CreditRow({ group, g }) {
   // Where it sat in its year, if it made the list. See systems/world/yearbook.js.
   const yearEntry = g.world && g.world.years && g.world.years[c.year];
   const ranked = yearEntry && yearEntry.films.find((f) => f.you && f.title === c.title);
-  const stars = (r / 10).toFixed(1).replace('.', ',');
+  // A point, the way every other score in the game is written: the interface is English, and
+  // "5,2" next to "8.2" on the Known-for card read as a slip, not a choice.
+  const stars = (r / 10).toFixed(1);
   // Framed the way the business remembers them: a hit in gold, a flop in red, the rest plain.
   const hit = isHit(c, g) || group.worldHit;
   const flop = !hit && isFlop(c);
