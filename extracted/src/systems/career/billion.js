@@ -36,6 +36,17 @@ import { STUDIOS } from '../world/names.js';
 
 export const BILLION = 1e9;
 
+// Whether a credit is in the club. The flag is set by markBillion below — but only since this
+// file existed, and old saves keep loading: Maxi's Alex Moon had four pictures past a billion
+// made before it, none flagged, so the filmography showed no 💰 on any of them while "Known
+// for" (which read the money) listed all four. The money is the fact; the flag is a receipt.
+// Every reader asks here.
+export function isBillion(c) { return !!c && (!!c.billion || (c.boxOffice || 0) >= BILLION); }
+// How many there are, counted off the shelf rather than off a counter that started at nought
+// the day the counter was written — which would have welcomed that same life's fifth billion
+// as its first.
+function billionsIn(s) { return (s.filmography || []).filter(isBillion).length; }
+
 // Invented, like everything else on this world's television. A real show's name in a game
 // where every studio, every director and every other actor is made up would be the one thing
 // in it that belongs to somebody else.
@@ -59,7 +70,7 @@ export function markBillion(s, credit) {
   // calls this and however often.
   if (credit.billion) return null;
   credit.billion = true;
-  s.billions = (s.billions || 0) + 1;
+  s.billions = Math.max((s.billions || 0) + 1, billionsIn(s));
   const first = s.billions === 1;
   const studio = studioOf(credit);
   const gross = credit.boxOffice || 0;

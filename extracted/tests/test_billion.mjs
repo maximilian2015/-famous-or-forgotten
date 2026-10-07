@@ -9,8 +9,8 @@
 // The answer is not a fifth verdict or a lower bar. A billion is an absolute size, not a return
 // on investment: four or five pictures a year reach it and everybody hears about all of them,
 // whether or not the studio made money on them. So it sits beside the verdict.
-import { markBillion, answerBillionMail, BILLION } from '../src/systems/career/billion.js';
-import { verdictOf, breakEvenFor } from '../src/systems/career/release.js';
+import { markBillion, answerBillionMail, BILLION, isBillion } from '../src/systems/career/billion.js';
+import { verdictOf, breakEvenFor, runTick } from '../src/systems/career/release.js';
 import { castingChance, auditionFor } from '../src/systems/career/castings.js';import fs from 'fs';
 
 let fails = 0;
@@ -250,6 +250,30 @@ const cr = (over = {}) => ({ title: 'Midnight Talker', scale: 'blockbuster', cam
   ok('the evening is not reported as a read', !/room goes quiet|came out |\/100/.test(s.lastEvent || ''), s.lastEvent);
   ok('and it names the show', (s.lastEvent || '').includes(job.title), s.lastEvent);
   ok('and it still paid', (s.filmography || []).some((c) => c.type === 'Talk Show' && c.salary === 40000));
+}
+// ── a life with billions from before this file existed ───────────────────────
+// Maxi's Alex Moon: four pictures past a billion, none flagged, no counter. The filmography
+// showed no 💰 on any of them, and the fifth would have been welcomed as the first.
+{
+  const old = [1.04e9, 1.62e9, 1.31e9, 1.16e9].map((g, i) => cr({ title: 'Old ' + i, boxOffice: g, year: 2060 + i, verdict: 'smash' }));
+  ok('an old credit past a billion is in the club without the flag', old.every((c) => !c.billion && isBillion(c)));
+  ok('and one short of it is not', !isBillion(cr({ boxOffice: 999e6 })) && !isBillion(null));
+  const s = { ...st(), filmography: [...old] };
+  const c = cr({ title: 'The Fifth', boxOffice: 1.2e9 });
+  s.filmography.unshift(c);
+  ok('the fifth is counted as the fifth, off the shelf', markBillion(s, c) === 'again' && s.billions === 5, String(s.billions));
+}
+// ── through the end of a real run, not only markBillion on its own ────────────
+// Every check above calls markBillion directly; the path a film actually takes is runTick ->
+// closeRun -> markBillion, and nothing walked it.
+{
+  const s = { ...st(), filmography: [], running: [] };
+  const c = { id: 'run1', title: 'Long Weekend', role: 'Lead', type: 'Blockbuster', genre: 'Action', scale: 'blockbuster', year: 2066,
+    running: true, weeks: 8, weeksTotal: 12, openedAt: 2066 * 12 + 1, boxOffice: 9e8, rating: 80,
+    _rel: { rating: 80, worldHit: false, tier: 'lead', scale: 'blockbuster', salary: 1e7, finalGross: 1.2e9, film: true, genre: 'Action', part: 1 } };
+  s.filmography.push(c); s.running.push(c.id);
+  runTick(s);
+  ok('a blockbuster that closes past a billion is marked when its run ends', !c.running && c.billion === true && s.billions === 1, JSON.stringify({ running: c.running, billion: c.billion, n: s.billions }));
 }
 console.log(fails ? `\n${fails} failed` : '\nall passed');
 process.exit(fails ? 1 : 0);

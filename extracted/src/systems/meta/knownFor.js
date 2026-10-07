@@ -1,5 +1,6 @@
 // The film next to your name. Maxi: "the hits should be framed so we can tell, and the last
 // hit should sit next to your name — and change when there is a new one."
+import { isBillion } from '../career/billion.js';
 const MINOR = /^(Brand Campaign|Commercial|Jingle|Brand Song|TV Extra|Voice Session|Open Mic|Festival Slot|Session Work|Music Video)$/;
 const minor = (c) => c.minor === true || (c.minor === undefined && MINOR.test(c.type || ''));
 const scoreOf = (c) => (c.score != null ? c.score : (c.rating || 0) / 10);
@@ -36,7 +37,7 @@ export function isFlop(c) {
 function whyOf(s, c) {
   // A billion first: it is the rarer of the two and the louder. A picture can be a world hit
   // at €700m and this at a thousand million, and the line has room for one word.
-  if (c.billion || (c.boxOffice || 0) >= 1e9) return '€' + ((c.boxOffice || 0) / 1e9).toFixed(2) + 'bn';
+  if (isBillion(c)) return '€' + ((c.boxOffice || 0) / 1e9).toFixed(2) + 'bn';
   if (c.worldHit || c.status === 'World Hit') return 'world hit';
   if ((c.asker || 0) > 0) return (c.asker || 0) > 1 ? `${c.asker} Askers` : 'Asker';
   if ((c.nominated || 0) > 0) return 'Asker nominee';
@@ -72,7 +73,7 @@ function bandsFor(s, c, ctx) {
   // A career with four of them needs four different sentences, and the order they happened in
   // is the one thing that genuinely differs: the first is the career event, the fourth is a
   // Tuesday. Chronological, so it does not change when a later one out-grosses an earlier.
-  if (c.billion || bo >= 1e9) {
+  if (isBillion(c)) {
     const n = ctx.billionRank[c.title] || 0;
     out.push(n === 1 ? 'Your first billion' : n === 2 ? 'The second billion' : n >= 3 ? `Billion number ${n}` : 'Billion club', 'Billion club');
   }
@@ -106,7 +107,7 @@ export function theHits(s, limit = CREAM_MAX) {
   };
   // Which billion each one was, counted over the whole career rather than the wall — the third
   // is the third even if the second is not shown.
-  all.filter((c) => c.billion || (c.boxOffice || 0) >= 1e9)
+  all.filter(isBillion)
     .sort((a, b) => (a.year || 0) - (b.year || 0) || (a.boxOffice || 0) - (b.boxOffice || 0))
     .forEach((c, i) => { ctx.billionRank[c.title] = i + 1; });
   const used = new Set();

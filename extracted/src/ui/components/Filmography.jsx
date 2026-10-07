@@ -4,6 +4,7 @@ import { count } from '../../engine/text.js';
 import { canTakeSet, monthsUntilFree } from '../../engine/sets.js';
 import { isHit, isFlop } from '../../systems/meta/knownFor.js';
 import { sequelDue } from '../../systems/career/franchise.js';
+import { isBillion } from '../../systems/career/billion.js';
 import { pushState, askToPush } from '../../systems/career/contract.js';
 import { isMinor } from '../../systems/meta/legacy.js';
 import { theme } from '../theme.js';
@@ -70,7 +71,7 @@ function groupCredits(list) {
       boxOffice: g.parts.reduce((n, p) => n + (p.boxOffice || 0), 0),
       viewers: g.parts.reduce((n, p) => Math.max(n, p.viewers || 0), 0),
       worldHit: g.parts.some((p) => p.status === 'World Hit'),
-      billion: g.parts.some((p) => p.billion) };
+      billion: g.parts.some(isBillion) };
   }).sort((a, b) => b.to - a.to);
 }
 // Reads like a real filmography page: poster, title, star rating out of 10, role, year.
