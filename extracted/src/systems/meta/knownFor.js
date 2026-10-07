@@ -151,3 +151,30 @@ export function knownFor(s) {
   if (best) return { title: best.title, year: best.year, hit: false, why: scoreOf(best).toFixed(1) + '/10' };
   return null;
 }
+
+// "SMASH · poorly reviewed" on one card, and nothing to say how both are true. Maxi asked why.
+// The commercial verdict is money against what the film needed (release.js verdictOf: a smash
+// is twice it); the critical one is the column. When they point opposite ways, this says the
+// two numbers the save has for each — what it made against what it needed, and what the
+// critics and the audience gave it — and does not invent a reason it does not have.
+const GOOD_MONEY = new Set(['smash', 'profitable']), BAD_MONEY = new Set(['bomb']);
+const GOOD_PRESS = new Set(['acclaimed', 'well received']), BAD_PRESS = new Set(['poorly reviewed', 'panned']);
+const eur = (n) => (n >= 1e9 ? '€' + (n / 1e9).toFixed(2) + 'bn' : n >= 1e6 ? '€' + (n / 1e6).toFixed(1) + 'm' : '€' + Math.round(n / 1000) + 'k');
+export function moneyVsReviews(c) {
+  if (!c) return null;
+  const up = GOOD_MONEY.has(c.verdict) && BAD_PRESS.has(c.critical);
+  const down = BAD_MONEY.has(c.verdict) && GOOD_PRESS.has(c.critical);
+  if (!up && !down) return null;
+  const parts = [up ? 'Bad reviews, good business.' : 'Good reviews, bad business.'];
+  if ((c.boxOffice || 0) > 0 && (c.needed || 0) > 0) {
+    const x = c.boxOffice / c.needed;
+    parts.push(`It made ${eur(c.boxOffice)} against the ${eur(c.needed)} it needed${x >= 1.95 ? ` — ${x.toFixed(1)} times over` : ''}.`);
+  }
+  const critics = (c.rating || 0) / 10;
+  const room = c.reviews && Number.isFinite(c.reviews.audience) ? c.reviews.audience : Number.isFinite(c.audience) ? c.audience / 10 : null;
+  if (room != null) {
+    const gap = room - critics;
+    parts.push(`Critics ${critics.toFixed(1)}, audience ${room.toFixed(1)}${gap >= 1 ? ' — the people who paid liked it more than the people who wrote about it' : gap <= -1 ? ' — the column liked it more than the room did' : ''}.`);
+  }
+  return parts.join(' ');
+}

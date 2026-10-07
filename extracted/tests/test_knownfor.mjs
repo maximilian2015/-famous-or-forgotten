@@ -4,7 +4,7 @@
 // printed money". The band came off the hit weight alone, and the weight cannot tell two
 // €1.2bn films apart because there is nothing to tell — so the wall said one thing five times.
 // `whyOf` already knew the numbers were different; only the sentence did not.
-import { theHits, hitWeight } from '../src/systems/meta/knownFor.js';
+import { theHits, hitWeight, moneyVsReviews } from '../src/systems/meta/knownFor.js';
 
 let fails = 0;
 const ok = (n, c, e = '') => { if (!c) { fails++; console.log('FAIL  ' + n + (e ? ' :: ' + e : '')); } else console.log('ok    ' + n); };
@@ -49,6 +49,15 @@ ok('an empty career has an empty wall', theHits(st([])).length === 0);
 {
   const s = st([bn('A', 2060, 1.2e9)]);
   ok('a billion is still weight 3 or better', hitWeight(s.filmography[0], s) >= 3, String(hitWeight(s.filmography[0], s)));
+}
+// ── "SMASH · poorly reviewed": why both are true, from the numbers on the credit ──
+{
+  const hungers = { title: 'HUNGERs', verdict: 'smash', critical: 'poorly reviewed', rating: 51.7, boxOffice: 68658572, needed: 24300000, reviews: { audience: 6.6 } };
+  ok('a smash the critics did not like says why, in its own numbers', moneyVsReviews(hungers) === 'Bad reviews, good business. It made €68.7m against the €24.3m it needed — 2.8 times over. Critics 5.2, audience 6.6 — the people who paid liked it more than the people who wrote about it.', moneyVsReviews(hungers));
+  const darling = { verdict: 'bomb', critical: 'acclaimed', rating: 88, boxOffice: 9e6, needed: 30e6, reviews: { audience: 7.1 } };
+  ok('and so does a bomb the critics loved', moneyVsReviews(darling) === 'Good reviews, bad business. It made €9.0m against the €30.0m it needed. Critics 8.8, audience 7.1 — the column liked it more than the room did.', moneyVsReviews(darling));
+  ok('when the money and the column agree there is nothing to explain', moneyVsReviews({ verdict: 'smash', critical: 'acclaimed' }) === null && moneyVsReviews({ verdict: 'bomb', critical: 'panned' }) === null && moneyVsReviews({ verdict: 'watched', critical: 'poorly reviewed' }) === null);
+  ok('a credit from before the audience had a number gives the money and stops', /needed\.$/.test(moneyVsReviews({ verdict: 'profitable', critical: 'panned', rating: 30, boxOffice: 40e6, needed: 30e6 })));
 }
 
 console.log(fails ? `\n${fails} failed` : '\nall passed');

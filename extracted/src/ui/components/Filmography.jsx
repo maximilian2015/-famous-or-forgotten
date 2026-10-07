@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { dispatch } from '../../state/store.js';
 import { count } from '../../engine/text.js';
 import { canTakeSet, monthsUntilFree } from '../../engine/sets.js';
-import { isHit, isFlop } from '../../systems/meta/knownFor.js';
+import { isHit, isFlop, moneyVsReviews } from '../../systems/meta/knownFor.js';
 import { sequelDue } from '../../systems/career/franchise.js';
 import { isBillion } from '../../systems/career/billion.js';
 import { pushState, askToPush } from '../../systems/career/contract.js';
@@ -125,8 +125,11 @@ function CreditRow({ group, g }) {
             React #31 and took the whole filmography screen down with it. The autoplayer could
             not catch this: it never lands a part, so it never reaches a screen with a credit on
             it, which is the exact limitation written into tests/autoplay.mjs. */}
+        {/* And who they were. The credit has always kept it (script.js makeCharacter: "somebody
+            who came back different") and the card printed only the name. Maxi: "who you played". */}
         {(() => { const ch = c.character; const name = typeof ch === 'string' ? ch : (ch && ch.name) || null;
-          return name ? <span> · as <span style={{ color: theme.text, fontWeight: 700 }}>{name}</span></span> : null; })()}
+          const what = ch && typeof ch === 'object' && ch.what ? String(ch.what) : null;
+          return name ? <span> · as <span style={{ color: theme.text, fontWeight: 700 }}>{name}</span>{what ? <span>, {what}</span> : null}</span> : null; })()}
         {c.with ? <span> · with <span style={{ color: c.withIcon ? theme.gold : theme.text, fontWeight: 700 }}>{c.with}</span></span> : null}
       </div>
       {/* What the network decided. Maxi, playing: "the season ended in 2075 and I am at the
@@ -166,6 +169,8 @@ function CreditRow({ group, g }) {
               should not need a tap to find. career/billion.js */}
           {group.billion && <span style={{ color: theme.gold }}>💰 billion club</span>}
         </div>)}
+      {/* When the money and the column disagree, why both are true — meta/knownFor.js. */}
+      {!c.running && (() => { const why = moneyVsReviews(c); return why ? <div style={{ fontSize: 11, color: theme.muted, marginTop: 3, lineHeight: 1.45 }}>{why}</div> : null; })()}
       {open && <>
       {/* the marks that never come off, and what it made */}
       {(group.worldHit || hit || group.askers > 0 || group.askerNoms > 0 || c.comeback > 0 || group.boxOffice > 0 || group.viewers > 0 || c.festival) && (
