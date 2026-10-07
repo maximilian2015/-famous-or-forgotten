@@ -34,7 +34,7 @@
       "runtimeExecutable": "C:\\Program Files\\nodejs\\node.exe",
       "runtimeArgs": [
         "-e",
-        "const fs=require('fs');require('http').createServer((q,r)=>{const m=q.url.match(/^\\/playtest\\/([\\w.-]+\\.json)$/);const f=m?'playtest/'+m[1]:'game.html';if(!fs.existsSync(f)){r.writeHead(404);return r.end()}r.writeHead(200,{'content-type':m?'application/json':'text/html; charset=utf-8'});fs.createReadStream(f).pipe(r)}).listen(5176,()=>console.log('game.html on http://localhost:5176'))"
+        "const fs=require('fs');require('http').createServer((q,r)=>{const m=q.url.match(/^\\/(playtest|saves)\\/([\\w.-]+\\.json)$/);const f=m?m[1]+'/'+m[2]:'game.html';if(!fs.existsSync(f)){r.writeHead(404);return r.end()}r.writeHead(200,{'content-type':m?'application/json':'text/html; charset=utf-8'});fs.createReadStream(f).pipe(r)}).listen(5176,()=>console.log('game.html on http://localhost:5176'))"
       ],
       "port": 5176
     }
