@@ -29,7 +29,7 @@
 // So the first one is a career event, and this file is mostly about making sure it feels like
 // one exactly once.
 import { uid } from '../../engine/id.js';
-import { addTimeline, showMoment } from '../../engine/timeline.js';
+import { addTimeline } from '../../engine/timeline.js';
 import { sendMail } from '../meta/email.js';
 import { addEvent } from '../social/events.js';
 import { STUDIOS } from '../world/names.js';
@@ -64,37 +64,61 @@ export function markBillion(s, credit) {
   // contract and an awards night — so the first version of this put three good sentences on a
   // screen that showed none of them, and the playtest is the only thing that would ever have
   // caught it: the build was fine, the suite was green, and the words were simply not there.
-  showMoment(s, first
+  // ── the beat ────────────────────────────────────────────────────────────────
+  // Two screens, and nothing between them. Played by hand, the milestone arrived AFTER a
+  // director taking me aside and an agent talking about my age, because showMoment is a plain
+  // queue — push to the back, shift from the front — and the billion was simply last in line.
+  // A career event that turns up fourth is not a career event.
+  //
+  // No general priority system for that: the queue is shared by everything in the game and a
+  // framework built for one feature is a framework nobody else knows the rules of. This does
+  // its own surgery, here, on its own two screens — they go to the FRONT of whatever is
+  // waiting and stay adjacent. Anything already ON screen is left alone, because preempting a
+  // moment somebody is reading is a different kind of rude, and the rest of the queue keeps
+  // its order behind them.
+  //
+  // `body`, not `lines`: BigMoment renders a body string and only reads `lines` for a contract
+  // and an awards night, so the first version of this showed a heading and no words at all.
+  const milestone = first
     ? { id: 'billion', kind: 'good', first: true, title: 'Welcome to the billion club',
       body: `Very few pictures ever cross this line. "${credit.title}" just did — ${money(gross)} worldwide. Whatever else happens from here, you were in one of them.` }
     : { id: 'billion', kind: 'good', nth: s.billions,
       title: s.billions === 2 ? 'Billion club · number two' : 'Another billion',
       body: s.billions === 2
         ? `"${credit.title}" went past ${money(gross)}. Once can be luck. Twice changes how the business looks at you.`
-        : `"${credit.title}" went past ${money(gross)}. This has stopped being a career highlight. It is becoming what your name means.` });
+        : `"${credit.title}" went past ${money(gross)}. This has stopped being a career highlight. It is becoming what your name means.` };
   addTimeline(s, `"${credit.title}" passed ${money(gross)} worldwide.${first ? ' Your first.' : ''}`);
 
-  // The studio's letter, and what it opens. Both invitations are offers, not events that happen
-  // to you: declining either leaves the milestone exactly where it is.
-  const cta = [];
-  // The letter says both, either, or neither, so the buttons have to offer all four. They did
-  // not, and the playtest is what noticed: the copy promised something the controls refused.
-  cta.push({ label: 'Both, then', billion: 'both',
-    reply: 'A car on Thursday and a room on the Saturday. It is going to be a long week.' });
-  cta.push({ label: 'Say yes to the show', billion: 'talkshow',
-    reply: 'A car on Thursday, and eleven minutes with somebody who has read your file.' });
-  cta.push({ label: 'Say yes to the party', billion: 'party',
-    reply: 'The whole picture is going, and so is everybody who wants something from it.' });
-  cta.push({ label: 'Neither, thank you', billion: 'no',
-    reply: 'You said no to both. The film still made a billion euros.' });
+  // The studio's letter, and what it opens. Both invitations are offers, not events that
+  // happen to you: declining either leaves the milestone exactly where it is. The letter says
+  // both, either, or neither, so the buttons offer all four — they offered three, and the
+  // playtest is what noticed the copy promising what the controls refused.
   sendMail(s, {
     from: `${studio} · the office of the chairman`, kind: 'contract', tag: 'billion',
     subj: first ? `"${credit.title}" — a billion` : `"${credit.title}" — ${money(gross)}`,
     body: first
       ? `${money(gross)}. There are people who have worked forty years in this business and never been in one of these, and they will all be at the party. There is also a show that wants you on Thursday. Both, either, or neither — the picture is doing what it is doing with or without you now.`
       : `${money(gross)}. You know how this goes by now. The show would like you back and the chairman would like a photograph. Say if you would rather not.`,
-    billionFor: credit.title, cta,
+    billionFor: credit.title,
+    cta: [
+      { label: 'Both, then', billion: 'both', reply: 'A car on Thursday and a room on the Saturday. It is going to be a long week.' },
+      { label: 'Say yes to the show', billion: 'talkshow', reply: 'A car on Thursday, and eleven minutes with somebody who has read your file.' },
+      { label: 'Say yes to the party', billion: 'party', reply: 'The whole picture is going, and so is everybody who wants something from it.' },
+      { label: 'Neither, thank you', billion: 'no', reply: 'You said no to both. The film still made a billion euros.' },
+    ],
   });
+  // The second half of the beat: the letter has arrived, and the player is told so rather than
+  // finding out whenever they next open the phone.
+  const invitation = { id: 'billion', kind: 'good', letter: true,
+    title: `${studio} has written`,
+    body: first
+      ? `There is a party and there is a show, and the chairman would like you at both. The letter is in your inbox — say yes to either, or to neither, and the picture goes on doing what it is doing.`
+      : `The same two invitations as last time, which is its own kind of answer about where you are now. The letter is in your inbox.` };
+
+  const beat = [milestone, invitation];
+  if (!s.bigMoment) s.bigMoment = beat.shift();
+  s.moments = [...beat, ...(s.moments || [])];
+
   return first ? 'first' : 'again';
 }
 

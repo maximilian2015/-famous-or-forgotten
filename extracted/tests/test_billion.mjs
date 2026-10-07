@@ -146,13 +146,62 @@ const cr = (over = {}) => ({ title: 'Midnight Talker', scale: 'blockbuster', cam
 // one turns out to be wrong, and a sentence on a screen cannot be re-measured.
 {
   const src = fs.readFileSync(new URL('../src/systems/career/billion.js', import.meta.url), 'utf8');
-  const copy = src.slice(src.indexOf('showMoment(s, first'), src.indexOf('addTimeline(s,'));
+  const copy = src.slice(src.indexOf('const milestone = first'), src.indexOf('const beat ='));
   // And the words must be in the field the screen reads. BigMoment renders `body` and only looks
   // at `lines` for a contract and an awards night, so three good sentences in `lines` show as
   // nothing at all — which is what the first version did, through a green suite.
   ok('the copy is in the field the screen renders', /body:/.test(copy) && !/lines:/.test(copy));
+  // And the same thing asked of the real objects rather than the source, so it holds however
+  // the file is rearranged.
+  {
+    const t = st();
+    markBillion(t, cr({ boxOffice: 1.2e9 }));
+    const shown = [t.bigMoment, ...(t.moments || [])];
+    ok('every screen it puts up has words in the field that gets rendered',
+      shown.every((x) => typeof x.body === 'string' && x.body.length > 40 && !x.lines),
+      shown.map((x) => (x.body ? x.body.length : 'no body')).join(', '));
+  }
   ok('the milestone copy quotes no frequency', !/(four|five|six|seven|ten|[0-9]+)s+(pictures|films|movies)s+as+year/i.test(copy));
 }
 
+// ── the beat does not get interrupted ────────────────────────────────────────
+// Played by hand, the milestone arrived AFTER a director taking me aside and an agent talking
+// about my age. showMoment is a plain queue — push to the back, shift from the front — so the
+// billion was simply last in line, and a career event that turns up fourth is not one.
+//
+// The order asserted here is the order a player sees: the screen, then the letter it is about,
+// and only then whatever else was waiting. Nothing general was built for that; billion.js puts
+// its own two screens at the front and leaves the rest of the queue in its own order.
+{
+  const s = st();
+  // Two unrelated things already waiting, one of them on screen, exactly as in the playtest.
+  s.bigMoment = { id: 'other-a', title: 'A director takes you aside' };
+  s.moments = [{ id: 'other-b', title: 'Your agent, over lunch' }];
+  markBillion(s, cr({ boxOffice: 1.3e9 }));
+  // Drain it the way App.jsx does: whatever is up, then the front of the queue.
+  const seen = [];
+  for (let k = 0; k < 8 && s.bigMoment; k++) {
+    seen.push(s.bigMoment.letter ? `${s.bigMoment.id}:letter` : s.bigMoment.id);
+    s.bigMoment = (s.moments && s.moments.length) ? s.moments.shift() : null;
+  }
+  ok('whatever was already on screen is not snatched away', seen[0] === 'other-a', seen.join(' → '));
+  ok('the billion comes next, before anything else that was waiting', seen[1] === 'billion', seen.join(' → '));
+  ok('and its letter comes straight after it, with nothing between', seen[2] === 'billion:letter', seen.join(' → '));
+  ok('and only then the rest of the queue, in its own order', seen[3] === 'other-b', seen.join(' → '));
+  console.log(`      order: ${seen.join(' → ')}`);
+}
+
+// And with nothing on screen at all, the billion is simply first.
+{
+  const s = st();
+  s.moments = [{ id: 'other-c', title: 'Something else' }];
+  markBillion(s, cr({ boxOffice: 1.3e9 }));
+  const seen = [];
+  for (let k = 0; k < 6 && s.bigMoment; k++) {
+    seen.push(s.bigMoment.letter ? `${s.bigMoment.id}:letter` : s.bigMoment.id);
+    s.bigMoment = (s.moments && s.moments.length) ? s.moments.shift() : null;
+  }
+  ok('on an empty screen the billion goes first', seen.join(' → ') === 'billion → billion:letter → other-c', seen.join(' → '));
+}
 console.log(fails ? `\n${fails} failed` : '\nall passed');
 process.exit(fails ? 1 : 0);

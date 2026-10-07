@@ -106,6 +106,19 @@ function Scene({ id, look, accent, moment }) {
   // again and again in places you will never go. With no artwork of its own the billion fell
   // back on the default, which is somebody arriving with a suitcase, and a generic picture
   // under those words is worse than none. career/billion.js
+  // The second half of the beat is a letter, not a cinema — showing the same room twice in a
+  // row makes the first one smaller. An envelope on a desk, with the seal still on it.
+  if (id === 'billion' && moment.letter) {
+    return (<svg viewBox="0 0 200 120" style={{ width: '100%', maxWidth: 300, display: 'block', margin: '0 auto' }}>
+      <rect x="14" y="86" width="172" height="26" rx="3" fill={theme.ink2} stroke={theme.edge} strokeWidth="1.5" />
+      <rect x="46" y="26" width="108" height="66" rx="3" fill={theme.ink} stroke={accent} strokeWidth="2" />
+      <path d="M46 29 L100 66 L154 29" fill="none" stroke={accent} strokeWidth="2" opacity=".75" />
+      <circle cx="100" cy="68" r="9" fill={accent} opacity=".9" />
+      <text x="100" y="71.5" textAnchor="middle" fontSize="7.5" fontWeight="900" fill="#1a1206">€</text>
+      <rect x="62" y="96" width="34" height="3" rx="1.5" fill={theme.edge} opacity=".8" />
+      <rect x="102" y="96" width="22" height="3" rx="1.5" fill={theme.edge} opacity=".5" />
+    </svg>);
+  }
   if (id === 'billion') {
     return (<svg viewBox="0 0 200 120" style={{ width: '100%', maxWidth: 300, display: 'block', margin: '0 auto' }}>
       <rect x="26" y="8" width="148" height="62" rx="2" fill={theme.ink} stroke={accent} strokeWidth="2" />
@@ -293,7 +306,7 @@ function headFor(m) {
   if (m.id === 'booked') return 'They rang back';
   if (m.id === 'sets') return 'They trust you to turn up';
   if (m.id === 'shutdown') return m.frozen ? 'The shoot has stopped' : 'The project is dead';
-  if (m.id === 'billion') return m.first ? 'A thousand million euros' : `Billion number ${m.nth}`;
+  if (m.id === 'billion') return m.letter ? 'The studio has written' : m.first ? 'A thousand million euros' : `Billion number ${m.nth}`;
   if (m.id === 'nomination') return 'The Askers';
   if (m.id === 'yearbook') return 'The year in film';
   if (m.id === 'contract') return m.walked ? 'They walked' : 'The paper came back';
