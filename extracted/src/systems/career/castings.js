@@ -480,6 +480,11 @@ export function fieldFactor(s, c) {
   return Math.max(0.45, Math.min(1.45, 0.25 + ratio * 0.75));
 }
 export function castingChance(s, c) {
+  // A chair kept for you is not a competition. An invitation arrives because of something you
+  // have already done — a picture of yours passed a billion and a show would like you on it —
+  // and there is nobody else reading for it. career/billion.js is the only thing that sends
+  // one; an ordinary brand campaign or magazine cover is still a job you go up for.
+  if (c && c.invited) return 100;
   const skill = s.dream === 'singer' ? s.singing : s.acting;
   // Scandal was purely cosmetic before — it accumulated and did nothing.
   // And a face that does not move is a face they do not cast — see life/face.js.
@@ -676,8 +681,14 @@ export function auditionFor(s, id, quality = 50) {
     // The shampoo. A serious actor selling shampoo is a sentence the serious rooms repeat.
     const shampoo = isStrong(s, 'serious') && /Brand|Commercial/.test(c.type || '');
     if (shampoo) setRespect(s, (s.respect || 0) - 2);
-    s.lastEvent = `${quality >= 80 ? 'The room goes quiet — you nailed it. ' : ''}One day's work on "${c.title}". It came out ${status.toLowerCase()} (${Math.round(rating)}/100).${shampoo ? ' The serious rooms noticed the serious actor selling things. Two points of standing.' : ''}`;
-    addTimeline(s, `Booked ${c.title}: ${status}.`, rating < 50);
+    // An invitation is not a booking, and the day-work copy read absurdly over one: played by
+    // hand, eleven minutes on a chat show about a billion-euro picture came back as "The room
+    // goes quiet — you nailed it. It came out released (53/100)". There was no room, no read
+    // and nobody scores a talk show out of a hundred. Same pay, same minor credit, own words.
+    s.lastEvent = c.invited
+      ? `An evening on "${c.title}". ${c.invited.line} They were kind, the audience laughed in the right place, and you were home by eleven.`
+      : `${quality >= 80 ? 'The room goes quiet — you nailed it. ' : ''}One day's work on "${c.title}". It came out ${status.toLowerCase()} (${Math.round(rating)}/100).${shampoo ? ' The serious rooms noticed the serious actor selling things. Two points of standing.' : ''}`;
+    addTimeline(s, c.invited ? `On "${c.title}".` : `Booked ${c.title}: ${status}.`, !c.invited && rating < 50);
   } else {
     s.mental = clamp(s.mental - 2);
     s.lastEvent = quality < 35

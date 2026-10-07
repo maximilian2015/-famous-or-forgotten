@@ -11,7 +11,7 @@
 // whether or not the studio made money on them. So it sits beside the verdict.
 import { markBillion, answerBillionMail, BILLION } from '../src/systems/career/billion.js';
 import { verdictOf, breakEvenFor } from '../src/systems/career/release.js';
-import fs from 'fs';
+import { castingChance, auditionFor } from '../src/systems/career/castings.js';import fs from 'fs';
 
 let fails = 0;
 const ok = (n, c, e = '') => { if (!c) { fails++; console.log('FAIL  ' + n + (e ? ' :: ' + e : '')); } else console.log('ok    ' + n); };
@@ -202,6 +202,54 @@ const cr = (over = {}) => ({ title: 'Midnight Talker', scale: 'blockbuster', cam
     s.bigMoment = (s.moments && s.moments.length) ? s.moments.shift() : null;
   }
   ok('on an empty screen the billion goes first', seen.join(' → ') === 'billion → billion:letter → other-c', seen.join(' → '));
+}
+// ── the invitation does not look like a job ──────────────────────────────────
+// Played by hand, the talk show landed in OpenCall between the auditions and nothing about it
+// said it was there because of the billion. It is the same one-off appearance shelf underneath
+// — a brand campaign, a magazine cover, presenting at an awards show — with the chair kept.
+{
+  const s = st();
+  markBillion(s, cr({ boxOffice: 1.3e9, title: 'Midnight Talker' }));
+  answerBillionMail(s, s.inbox[0].id, s.inbox[0].cta.findIndex((c) => c.billion === 'talkshow'));
+  const job = (s.castingPool || [])[0];
+  ok('it is marked as an invitation', !!job && !!job.invited, job ? 'no invited field' : 'no card');
+  ok('and it names the film that caused it', job.invited.film === 'Midnight Talker' && /Midnight Talker/.test(job.invited.line), job.invited.line);
+  ok('and says what the film did', /billion/i.test(job.invited.line), job.invited.line);
+  ok('and there is nobody else reading for it', castingChance(s, job) === 100, String(castingChance(s, job)));
+  ok('and it still rides the one-off appearance shelf underneath', job.shelf === 'day' && job.scale === 'oneoff' && job.type === 'Talk Show');
+  // The show is invented, like every studio, director and actor in this world.
+  ok('the show is not a real one', !/Tonight Show|Letterman|Fallon|Kimmel|Graham Norton/i.test(job.title), job.title);
+  // And an ordinary day job must NOT come out looking like this.
+  const plain = { title: 'Brand Campaign', type: 'Brand Campaign', shelf: 'day', scale: 'oneoff', months: 1, minFame: 15 };
+  ok('an ordinary brand campaign is not an invitation', !plain.invited && castingChance(s, plain) !== 100, String(castingChance(s, plain)));
+}
+
+// ── and the card itself ──────────────────────────────────────────────────────
+// The screen is the thing that was wrong, so the screen is what is checked: nothing automated
+// can see a field a component does not read, which is how three good sentences shipped
+// invisible. OpenCall must say what this is and must not offer a read for it.
+{
+  const ui = fs.readFileSync(new URL('../src/phone/apps/OpenCall.jsx', import.meta.url), 'utf8');
+  ok('the card says SPECIAL INVITATION', /SPECIAL INVITATION/.test(ui));
+  ok('and INVITED where it would otherwise quote odds', ui.includes(String.raw`c.invited ? 'INVITED'`));
+  ok('and offers acceptance rather than an audition', /Accept the invitation/.test(ui));
+  // the invited branch returns before the ordinary one, so no Audition button is drawn for it
+  const branch = ui.slice(ui.indexOf('if (c.invited) return'), ui.indexOf('if (c.invited) return') + 1200);
+  ok('and the invited card never draws the audition control', !/Audition ·/.test(branch));
+}
+// And the evening reads like an evening. The day-work copy is written for a read that was won:
+// over an invitation it said "The room goes quiet — you nailed it … released (53/100)", which
+// is three false things about eleven minutes in a chair.
+{
+  const s = st();
+  markBillion(s, cr({ boxOffice: 1.3e9, title: 'The Long Fall' }));
+  answerBillionMail(s, s.inbox[0].id, s.inbox[0].cta.findIndex((c) => c.billion === 'talkshow'));
+  const job = s.castingPool[0];
+  s.ap = 100; s.apMax = 100; s.apMaxEff = 100;
+  auditionFor(s, job.id, 100);
+  ok('the evening is not reported as a read', !/room goes quiet|came out |\/100/.test(s.lastEvent || ''), s.lastEvent);
+  ok('and it names the show', (s.lastEvent || '').includes(job.title), s.lastEvent);
+  ok('and it still paid', (s.filmography || []).some((c) => c.type === 'Talk Show' && c.salary === 40000));
 }
 console.log(fails ? `\n${fails} failed` : '\nall passed');
 process.exit(fails ? 1 : 0);

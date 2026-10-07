@@ -68,6 +68,15 @@ cannot happen, say why on the control, before it is pressed, not in a footnote u
 way for a year, one of them rebuilt in the meantime without anybody noticing the door was
 locked. Delete it, or fix it.
 
+**A green suite does not prove a screen says anything.** The billion-euro milestone shipped with
+72 of 72 tests passing, a clean lint and a good build, and it displayed a heading and no words:
+the copy went into `lines` and `BigMoment` renders `body`. A field no component reads is not a
+failure, it is silence, and nothing automated can hear it. The same hour of playing it found the
+default artwork under the words (somebody arriving with a suitcase), a letter promising four
+choices and offering three, a studio party on the calendar under the name of the tier it was
+built from, and the whole beat arriving fourth behind a chat about my age. **After changing any
+multi-step event chain, play the whole visible flow once before calling it done.**
+
 **Write the rules off the component, never off the comment above it.** Explaining the fourteen
 minigames, I wrote six of them from memory: a long-press that does not exist, a probe that does
 not exist, training that widens the timing band when it is difficulty, "one bad take ends the

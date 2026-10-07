@@ -36,6 +36,13 @@ import { STUDIOS } from '../world/names.js';
 
 export const BILLION = 1e9;
 
+// Invented, like everything else on this world's television. A real show's name in a game
+// where every studio, every director and every other actor is made up would be the one thing
+// in it that belongs to somebody else.
+const SHOWS = ['Tonight, with Ira Vance', 'The Late Hour', 'After Midnight with Dasha Nolan',
+  'The Eleven O’Clock', 'Sat Down With Wole Amadi', 'The Last Word with Ines Rask'];
+
+
 function studioOf(credit) {
   let h = 0;
   for (const ch of String(credit.title || '')) h = (h * 31 + ch.charCodeAt(0)) >>> 0;
@@ -159,11 +166,17 @@ export function answerBillionMail(s, mailId, i) {
     // presenting at an awards show. This is that shelf with the chair kept for you rather than
     // drawn at random, which is what openedByName means.
     (s.castingPool = s.castingPool || []).push({
-      id: uid(s, 'cast'), title: 'Late Night', type: 'Talk Show', role: 'The guest',
+      id: uid(s, 'cast'), title: SHOWS[Math.floor(Math.random() * SHOWS.length)],
+      type: 'Talk Show', role: 'The guest',
       shelf: 'day', scale: 'oneoff', medium: 'ad', share: 1, stability: 100, feeFactor: 1,
       months: 1, episodes: 0, perEpisode: false, episodeFee: 0, salary: 40000, season: 0,
       audience: 0, director: null, directorId: null, directorBand: null, directorTop: false,
       genre: null, minFame: 0, openedByName: true,
+      // Why the chair is being kept, in the card's own words. OpenCall reads this and draws an
+      // invitation instead of a job: the playtest put it on the board next to the auditions and
+      // nothing about it said it was there because of the billion.
+      invited: { kind: 'billion', film: title,
+        line: `They want you on the show to talk about "${title}" crossing a billion.` },
       _expires: (s.year || 0) * 12 + (s.month || 0) + 2,
     });
     said.push(`They want you on Thursday to talk about "${title}". It is in OpenCall.`);

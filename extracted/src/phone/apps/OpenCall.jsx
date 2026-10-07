@@ -196,7 +196,8 @@ export function OpenCall({ g, ocTab, setOcTab, teenMode }) {
           </div>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 8, marginTop: 4 }}>
             <div style={{ fontSize: 11, color: theme.muted, minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-              {c.role} · {c.type} · <span style={{ color: onTrend ? theme.good : theme.muted }}>{c.genre}{onTrend ? ' ↑' : ''}</span> · {c.months > 1 ? `${c.months} mo` : c.perEpisode ? 'a few days' : 'one day'}
+              {c.invited ? <span style={{ color: theme.gold, fontWeight: 800 }}>SPECIAL INVITATION</span> : null}{c.invited ? ' · ' : ''}
+              {c.role} · {c.type}{c.invited ? '' : ' · '}{c.invited ? null : <span style={{ color: onTrend ? theme.good : theme.muted }}>{c.genre}{onTrend ? ' ↑' : ''}</span>} · {c.months > 1 ? `${c.months} mo` : c.perEpisode ? 'a few days' : 'one day'}
               </div>
               {/* Who is directing it. Maxi: "the agent only brings the top directors." A part is
                   half a decision without the person behind the camera. systems/world/directors.js */}
@@ -213,7 +214,7 @@ export function OpenCall({ g, ocTab, setOcTab, teenMode }) {
               {(c.season || 1) > 1 ? `S${c.season}` : 'S1 · NEW'}
             </span>}
             <span style={{ fontSize: 10.5, fontWeight: 800, padding: '2px 8px', borderRadius: 20, background: 'rgba(158,116,255,.18)', color: locked ? theme.muted : chipCol, whiteSpace: 'nowrap' }}>
-              {locked ? `fame ${c.minFame}` : `${ch}%`}{byAsker ? ' 🏆' : ''}
+              {c.invited ? 'INVITED' : locked ? `fame ${c.minFame}` : `${ch}%`}{byAsker ? ' 🏆' : ''}
             </span>
           </div>
         </button>
@@ -276,6 +277,20 @@ export function OpenCall({ g, ocTab, setOcTab, teenMode }) {
             const busy = !fit.ok && waits;
             const dead = !step || !canAfford(g, COST.sides) || cost > (g.cash || 0);
             const off = !canWork(g).ok; const deadRead = off || !canAfford(g, COST.audition);
+            // An invitation is not a job you found. Somebody asked for you because of something
+            // you have already done, there is nobody else reading, and the card says so rather
+            // than sitting on the board quoting a percentage. career/billion.js sends these.
+            if (c.invited) return (<div style={{ marginTop: 8 }}>
+              <div style={{ fontSize: 11.5, color: theme.gold, lineHeight: 1.5, background: 'rgba(255,209,102,.08)', border: '1px solid rgba(255,209,102,.3)', borderRadius: 9, padding: '8px 10px', marginBottom: 8 }}>
+                {c.invited.line} No audition — the chair is yours.
+                <div style={{ color: theme.muted, marginTop: 3 }}>€{(c.salary || 0).toLocaleString()} for the evening.</div>
+              </div>
+              <button onClick={() => dispatch(auditionFor, c.id, 100)} disabled={off}
+                style={{ width: '100%', border: 'none', borderRadius: 10, padding: '10px 6px', fontSize: 12.5, fontWeight: 800, cursor: off ? 'default' : 'pointer',
+                  background: off ? 'rgba(120,110,150,.15)' : `linear-gradient(135deg,${theme.accent2},${theme.accent})`, color: off ? '#6b6390' : '#fff' }}>
+                {off ? 'Signed off' : 'Accept the invitation'}
+              </button>
+            </div>);
             return (<div style={{ marginTop: 8 }}>
               {bonus > 0 && <div style={{ fontSize: 10.5, fontWeight: 800, color: theme.good, marginBottom: 5 }}>Prepared · +{bonus} to your chances</div>}
               <div style={{ display: 'flex', gap: 7 }}>
