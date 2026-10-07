@@ -232,6 +232,9 @@ for (const [name, on] of [['Health', 'Health'], ['Mental', 'Mental'], ['Fame', '
   await back();
 }
 await visit('Passport', () => click(D.querySelector('div[title="Who you are"]')));
+// The Directors bar is the one faction that opens: the names it is made of.
+await visit('Passport · The directors', press((t) => t.startsWith('The directors')));
+await back();
 await visit('Passport · Your room', press('Your room'));
 await back();
 
@@ -255,7 +258,9 @@ for (const app of apps) {
 // death — and some cards on Home only draw when there is something to say. Each of these boots
 // the same save again with that state written into it and asserts what the walk asserts: nothing
 // threw, and words that only that component prints are on the page.
-const drawWith = async (patch) => {
+// `go`, when given, is pressed through inside the booted page before it is read — for a screen
+// that a state alone does not put up, but that is reached by a tap from one it does.
+const drawWith = async (patch, go) => {
   const html = fs.readFileSync(HTML, 'utf8').replace('<div id="root"></div><script>',
     `<div id="root"></div><script>try{localStorage.setItem('fof_react_save',${JSON.stringify(JSON.stringify({ ...save, ...patch }))})}catch(e){}</script>${SEED}<script>`);
   const errs = [];
@@ -269,12 +274,13 @@ const drawWith = async (patch) => {
   if (W2.URL && !W2.URL.createObjectURL) W2.URL.createObjectURL = () => 'blob:stub';
   W2.confirm = () => false;
   await sleep(1200);
+  if (go) await go(W2);
   const text = textOf(W2.document);
   W2.close();
   return { text, errs };
 };
-const inState = async (name, patch, words) => {
-  const { text, errs } = await drawWith(patch);
+const inState = async (name, patch, words, go) => {
+  const { text, errs } = await drawWith(patch, go);
   if (errs.length) { missed.push(name + ' (threw)'); ok(`${name}: nothing threw`, false, errs[0]); return; }
   if (!words.test(text)) { missed.push(name + ' (not drawn)'); ok(`${name}: drew its own words`, false, text.slice(0, 140)); return; }
   seen.push(name);
@@ -321,6 +327,21 @@ await inState('Home · for your consideration', { filmography: [...save.filmogra
   const t = JSON.parse(JSON.stringify(save));
   hangIt(t, t.filmography[2], { title: 'Night Shift · Season 4', role: 'Series regular' }, 48);
   await inState('Home · a season on the bubble', { bubbles: t.bubbles }, /Nobody has decided/);
+}
+// The directors behind the Passport bar: one warm from a set, one cold who walked out on, and the
+// grudge that walk-off filed (production.js walkOffSet's shape) — reached the way a player
+// reaches it, through the face and the bar.
+{
+  const people = [{ id: 'dw', name: 'Rosalind Varga', role: 'Film Director', relationship: 72, industryWeight: 70, fromSet: 'Buried Hunger' },
+    { id: 'dc', name: 'Kaspar Hartigan', role: 'Film Director', relationship: 8, industryWeight: 76, cold: true, fromSet: 'WellPlanned' }];
+  const grudges = [{ who: 'Kaspar Hartigan', title: 'North Window', scale: 'feature', since: NOW - 49, due: NOW - 49 + 9999, until: NOW + 11, hit: false, gross: 0, opened: true }];
+  const tap = async (W2, find) => { const el = find(W2.document); if (el) el.dispatchEvent(new W2.MouseEvent('click', { bubbles: true })); await sleep(300); };
+  await inState('Passport · the directors, warm, cold and a grudge', { people, grudges },
+    /(?=[\s\S]*Warm · 72)(?=[\s\S]*Cold · 8)(?=[\s\S]*Grudge · Until Mar 2067)(?=[\s\S]*You walked off "North Window")(?=[\s\S]*1 film together · on set now: "Buried Hunger")/,
+    async (W2) => {
+      await tap(W2, (d) => d.querySelector('div[title="Who you are"]'));
+      await tap(W2, (d) => [...d.querySelectorAll('button')].find((b) => /^The directors/.test((b.textContent || '').trim())));
+    });
 }
 // The set asking for something this month: the row with the answers, on Home and in the Calendar.
 {

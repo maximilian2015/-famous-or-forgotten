@@ -12,6 +12,8 @@ import { band as drinkBand, dependent } from '../../systems/life/drink.js';
 import { strainBand } from '../../systems/life/strain.js';
 import { ambitionProgress } from '../../systems/meta/ambition.js';
 import { factions } from '../../systems/meta/factions.js';
+import { useState } from 'react';
+import { DirectorsScreen } from './DirectorsScreen.jsx';
 
 // Who you are, on one card. Maxi: "when you press your little person — when you were
 // born, how old you are and how old you look, height, weight, where you live, status,
@@ -21,6 +23,9 @@ const MON = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct
 const money = (n) => (Math.abs(n) >= 1e6 ? '€' + (n / 1e6).toFixed(n >= 1e7 ? 0 : 1) + 'm' : '€' + Math.round(n).toLocaleString());
 
 export function Passport({ g, onClose, onRoom }) {
+  // The Directors bar opens the names it is made of. The other five are summaries of things
+  // with screens of their own, or of nothing kept at all — see reputation-audit.md.
+  const [directors, setDirectors] = useState(false);
   const age = g.ageY || 0;
   const bornYear = (g.year || 0) - age, bornMonth = g.bornMonth != null ? g.bornMonth : (g.month || 0);
   const mate = companionOf(g);
@@ -41,6 +46,7 @@ export function Passport({ g, onClose, onRoom }) {
     <span style={{ color: theme.muted, flex: 'none' }}>{k}</span><span style={{ textAlign: 'right', fontWeight: 700, color: color || theme.text }}>{v}</span>
   </div>);
   const head = (t) => (<div style={{ fontSize: 10.5, fontWeight: 900, letterSpacing: '.1em', textTransform: 'uppercase', color: theme.accent, margin: '14px 0 2px' }}>{t}</div>);
+  if (directors) return <DirectorsScreen g={g} onBack={() => setDirectors(false)} />;
   return (<div style={{ position: 'fixed', inset: 0, background: 'rgba(8,5,20,.97)', zIndex: 60, overflowY: 'auto', padding: 16, color: theme.text, fontFamily: FONT }}>
     <div style={{ maxWidth: 400, margin: '0 auto' }}>
       <div style={{ display: 'flex', gap: 14, alignItems: 'center', marginBottom: 6 }}>
@@ -60,11 +66,15 @@ export function Passport({ g, onClose, onRoom }) {
       {ambitionProgress(g) && row('Wanted, at ten', `${ambitionProgress(g).label} · ${ambitionProgress(g).met ? 'got it' : `${Math.round(ambitionProgress(g).progress * 100)}%`}`, ambitionProgress(g).met ? theme.gold : undefined)}
       {/* Who thinks what: six standings read off the life, none of them kept. See meta/factions.js. */}
       {head('Who thinks what')}
-      {factions(g).map((f) => (<div key={f.id} style={{ padding: '5px 0', borderBottom: `1px solid ${theme.line}` }}>
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline' }}><span style={{ fontSize: 12.5, fontWeight: 800, color: f.score >= 70 ? theme.gold : f.score < 35 ? theme.bad : theme.text }}>{f.label}</span><span style={{ fontSize: 11, color: theme.muted }}>{f.score}</span></div>
-        <div style={{ height: 3, background: 'rgba(255,255,255,.08)', borderRadius: 2, margin: '4px 0 3px' }}><div style={{ width: `${f.score}%`, height: '100%', background: f.score >= 70 ? theme.gold : f.score < 35 ? theme.bad : theme.accent, borderRadius: 2 }} /></div>
-        <div style={{ fontSize: 11, color: theme.muted, lineHeight: 1.4 }}>{f.line}</div>
-      </div>))}
+      {factions(g).map((f) => { const tap = f.id === 'directors';
+        const inner = (<>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline' }}><span style={{ fontSize: 12.5, fontWeight: 800, color: f.score >= 70 ? theme.gold : f.score < 35 ? theme.bad : theme.text }}>{f.label}</span><span style={{ fontSize: 11, color: theme.muted }}>{f.score}{tap ? <span style={{ color: theme.accent, fontWeight: 800 }}> · the names ›</span> : null}</span></div>
+          <div style={{ height: 3, background: 'rgba(255,255,255,.08)', borderRadius: 2, margin: '4px 0 3px' }}><div style={{ width: `${f.score}%`, height: '100%', background: f.score >= 70 ? theme.gold : f.score < 35 ? theme.bad : theme.accent, borderRadius: 2 }} /></div>
+          <div style={{ fontSize: 11, color: theme.muted, lineHeight: 1.4 }}>{f.line}</div>
+        </>);
+        return tap
+          ? <button key={f.id} onClick={() => setDirectors(true)} style={{ display: 'block', width: '100%', textAlign: 'left', background: 'none', border: 'none', borderBottom: `1px solid ${theme.line}`, padding: '5px 0', color: 'inherit', font: 'inherit', cursor: 'pointer' }}>{inner}</button>
+          : <div key={f.id} style={{ padding: '5px 0', borderBottom: `1px solid ${theme.line}` }}>{inner}</div>; })}
       {/* Public image: the label the business has for you, and how firmly. See meta/typecast.js. */}
       {/* Not "Public image". This is the casting box — what the rooms have decided you are for
           — and calling it an image made a two-point television score read as the game's whole
