@@ -1,0 +1,122 @@
+// The directors you have history with (meta/yourDirectors.js): read off the phone, the grudges
+// and the work, never stored — and every door a row reports is the rule that door uses.
+import { yourDirectors, directorCounts, monthName, grudgeKind } from '../src/systems/meta/yourDirectors.js';
+import { FACTIONS } from '../src/systems/meta/factions.js';
+import { noteRefusal } from '../src/systems/meta/stories.js';
+import { walkOffSet, directsYouAgain } from '../src/systems/career/production.js';
+import { sendsOffers } from '../src/systems/career/offers.js';
+import { onTheBoard } from '../src/systems/career/tentpoles.js';
+import { ensureWorld } from '../src/systems/world/world.js';
+
+let fails = 0;
+const ok = (n, c, e = '') => { if (!c) { fails++; console.log('FAIL  ' + n + (e ? ' :: ' + e : '')); } else console.log('ok    ' + n); };
+const NOW = 2066 * 12 + 3;
+const dir = (over) => ({ id: 'd1', name: 'Rosalind Varga', role: 'Film Director', industryWeight: 80, relationship: 72, fromSet: 'Buried Hunger', ...over });
+const credit = (title, director, year) => ({ title, director, year, role: 'Lead', type: 'Feature Film', scale: 'feature', rating: 70 });
+const st = (over) => { const s = { version: 'x', name: 'Alex Moon', ageY: 44, stage: 'career', dream: 'actor', fame: 62, respect: 58, charisma: 58,
+  year: 2066, month: 3, timeline: [], filmography: [], productions: [], releases: [], offers: [], inbox: [], people: [], grudges: [],
+  awards: { wins: [], nominations: [] }, ...over }; ensureWorld(s); return s; };
+const row = (s, name) => yourDirectors(s).find((r) => r.name === name);
+
+// ── who is on the list ─────────────────────────────────────────────────────────
+{
+  const s = st({
+    people: [dir(), { id: 'f1', name: 'Juno Vance', role: 'friend', relationship: 62 }],
+    filmography: [credit('Buried Hunger', 'Rosalind Varga', 2064), credit('Salt Line', 'Rosalind Varga', 2061), credit('WellPlanned', 'Kaspar Hartigan', 2063)],
+    grudges: [{ who: 'Ines Okafor', title: 'Glass Harbour', scale: 'feature', since: NOW - 4, due: NOW + 12, until: NOW + 20, hit: false, gross: 0, opened: false }],
+  });
+  const rows = yourDirectors(s);
+  ok('every director with a history is listed once: the phone, a grudge, a credit', rows.map((r) => r.name).join('|') === 'Rosalind Varga|Ines Okafor|Kaspar Hartigan', rows.map((r) => r.name).join('|'));
+  ok('a friend in the phone is not a director', !row(s, 'Juno Vance'));
+  ok('films together is counted off the credits, by name', row(s, 'Rosalind Varga').films === 2 && row(s, 'Kaspar Hartigan').films === 1);
+  ok('and the last one is the latest year', row(s, 'Rosalind Varga').last.when === '2064' && row(s, 'Rosalind Varga').last.title === 'Buried Hunger');
+  ok('somebody you only refused has no films and no last', row(s, 'Ines Okafor').films === 0 && row(s, 'Ines Okafor').last === null);
+  ok('a director who is not in the phone says so, and has no warmth to show', !row(s, 'Kaspar Hartigan').inPhone && row(s, 'Kaspar Hartigan').state === null && /Not in your phone/.test(row(s, 'Kaspar Hartigan').line));
+  ok('nothing on the save was written to', !('directors' in s) && s.people.length === 2 && s.grudges.length === 1);
+}
+// ── a film in post and a set running now count as work together ────────────────
+{
+  const s = st({ people: [dir()], filmography: [credit('Buried Hunger', 'Rosalind Varga', 2064)],
+    releases: [{ id: 'r1', title: 'Low Tide', director: 'Rosalind Varga', due: NOW + 3 }] });
+  ok('a film in post is a film together', row(s, 'Rosalind Varga').films === 2);
+  ok('and it is the last thing you made together', row(s, 'Rosalind Varga').last.when === 'In post' && row(s, 'Rosalind Varga').last.title === 'Low Tide');
+  s.productions = [{ id: 'p1', title: 'North Window', crew: [{ name: 'Rosalind Varga', role: 'Director', bond: 60 }] }];
+  ok('a set running now beats both', row(s, 'Rosalind Varga').last.when === 'On set now' && row(s, 'Rosalind Varga').last.title === 'North Window');
+}
+// ── warm, neutral and cold are the bar's own split, and the counts explain the bar ─
+{
+  const people = [dir(), dir({ id: 'd2', name: 'Kaspar Hartigan', relationship: 30, fromSet: null }),
+    dir({ id: 'd3', name: 'Mira Croft', relationship: 8, cold: true }), dir({ id: 'd4', name: 'Odile Brandt', relationship: 50 }),
+    { id: 'c1', name: 'Pia Lund', role: 'Casting Director', relationship: 20 }];
+  const s = st({ people, grudges: [{ who: 'Mira Croft', title: 'Salt Line', since: NOW - 10, due: NOW + 9989, until: NOW + 50, opened: true }] });
+  ok('fifty and up is warm', row(s, 'Odile Brandt').state === 'warm' && row(s, 'Rosalind Varga').state === 'warm');
+  ok('below fifty is neutral', row(s, 'Kaspar Hartigan').state === 'neutral');
+  ok('cold is cold whatever the number', row(s, 'Mira Croft').state === 'cold');
+  ok('a casting director is counted, because the bar counts them', row(s, 'Pia Lund') && row(s, 'Pia Lund').state === 'neutral');
+  ok('warm first, then neutral, then cold', yourDirectors(s).map((r) => r.state).join(',') === 'warm,warm,neutral,neutral,cold');
+  const c = directorCounts(s);
+  const n = c.warm + c.neutral + c.cold;
+  const rebuilt = Math.max(0, Math.min(100, Math.round(50 + ((c.warm - c.cold) / Math.max(1, n)) * 45 - c.grudges * 12)));
+  ok('the counts on the screen rebuild the number on the bar', rebuilt === FACTIONS.directors.read(s).score, `${rebuilt} vs ${FACTIONS.directors.read(s).score}`);
+}
+// ── each line is the rule the door uses ────────────────────────────────────────
+{
+  const s = st({ people: [dir(), dir({ id: 'd2', name: 'Kaspar Hartigan', relationship: 30 }), dir({ id: 'd3', name: 'Mira Croft', relationship: 8, cold: true }),
+    { id: 'c1', name: 'Pia Lund', role: 'Casting Director', relationship: 20 }] });
+  const warm = row(s, 'Rosalind Varga').line, mid = row(s, 'Kaspar Hartigan').line, cold = row(s, 'Mira Croft').line;
+  ok('a warm director from a set comes back to direct you, starting where you left them', /direct you again \(the set starts at 72\)/.test(warm), warm);
+  ok('and will hear a pitch', /will hear a pitch/.test(warm), warm);
+  ok('below fifty the pitch is refused in collab.js’s own words', /well enough to ask\. Fifty, and you are at 30/.test(mid), mid);
+  ok('a cold one is not taking your calls', /not taking your calls/.test(cold) && !/can be behind/.test(cold), cold);
+  ok('a casting director does not make films, in collab.js’s words', /does not make films/.test(row(s, 'Pia Lund').line), row(s, 'Pia Lund').line);
+  // The doors against the predicates themselves, across a spread of states.
+  let agree = 0, total = 0;
+  for (const rel of [0, 10, 16, 30, 36, 49, 50, 80]) for (const cold of [false, true]) for (const fromSet of [null, 'A Set']) for (const g of [false, true]) {
+    const p = dir({ relationship: rel, cold, fromSet });
+    const t = st({ people: [p], grudges: g ? [{ who: p.name, title: 'X', since: NOW - 1, due: NOW + 10, until: NOW + 20, opened: false }] : [] });
+    const line = row(t, p.name).line;
+    total++;
+    if (/can be behind an offer/.test(line) === sendsOffers(t, p) && /direct you again/.test(line) === directsYouAgain(t, p)) agree++;
+  }
+  ok('the offer and set doors appear exactly when offers.js and production.js say they open', agree === total, `${agree}/${total}`);
+  const board = st({ people: [dir()], filmography: [{ ...credit('Hit', 'Someone Else', 2065), rating: 90, status: 'Hit' }] });
+  ok('the tentpole door appears when tentpoles.js would pick them and the board is open', onTheBoard(board, board.people[0]) && /tentpole on the board/.test(row(board, 'Rosalind Varga').line), row(board, 'Rosalind Varga').line);
+  // Weight under eighty, no hit: access.js keeps the board shut, so nobody is on it.
+  const shut = st({ people: [dir({ industryWeight: 70 })] });
+  ok('and not while the board is shut to you', onTheBoard(shut, shut.people[0]) && !/tentpole/.test(row(shut, 'Rosalind Varga').line), row(shut, 'Rosalind Varga').line);
+}
+// ── grudges, from the writers that file them ───────────────────────────────────
+{
+  ok('a month stamp reads as a month', monthName(2067 * 12 + 2) === 'Mar 2067' && monthName(2066 * 12) === 'Jan 2066');
+  // Passing on a lead from a named director (stories.js noteRefusal).
+  const s = st({ people: [dir()] });
+  noteRefusal(s, { director: 'Rosalind Varga', projectTitle: '⭐ Glass Harbour', scale: 'feature', tier: 'lead' });
+  const g = row(s, 'Rosalind Varga').grudge;
+  ok('a refusal is a grudge on the row, with its reason', g && g.kind === 'passed' && /passed on "Glass Harbour"/.test(g.reason), JSON.stringify(g));
+  ok('before the film opens both dates are given, so the hit is not given away', g.expires === `Until ${monthName(NOW + 24)} — ${monthName(NOW + 60)} if "Glass Harbour" is a hit`, g.expires);
+  s.grudges[0].opened = true;
+  ok('once it has opened the date is the real one', row(s, 'Rosalind Varga').grudge.expires === `Until ${monthName(s.grudges[0].until)}`, row(s, 'Rosalind Varga').grudge.expires);
+  // Walking off their set (production.js walkOffSet).
+  const w = st({ people: [dir({ id: 'd2', name: 'Kaspar Hartigan', relationship: 40 })] });
+  const set = { id: 'p9', title: 'North Window', scale: 'feature', episodes: 0, crew: [{ name: 'Kaspar Hartigan', role: 'Director', bond: 40 }] };
+  w.productions = [set]; w.production = set;
+  walkOffSet(w, 'p9');
+  const kw = row(w, 'Kaspar Hartigan');
+  ok('walking off is a five-year grudge, and they are cold', kw.grudge && kw.grudge.kind === 'walked' && kw.state === 'cold' && kw.grudge.expires === `Until ${monthName(NOW + 60)}`, JSON.stringify(kw.grudge));
+  // The door shut on the record (stories.js burnTheBridge) — written here the way it writes it.
+  const b = { who: 'Mira Croft', title: 'Night Shift', since: NOW, due: NOW + 9999, until: NOW + 9999, opened: true };
+  ok('a door shut on the record is for good', grudgeKind(b) === 'shut' && row(st({ grudges: [b] }), 'Mira Croft').grudge.expires === 'For good');
+  // Expired: holdsAGrudge stops at until, and so does the screen.
+  const old = st({ people: [dir()], grudges: [{ who: 'Rosalind Varga', title: 'Old', since: NOW - 30, due: NOW - 10, until: NOW - 6, opened: true }] });
+  ok('a grudge that has run out is not shown', row(old, 'Rosalind Varga').grudge === null);
+}
+// ── an old save with none of it ────────────────────────────────────────────────
+{
+  const bare = { year: 2040, month: 0 };
+  let rows = null, threw = null;
+  try { rows = yourDirectors(bare); } catch (e) { threw = e.message; }
+  ok('a save with no phone, no grudges and no work has an empty list and does not throw', !threw && Array.isArray(rows) && rows.length === 0, threw || '');
+}
+
+console.log(fails ? `\n${fails} failed` : '\nall passed');
+process.exit(fails ? 1 : 0);
