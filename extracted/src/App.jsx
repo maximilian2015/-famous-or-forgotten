@@ -23,22 +23,19 @@ import { knownFor, isHit, isFlop, theHits, theFlops } from './systems/meta/known
 import { liveBubbles, backTheCampaign, canBack as canBackShow, BACK_COST } from './systems/career/bubble.js';
 import { liveEndorsement, dutiesDue, attendDuty, canAttend as canAttendDuty } from './systems/career/endorsement.js';
 import { heirLine } from './systems/life/origin.js';
-import { liveStandoff, takeTheRoom, askFor, walkTheRoom, walkCost, roomDue, canPush, PUSH_COST } from './systems/career/standoff.js';
+import { liveStandoff, roomDue } from './systems/career/standoff.js';
 import { openSeason, askerLine, campaignable, canCampaign, startCampaign, campaignKind,
   liveCampaign, ownCampaignCost, CAMPAIGN_ENERGY, CAMPAIGN_MONTHS } from './systems/career/awards.js';
 import { townOpen, townFor, goOut } from './systems/life/town.js';
 import { labelInfo, activeLabels, isStrong } from './systems/meta/typecast.js';
-import { liveRisks } from './systems/meta/risk.js';
 import { activeStories } from './systems/meta/stories.js';
 import { ambitionProgress } from './systems/meta/ambition.js';
 import { rename as renameProject, canRename, whyNot, TITLE_MAX } from './systems/career/naming.js';
-import { goals } from './systems/meta/goals.js';
 import { resolveScene, sceneState, approachesFor, chooseApproach, autoQuality, rulesFor } from './systems/career/scenes.js';
 import { RhythmLine, HoldZone, KeySequence, QuickPick } from './ui/components/SceneGames.jsx';
 import { Chronology, ScriptLines, Motive } from './ui/components/SceneLogic.jsx';
 import { FrameCheck, FindTheLight, TheAssembly, WhoSaysIt, TakeSheet } from './ui/components/ScenePuzzles.jsx';
 import { chronologyFor, linesFor, motiveFor, assemblyFor, readFor } from './systems/career/scenework.js';
-import { priceLine } from './systems/meta/price.js';
 import { hype, hypeSource, SOURCES } from './systems/meta/hype.js';
 import { tendency } from './systems/meta/typecast.js';
 import { TimingBar } from './ui/components/TimingBar.jsx';
@@ -64,7 +61,6 @@ import { Phone } from './phone/Phone.jsx';
 import { an, count } from './engine/text.js';
 import { inCareer } from './engine/stage.js';
 import { hostName } from './systems/life/dating.js';
-import { onCooldown } from './engine/cooldown.js';
 import { comboOf, COMBOS, agentDropped } from './systems/meta/standing.js';
 import { theme, setSkin, skinId, onSkinChange } from './ui/theme.js';
 import { THEMES, THEME_ORDER } from './ui/skins.js';
@@ -74,9 +70,9 @@ import { Button } from './ui/components/Button.jsx';
 import { Card } from './ui/components/Card.jsx';
 import { Stat } from './ui/components/Stat.jsx';
 import { Poster } from './ui/components/Poster.jsx';
-import { Avatar, Garment } from './ui/components/Avatar.jsx';
-import { PARTIES, PARTY_ORDER, partyRisk, canThrowParty, throwParty } from './systems/life/party.js';
-import { lookOf, lookOfPerson, companionOf, HAIRSTYLES, hairChoices, HAIR_COLORS, EYE_COLOURS, LIPS, OUTFITS, OUTFIT_ORDER, SKINS, wearOutfit } from './systems/life/appearance.js';
+import { Avatar } from './ui/components/Avatar.jsx';
+import { lookOf, lookOfPerson, companionOf, HAIRSTYLES, hairChoices, HAIR_COLORS, EYE_COLOURS, LIPS,
+  OUTFITS, OUTFIT_ORDER, SKINS } from './systems/life/appearance.js';
 import { classOf } from './systems/life/origin.js';
 import { HOME_PRICE, canBuyHome, buyHome, sellHome, STAFF, STAFF_ORDER, hasStaff, canHire, hire, fire, staffBill,
   THINGS, THING_ORDER, owns, canBuyThing, buyThing, sellThing, resaleOf, upkeepBill,
@@ -94,6 +90,9 @@ import { DepressionCard } from './ui/components/DepressionCard.jsx';
 import { MentalScreen } from './ui/components/MentalScreen.jsx';
 import { UltimatumModal } from './ui/components/UltimatumModal.jsx';
 import { GenreScreen } from './ui/components/GenreScreen.jsx';
+import { RoomModal } from './ui/components/RoomModal.jsx';
+import { RoomScreen } from './ui/components/RoomScreen.jsx';
+import { StandingCard } from './ui/components/StandingCard.jsx';
 // Big moments live on state so a system can raise one; the UI only clears it.
 function clearBigMoment(s) {
   // The paper that came back opens itself once you have read the answer.
@@ -754,48 +753,6 @@ function CheckpointModal({ g }) {
         </>)
   ), shown ? 'A few seconds.' : 'Concentration is the first thing this takes. This is the one that asks for it back.');
 }
-// What you are working toward, and the one next thing that would move each. Three at a
-// time, the urgent ones first. See systems/meta/goals.js.
-// Where you stand: what is biting, and what you are climbing toward, in one card. Every
-// row carries the one next thing that moves it, and when that thing is an action the game
-// has, the row does it. See meta/risk.js, meta/goals.js and meta/price.js.
-function StandingCard({ g }) {
-  const risks = liveRisks(g).slice(0, 2);
-  const price = priceLine(g);
-  const board = goals(g).slice(0, 2);
-  if (!risks.length && !price && !board.length) return null;
-  const canRest = availableActions(g).some((x) => x.id === 'rest');
-  const canQuiet = availableActions(g).some((x) => x.id === 'quiet');
-  // The two pieces of advice the game can carry out for you.
-  const actionFor = (fix) => (/month with nothing on the calendar|month off/i.test(fix) && canRest ? ['rest', 'Take the month off']
-    : /out of sight/i.test(fix) && canQuiet ? ['quiet', 'Go out of sight'] : null);
-  const row = (key, label, tone, detail, fix) => {
-    const act = fix ? actionFor(fix) : null;
-    return (<div key={key} style={{ padding: '6px 0', borderTop: key === 'first' ? 'none' : `1px solid ${theme.line}` }}>
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', gap: 10 }}>
-        <div style={{ fontSize: 12.5, fontWeight: 800, color: tone }}>{label}</div>
-        {detail && <div style={{ fontSize: 10.5, color: theme.muted, flex: 'none' }}>{detail}</div>}
-      </div>
-      {fix && <div style={{ fontSize: 11.5, color: theme.muted, lineHeight: 1.45, marginTop: 2 }}>→ {fix}</div>}
-      {act && <button onClick={() => dispatch(runAction, act[0])} style={{ marginTop: 5, border: 'none', borderRadius: 9, padding: '6px 11px', fontSize: 11.5, fontWeight: 800, cursor: 'pointer', background: 'rgba(255,209,102,.18)', color: theme.gold }}>{act[1]} · {COST.careerAction} energy</button>}
-    </div>);
-  };
-  let first = true;
-  const mark = () => { const k = first ? 'first' : ''; first = false; return k; };
-  return (<Card style={{ marginBottom: 14, borderColor: risks.some((r) => r.level === 2) ? 'rgba(255,90,122,.4)' : theme.line }}>
-    <div style={{ fontSize: 11, fontWeight: 900, letterSpacing: '.09em', textTransform: 'uppercase', color: theme.muted, marginBottom: 4 }}>Where you stand</div>
-    {risks.map((r) => row(mark() + r.id, r.label, r.level === 2 ? theme.bad : theme.gold, r.level === 2 ? 'about to bite' : 'worth watching', r.fix))}
-    {price && row(mark() + 'price', price.label, theme.text, 'the price of the name', price.fix)}
-    {board.map((x) => (<div key={x.id} style={{ padding: '6px 0', borderTop: `1px solid ${theme.line}` }}>
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', gap: 10 }}>
-        <div style={{ fontSize: 12.5, fontWeight: 800 }}>{x.label}</div>
-        {x.now && <div style={{ fontSize: 10.5, color: theme.muted, flex: 'none' }}>{x.now}</div>}
-      </div>
-      {x.progress != null && <div style={{ height: 3, background: 'rgba(255,255,255,.08)', borderRadius: 2, margin: '4px 0 3px' }}><div style={{ width: `${Math.round(x.progress * 100)}%`, height: '100%', background: theme.accent, borderRadius: 2 }} /></div>}
-      <div style={{ fontSize: 11.5, color: theme.muted, lineHeight: 1.45 }}>→ {x.next}</div>
-    </div>))}
-  </Card>);
-}
 const SKIP_WHY = {
   'a day on set': 'they need you on set',
   'an offer': 'something came in',
@@ -809,106 +766,6 @@ const SKIP_WHY = {
   mental: 'you stopped being all right',
   life: 'it ended',
 };
-
-// The afternoon itself. Maxi: "a letter comes, a meeting with the producers, a date on the
-// calendar — what day, what month — and then a window opens, music, little figures at a
-// table." It is a room rather than a card because everything about the season is waiting on
-// it, and because a card is something you scroll past. career/standoff.js
-function RoomModal({ g }) {
-  const k = liveStandoff(g);
-  if (!k) return null;
-  const fit = canPush(g);
-  return (<div style={{ position: 'fixed', inset: 0, background: 'rgba(8,5,20,.94)', zIndex: 70,
-    display: 'flex', alignItems: 'flex-start', justifyContent: 'center', padding: 16, overflowY: 'auto', color: theme.text }}>
-    <div style={{ maxWidth: 460, width: '100%', marginTop: 24 }}>
-
-      {/* The table, seen from the door. */}
-      <div style={{ textAlign: 'center', marginBottom: 14 }}>
-        <div style={{ fontSize: 34, letterSpacing: 6 }}>🪑🪑🪑🪑</div>
-        <div style={{ fontFamily: FONT_DISPLAY, fontSize: 23, fontWeight: 700, marginTop: 6 }}>The meeting</div>
-        <div style={{ fontSize: 12.5, color: theme.muted, marginTop: 2 }}>
-          "{k.title}" · season {k.season + 1}
-        </div>
-      </div>
-
-      {/* Who is in it. */}
-      <Card style={{ marginBottom: 10 }}>
-        {k.chairs.map((c, i) => (
-          <div key={i} style={{ fontSize: 11.5, lineHeight: 1.5, color: theme.muted, padding: '2px 0' }}>
-            <span style={{ fontWeight: 800, color: theme.text }}>{c.who}</span> — {c.line}
-          </div>
-        ))}
-      </Card>
-
-      {/* The only number anybody at that table cares about. */}
-      {k.because && <Card style={{ marginBottom: 10 }}>
-        <div style={{ fontSize: 11.5, lineHeight: 1.5, color: k.grew ? theme.good : theme.muted }}>📈 {k.because}</div>
-      </Card>}
-
-      {/* What your agent says on the way in. Every line is a real thing agents weigh, and
-          seeing them is most of what makes this a decision rather than a menu. */}
-      {!!(k.leverage || []).length && <Card style={{ marginBottom: 10 }}>
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', marginBottom: 5 }}>
-          <span style={{ fontSize: 11, fontWeight: 900, letterSpacing: '.08em', textTransform: 'uppercase', color: theme.muted }}>Your leverage</span>
-          <span style={{ fontSize: 11, color: theme.muted }}>replacing you: <b style={{ color: k.dependency >= 65 ? theme.gold : theme.text }}>{k.replacement}</b></span>
-        </div>
-        {k.leverage.map((l, i) => (
-          <div key={i} style={{ display: 'flex', justifyContent: 'space-between', fontSize: 11.5, lineHeight: 1.6 }}>
-            <span style={{ color: theme.muted }}>{l.what}</span>
-            <span style={{ fontWeight: 900, letterSpacing: 1, color: l.mark.startsWith('-') ? theme.bad : l.mark === '·' ? theme.muted : theme.good }}>{l.mark}</span>
-          </div>
-        ))}
-      </Card>}
-
-      {/* What they have brought with them. */}
-      <Card style={{ marginBottom: 10, borderColor: 'rgba(255,209,102,.4)' }}>
-        <div style={{ fontSize: 11, fontWeight: 900, letterSpacing: '.08em', textTransform: 'uppercase', color: theme.gold, marginBottom: 5 }}>On the table</div>
-        {k.terms.map((t, i) => <div key={i} style={{ fontSize: 12.5, lineHeight: 1.55 }}>· {t}</div>)}
-        <div style={{ fontSize: 11.5, color: theme.muted, marginTop: 6, lineHeight: 1.45 }}>{k.mood}</div>
-      </Card>
-
-      {/* One thing, once. */}
-      {!k.asked && <Card style={{ marginBottom: 10 }}>
-        <div style={{ fontSize: 11, fontWeight: 900, letterSpacing: '.08em', textTransform: 'uppercase', color: fit.ok ? theme.muted : theme.bad, marginBottom: 5 }}>
-          Ask for one thing · {PUSH_COST} energy
-        </div>
-        {/* The reason goes ABOVE the list, where it is read before the pressing rather than
-            after it. Underneath, it read as a footnote to buttons that looked live. */}
-        {!fit.ok && fit.why && <div style={{ fontSize: 11.5, color: theme.bad, lineHeight: 1.45, marginBottom: 7 }}>{fit.why}</div>}
-        {k.asks.map((x) => (
-          <button key={x.id} onClick={() => dispatch(askFor, x.id)} disabled={!fit.ok}
-            style={{ width: '100%', textAlign: 'left', border: 'none', borderRadius: 10, padding: '8px 11px', marginBottom: 5,
-              cursor: fit.ok ? 'pointer' : 'not-allowed', opacity: fit.ok ? 1 : 0.45,
-              background: fit.ok ? 'rgba(158,116,255,.15)' : 'rgba(120,110,150,.12)', color: fit.ok ? '#d9cffa' : '#6b6390' }}>
-            <div style={{ fontSize: 12.5, fontWeight: 800 }}>{x.label}</div>
-            <div style={{ fontSize: 11, opacity: .8, lineHeight: 1.4, marginTop: 1 }}>{x.ask}</div>
-          </button>
-        ))}
-      </Card>}
-      {k.asked && <div style={{ fontSize: 11.5, color: k.gave ? theme.good : theme.muted, lineHeight: 1.5, marginBottom: 10 }}>
-        {k.gave ? 'They gave you that. Everything on the table is what you leave with.' : 'You asked. They did not move. What is on the table is what is on the table.'}
-      </div>}
-
-      <div style={{ display: 'flex', gap: 8 }}>
-        <button onClick={() => dispatch(takeTheRoom)} style={{ flex: 2, border: 'none', borderRadius: 12, padding: '13px', fontSize: 14, fontWeight: 800,
-          cursor: 'pointer', background: `linear-gradient(135deg,${theme.gold},#c9962f)`, color: '#1a1206' }}>Shake on it</button>
-        <button onClick={() => dispatch(walkTheRoom)} style={{ flex: 1, border: `1px solid ${theme.line}`, borderRadius: 12, padding: '13px', fontSize: 13, fontWeight: 800,
-          cursor: 'pointer', background: 'transparent', color: theme.bad }}>Walk out</button>
-      </div>
-      {/* What it costs YOU, said before the pressing rather than discovered after it. The old
-          line here was about what happens to the SHOW, which is not the part a player needs to
-          weigh. career/standoff.js walkCost. */}
-      {(() => { const c = walkCost(g, (g.offers || []).find((o) => o.id === (g.standoff || {}).offerId));
-        return (<div style={{ marginTop: 10, padding: '9px 11px', borderRadius: 10,
-          background: c.band === 'theirs' ? 'rgba(255,90,122,.10)' : 'rgba(255,255,255,.04)',
-          border: `1px solid ${c.band === 'theirs' ? 'rgba(255,90,122,.35)' : theme.line}` }}>
-          <div style={{ fontSize: 10, fontWeight: 900, letterSpacing: '.08em', textTransform: 'uppercase',
-            color: c.band === 'theirs' ? theme.bad : theme.muted, marginBottom: 4 }}>If you walk</div>
-          {c.lines.map((l, i) => (<div key={i} style={{ fontSize: 11.5, color: theme.muted, lineHeight: 1.5 }}>· {l}</div>))}
-        </div>); })()}
-    </div>
-  </div>);
-}
 
 // The room where it gets decided. Maxi, five seasons into his own show and beaten on the
 // fee five times: "if you cannot agree there is a meeting, you are invited, and you decide
@@ -1156,163 +1013,6 @@ function CareerScreen({ g, teenOnly }) {
     {tab === 'training' && <TrainingScreen g={g} />}
     {tab === 'credits' && <CreditsList g={g} credits={credits} label={creditsLabel} />}
     {tab === 'events' && <EventsScreen g={g} />}
-  </div>);
-}
-function PartySection({ g }) {
-  const [open, setOpen] = useState(false);
-  const blocked = canThrowParty(g);
-  if (blocked) return <Card><div style={{ fontSize: 12, color: theme.muted, lineHeight: 1.6 }}>{blocked}</div></Card>;
-  if (!open) return (<Card>
-    <div style={{ fontSize: 11.5, color: theme.muted, marginBottom: 9, lineHeight: 1.5 }}>
-      Fill the place with people. How loud you go decides whether it ends with a good morning or two officers at the door.
-    </div>
-    <Button kind="pri" onClick={() => setOpen(true)}>Have people over ›</Button>
-  </Card>);
-  return (<div style={{ display: 'grid', gap: 8 }}>
-    {g.production && <div style={{ fontSize: 11.5, color: theme.bad, background: 'rgba(255,106,138,.10)', border: '1px solid rgba(255,106,138,.35)', borderRadius: 10, padding: '8px 11px', marginBottom: 10, lineHeight: 1.5 }}>
-      You are shooting {g.production.title}. A party tonight is a call you are late for tomorrow — the set loses a few points and {g.production.crew[0].name} notices. More if you drink.
-    </div>}
-    {PARTY_ORDER.map((key) => { const p = PARTIES[key]; const risk = partyRisk(g, key);
-      const broke = (g.cash || 0) < p.cost; const noEnergy = !canAfford(g, key === 'drinks' ? COST.party : key === 'proper' ? COST.partyBig : COST.partyHuge);
-      return (<Card key={key}>
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline' }}>
-          <div style={{ fontSize: 13.5, fontWeight: 800 }}>{p.label}</div>
-          <div style={{ fontSize: 12, fontWeight: 800, color: theme.gold }}>€{p.cost.toLocaleString()}</div>
-        </div>
-        <div style={{ fontSize: 11.5, color: theme.muted, margin: '3px 0 7px' }}>{p.blurb}</div>
-        <div style={{ display: 'flex', gap: 5, flexWrap: 'wrap', marginBottom: 8 }}>
-          <span style={{ fontSize: 10.5, fontWeight: 800, padding: '3px 7px', borderRadius: 7, background: 'rgba(95,206,138,.14)', color: theme.good }}>mental +</span>
-          <span style={{ fontSize: 10.5, fontWeight: 800, padding: '3px 7px', borderRadius: 7, background: 'rgba(95,206,138,.14)', color: theme.good }}>closeness +</span>
-          <span style={{ fontSize: 10.5, fontWeight: 800, padding: '3px 7px', borderRadius: 7,
-            background: risk > 45 ? 'rgba(255,106,138,.16)' : 'rgba(255,209,102,.14)', color: risk > 45 ? theme.bad : theme.gold }}>{risk}% police</span>
-        </div>
-        <Button kind="pri" disabled={broke || noEnergy || onCooldown(g, 'party')} onClick={() => { dispatch(throwParty, key); setOpen(false); }}>
-          {broke ? 'You cannot afford it' : noEnergy ? 'No energy left' : 'Open the door'}
-        </Button>
-      </Card>); })}
-    <div style={{ fontSize: 11, color: theme.muted, textAlign: 'center', padding: '2px 8px 0', lineHeight: 1.55 }}>
-      Thick walls swallow noise. A rented room does not, and the landlord lives downstairs.
-    </div>
-    <Button onClick={() => setOpen(false)}>Not tonight</Button>
-  </div>);
-}
-// Where the player actually lives, with the figure standing in it and everything they
-// own on the shelf. The wardrobe, the medicine, the rent, the parties — one place.
-// One statuette per win, standing on a real shelf. Winning something and only ever
-// seeing it as a number on a results screen is not the same as owning it.
-function AskerShelf({ g }) {
-  const wins = g.awards?.wins || [];
-  const noms = (g.awards?.nominations || []).length;
-  if (!wins.length && !noms) return null;
-  return (<div style={{ marginTop: 16 }}>
-    <div style={{ fontSize: 11, fontWeight: 900, letterSpacing: '.09em', textTransform: 'uppercase', color: theme.gold, marginBottom: 6 }}>
-      The mantelpiece
-    </div>
-    <Card>
-      {wins.length > 0 ? (<>
-        <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap', justifyContent: 'center', padding: '4px 0 10px' }}>
-          {wins.slice(0, 8).map((w, i) => (
-            <svg key={i} viewBox="0 0 40 64" style={{ width: 34, height: 54 }}>
-              <circle cx="20" cy="12" r="7" fill={theme.gold} />
-              <path d="M14 19 L26 19 L24 46 L16 46 Z" fill={theme.gold} />
-              <path d="M14 20 L7 34 M26 20 L33 34" stroke={theme.gold} strokeWidth="3" strokeLinecap="round" />
-              <path d="M11 46 L29 46 L31 58 L9 58 Z" fill="#3a3068" stroke={theme.gold} strokeWidth="1.4" />
-            </svg>
-          ))}
-        </div>
-        {wins.slice(0, 8).map((w, i) => (
-          <div key={i} style={{ display: 'flex', justifyContent: 'space-between', fontSize: 12, padding: '5px 0', borderTop: `1px solid ${theme.line}` }}>
-            <span style={{ fontWeight: 700 }}>{w.title}</span>
-            <span style={{ color: theme.muted }}>{w.year}</span>
-          </div>
-        ))}
-      </>) : (
-        <div style={{ fontSize: 12.5, color: theme.muted, lineHeight: 1.6 }}>
-          {noms === 1 ? 'One nomination, no statuette. The certificate is in a drawer somewhere.'
-            : `${noms} nominations and nothing to put on it yet. People have started to notice.`}
-        </div>
-      )}
-    </Card>
-  </div>);
-}
-function RoomScreen({ g, onBack }) {
-  const meds = g.meds || {};
-  const owned = g.look?.owned || ['tee'];
-  const h = HOUSING[g.housing || 'room'];
-  const wall = g.homeless ? '#171232' : g.inheritedHome ? '#2b2450' : ['room', 'studio'].includes(g.housing || 'room') ? '#241d46' : '#2d2657';
-  const line = { display: 'flex', justifyContent: 'space-between', fontSize: 12.5, padding: '7px 0', borderBottom: `1px solid ${theme.line}` };
-  return (<div style={{ position: 'fixed', inset: 0, background: `linear-gradient(180deg, ${theme.bg}, ${theme.bgDeep})`, zIndex: 40, overflowY: 'auto' }}>
-    <div style={{ maxWidth: 440, margin: '0 auto', padding: 16, paddingBottom: 110 }}>
-      <div style={{ fontSize: 11, fontWeight: 900, letterSpacing: '.1em', textTransform: 'uppercase', color: theme.accent, marginBottom: 10 }}>Your room</div>
-
-      <div style={{ background: wall, border: `1px solid ${theme.line}`, borderRadius: 16, padding: '14px 12px 0', position: 'relative', overflow: 'hidden' }}>
-        <svg viewBox="0 0 200 120" style={{ width: '100%', display: 'block' }}>
-          {g.homeless ? (<>
-            <path d="M10 108 L190 108" stroke="#3a3160" strokeWidth="3" strokeLinecap="round" />
-            <g transform="translate(158 20)"><path d="M0 0 L0 88" stroke="#4a3f7a" strokeWidth="3" /><circle cx="0" cy="0" r="6" fill="#ffd166" opacity=".85" /></g>
-            <rect x="24" y="92" width="30" height="16" rx="3" fill="#3a3160" />
-          </>) : (<>
-            <rect x="0" y="0" width="200" height="96" fill="none" />
-            <path d="M0 96 L200 96" stroke="#4a3f7a" strokeWidth="2" />
-            <rect x="14" y="30" width="34" height="30" rx="3" fill="#ffd166" opacity=".14" stroke="#5c4f92" strokeWidth="1.5" />
-            <path d="M31 30 L31 60 M14 45 L48 45" stroke="#5c4f92" strokeWidth="1.2" />
-            <rect x="150" y="62" width="38" height="34" rx="2" fill="#1f1a3e" stroke="#5c4f92" strokeWidth="1.5" />
-            <path d="M169 62 L169 96" stroke="#5c4f92" strokeWidth="1.2" />
-            <rect x="62" y="78" width="34" height="18" rx="3" fill="#332b5e" stroke="#5c4f92" strokeWidth="1.2" />
-            {['flat', 'house', 'penthouse'].includes(g.housing) && <rect x="104" y="70" width="30" height="26" rx="2" fill="#241f47" stroke="#5c4f92" strokeWidth="1.2" />}
-            {(g.fame || 0) >= 55 && <><rect x="120" y="26" width="26" height="34" rx="2" fill="#3a2f6e" stroke={theme.gold} strokeWidth="1.2" /><circle cx="133" cy="38" r="5" fill={theme.gold} opacity=".5" /></>}
-          </>)}
-          <g transform="translate(76 32)"><Avatar look={lookOf(g)} size={64} /></g>
-        </svg>
-      </div>
-
-      <Card style={{ marginTop: 12 }}>
-        <div style={{ fontSize: 15, fontWeight: 900 }}>
-          {g.homeless ? 'Nowhere' : !g.hasApartment ? "Your parents' place" : h.label}{g.inheritedHome ? ' · yours outright' : ''}
-        </div>
-        <div style={{ fontSize: 11.5, color: theme.muted, marginTop: 3, lineHeight: 1.5 }}>
-          {g.homeless ? `${g.monthsOnStreet || 0} month${(g.monthsOnStreet || 0) === 1 ? '' : 's'} out here. A room costs €750 and it is the only way back in.`
-            : !g.hasApartment ? 'Your old room, more or less how you left it.'
-            : g.inheritedHome ? 'No rent, ever again. It came the hard way.' : h.perk}
-        </div>
-        {g.hasApartment && !g.inheritedHome && (<div style={{ ...line, borderBottom: 'none', paddingBottom: 0, marginTop: 8 }}>
-          <span style={{ color: theme.muted }}>Rent</span>
-          <span style={{ fontWeight: 800, color: (g.rentMissed || 0) > 0 ? theme.bad : theme.gold }}>
-            €{h.cost.toLocaleString()}/mo{(g.rentMissed || 0) > 0 ? ' · one month behind' : ''}
-          </span>
-        </div>)}
-      </Card>
-
-      {/* What you actually won, in the room, where you can look at it. */}
-      <AskerShelf g={g} />
-
-      <div style={{ fontSize: 11, fontWeight: 900, letterSpacing: '.09em', textTransform: 'uppercase', color: theme.muted, margin: '16px 0 6px' }}>On the shelf</div>
-      <Card>
-        {Object.entries(PILLS).filter(([k]) => (meds[k] || 0) > 0).length === 0
-          ? <div style={{ fontSize: 12, color: theme.muted }}>No medicine. The Shop app sells the basics.</div>
-          : Object.entries(PILLS).map(([k, p]) => (meds[k] || 0) > 0 && (<div key={k} style={line}>
-              <span>{p.label}</span><span style={{ fontWeight: 800, color: theme.good }}>{meds[k]}</span>
-            </div>))}
-      </Card>
-
-      <div style={{ fontSize: 11, fontWeight: 900, letterSpacing: '.09em', textTransform: 'uppercase', color: theme.muted, margin: '16px 0 6px' }}>Your wardrobe</div>
-      <Card>
-        <div style={{ fontSize: 11.5, color: theme.muted, marginBottom: 10 }}>Tap to change into it. New clothes are in the Shop app.</div>
-        <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
-          {owned.map((k) => { const on = (g.look?.outfit || 'tee') === k;
-            return (<div key={k} onClick={() => dispatch(wearOutfit, k)} style={{ textAlign: 'center', background: theme.panel2, borderRadius: 10, padding: '8px 6px 5px', cursor: 'pointer',
-              border: on ? `1px solid ${theme.gold}` : `1px solid ${theme.line}`, width: 82 }}>
-              <Garment id={k} skin={lookOf(g).skin} size={58} style={{ margin: '0 auto' }} />
-              <div style={{ fontSize: 9.5, color: on ? theme.gold : theme.muted, marginTop: 4, lineHeight: 1.25 }}>{OUTFITS[k]?.label || k}{on ? ' · on' : ''}</div>
-            </div>); })}
-        </div>
-      </Card>
-
-      <div style={{ fontSize: 11, fontWeight: 900, letterSpacing: '.09em', textTransform: 'uppercase', color: theme.muted, margin: '16px 0 6px' }}>Have people over</div>
-      <PartySection g={g} />
-
-      <Button onClick={onBack} style={{ marginTop: 18 }}>Close the door</Button>
-    </div>
   </div>);
 }
 function OriginCard({ g }) {

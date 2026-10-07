@@ -29,6 +29,8 @@ import path from 'path';
 import { fileURLToPath } from 'url';
 import { visibleApps } from '../src/phone/apps/registry.js';
 import { callTheRoom } from '../src/systems/career/standoff.js';
+import { signEndorsement } from '../src/systems/career/endorsement.js';
+import { hangIt } from '../src/systems/career/bubble.js';
 
 const gameDir = fileURLToPath(new URL('../', import.meta.url));
 const HTML = path.join(gameDir, 'dist/game.html');
@@ -299,6 +301,23 @@ await inState('The drink ultimatum', { drink: { level: 62, thisMonth: false,
 await inState('The first day', { productions: [{ ...SET, take: undefined, takeWon: undefined }],
   production: { ...SET, take: undefined, takeWon: undefined } }, /They listen to standing, not volume/);
 await inState('The end of a life', { alive: false, ageY: 81, year: 2103, causeOfDeath: 'old age' }, /A life, ended/);
+// The cards on Home that draw only when there is something to say. Where you stand is about
+// the save as it is; the other three need the state their own system writes.
+await inState('Home · where you stand', {}, /Where you stand/);
+// An awards campaign is offered only for this year's work that rated well enough, before the
+// nominations; a brand deal and a season on the bubble are written by the systems that sign them.
+await inState('Home · for your consideration', { filmography: [...save.filmography,
+  { title: 'The Long Quiet', role: 'Lead', type: 'Feature Film', genre: 'Drama', year: 2066, scale: 'feature',
+    rating: 82, score: 8.2, status: 'Well-received', verdict: 'profitable', critical: 'acclaimed', tier: 'lead',
+    director: 'Vera Salazar', running: false }] }, /For your consideration/);
+{
+  const s = JSON.parse(JSON.stringify(save));
+  signEndorsement(s, { projectTitle: 'Brand Campaign — the face of Maison Lune', from: 'Maison Lune', salary: 1500000, brandFor: 12 });
+  await inState('Home · the brand deal', { endorsement: s.endorsement }, /Maison Lune/);
+  const t = JSON.parse(JSON.stringify(save));
+  hangIt(t, t.filmography[2], { title: 'Night Shift · Season 4', role: 'Series regular' }, 48);
+  await inState('Home · a season on the bubble', { bubbles: t.bubbles }, /Nobody has decided/);
+}
 
 console.log();
 console.log('      covered (' + seen.length + '): ' + seen.join(', '));
