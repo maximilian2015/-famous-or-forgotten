@@ -5,8 +5,27 @@
 // insurers, the stories, the phone, the hit), so it cannot drift from the life it describes.
 import { insurability } from '../life/strain.js';
 import { hype, hypeSource } from './hype.js';
+import { grudgeEnds, monthName } from './yourDirectors.js';
 
 const clamp = (v) => Math.max(0, Math.min(100, Math.round(v)));
+// Who holds a grudge, said as it is. This printed "will not call you again" for a grudge with
+// twenty-three months left; only the kind said on the record (stories.js burnTheBridge) never
+// ends. Nor is it "will not call you until": a walk-off leaves them cold as well, and cold
+// outlasts the grudge. So the sentence is the grudge and its date — the same date the Directors
+// screen prints, read by the same function (yourDirectors.js grudgeEnds).
+function grudgeLine(live, now) {
+  const read = live.map((g) => ({ who: g.who, ...grudgeEnds(g, now) }));
+  const timed = read.filter((x) => !x.forGood), good = read.length - timed.length;
+  const maybeLonger = timed.some((x) => x.unknown);
+  if (read.length === 1) {
+    const x = read[0];
+    return x.forGood ? `${x.who} will not work with you again. The business is small.`
+      : `${x.who} holds a grudge until ${monthName(x.ends)}${x.unknown ? ', or longer if the film is a hit' : ''}. The business is small.`;
+  }
+  if (!timed.length) return `${good} directors will not work with you again. The business is small.`;
+  const last = Math.max(...timed.map((x) => x.ends));
+  return `${read.length} directors hold a grudge${good ? ` — ${good} of them for good` : `, the last of them until ${monthName(last)}${maybeLonger ? ' or later' : ''}`}. The business is small.`;
+}
 const stamp = (s) => (s.year || 0) * 12 + (s.month || 0);
 const recent = (s, n = 5) => (s.filmography || []).filter((c) => !c.minor && !c.running).slice(0, n);
 
@@ -43,11 +62,11 @@ export const FACTIONS = {
   directors: { label: 'The directors', read: (s) => {
     const ds = (s.people || []).filter((p) => /Director/.test(p.role || ''));
     const now = stamp(s);
-    const grudges = (s.grudges || []).filter((g) => g.until > now).length;
+    const live = (s.grudges || []).filter((g) => g.until > now), grudges = live.length;
     if (!ds.length && !grudges) return { score: 50, line: 'Nobody in your phone directs. Yet.' };
     const warm = ds.filter((p) => !p.cold && (p.relationship || 0) >= 50).length, cold = ds.filter((p) => p.cold).length;
     const score = clamp(50 + ((warm - cold) / Math.max(1, ds.length)) * 45 - grudges * 12 + (s.rumour && s.rumour.until > now ? -20 : 0));
-    return { score, line: grudges ? `${grudges} director${grudges === 1 ? '' : 's'} will not call you again. The business is small.` : score >= 75 ? 'They come back for you. A director in your phone is a set that starts warm.' : score >= 50 ? 'Some of them would work with you again. Some of them would need asking.' : 'The word between them is not a kind one. Sets start cold.' };
+    return { score, line: grudges ? grudgeLine(live, now) : score >= 75 ? 'They come back for you. A director in your phone is a set that starts warm.' : score >= 50 ? 'Some of them would work with you again. Some of them would need asking.' : 'The word between them is not a kind one. Sets start cold.' };
   } },
   fans: { label: 'The fans', read: (s) => {
     const hit = (s.filmography || []).find((c) => !c.minor && (c.verdict === 'smash' || (c.rating || 0) >= 85) && (c.year || 0) >= (s.year || 0) - 3);

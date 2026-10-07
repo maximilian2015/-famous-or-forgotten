@@ -115,6 +115,19 @@ const row = (s, name) => yourDirectors(s).find((r) => r.name === name);
   const old = st({ people: [dir()], grudges: [{ who: 'Rosalind Varga', title: 'Old', since: NOW - 30, due: NOW - 10, until: NOW - 6, opened: true }] });
   ok('a grudge that has run out is not shown', row(old, 'Rosalind Varga').grudge === null);
 }
+// ── the bar's sentence says when a grudge ends, and "again" only when it does not ─
+{
+  const line = (grudges, people = []) => FACTIONS.directors.read(st({ grudges, people })).line;
+  const walk = { who: 'Jocasta Radovan', title: 'Fools and Names', since: NOW - 37, due: NOW - 37 + 9999, until: NOW + 23, opened: true };
+  const shut = { who: 'Mira Croft', title: 'Night Shift', since: NOW - 2, due: NOW + 9997, until: NOW + 9997, opened: true };
+  const refused = { who: 'Ines Okafor', title: 'Glass Harbour', since: NOW - 10, due: NOW + 6, until: NOW + 50, hit: true, opened: false };
+  ok('a walk-off grudge is a date, not "again"', line([walk]) === `Jocasta Radovan holds a grudge until ${monthName(NOW + 23)}. The business is small.`, line([walk]));
+  ok('a door shut on the record is the only "again"', line([shut]) === 'Mira Croft will not work with you again. The business is small.', line([shut]));
+  ok('an unopened refusal gives the two-year date and does not give the hit away', line([refused]) === `Ines Okafor holds a grudge until ${monthName(NOW + 14)}, or longer if the film is a hit. The business is small.`, line([refused]));
+  ok('several: the last date, and "or later" while one could still be a hit', line([walk, refused]) === `2 directors hold a grudge, the last of them until ${monthName(NOW + 23)} or later. The business is small.`, line([walk, refused]));
+  ok('several with one for good says so', line([walk, shut]) === '2 directors hold a grudge — 1 of them for good. The business is small.', line([walk, shut]));
+  ok('nowhere does a timed grudge say "again"', ![[walk], [refused], [walk, refused]].some((g) => /again/.test(line(g))));
+}
 // ── an old save with none of it ────────────────────────────────────────────────
 {
   const bare = { year: 2040, month: 0 };

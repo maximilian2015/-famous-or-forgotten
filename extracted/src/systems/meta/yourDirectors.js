@@ -34,19 +34,23 @@ export function grudgeKind(g) {
   return 'passed';
 }
 const left = (t, now) => { const m = t - now; return `${m} month${m === 1 ? '' : 's'} left`; };
-function grudgeView(g, now) {
+// When a grudge ends, as far as anybody can know yet. A refusal lasts two years, or five if the
+// film turns out a hit — and nobody knows which until it opens (stories.js, "The one you passed
+// on"). Before then the two-year date is the one to print; the one in the save gives it away.
+// Read by the Directors bar's sentence too (meta/factions.js), so the two cannot disagree.
+export function grudgeEnds(g, now) {
   const kind = grudgeKind(g);
+  const unknown = kind === 'passed' && !g.opened && g.since + 24 > now;
+  return { kind, forGood: kind === 'shut', unknown, ends: kind === 'shut' ? null : unknown ? g.since + 24 : g.until };
+}
+function grudgeView(g, now) {
+  const { kind, unknown, ends } = grudgeEnds(g, now);
   const title = g.title || 'their film';
   // The cause in plain words. "A part", not "the lead": a tentpole's supporting part files the
   // same grudge (tentpoles.js gives it tier 'lead'), and the grudge does not keep the role.
   const reason = kind === 'shut' ? `Would not come back for "${title}" — and they said so to the trades.`
     : kind === 'walked' ? `Walked off the set of "${title}".`
     : `Turned down a part in "${title}".`;
-  // A refusal lasts two years, or five if the film turns out a hit — and nobody knows which
-  // until it opens (stories.js, "The one you passed on"). Before then the two-year date is
-  // shown with the five-year one beside it; printing the one in the save would give it away.
-  const unknown = kind === 'passed' && !g.opened && g.since + 24 > now;
-  const ends = unknown ? g.since + 24 : g.until;
   const expires = kind === 'shut' ? 'For good' : `Until ${monthName(ends)} · ${left(ends, now)}`;
   const ifHit = unknown ? `Until ${monthName(g.since + 60)} if "${title}" is a hit · ${left(g.since + 60, now)}` : null;
   return { kind, title, since: g.since, until: g.until, forGood: kind === 'shut', monthsLeft: kind === 'shut' ? null : ends - now, reason, expires, ifHit };
