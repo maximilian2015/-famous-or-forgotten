@@ -12,6 +12,7 @@ node build-singlefile.mjs      # -> dist/game.html, then cp dist/game.html ../ga
 node tests/run_all.mjs         # 60 test files + lint + a played-through life
 npm run dev                    # vite on :5173
 node tests/autoplay.mjs 4 600  # four lives, 600 clicks each, through the real interface
+node tools/move-out.mjs ui/components/X.jsx X,Helper --dry   # move a piece out of App.jsx by AST
 ```
 
 The game Maxi plays is `game.html` at the repo root. A build that is not copied there has not
