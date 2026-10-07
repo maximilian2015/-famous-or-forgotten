@@ -92,17 +92,22 @@ const row = (s, name) => yourDirectors(s).find((r) => r.name === name);
   const s = st({ people: [dir()] });
   noteRefusal(s, { director: 'Rosalind Varga', projectTitle: '⭐ Glass Harbour', scale: 'feature', tier: 'lead' });
   const g = row(s, 'Rosalind Varga').grudge;
-  ok('a refusal is a grudge on the row, with its reason', g && g.kind === 'passed' && /passed on "Glass Harbour"/.test(g.reason), JSON.stringify(g));
-  ok('before the film opens both dates are given, so the hit is not given away', g.expires === `Until ${monthName(NOW + 24)} — ${monthName(NOW + 60)} if "Glass Harbour" is a hit`, g.expires);
+  ok('a refusal is a grudge on the row, with its reason', g && g.kind === 'passed' && g.reason === 'Turned down a part in "Glass Harbour".', JSON.stringify(g));
+  ok('before the film opens the two-year date is given, with time left', g.expires === `Until ${monthName(NOW + 24)} · 24 months left`, g.expires);
+  ok('and the five-year one beside it, so the hit is not given away', g.ifHit === `Until ${monthName(NOW + 60)} if "Glass Harbour" is a hit · 60 months left`, g.ifHit);
   s.grudges[0].opened = true;
-  ok('once it has opened the date is the real one', row(s, 'Rosalind Varga').grudge.expires === `Until ${monthName(s.grudges[0].until)}`, row(s, 'Rosalind Varga').grudge.expires);
+  ok('once it has opened the date is the real one', row(s, 'Rosalind Varga').grudge.expires === `Until ${monthName(s.grudges[0].until)} · ${s.grudges[0].until - NOW} months left` && row(s, 'Rosalind Varga').grudge.ifHit === null, row(s, 'Rosalind Varga').grudge.expires);
+  // The story can open late (another chain was running). Past two years a live one is a hit,
+  // and a two-year date would be in the past.
+  const late = st({ grudges: [{ who: 'Ines Okafor', title: 'Late', since: NOW - 30, due: NOW - 10, until: NOW + 30, hit: true, opened: false }] });
+  ok('a refusal still unopened past two years shows its real date, not a past one', row(late, 'Ines Okafor').grudge.expires === `Until ${monthName(NOW + 30)} · 30 months left`, row(late, 'Ines Okafor').grudge.expires);
   // Walking off their set (production.js walkOffSet).
   const w = st({ people: [dir({ id: 'd2', name: 'Kaspar Hartigan', relationship: 40 })] });
   const set = { id: 'p9', title: 'North Window', scale: 'feature', episodes: 0, crew: [{ name: 'Kaspar Hartigan', role: 'Director', bond: 40 }] };
   w.productions = [set]; w.production = set;
   walkOffSet(w, 'p9');
   const kw = row(w, 'Kaspar Hartigan');
-  ok('walking off is a five-year grudge, and they are cold', kw.grudge && kw.grudge.kind === 'walked' && kw.state === 'cold' && kw.grudge.expires === `Until ${monthName(NOW + 60)}`, JSON.stringify(kw.grudge));
+  ok('walking off is a five-year grudge, and they are cold', kw.grudge && kw.grudge.kind === 'walked' && kw.state === 'cold' && kw.grudge.expires === `Until ${monthName(NOW + 60)} · 60 months left` && kw.grudge.reason === 'Walked off the set of "North Window".', JSON.stringify(kw.grudge));
   // The door shut on the record (stories.js burnTheBridge) — written here the way it writes it.
   const b = { who: 'Mira Croft', title: 'Night Shift', since: NOW, due: NOW + 9999, until: NOW + 9999, opened: true };
   ok('a door shut on the record is for good', grudgeKind(b) === 'shut' && row(st({ grudges: [b] }), 'Mira Croft').grudge.expires === 'For good');

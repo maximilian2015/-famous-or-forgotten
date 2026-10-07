@@ -337,7 +337,7 @@ await inState('Home · for your consideration', { filmography: [...save.filmogra
   const grudges = [{ who: 'Kaspar Hartigan', title: 'North Window', scale: 'feature', since: NOW - 49, due: NOW - 49 + 9999, until: NOW + 11, hit: false, gross: 0, opened: true }];
   const tap = async (W2, find) => { const el = find(W2.document); if (el) el.dispatchEvent(new W2.MouseEvent('click', { bubbles: true })); await sleep(300); };
   await inState('Passport · the directors, warm, cold and a grudge', { people, grudges },
-    /(?=[\s\S]*Warm · 72)(?=[\s\S]*Cold · 8)(?=[\s\S]*Grudge · Until Mar 2067)(?=[\s\S]*You walked off "North Window")(?=[\s\S]*1 film together · on set now: "Buried Hunger")/,
+    /(?=[\s\S]*Rosalind Varga Warm)(?=[\s\S]*Relationship · 72)(?=[\s\S]*Kaspar Hartigan Cold)(?=[\s\S]*Relationship · 8)(?=[\s\S]*Grudge · Until Mar 2067 · 11 months left)(?=[\s\S]*Walked off the set of "North Window")(?=[\s\S]*on set now: "Buried Hunger")/,
     async (W2) => {
       await tap(W2, (d) => d.querySelector('div[title="Who you are"]'));
       await tap(W2, (d) => [...d.querySelectorAll('button')].find((b) => /^The directors/.test((b.textContent || '').trim())));

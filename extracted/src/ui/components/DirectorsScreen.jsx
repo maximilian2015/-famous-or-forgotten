@@ -16,19 +16,21 @@ function Row({ r }) {
     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', gap: 10 }}>
       <span style={{ fontSize: 14, fontWeight: 800, minWidth: 0 }}>{r.name}</span>
       {r.inPhone
-        ? <span style={{ fontSize: 12, fontWeight: 900, color: col, whiteSpace: 'nowrap' }}>{STATE_LABEL[r.state]} · {r.relationship}</span>
+        ? <span style={{ fontSize: 11.5, fontWeight: 900, letterSpacing: '.06em', textTransform: 'uppercase', color: col, whiteSpace: 'nowrap' }}>{STATE_LABEL[r.state]}</span>
         : <span style={{ fontSize: 11, color: theme.muted, whiteSpace: 'nowrap' }}>not in your phone</span>}
     </div>
     {r.inPhone && <div style={{ fontSize: 11.5, color: theme.muted, marginTop: 2, lineHeight: 1.45 }}>
       {r.role}{r.fromSet ? ` · met on "${r.fromSet}"` : ''}
     </div>}
     <div style={{ fontSize: 12, marginTop: 3, lineHeight: 1.45 }}>
+      {r.inPhone && <span>Relationship <b style={{ color: col }}>{r.relationship}</b> · </span>}
       {r.films ? `${r.films} film${r.films === 1 ? '' : 's'} together` : 'No films together'}
       {r.last ? <span style={{ color: theme.muted }}>{r.last.when === 'On set now' ? ` · on set now: "${r.last.title}"` : r.last.when === 'In post' ? ` · "${r.last.title}" is in post` : ` · last: "${r.last.title}"${r.last.when ? ` (${r.last.when})` : ''}`}</span> : null}
     </div>
     {r.grudge && (<div style={{ marginTop: 6, padding: '6px 9px', borderRadius: 9, background: 'rgba(229,86,111,.1)', border: `1px solid ${theme.bad}44` }}>
       <div style={{ fontSize: 11.5, fontWeight: 900, color: theme.bad }}>Grudge · {r.grudge.expires}</div>
       <div style={{ fontSize: 11.5, color: theme.text, opacity: .85, marginTop: 2, lineHeight: 1.4 }}>{r.grudge.reason}</div>
+      {r.grudge.ifHit && <div style={{ fontSize: 11, color: theme.muted, marginTop: 2, lineHeight: 1.4 }}>{r.grudge.ifHit}</div>}
     </div>)}
     {r.inPhone && <div style={{ fontSize: 11.5, color: theme.muted, marginTop: 6, lineHeight: 1.45 }}>{r.line}</div>}
   </div>);

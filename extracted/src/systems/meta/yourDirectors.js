@@ -33,19 +33,23 @@ export function grudgeKind(g) {
   if ((g.due || 0) - (g.since || 0) >= 9999) return 'walked';
   return 'passed';
 }
-function grudgeView(g) {
+const left = (t, now) => { const m = t - now; return `${m} month${m === 1 ? '' : 's'} left`; };
+function grudgeView(g, now) {
   const kind = grudgeKind(g);
   const title = g.title || 'their film';
-  const reason = kind === 'shut' ? `You would not come back for "${title}", and they said so to the trades.`
-    : kind === 'walked' ? `You walked off "${title}".`
-    : `You passed on "${title}".`;
+  // The cause in plain words. "A part", not "the lead": a tentpole's supporting part files the
+  // same grudge (tentpoles.js gives it tier 'lead'), and the grudge does not keep the role.
+  const reason = kind === 'shut' ? `Would not come back for "${title}" — and they said so to the trades.`
+    : kind === 'walked' ? `Walked off the set of "${title}".`
+    : `Turned down a part in "${title}".`;
   // A refusal lasts two years, or five if the film turns out a hit — and nobody knows which
-  // until it opens (stories.js, "The one you passed on"). Before then both dates are true and
-  // printing the one in the save would give the ending away.
-  const expires = kind === 'shut' ? 'For good'
-    : kind === 'passed' && !g.opened ? `Until ${monthName(g.since + 24)} — ${monthName(g.since + 60)} if "${title}" is a hit`
-    : `Until ${monthName(g.until)}`;
-  return { kind, title, since: g.since, until: g.until, forGood: kind === 'shut', reason, expires };
+  // until it opens (stories.js, "The one you passed on"). Before then the two-year date is
+  // shown with the five-year one beside it; printing the one in the save would give it away.
+  const unknown = kind === 'passed' && !g.opened && g.since + 24 > now;
+  const ends = unknown ? g.since + 24 : g.until;
+  const expires = kind === 'shut' ? 'For good' : `Until ${monthName(ends)} · ${left(ends, now)}`;
+  const ifHit = unknown ? `Until ${monthName(g.since + 60)} if "${title}" is a hit · ${left(g.since + 60, now)}` : null;
+  return { kind, title, since: g.since, until: g.until, forGood: kind === 'shut', monthsLeft: kind === 'shut' ? null : ends - now, reason, expires, ifHit };
 }
 
 // What a director in your phone will and will not do, in their own rules' words.
@@ -93,7 +97,7 @@ export function yourDirectors(s) {
     const last = shooting ? { when: 'On set now', title: shooting.title }
       : post.length ? { when: 'In post', title: post[post.length - 1].title }
       : latest ? { when: String(latest.year || ''), title: latest.title } : null;
-    const grudge = g ? grudgeView(g) : null;
+    const grudge = g ? grudgeView(g, now) : null;
     return {
       name, id: p ? p.id : null, inPhone: !!p, role: p ? p.role : 'Director',
       state: p ? stateOf(p) : null, relationship: p ? Math.round(p.relationship || 0) || 0 : null,   // drift leaves -0.001, which prints "-0"
