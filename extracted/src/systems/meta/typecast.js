@@ -164,17 +164,32 @@ export function typecastYear(s) {
 // What the business is starting to think, before it has a word for it. Reads the highest
 // score that is not yet a label, so the meter is visible from the first film rather than
 // appearing out of nowhere at the third.
+// What might stick NEXT, and nothing else. This used to return the single highest inactive
+// score whatever it was — one point out of three, a guest spot three years ago — and the
+// Passport drew it above the labels you actually carry under the heading "Public image". So an
+// actor with two billion-euro theatrical pictures and a commercial label read as "Television
+// actor 57%", and Maxi quite reasonably took that for the game's opinion of who he was.
+//
+// Two guards, each with a reason. A trend is worth a sentence when it is close enough to
+// actually happen — two of the three — and when it is not being drowned by something the
+// business already calls you: a label three clear points above it has settled the question,
+// and the footnote underneath is noise with a percentage on it.
 export function tendency(s) {
   const t = typecastOf(s);
   const active = new Set(t.active || []);
+  const settled = Math.max(0, ...[...active].map((id) => t.scores[id] || 0));
   let best = null;
   for (const [id, v] of Object.entries(t.scores || {})) {
-    if (active.has(id) || v < 1) continue;
+    if (active.has(id) || v < ACTIVE_AT - 1) continue;
+    if (settled - v > ACTIVE_AT) continue;
     if (!best || v > best.score) best = { id, score: v };
   }
   if (!best) return null;
   const info = labelInfo(best.id);
   return { id: best.id, label: info.label, score: Math.round(best.score * 10) / 10, need: ACTIVE_AT,
+    // Said as a thing that has not happened yet, because it has not. The old wording — "57% of
+    // the way to being called a television actor" — reads as a fact about you when it is a
+    // warning about the next three parts.
     line: `${Math.round((best.score / ACTIVE_AT) * 100)}% of the way to being called ${info.label.toLowerCase()}` };
 }
 // Does a part fit the labels you carry? +1 on type, −1 against, 0 when the label has no view.

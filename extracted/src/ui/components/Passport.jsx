@@ -54,7 +54,7 @@ export function Passport({ g, onClose, onRoom }) {
       {head('Standing')}
       {row('Status', `${tier.label}${isForgotten(g) ? ' · Forgotten' : ''}`, theme.gold)}
       {rank < 999 && row('In the business', `#${rank}`)}
-      {row('Fame · respect', `${Math.round(g.fame || 0)} · ${Math.round(g.respect || 0)}`)}
+      {row('Fame · standing', `${Math.round(g.fame || 0)} · ${Math.round(g.respect || 0)}`)}
       {g.quote > 0 && row('Your quote', money(g.quote))}
       {g.agent && g.agent.level > 0 && row('Agent', g.agent.name)}
       {ambitionProgress(g) && row('Wanted, at ten', `${ambitionProgress(g).label} · ${ambitionProgress(g).met ? 'got it' : `${Math.round(ambitionProgress(g).progress * 100)}%`}`, ambitionProgress(g).met ? theme.gold : undefined)}
@@ -66,19 +66,24 @@ export function Passport({ g, onClose, onRoom }) {
         <div style={{ fontSize: 11, color: theme.muted, lineHeight: 1.4 }}>{f.line}</div>
       </div>))}
       {/* Public image: the label the business has for you, and how firmly. See meta/typecast.js. */}
-      {head('Public image')}
+      {/* Not "Public image". This is the casting box — what the rooms have decided you are for
+          — and calling it an image made a two-point television score read as the game's whole
+          opinion of a man with two billion-euro pictures. What you ARE comes first; what might
+          stick next is a footnote under it, in that order. meta/typecast.js */}
+      {head('Industry typecast')}
       {activeLabels(g).length === 0 && <div style={{ fontSize: 12, color: theme.muted, padding: '4px 0 8px', lineHeight: 1.5 }}>No label yet. Three parts of a kind and the business finds a word for you — and the parts that fit it come easier.</div>}
-      {/* What they are starting to think, before there is a word for it. meta/typecast.js */}
-      {(() => { const t = tendency(g); if (!t) return null; return (<div style={{ padding: '5px 0', borderBottom: `1px solid ${theme.line}` }}>
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline' }}><span style={{ fontSize: 13, fontWeight: 800, color: theme.muted }}>{t.label}</span><span style={{ fontSize: 10.5, color: theme.muted }}>not yet a word</span></div>
-        <div style={{ height: 4, background: 'rgba(255,255,255,.08)', borderRadius: 2, margin: '5px 0 4px' }}><div style={{ width: `${Math.min(100, (t.score / t.need) * 100)}%`, height: '100%', background: theme.muted, borderRadius: 2 }} /></div>
-        <div style={{ fontSize: 11, color: theme.muted, lineHeight: 1.45 }}>{t.line}. {t.need - t.score <= 1 ? 'One more like the last one and it sticks.' : 'Keep taking them and it sticks.'}</div>
-      </div>); })()}
       {activeLabels(g).map((id) => (<div key={id} style={{ padding: '5px 0', borderBottom: `1px solid ${theme.line}` }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline' }}><span style={{ fontSize: 13, fontWeight: 800, color: scoreOf(g, id) >= STRONG_AT ? theme.gold : theme.text }}>{labelInfo(id).label}</span><span style={{ fontSize: 10.5, color: theme.muted }}>{scoreOf(g, id) >= STRONG_AT ? 'what you are to them' : 'a word they use'}</span></div>
         <div style={{ height: 4, background: 'rgba(255,255,255,.08)', borderRadius: 2, margin: '5px 0 4px' }}><div style={{ width: `${Math.min(100, scoreOf(g, id) * 10)}%`, height: '100%', background: scoreOf(g, id) >= STRONG_AT ? theme.gold : theme.accent, borderRadius: 2 }} /></div>
         <div style={{ fontSize: 11, color: theme.muted, lineHeight: 1.45 }}>{labelInfo(id).blurb}</div>
       </div>))}
+      {/* What they are starting to think, before there is a word for it. meta/typecast.js */}
+      {(() => { const t = tendency(g); if (!t) return null; return (<div style={{ padding: '7px 0 5px', marginTop: 3, borderTop: `1px solid ${theme.line}` }}>
+        <div style={{ fontSize: 9.5, fontWeight: 900, letterSpacing: '.08em', textTransform: 'uppercase', color: theme.muted, opacity: .8, marginBottom: 4 }}>{activeLabels(g).length ? 'What may stick next' : 'Not yet a word'}</div>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline' }}><span style={{ fontSize: 13, fontWeight: 800, color: theme.muted }}>{t.label}</span><span style={{ fontSize: 10.5, color: theme.muted }}>{t.score} of {t.need}</span></div>
+        <div style={{ height: 4, background: 'rgba(255,255,255,.08)', borderRadius: 2, margin: '5px 0 4px' }}><div style={{ width: `${Math.min(100, (t.score / t.need) * 100)}%`, height: '100%', background: theme.muted, borderRadius: 2 }} /></div>
+        <div style={{ fontSize: 11, color: theme.muted, lineHeight: 1.45 }}>{t.line}. {t.need - t.score <= 1 ? 'One more like the last one and it sticks.' : 'Keep taking them and it sticks.'}</div>
+      </div>); })()}
       {head('Money')}
       {row('In the bank', money(g.cash || 0), (g.cash || 0) < 0 ? theme.bad : theme.text)}
       {row('Worth, all in', money(worth))}
