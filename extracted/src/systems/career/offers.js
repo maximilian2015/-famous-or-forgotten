@@ -22,6 +22,9 @@ const clamp = (v) => Math.max(0, Math.min(100, v));
 // Titles come from the same generator as everything else the world makes, so an agent's
 // offer cannot be called what a rival's film was called last year. See world/titles.js.
 function title(s, genre) { return newTitle(s, genre); }
+// Who can be behind an agent's offer (generateOffer, below). Exported so the Directors screen
+// reads this rule rather than a copy of it — meta/yourDirectors.js.
+export function sendsOffers(s, p) { return /Director/.test(p.role || '') && !p.cold && (p.relationship || 0) > 15; }
 export function generateOffer(s) {
   const acc = computeAccess(s); const fame = s.fame || 0;
   let tier;
@@ -37,7 +40,7 @@ export function generateOffer(s) {
   const genre = pick(GENRES);
   // One offer in four comes from a director already in your phone — so a no is a no to
   // somebody, and a yes starts where you left them (production.js).
-  const known = (s.people || []).filter((p) => /Director/.test(p.role || '') && !p.cold && (p.relationship || 0) > 15);
+  const known = (s.people || []).filter((p) => sendsOffers(s, p));
   const dir = known.length && chance(25) ? pick(known) : null;
   // Who brought it. Messages says so on the card — Maxi had three copies of one offer in
   // three apps and no idea where any of them had come from.

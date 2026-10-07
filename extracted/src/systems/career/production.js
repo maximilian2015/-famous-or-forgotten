@@ -41,6 +41,9 @@ export function meterTier(meter) {
 }
 const CREW_ROLES = { actor: ['Director', 'Co-star', 'Camera Operator'], singer: ['Producer', 'Vocal Coach', 'Sound Engineer'] };
 const TRAITS = ['diva', 'perfectionist', 'chill', 'difficult'];
+// Who can come back to direct you (makeCrew, below). Exported for the Directors screen —
+// meta/yourDirectors.js reads this rule rather than a copy of it.
+export function directsYouAgain(s, p) { return /Director|Producer/.test(p.role || '') && !p.cold && (p.relationship || 0) > 15 && !!p.fromSet && !holdsAGrudge(s, p.name); }
 // A crew has heard about you before you arrive. Below zero, they start colder — the
 // Avoided rung promised "crews ask not to be put on your call sheet" and nothing did it.
 function makeCrew(s, scale) {
@@ -60,7 +63,7 @@ function makeCrew(s, scale) {
   // with was gone at wrap, and the next shoot was three strangers again. Now a director in
   // your phone comes back to direct you, one shoot in three, and starts where you left
   // them: a warm one warm, a cold one cold. The business is small; that is the point of it.
-  const known = (s.people || []).filter((p) => /Director|Producer/.test(p.role || '') && !p.cold && (p.relationship || 0) > 15 && p.fromSet && !holdsAGrudge(s, p.name));
+  const known = (s.people || []).filter((p) => directsYouAgain(s, p));
   if (known.length && chance(33)) {
     const k = pick(known);
     crew[0] = { ...crew[0], name: k.name, bond: Math.max(10, Math.min(90, k.relationship || 40)), knownId: k.id };

@@ -43,6 +43,9 @@ const PARTS = [
 export function tentpoles(s) { return s.tentpoles || (s.tentpoles = []); }
 export function boardOpen(s) { return computeAccess(s).aaa; }
 
+// A director you know, for the board (makeOne, below). Exported for the Directors screen —
+// meta/yourDirectors.js reads this rule rather than a copy of it.
+export function onTheBoard(s, p) { return /Director/.test(p.role || '') && !p.cold && (p.relationship || 0) > 35 && !holdsAGrudge(s, p.name); }
 // A picture in development, with everything about it already decided except you.
 function makeOne(s) {
   const genre = pick(GENRES);
@@ -50,7 +53,7 @@ function makeOne(s) {
   const studio = pick(STUDIOS);
   const used = namesInUse(s);
   // A director you know is the single biggest thing on this board, so one in four is one.
-  const known = (s.people || []).filter((p) => /Director/.test(p.role || '') && !p.cold && (p.relationship || 0) > 35 && !holdsAGrudge(s, p.name));
+  const known = (s.people || []).filter((p) => onTheBoard(s, p));
   const mine = known.length && chance(25) ? pick(known) : null;
   const director = mine ? mine.name : personName(chance(50) ? 'female' : 'male', used);
   // And somebody is already attached, because somebody always is.
