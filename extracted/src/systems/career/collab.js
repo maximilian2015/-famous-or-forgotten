@@ -126,6 +126,14 @@ export function collabTick(s) {
     const k = kindFor(c) || KINDS['Film Director'];
     // Most of them die, and the ones that do not are the ones somebody wanted on a poster
     // by the time the drafts were done.
+    // A partner who holds a grudge now — you walked off their set, or passed on their picture,
+    // while this sat in development — does not make it with you. Not a lower chance: the same
+    // rule as every other door (canPropose, offers.js sendsOffers), so it is the same answer.
+    if (p && holdsAGrudge(s, p.name)) {
+      addTimeline(s, `"${c.title}" is dead. ${first(p.name)} will not make it with you while the grudge stands.`, true);
+      s.lastEvent = `"${c.title}" is dead. ${first(p.name)} took it off the slate — not the money this time, you.`;
+      return s;
+    }
     let made = 12 + (s.respect || 0) * 0.35 + ((s.fame || 0) - 40) * 0.25;
     if (hypeSource(s) === 'hit') made += hype(s) / 8;
     if (!p || p.cold) made -= 30;

@@ -191,7 +191,7 @@ export const CHAINS = {
       if (!forgotten) { s._fadedSince = null; return null; }
       if (!s._fadedSince) s._fadedSince = stamp(s);
       if (stamp(s) - s._fadedSince < 12 || s._cameBack || !chance(6)) return null;
-      const known = (s.people || []).filter((p) => /Director/.test(p.role || '') && !p.cold);
+      const known = (s.people || []).filter((p) => /Director/.test(p.role || '') && !p.cold && !holdsAGrudge(s, p.name));
       const who = known.length ? pick(known).name : personName(chance(50) ? 'female' : 'male', namesInUse(s));
       return { who, beat: 'call', due: stamp(s) };
     },

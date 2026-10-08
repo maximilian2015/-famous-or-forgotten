@@ -22,7 +22,7 @@ import { newTitle } from '../world/titles.js';
 import { seasonCap, slotNorm, tvMonths } from './franchise.js';
 import { rumourFactor } from '../meta/trouble.js';
 import { typeFit, typeFactor, typecastAfterDayWork, isStrong, activeLabels, boxedInto } from '../meta/typecast.js';
-import { storyCastFactor, hiding } from '../meta/stories.js';
+import { storyCastFactor, hiding, holdsAGrudge } from '../meta/stories.js';
 import { hypeReach, hypeBrands } from '../meta/hype.js';
 import { socialReach } from '../social/posting.js';
 import { heirReach } from '../life/origin.js';
@@ -360,7 +360,10 @@ export function refreshCastingPool(s, force, extra = 0) {
     // Who is directing it. Maxi: "the agent only brings the top directors, the best and
     // the most popular and the icons, or world-scale projects." That is the half of a
     // star's decision this game never had — you chose a part, never a person.
-    const helmer = directorFor(s, scale, genre);
+    // A director who holds a grudge does not cast you: the listing goes out without their name
+    // on it, the way a listing with nobody famous attached always has (stories.js holdsAGrudge).
+    const drawn = directorFor(s, scale, genre);
+    const helmer = drawn && holdsAGrudge(s, drawn.name) ? null : drawn;
     // A label turns things away. Gated on ACTIVE labels, not strong ones — a label is a
     // label, and waiting for a score of five meant it almost never applied at all.
     if (activeLabels(s).length) {

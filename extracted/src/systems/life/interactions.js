@@ -17,6 +17,7 @@ import { genderOfName } from '../world/names.js';
 import { applyBond } from './bonds.js';
 import { canSupport, support, canBack, backChild, supportCost, backingCost } from './money.js';
 import { canPropose, propose, kindFor } from '../career/collab.js';
+import { holdsAGrudge } from '../meta/stories.js';
 import { inCareer } from '../../engine/stage.js';
 
 const clamp = (v) => Math.max(0, Math.min(100, v));
@@ -239,8 +240,11 @@ export const INTERACTIONS = [
     lockedWhy: ({ s }) => (s.stage === 'child' ? 'You are too young to be asking for cash.' : ''),
     run: ({ s, p }) => { askFamilyForMoney(s, p.id); return s.lastEvent; } },
 
+  // Not from somebody holding a grudge, however close you have got again over dinner: a word
+  // put in is professional, and the grudge is the professional thing (stories.js holdsAGrudge).
   { id: 'favour', group: 'practical', label: 'Ask them to put in a word', blurb: 'Spend the goodwill you built', ap: COST.ask,
-    applies: ({ kind }) => kind === 'contact', when: ({ p }) => (p.relationship || 0) >= 50,
+    applies: ({ kind }) => kind === 'contact', when: ({ s, p }) => (p.relationship || 0) >= 50 && !holdsAGrudge(s, p.name),
+    lockedWhy: ({ s, p }) => (holdsAGrudge(s, p.name) ? `${first(p)} is still holding a grudge. Friendly, maybe — not friendly enough to make a call for you.` : ''),
     run: ({ s, p }) => {
       move(s, p,-rint(4, 9));   // a favour costs goodwill whether it works or not
       if (chance(clamp(25 + (p.industryWeight || 30) * 0.4 + (p.relationship || 0) * 0.2))) {

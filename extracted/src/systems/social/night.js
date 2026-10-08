@@ -37,6 +37,7 @@ import { sendSms } from './sms.js';
 import { priceFactor } from '../life/face.js';
 import { HOUSING } from '../../engine/economy.js';
 import { COST, canAfford, spend, tooTired } from '../../engine/energy.js';
+import { holdsAGrudge } from '../meta/stories.js';
 const clamp = (v) => Math.max(0, Math.min(100, v));
 const first = (n) => String(n || '').split(' ')[0];
 const stamp = (s) => (s.year || 0) * 12 + (s.month || 0);
@@ -521,7 +522,8 @@ function endTalk(s, g) {
     return;
   }
   // At your own night, somebody who decides things and liked you will hear a picture.
-  if (n.tier === 'yours' && g.decides && r >= 55) {
+  // Not somebody holding a grudge: they came for the drink, not the picture (stories.js).
+  if (n.tier === 'yours' && g.decides && r >= 55 && !holdsAGrudge(s, g.name)) {
     n.pending = { id: 'pitch', guestId: g.id, who: g.name, weight: g.standing || 60, rapport: r, text: `${first(g.name)} is on your sofa with a drink and nowhere to be. "So what do you want to make?"` };
     return;
   }
@@ -871,6 +873,9 @@ export function nightTick(s) {
   if (!due.length) return s;
   s.leads = (s.leads || []).filter((l) => l.due > now);
   for (const l of due) {
+    // Every lead from a night out ends here, so the grudge is checked once, here: a director
+    // who holds one does not come through, however the evening went.
+    if (holdsAGrudge(s, l.from)) { addTimeline(s, `${l.from} did not take the call.`); continue; }
     if (!l.sure && !chance(35 + (l.weight || 50) * 0.3)) { addTimeline(s, `${l.from} did not take the call.`); continue; }
     const o = leadOffer(s, l);
     (s.offers = s.offers || []).push(o);

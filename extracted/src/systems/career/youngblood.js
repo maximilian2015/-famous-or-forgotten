@@ -24,6 +24,7 @@ import { GENRES } from '../meta/news.js';
 import { rollStability } from './stability.js';
 import { rollPotential } from './franchise.js';
 import { directorById, isOneOfTheFive, ensureDirectors, workingDirectors } from '../world/directors.js';
+import { holdsAGrudge } from '../meta/stories.js';
 import { activeActors } from '../world/world.js';
 import { boxedInto } from '../meta/typecast.js';
 
@@ -72,7 +73,7 @@ export function maybeYoungOffer(s) {
   if ((s._youngOfferAt || 0) > stamp(s) - YOUNG_EVERY) return s;
   if ((s.offers || []).some((o) => o.kind === 'young')) return s;
   ensureDirectors(s);
-  const pool = workingDirectors(s).filter((d) => d.band === 'new');
+  const pool = workingDirectors(s).filter((d) => d.band === 'new' && !holdsAGrudge(s, d.name));
   if (!pool.length) return s;
   // More likely when the business has a word for you — a first-timer is exactly who goes
   // looking for the comic actor everybody else casts as the comic actor.

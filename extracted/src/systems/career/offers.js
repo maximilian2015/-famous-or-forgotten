@@ -11,7 +11,7 @@ import { rollStability } from './stability.js';
 import { canWork } from '../life/strain.js';
 import { newTitle } from '../world/titles.js';
 import { refusedOnType } from '../meta/typecast.js';
-import { storyOfferFactor, noteRefusal, noteSequelLoss } from '../meta/stories.js';
+import { storyOfferFactor, noteRefusal, noteSequelLoss, holdsAGrudge } from '../meta/stories.js';
 import { hypeDemand, hype, hypeBrands } from '../meta/hype.js';
 import { socialBrandLift } from '../social/posting.js';
 import { signEndorsement, clauseTaken } from './endorsement.js';
@@ -24,7 +24,11 @@ const clamp = (v) => Math.max(0, Math.min(100, v));
 function title(s, genre) { return newTitle(s, genre); }
 // Who can be behind an agent's offer (generateOffer, below). Exported so the Directors screen
 // reads this rule rather than a copy of it — meta/yourDirectors.js.
-export function sendsOffers(s, p) { return /Director/.test(p.role || '') && !p.cold && (p.relationship || 0) > 15; }
+// A grudge blocks it whatever the closeness. Cold and a grudge are different things: cold is a
+// contact that faded, and a chat or a present can lift it; a grudge is a professional conflict,
+// and being friendly again does not make somebody send you a part. This was the one door that
+// checked only cold — so a refusal's cold, lifted by bonds.js a month later, reopened it.
+export function sendsOffers(s, p) { return /Director/.test(p.role || '') && !p.cold && (p.relationship || 0) > 15 && !holdsAGrudge(s, p.name); }
 export function generateOffer(s) {
   const acc = computeAccess(s); const fame = s.fame || 0;
   let tier;
