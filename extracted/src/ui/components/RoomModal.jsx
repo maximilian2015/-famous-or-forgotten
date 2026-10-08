@@ -22,7 +22,9 @@ export function RoomModal({ g }) {
         <div style={{ fontSize: 34, letterSpacing: 6 }}>🪑🪑🪑🪑</div>
         <div style={{ fontFamily: FONT_DISPLAY, fontSize: 23, fontWeight: 700, marginTop: 6 }}>The meeting</div>
         <div style={{ fontSize: 12.5, color: theme.muted, marginTop: 2 }}>
-          "{k.title}" · season {k.season}
+          {/* A renewal's title already carries its season ("Black Harbor · season 3"), so the
+              number was said twice. Only a title without one gets it added. */}
+          "{k.title}"{/season\s+\d+/i.test(k.title || '') ? '' : ` · season ${k.season}`}
         </div>
       </div>
 
