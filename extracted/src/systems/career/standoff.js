@@ -188,6 +188,15 @@ export const EXTRAS = {
 };
 export const EXTRA_IDS = Object.keys(EXTRAS);
 
+// Not offered until they do something. A piece of the show, a producing credit, an episode
+// to direct, a guaranteed number of episodes and first billing are all kept on the paper now
+// (career/terms.js) — and nothing in the game reads any of them: no payout, no credit, no
+// episode, no protection, no billing. The room sold them as worth having ("that is where the
+// money actually is"), the player paid energy and sometimes part of the rise for them, and
+// first billing even cost a co-star's goodwill for nothing in return. A perk comes back off
+// this list in the commit that makes it work (Contract Perks V1). The rest of the code stays.
+export const NOT_YET = new Set(['points', 'producer', 'directOne', 'guarantee', 'billing']);
+
 // What the LAST season actually did, which is the thing everybody in the room has in front
 // of them. Maxi: "and then look at how the season played out — if it paid off, continue,
 // offer a share, a producing credit." That is exactly the mechanism and it was missing:
@@ -245,6 +254,8 @@ export function packageFor(s, o) {
   if (tier >= 4 && room >= 30 && (o.season || 1) >= 3) extras.push('producer');
   if (room >= 55) extras.push('shortOrder');
   if (tier >= 3 && room >= 38 && chance(60)) extras.push('directOne');
+  // The roll for directOne still happens, so every other draw lands where it always did.
+  for (let i = extras.length - 1; i >= 0; i--) if (NOT_YET.has(extras[i])) extras.splice(i, 1);
   const episodes = extras.includes('shortOrder')
     ? Math.max(4, Math.round((o.episodes || 10) * 0.7)) : (o.episodes || 10);
   return {
@@ -400,7 +411,7 @@ export function asksFor(s, o) {
   if (tier >= 4 && (d >= 60 || season >= 4)) out.push('points');
   if (tier >= 4 && season >= 3) out.push('producer');
   if (tier >= 4 && d >= 65) out.push('span');
-  return out;
+  return out.filter((id) => !NOT_YET.has(id));
 }
 export const ASK_IDS = Object.keys(ASKS);
 
@@ -470,6 +481,9 @@ export function askFor(s, id) {
   const fit = canPush(s);
   if (!fit.ok) { if (fit.why) s.lastEvent = fit.why; return s; }
   if (!k || !spec) return s;
+  // Not on the list in the room (NOT_YET above), so not askable by any other road either —
+  // and no energy spent on something that would do nothing.
+  if (NOT_YET.has(id)) { s.lastEvent = `${spec.label} is not something this room is offering.`; return s; }
   if (!o) {
     // Should not happen now that a booked part cannot lapse, but a button that does nothing
     // teaches the player that the screen is broken, and they are right.
@@ -773,7 +787,7 @@ export function liveStandoff(s) {
     leverage: o ? leverageLines(s, o) : [],
     dependency: o ? dependency(s, o) : 0,
     replacement: o ? replacementWord(dependency(s, o)) : null,
-    asks: (o ? asksFor(s, o) : ASK_IDS).map((id) => ({ id, ...ASKS[id] })),
+    asks: (o ? asksFor(s, o) : ASK_IDS.filter((id) => !NOT_YET.has(id))).map((id) => ({ id, ...ASKS[id] })),
     rise: Math.round((p.fee / p.was - 1) * 100),
     fee: p.fee, was: p.was, episodes: p.episodes, wasEpisodes: p.wasEpisodes,
     because: p.because, grew: p.grew, last: p.last,

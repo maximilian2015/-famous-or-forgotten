@@ -38,15 +38,18 @@ function room(s, o) {
 const stats = { meetings: 0, feeLost: 0, salaryWrong: 0, pointsLost: 0, producerLost: 0,
   directPromised: 0, directLost: 0, walkouts: 0, walkoutStillBooked: 0, walkoutStillOffered: 0,
   exclusivityGranted: 0, exclusivityOverwritten: 0, showrunnerLost: 0, thaws: 0, thawCharacterLost: 0,
-  savedPaperControl: 0, staleWrittenOutCredit: 0 };
+  savedPaperControl: 0, staleWrittenOutCredit: 0, perksOffered: 0 };
 let roomExample, exclusivityExample, walkoutExample, thawExample;
 for (let n = 1; n <= 300; n++) withSeed(n, () => {
   const s = state(), o = offer(); room(s, o);
   const pack = { ...s.standoff.pack }; takeTheRoom(s); stats.meetings++;
   assert.equal(o.episodeFee, pack.fee, 'control: handshake did not set offered fee');
   assert.equal(o.episodes, pack.episodes);
-  assert.equal(o.tvPoints, pack.points, 'control: points were not granted in the room');
-  assert.equal(o.producing, pack.producer, 'control: title was not granted in the room');
+  // Points, the producing credit and the episode to direct are not offered while they do
+  // nothing (standoff.js NOT_YET); whatever the room did grant must still land on the offer.
+  if (pack.points || pack.producer || pack.directOne) stats.perksOffered++;
+  assert.equal(o.tvPoints ?? 0, pack.points, 'control: points were not granted in the room');
+  assert.equal(!!o.producing, !!pack.producer, 'control: title was not granted in the room');
   if (pack.directOne) assert.equal(o.directOne, true);
   // Save/load control: the settled paper itself must already contain the agreed terms.
   const corrected = JSON.parse(JSON.stringify(s)), co = corrected.offers[0];
@@ -121,7 +124,8 @@ assert.equal(stats.feeLost, 0);
 assert.equal(stats.salaryWrong, 0);
 assert.equal(stats.pointsLost, 0);
 assert.equal(stats.producerLost, 0);
-assert.ok(stats.directPromised > 0 && stats.directLost === 0);
+assert.equal(stats.perksOffered, 0, 'a perk that does nothing yet was offered in the room');
+assert.equal(stats.directLost, 0);
 assert.equal(stats.walkoutStillBooked, 0);
 assert.equal(stats.walkoutStillOffered, 0);
 assert.ok(stats.exclusivityGranted > 0 && stats.exclusivityOverwritten === 0);

@@ -3,7 +3,7 @@
 import assert from 'node:assert/strict';
 import { career, renewal, withSeed, openRoom, roundTrip, nextMonth } from './helpers/contracts.mjs';
 import { draftContract, markClause, sendContract, contractsTick, signContract } from '../src/systems/career/contract.js';
-import { callTheRoom, takeTheRoom, walkTheRoom, writeOut, itFails } from '../src/systems/career/standoff.js';
+import { callTheRoom, takeTheRoom, walkTheRoom, writeOut, itFails, asksFor, askFor } from '../src/systems/career/standoff.js';
 import { startProduction } from '../src/systems/career/production.js';
 import { scheduleRelease, releaseTick, runTick } from '../src/systems/career/release.js';
 import { maybeContinue } from '../src/systems/career/franchise.js';
@@ -83,6 +83,17 @@ test('after a handshake the fee is not up for discussion, and asking anyway chan
   assert.equal(draftContract(s, o).clauses.find(c => c.id === 'fee').stance, 'ok');
   signContract(s, o.id);
   assert.equal(s.productions[0].episodeFee, 141400);
+});
+// Until a perk does something, the room does not offer it (standoff.js NOT_YET).
+test('perks that do nothing yet are neither on the table nor askable', () => {
+  const { s, o } = meeting();
+  assert.equal(s.standoff.pack.points, 0); assert.equal(s.standoff.pack.producer, false); assert.equal(s.standoff.pack.directOne, false);
+  const top = { ...s, fame: 100, respect: 95 }, late = { ...o, season: 6 };
+  const asks = asksFor(top, late);
+  for (const id of ['points', 'producer', 'guarantee', 'billing']) assert.ok(!asks.includes(id), id);
+  for (const id of ['money', 'fewer', 'exclusivity']) assert.ok(asks.includes(id), id);
+  const ap = s.ap; askFor(s, 'billing');
+  assert.equal(s.ap, ap, 'energy was spent on a perk that is not offered');
 });
 test('no clause on a settled paper can be reopened', () => {
   const { s, o } = meeting(); takeTheRoom(s);
