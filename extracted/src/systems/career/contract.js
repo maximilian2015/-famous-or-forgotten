@@ -143,6 +143,18 @@ export function draftContract(s, o) {
       const exc = k.clauses.find((c) => c.id === 'exclusive');
       k.clauses[i] = scheduleClause(s, o, big, exc ? !!exc.value : false);
     }
+    // The room updates the values on the paper; ContractRoom displays its text.
+    // After a handshake it still showed the old fee, episode count and exclusivity.
+    // Use the same wording as a written counteroffer. An unsettled schedule above
+    // stays live, with its calendar warnings; an agreed one keeps its start date.
+    if (o._settled) {
+      for (const c of k.clauses) {
+        if (c.id === 'fee' || c.id === 'exclusive' || (c.id === 'schedule' && c.result === 'agreed')) c.text = textFor(c, o);
+        // An old ask for more can be below the room's new fee. Keep the higher
+        // asks at their existing price and odds; never offer a pay cut as a raise.
+        if (c.id === 'fee') c.options = c.options.filter(op => op.value > c.value);
+      }
+    }
     // Signed and waiting: the paper says where it stands NOW — the month it will start given
     // what you are on, and how long they will hold it. It used to keep the sentence it was
     // drafted with ("you wrap X before then") long after X had wrapped and Y had taken its place.

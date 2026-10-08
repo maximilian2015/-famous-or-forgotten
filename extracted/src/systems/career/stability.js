@@ -2,6 +2,7 @@ import { setRespect } from '../meta/status.js';
 import { paid } from './agent.js';
 import { count } from '../../engine/text.js';
 import { uid } from '../../engine/id.js';
+import { tvTermsOf } from './terms.js';
 // Not every project that starts gets made. Financing walks, a studio changes its mind,
 // a producer turns out not to have the money he said he had. The player has to be able
 // to SEE that before signing, and be paid for taking it on.
@@ -150,6 +151,11 @@ export function freezeProject(s, p) {
   const frozen = {
     id: uid(s, 'frz'),
     title: p.title, role: p.role, type: p.type, genre: p.genre, scale: p.scale, tier: p.tier,
+    // A rescue resumes THIS script and THIS part. Omitting them made dressOffers
+    // invent a stranger and a new premise in every one of 300 thawed projects.
+    character: p.character || null, premise: p.premise || null,
+    seriesTitle: p.seriesTitle || '', potential: p.potential || null,
+    ...tvTermsOf(p),
     genrePrestige: p.prestigeScore, prestigeScore: p.prestigeScore,
     monthsLeft: Math.max(1, p.monthsLeft || 1), episodes: p.episodes || 0, episodeFee: p.episodeFee || 0,
     season: p.season || 0, part: p.part || 1, optioned: !!p.optioned, optionParts: p.optionParts || 0,
@@ -234,6 +240,9 @@ export function frozenTick(s) {
       (s.offers = s.offers || []).push({
         id: uid(s, 'thaw'),
         kind: 'thaw', projectTitle: f.title, role: f.role, type: f.type, genre: f.genre,
+        character: f.character || null, premise: f.premise || null,
+        seriesTitle: f.seriesTitle || '', potential: f.potential || null,
+        ...tvTermsOf(f),
         scale: f.scale, tier: f.tier, prestigeScore: f.prestigeScore,
         salary: f.owed, months: f.monthsLeft, episodes: f.episodes, episodeFee: f.episodeFee,
         season: f.season, part: f.part, optioned: f.optioned, optionParts: f.optionParts,

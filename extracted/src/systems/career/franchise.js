@@ -8,6 +8,7 @@ import { addTimeline } from '../../engine/timeline.js';
 import { quoteBand } from '../meta/status.js';
 import { priceYoungReturn } from './youngblood.js';
 import { onTheBubble, hangIt, takeDecided } from './bubble.js';
+import { tvTermsOf } from './terms.js';
 
 // How long a format can plausibly run. Daytime soaps run for decades; prestige
 // streaming shows are written to end. This is the ceiling, not the expectation —
@@ -427,16 +428,22 @@ export function maybeContinue(s, credit, p, force = false) {
     const episodeFee = Math.min(Math.round(wasFee * raise), ceilingFor(s, mediumOf(p)));
     const marketFee = Math.min(Math.round(wasFee * raiseMarket), ceilingFor(s, mediumOf(p)));
     const episodes = Math.max(4, Math.round((p.episodes || 8) * (0.9 + Math.random() * 0.3)));
+    // Old release jobs did not keep the crew. Their credit may still name the
+    // director; use that existing identity, never roll a replacement person.
+    const showrunner = p.showrunner || ((p.crew || [])[0] || {}).name || credit.director || null;
+    const showrunnerId = p.showrunnerId || ((p.crew || [])[0] || {}).knownId
+      || ((s.people || []).find(x => x.name === showrunner) || {}).id || null;
     addTimeline(s, `"${root}" was renewed for season ${nextSeason}.`);
     return {
       id: uid(s, 'ren'),
       // A show that got renewed is a show that works. The money is not the question here.
       kind: 'renewal', seriesTitle: root, season: nextSeason, scale: p.scale,
+      ...tvTermsOf(p),
       // Who runs the show. A renewal carried no person at all, so walking out of one recorded
       // a grudge against the literal string 'The showrunner' — and meta/stories.js then looked
       // that name up in your contacts, found nobody, and the letter that mends it half-worked.
-      showrunner: ((p.crew || [])[0] || {}).name || null,
-      showrunnerId: ((p.crew || [])[0] || {}).knownId || null,
+      showrunner, showrunnerId,
+      sourceCreditId: credit.id || null,
       // Television is priced by the episode on the paper too — the renewal used to read
       // 'for the picture' in the contract room.
       perEpisode: true, medium: mediumOf(p),

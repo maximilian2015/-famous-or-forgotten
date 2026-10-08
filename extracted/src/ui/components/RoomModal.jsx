@@ -22,7 +22,7 @@ export function RoomModal({ g }) {
         <div style={{ fontSize: 34, letterSpacing: 6 }}>🪑🪑🪑🪑</div>
         <div style={{ fontFamily: FONT_DISPLAY, fontSize: 23, fontWeight: 700, marginTop: 6 }}>The meeting</div>
         <div style={{ fontSize: 12.5, color: theme.muted, marginTop: 2 }}>
-          "{k.title}" · season {k.season + 1}
+          "{k.title}" · season {k.season}
         </div>
       </div>
 

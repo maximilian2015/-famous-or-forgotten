@@ -19,6 +19,7 @@ import { canAfford, spend, tooTired } from '../../engine/energy.js';
 import { GENRES } from '../meta/news.js';
 import { appetiteFor, marketAfterRelease } from '../meta/market.js';
 import { maybeContinue } from './franchise.js';
+import { tvTermsOf } from './terms.js';
 import { appealShift } from './story.js';
 import { dirAppeal, remindLift, holdFactor, retentionLine } from './chapter.js';
 import { comebackFloor } from '../meta/standing.js';
@@ -627,6 +628,7 @@ export function scheduleRelease(s, credit, p) {
   const wait = postProduction(p.scale || 'feature');
   const rel = {
     id: uid(s, 'rel'),
+    ...tvTermsOf(p),
     title: credit.title, role: credit.role, type: credit.type, genre: credit.genre,
     scale: p.scale || 'feature', tier: p.tier || 'lead', season: p.season || 0,
     episodes: p.episodes || 0, part: p.part || 1, salary: credit.salary,
@@ -671,6 +673,11 @@ export function scheduleRelease(s, credit, p) {
     // the shoot has to keep enough of itself alive to be asked that question later.
     job: {
       title: p.title, seriesTitle: p.seriesTitle, role: p.role, type: p.type, genre: p.genre, salary: p.salary,
+      ...tvTermsOf(p),
+      // maybeContinue receives this job, not the original crew. Preserve the
+      // person the player will negotiate with, including their contact ID.
+      showrunner: ((p.crew || [])[0] || {}).name || null,
+      showrunnerId: ((p.crew || [])[0] || {}).knownId || null,
       months: p.months, episodes: p.episodes || 0, episodeFee: p.episodeFee || 0, baseSalary: p.baseSalary || p.salary, arc: p.arc || null,
       season: p.season || 0, part: p.part || 1, tier: p.tier, scale: p.scale, stability: p.stability,
       // Who you played, what it was about, and where you said it should go. The next season
@@ -872,6 +879,7 @@ function open(s, rel) {
   // land when the run ends, which is the difference between a premiere and a verdict.
   const credit = {
     title: rel.title, role: rel.role, type: rel.type, genre: rel.genre, salary: rel.salary,
+    ...tvTermsOf(rel),
     rating: rel.rating, status: rel.status, year: s.year, season: rel.season,
     part: rel.part > 1 ? rel.part : 0, episodes: rel.episodes,
     // In cinemas. Everything below is provisional until runTick closes it.

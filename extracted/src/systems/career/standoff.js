@@ -30,7 +30,7 @@ import { canAfford, spend, tooTired } from '../../engine/energy.js';
 import { setRespect } from '../meta/status.js';
 import { applyBond } from '../life/bonds.js';
 import { fameTier } from '../meta/status.js';
-import { slotNorm } from './franchise.js';
+import { slotNorm, seriesRoot } from './franchise.js';
 
 const clamp = (v, a = 0, b = 100) => Math.max(a, Math.min(b, v));
 const stamp = (s) => (s.year || 0) * 12 + (s.month || 0);
@@ -154,9 +154,21 @@ export const EXITS = [
 ];
 
 // Written out over money. The show does not stop, and that is the whole of it.
+function markRenewalOutcome(s, o, result, reason) {
+  if (!o || o.kind !== 'renewal') return;
+  const shelf = s.filmography || [];
+  // New renewals point to a credit by ID, which survives JSON. Old papers can
+  // only point to the preceding season of the same show, never a later one.
+  const root = seriesRoot(o.seriesTitle || o.projectTitle);
+  const credit = o.sourceCreditId ? shelf.find(c => c.id === o.sourceCreditId)
+    : shelf.filter(c => !c.minor && (c.season || 1) === (o.season || 1) - 1
+      && seriesRoot(c.title) === root).sort((a, b) => (b.year || 0) - (a.year || 0))[0];
+  if (credit) { credit.renewal = result; credit.renewalReason = reason; }
+}
 export function writeOut(s, o) {
   const e = EXITS[Math.floor(Math.random() * EXITS.length)];
   const title = clean(o.seriesTitle || o.projectTitle);
+  markRenewalOutcome(s, o, 'writtenOut', e.how);
   s.offers = (s.offers || []).filter((x) => x.id !== o.id);
   s.inbox = (s.inbox || []).filter((m) => m.offerId !== o.id);
   addTimeline(s, `Written out of "${title}". The show is coming back; you are not in it.`, true);
@@ -411,7 +423,7 @@ export function callTheRoom(s, o) {
     since: stamp(s), due, open: false, asked: null, gave: null, rounds: 0, pack: packageFor(s, o),
   };
   addTimeline(s, `A date for "${clean(o.projectTitle)}". Everybody who can say yes will be in one room.`);
-  s.lastEvent = `Business affairs have stopped replying about "${clean(o.projectTitle)}". Instead there is an invitation and a date ${ROOM_LEAD} months out — the studio head, business affairs, the showrunner, your agent and you. Nothing about season ${(o.season || 1) + 1} moves until that afternoon.`;
+  s.lastEvent = `Business affairs have stopped replying about "${clean(o.projectTitle)}". Instead there is an invitation and a date ${ROOM_LEAD} months out — the studio head, business affairs, the showrunner, your agent and you. Nothing about season ${o.season || 1} moves until that afternoon.`;
   return s;
 }
 
@@ -540,7 +552,23 @@ export function takeTheRoom(s) {
   if (p.billing) o.billing = true;
   o._settled = true;
   // A paper settled in a room is a paper. The clauses stop being arguable.
-  if (o.contract) { for (const c of o.contract.clauses || []) { c.stance = 'ok'; c.ask = null; } o.contract.sent = null; }
+  if (o.contract) {
+    for (const c of o.contract.clauses || []) {
+      c.stance = 'ok'; c.ask = null;
+      // Signing reads the PAPER, not the room's offer. In 300/300 audit cases it
+      // restored the old fee and old episode count; every granted exclusivity
+      // window was restored to exclusive too. Keep the settled paper in step.
+      if (c.id === 'fee') { c.value = c.perEpisode ? o.episodeFee : o.salary; c.episodes = o.episodes; c.result = 'agreed'; }
+      if (c.id === 'exclusive' && p.conflictFree) { c.value = false; c.result = 'agreed'; }
+      if (c.id === 'schedule' && p.span) {
+        c.value = { ...c.value, months: p.span };
+        // Choosing an existing date must not restore the old duration. Only the
+        // span is settled here; a mandatory unanswered start still needs an answer.
+        for (const op of c.options || []) op.value = { ...op.value, months: p.span };
+      }
+    }
+    o.contract.sent = null;
+  }
   s.standoff = null;
   addTimeline(s, `Settled "${k.title}" in the room. ${Math.round((p.fee / p.was - 1) * 100)}% more an episode${p.points ? `, and ${p.points}% of the show` : ''}.`);
   s.lastEvent = `Hands shaken at twenty past four. ${Math.round((p.fee / p.was - 1) * 100)}% more an episode${p.points ? `, ${p.points} per cent of the back end` : ''}${p.producer ? ', your name in the front titles' : ''}${p.episodes < p.wasEpisodes ? `, and ${p.episodes} episodes instead of ${p.wasEpisodes}` : ''}. Nobody got what they came in for, which is how everybody knows it was a deal.`;
@@ -655,13 +683,17 @@ export function walkTheRoom(s) {
 // different kinds of not being in it.
 export function itFails(s, o) {
   const odds = failureOdds(s, o);
-  let r = Math.random() * 100;
-  let pick = null;
-  for (const k of Object.keys(odds)) { if ((r -= odds[k]) <= 0) { pick = k; break; } }
+  // Walking has already rolled without 'pay'. A second roll put 116/300
+  // walkouts back at the table, after charging the cost of having left it.
+  let pick = Object.prototype.hasOwnProperty.call(odds, o._forced) ? o._forced : null;
+  if (!pick) {
+    let r = Math.random() * 100;
+    for (const k of Object.keys(odds)) { if ((r -= odds[k]) <= 0) { pick = k; break; } }
+  }
   pick = pick || 'around';
   const k = standoff(s);
   const title = k ? k.title : clean(o.seriesTitle || o.projectTitle);
-  const next = (o.season || 1) + 1;
+  const next = o.season || 1;
   if (pick === 'pay') {
     // They blink. It happens, and it happens most when the show is you.
     const p = k ? k.pack : packageFor(s, o);
@@ -675,10 +707,12 @@ export function itFails(s, o) {
   s.offers = (s.offers || []).filter((x) => x.id !== o.id);
   s.inbox = (s.inbox || []).filter((m) => m.offerId !== o.id);
   if (pick === 'cancel') {
+    markRenewalOutcome(s, o, 'cancelled', pick);
     setRespect(s, (s.respect || 0) - 1);
     addTimeline(s, `"${title}" is not coming back. The money could not be agreed and nobody will say so.`, true);
     s.lastEvent = `They closed the file at ten to five. There is no season ${next} — not recast, not delayed, not made. Too much of it was you to carry on without you, and not enough of it was worth what you were asking.`;
   } else {
+    markRenewalOutcome(s, o, 'writtenOut', pick);
     const line = pick === 'killed'
       ? `They are killing your character. It will be a good episode and people will say so, and they will be right, and that is the last of it.`
       : pick === 'newLead'
@@ -693,6 +727,7 @@ export function itFails(s, o) {
 function closeTheShow(s, who) {
   const k = standoff(s), o = standoffOffer(s);
   const title = k ? k.title : 'it';
+  markRenewalOutcome(s, o, 'cancelled', who);
   s.standoff = null;
   if (o) {
     s.offers = (s.offers || []).filter((x) => x.id !== o.id);
@@ -702,8 +737,8 @@ function closeTheShow(s, who) {
   setRespect(s, (s.respect || 0) + (who === 'you' ? 1 : -1));
   addTimeline(s, `"${title}" is not coming back. The money could not be agreed and nobody will say so.`, true);
   s.lastEvent = who === 'you'
-    ? `You said no, put your coat on, and left. There is no season ${(k ? k.season : 1) + 1}. The cast will hear this afternoon, the crew will read it tomorrow, and for about a year everybody will tell you it was the right call.`
-    : `They closed the file at ten to five. There is no season ${(k ? k.season : 1) + 1} — not recast, not delayed, not made. A network would rather lose a show than set a number the whole town can read, and that is the part nobody tells you before your first one.`;
+    ? `You said no, put your coat on, and left. There is no season ${k ? k.season : 1}. The cast will hear this afternoon, the crew will read it tomorrow, and for about a year everybody will tell you it was the right call.`
+    : `They closed the file at ten to five. There is no season ${k ? k.season : 1} — not recast, not delayed, not made. A network would rather lose a show than set a number the whole town can read, and that is the part nobody tells you before your first one.`;
   return s;
 }
 

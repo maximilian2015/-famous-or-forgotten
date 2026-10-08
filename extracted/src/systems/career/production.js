@@ -21,6 +21,7 @@ import { fameTier } from '../meta/status.js';
 import { personName, namesInUse } from '../world/names.js';
 import { holdsAGrudge } from '../meta/stories.js';
 import { rollPotential } from './franchise.js';
+import { tvTermsOf } from './terms.js';
 import { dirBump, dirSwing, pitchAftermath } from './chapter.js';
 import { youngAfterCredit } from './youngblood.js';
 import { sets, addSet, removeSet, setById, canTakeSet, slotsFree, isShort, MAX_SETS, SET_RESPECT } from '../../engine/sets.js';
@@ -145,6 +146,7 @@ export function startProduction(s, offer) {
     // The contract. Preparation is months on the calendar before the first day; an
     // exclusive shoot takes your Saturdays too; points pay out when the run closes.
     prepLeft: offer.prep || 0, prep: offer.prep || 0, exclusive: !!offer.exclusive, backend: offer.backend || 0,
+    ...tvTermsOf(offer),
     story: offer.story || null,   // a career story this shoot belongs to (stories.js)
     // The kinds of paper (contract.js): the network's options and your exit, pay-or-play,
     // a share of the toys. Carried season to season by franchise.js.
