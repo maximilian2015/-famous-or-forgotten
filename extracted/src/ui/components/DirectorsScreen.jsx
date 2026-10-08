@@ -10,11 +10,13 @@ import { directorCounts, monthName, STATE_LABEL } from '../../systems/meta/yourD
 // reads it off the phone, the grudges and the work, and each door is the rule that opens it.
 const STATE_COLOR = () => ({ warm: theme.good, neutral: theme.muted, cold: theme.bad });
 
-function Row({ r }) {
+function Row({ r, onPerson }) {
   const col = r.state ? STATE_COLOR()[r.state] : theme.muted;
+  // Their card in People — the one PersonSheet, with the actions it already has (App.jsx).
+  const open = r.contact && r.id && onPerson ? () => onPerson(r.id) : null;
   return (<div style={{ padding: '10px 0', borderBottom: `1px solid ${theme.line}` }}>
     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', gap: 10 }}>
-      <span style={{ fontSize: 14, fontWeight: 800, minWidth: 0 }}>{r.name}</span>
+      <span onClick={open || undefined} style={{ fontSize: 14, fontWeight: 800, minWidth: 0, cursor: open ? 'pointer' : 'default' }}>{r.name}</span>
       {r.inPhone
         ? <span style={{ fontSize: 11.5, fontWeight: 900, letterSpacing: '.06em', textTransform: 'uppercase', color: col, whiteSpace: 'nowrap' }}>{STATE_LABEL[r.state]}</span>
         : <span style={{ fontSize: 11, color: theme.muted, whiteSpace: 'nowrap' }}>not in your phone</span>}
@@ -36,14 +38,18 @@ function Row({ r }) {
       <div style={{ fontSize: 11.5, fontWeight: 900, color: theme.bad }}>{r.why.label}</div>
       <div style={{ fontSize: 11.5, color: theme.text, opacity: .85, marginTop: 2, lineHeight: 1.4 }}>{r.why.text}</div>
     </div>)}
-    {r.inPhone && <div style={{ fontSize: 11.5, color: theme.muted, marginTop: 6, lineHeight: 1.45 }}>{r.line}</div>}
+    {r.inPhone && <div style={{ display: 'flex', gap: 10, alignItems: 'center', marginTop: 6 }}>
+      <div style={{ flex: 1, minWidth: 0, fontSize: 11.5, color: theme.muted, lineHeight: 1.45 }}>{r.line}</div>
+      {open && <button onClick={open} style={{ flex: 'none', border: r.contact === 'Reach out' ? `1px solid ${theme.accent}` : 'none', borderRadius: 9, padding: '7px 11px', fontSize: 12, fontWeight: 800, cursor: 'pointer', fontFamily: 'inherit',
+        background: r.contact === 'Reach out' ? 'none' : `linear-gradient(135deg,${theme.accent2},${theme.accent})`, color: r.contact === 'Reach out' ? theme.accent : '#fff', whiteSpace: 'nowrap' }}>{r.contact} ›</button>}
+    </div>}
   </div>);
 }
 // Past this many, the people you made one film with and nothing since wait behind a tap. A long
 // career has a director on every credit, and forty strangers would bury the eleven who matter.
 const SHOW = 4;
 
-export function DirectorsScreen({ g, onBack }) {
+export function DirectorsScreen({ g, onBack, onPerson }) {
   const [all, setAll] = useState(false);
   const bar = FACTIONS.directors.read(g);
   const c = directorCounts(g);
@@ -68,7 +74,7 @@ export function DirectorsScreen({ g, onBack }) {
       {c.rumour && <div style={{ fontSize: 11.5, color: theme.bad, lineHeight: 1.45, marginTop: 6 }}>{c.rumour.who} is telling people you were difficult, until {monthName(c.rumour.until)}. Reads are harder while it lasts.</div>}
 
       {head('In your phone')}
-      {phone.length ? phone.map((r) => <Row key={r.name} r={r} />)
+      {phone.length ? phone.map((r) => <Row key={r.name} r={r} onPerson={onPerson} />)
         : <div style={{ fontSize: 12, color: theme.muted, padding: '6px 0', lineHeight: 1.5 }}>No director in your phone. One who warms to you on a set — sixty and up by the wrap — stays in it.</div>}
       {others.length > 0 && head('Worked with, or crossed')}
       {others.length > 0 && <div style={{ fontSize: 11.5, color: theme.muted, lineHeight: 1.45, padding: '2px 0 4px' }}>Not in your phone. Offers, tentpoles and sets only bring back people who are — a director gets into it by ending a shoot at sixty or more.</div>}

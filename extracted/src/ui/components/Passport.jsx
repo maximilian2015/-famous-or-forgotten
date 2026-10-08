@@ -22,7 +22,7 @@ import { DirectorsScreen } from './DirectorsScreen.jsx';
 const MON = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
 const money = (n) => (Math.abs(n) >= 1e6 ? '€' + (n / 1e6).toFixed(n >= 1e7 ? 0 : 1) + 'm' : '€' + Math.round(n).toLocaleString());
 
-export function Passport({ g, onClose, onRoom }) {
+export function Passport({ g, onClose, onRoom, onPerson }) {
   // The Directors bar opens the names it is made of. The other five are summaries of things
   // with screens of their own, or of nothing kept at all — see reputation-audit.md.
   const [directors, setDirectors] = useState(false);
@@ -46,7 +46,7 @@ export function Passport({ g, onClose, onRoom }) {
     <span style={{ color: theme.muted, flex: 'none' }}>{k}</span><span style={{ textAlign: 'right', fontWeight: 700, color: color || theme.text }}>{v}</span>
   </div>);
   const head = (t) => (<div style={{ fontSize: 10.5, fontWeight: 900, letterSpacing: '.1em', textTransform: 'uppercase', color: theme.accent, margin: '14px 0 2px' }}>{t}</div>);
-  if (directors) return <DirectorsScreen g={g} onBack={() => setDirectors(false)} />;
+  if (directors) return <DirectorsScreen g={g} onBack={() => setDirectors(false)} onPerson={onPerson} />;
   return (<div style={{ position: 'fixed', inset: 0, background: 'rgba(8,5,20,.97)', zIndex: 60, overflowY: 'auto', padding: 16, color: theme.text, fontFamily: FONT }}>
     <div style={{ maxWidth: 400, margin: '0 auto' }}>
       <div style={{ display: 'flex', gap: 14, alignItems: 'center', marginBottom: 6 }}>

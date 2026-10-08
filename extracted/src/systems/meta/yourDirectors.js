@@ -73,25 +73,28 @@ function coldWhy(s, p, now, latest) {
   return { label: 'Cold', text: `At ${Math.round(p.relationship || 0) || 0}, and what made them cold is not on record any more. ${lifts}` };
 }
 
-// What a director in your phone will and will not do, in their own rules' words.
+// What you can do about a director in your phone, and what they will do on their own — short,
+// because the doing happens on their card in People (the Contact / Reach out button), not here.
+// Each door is the predicate that opens it; the pitch is collab.js canPropose's own answer.
 function lineFor(s, p, grudge) {
   const n = first(p.name);
-  if (p.cold) {
-    // collab.js: a cold partner takes thirty points off a project ever being made.
-    const project = (s.collabs || []).some((c) => c.who === p.id);
-    return `${n} is not taking your calls: no offers, no tentpole, no set together, no pitch.${project ? ' The thing you have in development with them is thirty points less likely to get made.' : ''}`;
-  }
+  // A grudge first: social contact is fine, work is not, whatever the closeness says.
+  if (grudge) return `You can still contact ${n}, but work together is blocked until the grudge ends.`;
+  if (p.cold) return `${n} is not picking up, and no work comes from them while it lasts. Reach out to rebuild it.`;
   const doors = [];
-  if (sendsOffers(s, p)) doors.push('can be behind an offer');
-  if (onTheBoard(s, p) && boardOpen(s)) doors.push('can be the director of a tentpole on the board');
+  if (sendsOffers(s, p)) doors.push('an offer');
+  if (onTheBoard(s, p) && boardOpen(s)) doors.push('a tentpole');
   // production.js makeCrew: the set's bond starts at the relationship, between 10 and 90.
-  if (directsYouAgain(s, p)) doors.push(`can direct you again (the set starts at ${Math.max(10, Math.min(90, Math.round(p.relationship || 40)))})`);
+  if (directsYouAgain(s, p)) doors.push(`a set that starts at ${Math.max(10, Math.min(90, Math.round(p.relationship || 40)))}`);
+  const own = doors.length ? `${n} can bring you work on their own: ${doors.join(', ')}.` : `Nothing brings ${n} to you on their own yet.`;
   const pitch = inCareer(s) ? canPropose(s, p) : null;
-  if (pitch && pitch.ok) doors.push('will hear a pitch');
-  const said = doors.length ? `${n} ${doors.length > 1 ? doors.slice(0, -1).join(', ') + ' and ' + doors[doors.length - 1] : doors[0]}.` : '';
-  const no = pitch && !pitch.ok ? pitch.why : '';
-  if (said || no) return [said, no].filter(Boolean).join(' ');
-  return grudge ? `${n} will not come back to you while the grudge runs.` : `Nothing brings ${n} back to you yet.`;
+  if (!pitch) return own;
+  // Pitching and a word put in both open at fifty (collab.js, life/interactions.js favour).
+  const rel = Math.round(p.relationship || 0);
+  const card = rel < 50 ? `Pitching and favours open at fifty — you are at ${rel}.`
+    : pitch.ok ? 'From their card: pitch a project, or ask them to put in a word.'
+    : `From their card you can ask them to put in a word. ${pitch.why}`;
+  return `${own} ${card}`;
 }
 
 export function yourDirectors(s) {
@@ -127,6 +130,9 @@ export function yourDirectors(s) {
       // A grudge is its own reason; a cold director without one gets what the state can say.
       why: p && p.cold && !grudge ? coldWhy(s, p, now, latest) : null,
       line: p ? lineFor(s, p, grudge) : `Not in your phone. Offers, tentpoles and sets only bring back people who are.`,
+      // The button that opens their card in People. Somebody holding a grudge can still be
+      // contacted — socially; the line says what stays shut. Nobody outside the phone has a card.
+      contact: !p ? null : grudge ? 'Contact' : p.cold ? 'Reach out' : 'Contact',
     };
   }).sort((a, b) => rank(a) - rank(b) || (b.relationship || 0) - (a.relationship || 0) || b.films - a.films);
 }

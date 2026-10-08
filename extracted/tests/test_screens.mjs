@@ -352,6 +352,21 @@ await inState('Home · for your consideration', { filmography: [...save.filmogra
       await tap(W2, (d) => d.querySelector('div[title="Who you are"]'));
       await tap(W2, (d) => [...d.querySelectorAll('button')].find((b) => /^The directors/.test((b.textContent || '').trim())));
     });
+  // The screen has no actions of its own: Chat, a present, a pitch are all on the person's card.
+  await inState('Passport · the directors has no copy of the People actions', { people, grudges },
+    /^(?=[\s\S]*Rosalind Varga Warm)(?![\s\S]*Buy them something)(?![\s\S]*Ask them to make something with you)/,
+    async (W2) => {
+      await tap(W2, (d) => d.querySelector('div[title="Who you are"]'));
+      await tap(W2, (d) => [...d.querySelectorAll('button')].find((b) => /^The directors/.test((b.textContent || '').trim())));
+    });
+  // And Contact on a row opens that person's own card in People — the one PersonSheet.
+  await inState('Passport · the directors · Contact opens their card in People', { people, grudges },
+    /^(?=[\s\S]*Rosalind Varga)(?=[\s\S]*Chat)(?=[\s\S]*Buy them something)(?=[\s\S]*Ask them to make something with you)(?![\s\S]*Grudge · Until)/,
+    async (W2) => {
+      await tap(W2, (d) => d.querySelector('div[title="Who you are"]'));
+      await tap(W2, (d) => [...d.querySelectorAll('button')].find((b) => /^The directors/.test((b.textContent || '').trim())));
+      await tap(W2, (d) => [...d.querySelectorAll('button')].find((b) => /^Contact/.test((b.textContent || '').trim())));
+    });
 }
 // The set asking for something this month: the row with the answers, on Home and in the Calendar.
 {

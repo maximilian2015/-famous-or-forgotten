@@ -131,7 +131,10 @@ export default function App() {
   if (g.openContract) return <ContractRoom g={g} onClose={() => dispatch(closeContract)} />;
   if (g.openOption && (g.inbox || []).some((m) => m.id === g.openOption)) return <OptionPaper g={g} onClose={() => dispatch((s) => { s.openOption = null; return s; })} />;
   if (showRoom) return <RoomScreen g={g} onBack={() => setShowRoom(false)} />;
-  if (showPassport) return <Passport g={g} onClose={() => setShowPassport(false)} onRoom={() => { setShowPassport(false); setShowRoom(true); }} />;
+  // onPerson: the Directors screen opens a director's own card in People — the one PersonSheet,
+  // with the actions it already has, rather than a second copy of them inside the passport.
+  if (showPassport) return <Passport g={g} onClose={() => setShowPassport(false)} onRoom={() => { setShowPassport(false); setShowRoom(true); }}
+    onPerson={(id) => { setShowPassport(false); setScreen('people'); setOpenPerson(id); }} />;
   if (confirmEnd) return <EndLifeModal onCancel={() => setConfirmEnd(false)} onConfirm={() => { import('./systems/meta/legacy.js').then(m => { m.enshrine(g); newLife(); setConfirmEnd(false); setOpenPerson(null); setScreen('life'); }); }} />;
   return (
     <div style={{ maxWidth: 440, margin: '0 auto', minHeight: '100vh', background: 'transparent', color: theme.text, padding: 16, paddingBottom: 90, fontFamily: FONT }}>

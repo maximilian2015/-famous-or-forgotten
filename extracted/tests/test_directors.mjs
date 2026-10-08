@@ -7,6 +7,10 @@ import { walkOffSet, directsYouAgain } from '../src/systems/career/production.js
 import { sendsOffers } from '../src/systems/career/offers.js';
 import { onTheBoard } from '../src/systems/career/tentpoles.js';
 import { ensureWorld } from '../src/systems/world/world.js';
+import { interactionsFor, interact } from '../src/systems/life/interactions.js';
+import { bondsTick } from '../src/systems/life/bonds.js';
+import { canPropose, collabTick } from '../src/systems/career/collab.js';
+import { nightTick } from '../src/systems/social/night.js';
 
 let fails = 0;
 const ok = (n, c, e = '') => { if (!c) { fails++; console.log('FAIL  ' + n + (e ? ' :: ' + e : '')); } else console.log('ok    ' + n); };
@@ -64,11 +68,12 @@ const row = (s, name) => yourDirectors(s).find((r) => r.name === name);
   const s = st({ people: [dir(), dir({ id: 'd2', name: 'Kaspar Hartigan', relationship: 30 }), dir({ id: 'd3', name: 'Mira Croft', relationship: 8, cold: true }),
     { id: 'c1', name: 'Pia Lund', role: 'Casting Director', relationship: 20 }] });
   const warm = row(s, 'Rosalind Varga').line, mid = row(s, 'Kaspar Hartigan').line, cold = row(s, 'Mira Croft').line;
-  ok('a warm director from a set comes back to direct you, starting where you left them', /direct you again \(the set starts at 72\)/.test(warm), warm);
-  ok('and will hear a pitch', /will hear a pitch/.test(warm), warm);
-  ok('below fifty the pitch is refused in collab.js’s own words', /well enough to ask\. Fifty, and you are at 30/.test(mid), mid);
-  ok('a cold one is not taking your calls', /not taking your calls/.test(cold) && !/can be behind/.test(cold), cold);
-  ok('a casting director does not make films, in collab.js’s words', /does not make films/.test(row(s, 'Pia Lund').line), row(s, 'Pia Lund').line);
+  ok('a warm director from a set can bring you a set that starts where you left them', /a set that starts at 72/.test(warm), warm);
+  ok('and their card is where you pitch or ask a favour', /From their card: pitch a project, or ask them to put in a word\./.test(warm), warm);
+  ok('below fifty, the line says where pitching and favours open', /Pitching and favours open at fifty — you are at 30\./.test(mid), mid);
+  ok('a cold one: nothing comes from them, and reach out', /no work comes from them/.test(cold) && /Reach out to rebuild it/.test(cold) && !/an offer/.test(cold), cold);
+  ok('the button says Contact, or Reach out for somebody cold', row(s, 'Rosalind Varga').contact === 'Contact' && row(s, 'Mira Croft').contact === 'Reach out');
+  ok('a casting director does not make films, in collab.js’s words', /does not make films/.test(row({ ...s, people: [{ id: 'c1', name: 'Pia Lund', role: 'Casting Director', relationship: 60 }] }, 'Pia Lund').line));
   // The doors against the predicates themselves, across a spread of states.
   let agree = 0, total = 0;
   for (const rel of [0, 10, 16, 30, 36, 49, 50, 80]) for (const cold of [false, true]) for (const fromSet of [null, 'A Set']) for (const g of [false, true]) {
@@ -76,11 +81,11 @@ const row = (s, name) => yourDirectors(s).find((r) => r.name === name);
     const t = st({ people: [p], grudges: g ? [{ who: p.name, title: 'X', since: NOW - 1, due: NOW + 10, until: NOW + 20, opened: false }] : [] });
     const line = row(t, p.name).line;
     total++;
-    if (/can be behind an offer/.test(line) === sendsOffers(t, p) && /direct you again/.test(line) === directsYouAgain(t, p)) agree++;
+    if (/\ban offer\b/.test(line) === sendsOffers(t, p) && /a set that starts/.test(line) === directsYouAgain(t, p)) agree++;
   }
   ok('the offer and set doors appear exactly when offers.js and production.js say they open', agree === total, `${agree}/${total}`);
   const board = st({ people: [dir()], filmography: [{ ...credit('Hit', 'Someone Else', 2065), rating: 90, status: 'Hit' }] });
-  ok('the tentpole door appears when tentpoles.js would pick them and the board is open', onTheBoard(board, board.people[0]) && /tentpole on the board/.test(row(board, 'Rosalind Varga').line), row(board, 'Rosalind Varga').line);
+  ok('the tentpole door appears when tentpoles.js would pick them and the board is open', onTheBoard(board, board.people[0]) && /a tentpole/.test(row(board, 'Rosalind Varga').line), row(board, 'Rosalind Varga').line);
   // Weight under eighty, no hit: access.js keeps the board shut, so nobody is on it.
   const shut = st({ people: [dir({ industryWeight: 70 })] });
   ok('and not while the board is shut to you', onTheBoard(shut, shut.people[0]) && !/tentpole/.test(row(shut, 'Rosalind Varga').line), row(shut, 'Rosalind Varga').line);
@@ -145,6 +150,50 @@ const row = (s, name) => yourDirectors(s).find((r) => r.name === name);
   ok('cold that is not the drift is not given a made-up cause', row(s, 'Esme Brandt').why.label === 'Cold' && /not on record/.test(row(s, 'Esme Brandt').why.text), row(s, 'Esme Brandt').why.text);
   ok('a grudge is its own reason, so no second one', row(s, 'Kaspar Hartigan').why === null && row(s, 'Kaspar Hartigan').grudge);
   ok('somebody who is not cold has no reason to be given', row(s, 'Odile Brandt').why === null);
+}
+// ── a grudge shuts every door to work, whatever the closeness ──────────────────
+// Cold and a grudge are different: a chat or a present can lift cold (bonds.js), and you can be
+// on speaking terms again — but while the grudge stands nothing professional comes from them.
+{
+  const fresh = () => st({ ap: 100, apMax: 100, apMaxEff: 100, cash: 5e6, fame: 70, respect: 70,
+    people: [dir({ id: 'j1', name: 'Jocasta Radovan', relationship: 0, cold: true, lastSeen: NOW - 30, industryWeight: 85 })],
+    grudges: [{ who: 'Jocasta Radovan', title: 'Fools and Names', since: NOW - 37, due: NOW - 37 + 9999, until: NOW + 23, opened: true }] });
+  const s = fresh(); const j = s.people[0];
+  const chat = interactionsFor(s, 'j1').find((a) => a.id === 'chat');
+  ok('a faded director can still be contacted: Chat is open', chat && chat.open && !chat.why, JSON.stringify(chat));
+  ok('the row says so, and the button says Contact', row(s, 'Jocasta Radovan').contact === 'Contact' && /You can still contact Jocasta, but work together is blocked until the grudge ends\./.test(row(s, 'Jocasta Radovan').line), row(s, 'Jocasta Radovan').line);
+  interact(s, 'j1', 'gift');
+  const afterGift = j.relationship;
+  ok('a present raises closeness through the existing interaction', afterGift > 10, String(afterGift));
+  bondsTick(s);
+  ok('and above ten the cold lifts, the way bonds.js always lifted it', j.cold === false, String(j.cold));
+  // Well past every threshold, so a closed door can only be the grudge closing it.
+  j.relationship = 70;
+  ok('but the grudge still blocks an agent offer', !sendsOffers(s, j));
+  ok('and the tentpole board', !onTheBoard(s, j));
+  ok('and directing you again', !directsYouAgain(s, { ...j, fromSet: 'A Set', relationship: 60 }));
+  ok('and a pitch, even at seventy', !canPropose(s, j).ok);
+  const favour = interactionsFor(s, 'j1').find((a) => a.id === 'favour');
+  ok('and putting in a word, with the reason on the button', favour && !favour.open && /grudge/.test(favour.why), JSON.stringify(favour));
+  // A lead from a night out: every one ends in nightTick, and that is where it is stopped.
+  const offersBefore = (s.offers || []).length;
+  s.leads = [{ due: NOW, from: 'Jocasta Radovan', role: 'Film Director', weight: 96, sure: true, alist: true }];
+  nightTick(s);
+  ok('a lead from a party does not come through', (s.offers || []).length === offersBefore && !(s.leads || []).length);
+  // Something already in development with them dies, rather than arriving with their name on it.
+  s.collabs = [{ id: 'k1', who: 'j1', name: 'Jocasta Radovan', role: 'Film Director', title: 'Our Thing', genre: 'Drama', due: NOW }];
+  collabTick(s);
+  ok('a project in development with them is dropped', !(s.collabs || []).length && (s.offers || []).length === offersBefore && /will not make it with you while the grudge stands/.test(s.timeline.map((x) => x.text).join(' ')));
+  // Without the grudge — the same person, the same closeness — every door is what it was before.
+  const t = fresh(); t.grudges = []; const k = t.people[0]; k.cold = false; k.relationship = 70; k.fromSet = 'A Set';
+  ok('without a grudge the doors open exactly as before', sendsOffers(t, k) && onTheBoard(t, k) && directsYouAgain(t, k) && canPropose(t, k).ok);
+  let same = 0, n = 0;
+  for (const rel of [0, 10, 16, 30, 36, 49, 50, 80]) for (const cold of [false, true]) {
+    const p = dir({ relationship: rel, cold });
+    const u = st({ people: [p] });
+    n++; if (sendsOffers(u, p) === (!cold && rel > 15)) same++;
+  }
+  ok('and the offer door with no grudge is the old rule, state for state', same === n, `${same}/${n}`);
 }
 // ── an old save with none of it ────────────────────────────────────────────────
 {
