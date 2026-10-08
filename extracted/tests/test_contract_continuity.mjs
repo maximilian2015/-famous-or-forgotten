@@ -71,13 +71,22 @@ test('the reopened paper displays the agreed fee and episode count after save/lo
   const fee = draftContract(s, s.offers[0]).clauses.find(c => c.id === 'fee');
   assert.equal(fee.text, `€${(141400).toLocaleString()} an episode, 7 episodes — €${(989800).toLocaleString()}`);
 });
-test('settled fee asks remain raises and preserve the existing higher asks', () => {
+// A handshake is final. This used to keep the higher fee asks open ("Discuss ▾" under a number
+// everybody had just shaken on); Maxi called that a bug, and it was: the room was final in words only.
+test('after a handshake the fee is not up for discussion, and asking anyway changes nothing', () => {
   const { s, o } = meeting(), fee = o.contract.clauses.find(c => c.id === 'fee');
-  const higher = fee.options.filter(op => op.value > s.standoff.pack.fee);
-  assert.ok(higher.length, 'fixture: there is no remaining higher ask');
-  assert.ok(fee.options.some(op => op.value <= s.standoff.pack.fee), 'fixture: no stale ask');
+  const higher = fee.options.find(op => op.value > s.standoff.pack.fee);
+  assert.ok(higher, 'fixture: there was a higher ask before the room');
   takeTheRoom(s);
-  assert.deepEqual(draftContract(s, o).clauses.find(c => c.id === 'fee').options, higher);
+  assert.deepEqual(draftContract(s, o).clauses.find(c => c.id === 'fee').options, []);
+  markClause(s, o.id, 'fee', higher.id);
+  assert.equal(draftContract(s, o).clauses.find(c => c.id === 'fee').stance, 'ok');
+  signContract(s, o.id);
+  assert.equal(s.productions[0].episodeFee, 141400);
+});
+test('no clause on a settled paper can be reopened', () => {
+  const { s, o } = meeting(); takeTheRoom(s);
+  for (const c of draftContract(s, o).clauses) assert.deepEqual(c.options, [], c.id);
 });
 test('an old more-money ask cannot cut the fee settled in the room', () => {
   let { s, o } = meeting();
@@ -112,13 +121,13 @@ test('an agreed schedule displays the shorter span without losing its start date
   const schedule = draftContract(s, o).clauses.find(c => c.id === 'schedule');
   assert.match(schedule.text, /^3 months of shooting,/); assert.equal(schedule.value.start, start);
 });
-test('a held start keeps the agreed span in every existing date option', () => {
+test('a held start keeps the agreed span, and the agreed dates are not reopened', () => {
   const { s, o, schedule, hold } = heldMeeting();
   schedule.value = { ...hold.value }; schedule.result = 'agreed';
-  const options = roundTrip(schedule.options);
   s.standoff.pack.span = 3; takeTheRoom(s);
-  assert.deepEqual(draftContract(s, o).clauses.find(c => c.id === 'schedule').options,
-    options.map(op => ({ ...op, value: { ...op.value, months: 3 } })));
+  const after = draftContract(s, o).clauses.find(c => c.id === 'schedule');
+  assert.equal(after.value.months, 3); assert.equal(after.value.start, hold.value.start);
+  assert.deepEqual(after.options, []);
 });
 test('asking for a held date cannot undo the shorter span settled in the room', () => {
   let { s, o, schedule, hold } = heldMeeting();
@@ -132,6 +141,8 @@ test('asking for a held date cannot undo the shorter span settled in the room', 
 });
 test('settling a span still requires an answer to an outstanding mandatory date', () => {
   const { s, o } = heldMeeting(); s.standoff.pack.span = 3; takeTheRoom(s);
+  // The one thing still open on a settled paper: a question, not a negotiation.
+  assert.ok(draftContract(s, o).clauses.find(c => c.id === 'schedule').options.length > 0, 'the mandatory date cannot be answered');
   signContract(s, o.id);
   assert.equal(o.signed, undefined); assert.match(s.lastEvent, /They need to know when you can start/);
 });

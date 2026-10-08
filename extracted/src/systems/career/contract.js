@@ -150,9 +150,12 @@ export function draftContract(s, o) {
     if (o._settled) {
       for (const c of k.clauses) {
         if (c.id === 'fee' || c.id === 'exclusive' || (c.id === 'schedule' && c.result === 'agreed')) c.text = textFor(c, o);
-        // An old ask for more can be below the room's new fee. Keep the higher
-        // asks at their existing price and odds; never offer a pay cut as a raise.
-        if (c.id === 'fee') c.options = c.options.filter(op => op.value > c.value);
+        // A handshake is the end of the argument. The higher fee asks used to stay, so the paper
+        // still said "Discuss ▾" under a number everybody had just shaken on — the room was
+        // final in words only. Nothing on a settled paper is arguable any more, and the paper
+        // says "not up for discussion". The one exception is a start date they still need an
+        // answer to: that is not a negotiation, it is a question, and it has to be answerable.
+        if (!(c.id === 'schedule' && c.must && c.result !== 'agreed')) c.options = [];
       }
     }
     // Signed and waiting: the paper says where it stands NOW — the month it will start given
