@@ -74,7 +74,20 @@ function sanitize(st) {
 // exactly ordinary and nothing can be hot or dead in the year you start. See meta/market.js.
 function freshLife(opts) { const s = createInitialState(opts); beginLife(s); ensureAppearance(s); ageMarket(s); return s; }
 
-let state = normalize(load());
+// A stored save from another version used to be thrown away in silence: normalize started a new
+// life, and the first thing you did wrote it over the old one. It cannot be played here, but it
+// is kept, under its own key, and the new life says so. (transition audit, 10 Oct 2026)
+function boot() {
+  const saved = load();
+  const state = normalize(saved);
+  if (saved && typeof saved === 'object' && saved.version !== CURRENT_VERSION) {
+    const aside = `${KEY}_${saved.version || 'unversioned'}`;
+    try { localStorage.setItem(aside, JSON.stringify(saved)); } catch (e) {}
+    state.lastEvent = `The life saved in this browser is from another version of the game (${saved.version || 'unversioned'}). It could not be loaded, so it has been kept aside, untouched, and this is a new one.`;
+  }
+  return state;
+}
+let state = boot();
 const listeners = new Set();
 function emit() { for (const l of listeners) l(); }
 export function getState() { return state; }
@@ -118,6 +131,9 @@ export function importSave(text) {
   let raw;
   try { raw = JSON.parse(text); } catch (e) { return 'That is not a save file — it is not even JSON.'; }
   if (!looksLikeState(raw)) return 'That file is not one of this game’s saves.';
+  // A save of another version used to "load" as a brand-new life — normalize starts one — and
+  // the screen said "Loaded. Carry on." over the life it had just replaced. Refused instead.
+  if (raw.version !== CURRENT_VERSION) return `That save is from another version of the game (${raw.version}; this one is ${CURRENT_VERSION}). It was not loaded, and the life you are playing is untouched.`;
   const next = normalize(raw);
   if (!looksLikeState(next)) return 'That save could not be read. It may be from a much older version.';
   setState(next);
@@ -133,6 +149,8 @@ if (typeof window !== 'undefined') {
     if (e.key !== KEY) return;
     let saved = null;
     try { saved = e.newValue ? JSON.parse(e.newValue) : null; } catch (err) { return; }
+    // Another tab running another version is not this game's save; adopting it would start a new life.
+    if (saved && saved.version !== CURRENT_VERSION) return;
     state = normalize(saved);
     emit();
   });
