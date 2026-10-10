@@ -571,6 +571,18 @@ export function isWorldHit(credit, rel) {
   if (needed > 0 && gross >= needed * SLEEPER_OVER && gross >= SLEEPER_GROSS && word >= 75) return true;
   return false;
 }
+// Old saves. `critical` arrived after most of a long career was made — Alex Moon had it on 2 of
+// 52 credits — so the column's verdict and the "why" line under SMASH were missing on nearly
+// every film. It is criticalOf(rating), set at close for every credit, so a finished credit with
+// a rating gets it at load (state/store.js), silently and only where missing. `needed` is not
+// filled the same way: it depends on the marketing campaign, which old credits did not record,
+// and re-deriving it contradicted the stored verdict on 3 of 27 of his films.
+export function settleCritical(s) {
+  for (const c of [...(s.filmography || []), ...(s.discography || [])]) {
+    if (c && !c.running && !c.critical && !c.minor && Number.isFinite(c.rating)) c.critical = criticalOf(c.rating);
+  }
+  return s;
+}
 export function criticalOf(rating) {
   const r = rating || 0;
   if (r >= 85) return 'acclaimed';

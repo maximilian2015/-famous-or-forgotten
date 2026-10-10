@@ -35,5 +35,22 @@ const store = await import('../src/state/store.js');
   ok('nor was it written over in storage', JSON.parse(box.get('fof_react_save')).name === 'Mira Vale');
 }
 
+// ── old credits get the column's verdict, where it can be known exactly ────────
+{
+  const s = JSON.parse(JSON.stringify(life));
+  s.filmography = [
+    { title: 'Old Good', rating: 88, running: false },
+    { title: 'Old Poor', rating: 51.7, running: false },
+    { title: 'Still Playing', rating: 70, running: true },
+    { title: 'A Fragrance', rating: 72, running: false, minor: true },
+    { title: 'Already', rating: 30, running: false, critical: 'mixed' },
+  ];
+  store.importSave(JSON.stringify(s));
+  const by = (t) => store.getState().filmography.find((c) => c.title === t).critical;
+  ok('a finished film without it gets it from its rating', by('Old Good') === 'acclaimed' && by('Old Poor') === 'poorly reviewed', `${by('Old Good')} ${by('Old Poor')}`);
+  ok('a film still running, a commercial and a credit that has one are left alone', by('Still Playing') === undefined && by('A Fragrance') === undefined && by('Already') === 'mixed');
+  ok('and nothing is guessed for needed, which old credits cannot tell', store.getState().filmography.every((c) => c.needed === undefined));
+}
+
 console.log(fails ? `\n${fails} failed` : '\nall passed');
 process.exit(fails ? 1 : 0);

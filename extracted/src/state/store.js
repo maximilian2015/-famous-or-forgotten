@@ -5,6 +5,7 @@ import { ageMarket } from '../systems/meta/market.js';
 import { ensureAppearance } from '../systems/life/appearance.js';
 import { dressOffers } from '../systems/career/script.js';
 import { settleBillions } from '../systems/career/billion.js';
+import { settleCritical } from '../systems/career/release.js';
 const KEY = 'fof_react_save';
 const CURRENT_VERSION = 'r0.8b';
 
@@ -63,6 +64,7 @@ function normalize(saved) {
   if (merged.setsKnown == null) { const r = merged.respect || 0; merged.setsKnown = 1 + (r >= 25 ? 1 : 0) + (r >= 50 ? 1 : 0); }
   ensureAppearance(merged); // saves made before the avatar existed still need a face
   settleBillions(merged);   // billions made before the billion club existed are in it — silently. career/billion.js
+  settleCritical(merged);   // and the column's verdict on films closed before it was kept. career/release.js
   return merged;
 }
 function sanitize(st) {
