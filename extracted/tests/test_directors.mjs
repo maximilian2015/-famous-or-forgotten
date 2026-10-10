@@ -11,6 +11,9 @@ import { interactionsFor, interact } from '../src/systems/life/interactions.js';
 import { bondsTick } from '../src/systems/life/bonds.js';
 import { canPropose, collabTick } from '../src/systems/career/collab.js';
 import { nightTick } from '../src/systems/social/night.js';
+import { BANDS, regardNote } from '../src/systems/life/regard.js';
+import { deepenRelationship } from '../src/systems/life/relationships.js';
+import { knowsPowerBroker } from '../src/systems/career/access.js';
 
 let fails = 0;
 const ok = (n, c, e = '') => { if (!c) { fails++; console.log('FAIL  ' + n + (e ? ' :: ' + e : '')); } else console.log('ok    ' + n); };
@@ -198,6 +201,17 @@ const row = (s, name) => yourDirectors(s).find((r) => r.name === name);
     n++; if (sendsOffers(u, p) === (!cold && rel > 15)) same++;
   }
   ok('and the offer door with no grudge is the old rule, state for state', same === n, `${same}/${n}`);
+}
+// ── regard says what they think of the work, and promises nothing it does not do ─
+// No work route reads regard; the card used to promise casting ("Would cast you tomorrow").
+{
+  ok('no regard band promises a part', BANDS.every((b) => !/cast|film around|read you|have you on/i.test(b.label)), BANDS.map((b) => b.label).join(' | '));
+  const notes = [[70, 20], [50, 25], [10, 70], [5, 60]].map(([relationship, regard]) => regardNote({ relationship, regard }) || '');
+  ok('nor does any note', notes.every((n) => n && !/cast|thought of you for/i.test(n)), notes.join(' | '));
+  // The studio door is closeness and weight (access.js); it is announced when it opens, whatever regard is.
+  const s = st({ ap: 100, apMax: 100, apMaxEff: 100, people: [dir({ id: 'k1', name: 'Odile Brandt', relationship: 59, industryWeight: 85, unlocks: 'aaa', regard: 10 })] });
+  for (let i = 0; i < 5 && s.people[0].relationship < 60; i++) deepenRelationship(s, 'k1');
+  ok('the studio door opening is said even when they do not rate you', s.people[0].relationship >= 60 && knowsPowerBroker(s) && /A door just opened/.test(s.lastEvent || ''), s.lastEvent);
 }
 // ── an old save with none of it ────────────────────────────────────────────────
 {

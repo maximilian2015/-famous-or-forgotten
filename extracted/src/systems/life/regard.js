@@ -18,10 +18,13 @@
 //   · a scandal                                             — everybody hears, everybody adjusts
 //   · walking off a set, or a director who went cold        — handled where those happen
 //
-// And it is what the doors are actually on. A producer at closeness 80 and regard 30 is
-// somebody who will take your call, mean every word, and cast somebody else — and the game
-// now lets you feel exactly that, which is the most common experience in this profession
-// and was completely missing.
+// It was meant to be what the doors are on, and it never was: `opensDoors` was written with it
+// and never called by anything (ca0d0aa). Every work route — an offer, the tentpole board, a
+// director coming back, a pitch, a word put in — has only ever read closeness. So the card
+// promised casting ("Would cast you tomorrow", "would still cast you") that the game did not do,
+// and the Directors screen and the person's card disagreed about the same person. Until somebody
+// decides to put the doors on regard — a balance decision, not a fix — it says what it is: an
+// opinion of your work, and nothing about what they will do. (transition audit, 10 Oct 2026)
 import { addTimeline } from '../../engine/timeline.js';
 
 const clamp = (v, a = 0, b = 100) => Math.max(a, Math.min(b, v));
@@ -39,13 +42,14 @@ export function regardTarget(s) {
   return clamp(Math.round(20 + (s.respect || 0) * 0.55 + (s.fame || 0) * 0.18 - (s.scandal || 0) * 0.35));
 }
 
+// What they think of the work — not what they will do about it; see the note at the top.
 export const BANDS = [
-  { min: 82, label: 'Would build a film around you', tone: 'good' },
-  { min: 64, label: 'Would cast you tomorrow', tone: 'good' },
-  { min: 46, label: 'Would read you for it', tone: 'plain' },
-  { min: 28, label: 'Thinks of you for other things', tone: 'plain' },
+  { min: 82, label: 'Thinks you are the real thing', tone: 'good' },
+  { min: 64, label: 'Rates your work highly', tone: 'good' },
+  { min: 46, label: 'Rates your work', tone: 'plain' },
+  { min: 28, label: 'Not sold on your work', tone: 'plain' },
   { min: 12, label: 'Does not rate you', tone: 'bad' },
-  { min: 0, label: 'Would not have you on it', tone: 'bad' },
+  { min: 0, label: 'Thinks little of your work', tone: 'bad' },
 ];
 export function regardBand(v) { return BANDS.find((b) => (v || 0) >= b.min) || BANDS[BANDS.length - 1]; }
 
@@ -53,10 +57,10 @@ export function regardBand(v) { return BANDS.find((b) => (v || 0) >= b.min) || B
 // disagree — which is the only time it is interesting.
 export function regardNote(p) {
   const warm = p.relationship || 0, pro = regardOf(p);
-  if (warm >= 60 && pro <= 35) return 'Genuinely fond of you. Has never once thought of you for anything.';
+  if (warm >= 60 && pro <= 35) return 'Genuinely fond of you. Not sold on the work.';
   if (warm >= 45 && pro <= 30) return 'Likes you. Does not rate you, and would be mortified if you knew.';
-  if (pro >= 65 && warm <= 25) return 'Rates your work and has no interest in knowing you. That is enough.';
-  if (pro >= 55 && warm <= 15) return 'Cannot stand you and would still cast you, because you are right for it.';
+  if (pro >= 65 && warm <= 25) return 'Rates your work and has no interest in knowing you.';
+  if (pro >= 55 && warm <= 15) return 'Cannot stand you, and still rates the work.';
   return null;
 }
 
@@ -90,7 +94,7 @@ export function regardAfterWorking(s, names, rating, meter) {
     const before = regardOf(p);
     p.regard = clamp(before + work);
     p.workedWith = true;
-    if (before < 64 && p.regard >= 64) addTimeline(s, `${p.name} would cast you tomorrow now. They saw the work.`);
+    if (before < 64 && p.regard >= 64) addTimeline(s, `${p.name} rates your work now. They saw it up close.`);
     if (before >= 46 && p.regard < 46) addTimeline(s, `${p.name} watched you work and thought less of you for it.`, true);
   }
   return s;
@@ -100,16 +104,4 @@ export function regardAfterWorking(s, names, rating, meter) {
 export function regardScandal(s, by = 1) {
   for (const p of (s.people || [])) p.regard = clamp(regardOf(p) - by * (p.workedWith ? 1.4 : 2.6));
   return s;
-}
-
-// ── what it is for ────────────────────────────────────────────────────────────
-// The doors are on this now, not on whether they like you. Closeness gets you the meeting;
-// this decides whether the meeting is about anything.
-export const OPENS_AT = 58;
-export function opensDoors(s, p) { return regardOf(p) >= OPENS_AT; }
-export function whyClosed(p) {
-  const pro = regardOf(p);
-  if (pro >= OPENS_AT) return '';
-  if ((p.relationship || 0) >= 55) return `${String(p.name || 'They').split(' ')[0]} would do almost anything for you. Putting you in something is not on that list yet.`;
-  return 'Not somebody who would put you in something. Not yet.';
 }

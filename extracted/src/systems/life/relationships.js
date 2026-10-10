@@ -1,6 +1,6 @@
 import { COST, canAfford, spend, tooTired } from '../../engine/energy.js';
 import { uid } from '../../engine/id.js';
-import { startingRegard, regardOf, OPENS_AT } from './regard.js';
+import { startingRegard } from './regard.js';
 import { rint, chance, pick } from '../../engine/rng.js';
 import { addTimeline } from '../../engine/timeline.js';
 import { personName, namesInUse } from '../world/names.js';
@@ -59,9 +59,10 @@ export function deepenRelationship(s, id) {
   const gain = bondGain(s, p);
   const wasBelow = (p.relationship || 0) < 60;
   p.relationship = clamp(p.relationship + gain); s.mental = clamp(s.mental - 1);
-  // It used to be closeness alone: buy somebody enough dinners and their studio opened.
-  // Now the meeting is closeness and the part is regard — they have to rate you. regard.js
-  const nowOpens = p.unlocks === 'aaa' && p.industryWeight >= 80 && p.relationship >= 60 && wasBelow && regardOf(p) >= OPENS_AT;
+  // Said when the door actually opens, on the door's own rule (career/access.js knowsPowerBroker:
+  // weight 80, closeness 60). This also asked for regard, which the door never has — so with
+  // regard below 58 the studio opened in silence. regard.js says what regard is and is not.
+  const nowOpens = p.unlocks === 'aaa' && p.industryWeight >= 80 && p.relationship >= 60 && wasBelow;
   const outOfLeague = (p.industryWeight || 30) - (s.fame || 0) > 45;
   s.lastEvent = nowOpens
     ? `You and ${p.name} are close now. "I've got a project you'd be perfect for," they say. A door just opened.`
