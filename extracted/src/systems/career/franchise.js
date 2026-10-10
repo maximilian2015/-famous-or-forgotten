@@ -8,7 +8,7 @@ import { addTimeline } from '../../engine/timeline.js';
 import { quoteBand } from '../meta/status.js';
 import { priceYoungReturn } from './youngblood.js';
 import { onTheBubble, hangIt, takeDecided } from './bubble.js';
-import { tvTermsOf } from './terms.js';
+import { carriedToNextSeason } from './terms.js';
 
 // How long a format can plausibly run. Daytime soaps run for decades; prestige
 // streaming shows are written to end. This is the ceiling, not the expectation —
@@ -438,7 +438,7 @@ export function maybeContinue(s, credit, p, force = false) {
       id: uid(s, 'ren'),
       // A show that got renewed is a show that works. The money is not the question here.
       kind: 'renewal', seriesTitle: root, season: nextSeason, scale: p.scale,
-      ...tvTermsOf(p),
+      ...carriedToNextSeason(p),
       // Who runs the show. A renewal carried no person at all, so walking out of one recorded
       // a grudge against the literal string 'The showrunner' — and meta/stories.js then looked
       // that name up in your contacts, found nobody, and the letter that mends it half-worked.

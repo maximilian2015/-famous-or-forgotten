@@ -219,10 +219,15 @@ test('the premiered credit preserves additional TV terms through JSON', () => {
   s.year = Math.floor(rel.due / 12); s.month = rel.due % 12; releaseTick(s);
   expectBenefits(s.filmography[0]);
 });
-test('a renewal preserves the existing additional TV terms', () => {
+// The next season keeps what a show goes on paying or crediting — a share and the producing
+// credit — and argues the rest again. Carrying a guarantee, billing and an episode to direct
+// into a season nobody had negotiated was the transition audit's finding 7.
+test('a renewal keeps the share and the producing credit, and nothing agreed for one season only', () => {
   const { s, p } = post();
   const o = maybeContinue(s, { title: p.title, rating: 85, viewers: 8 }, p, true);
-  assert.ok(o); expectBenefits(o);
+  assert.ok(o);
+  assert.equal(o.tvPoints, benefits.tvPoints); assert.equal(o.producing, benefits.producing);
+  assert.equal(o.guaranteed, undefined); assert.equal(o.billing, undefined); assert.equal(o.directOne, undefined);
 });
 test('a release identifies the real showrunner on the next offer', () => {
   const { s, rel } = post();
