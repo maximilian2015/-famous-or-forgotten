@@ -21,6 +21,7 @@ import { openSeason, askerLine } from './systems/career/awards.js';
 import { townOpen, townFor, goOut } from './systems/life/town.js';
 import { labelInfo, activeLabels, isStrong } from './systems/meta/typecast.js';
 import { activeStories } from './systems/meta/stories.js';
+import { coldCause } from './systems/meta/yourDirectors.js';
 import { ambitionProgress } from './systems/meta/ambition.js';
 import { resolveScene, approachesFor, chooseApproach, autoQuality, rulesFor } from './systems/career/scenes.js';
 import { RhythmLine, HoldZone, KeySequence, QuickPick } from './ui/components/SceneGames.jsx';
@@ -1163,7 +1164,11 @@ function PeopleScreen({ g, openId, setOpenId }) {
         <button onClick={() => setShowDrifted(!showDrifted)} style={{ background: 'none', border: 'none', color: theme.muted, fontSize: 11, fontWeight: 900, letterSpacing: '.09em', textTransform: 'uppercase', cursor: 'pointer', padding: '4px 0' }}>
           {showDrifted ? '▾' : '▸'} Drifted away · {drifted.length}
         </button>
-        {showDrifted && drifted.map((p) => <PersonRow key={p.id} g={g} p={p} onOpen={() => setOpenId(p.id)} sub={`${p.role} · you stopped calling`} />)}
+        {/* Why each one went cold, read the way the Directors screen reads it (yourDirectors.js
+            coldCause). "You stopped calling" was printed under everybody, including a director
+            who went cold because you walked off their set. */}
+        {showDrifted && drifted.map((p) => <PersonRow key={p.id} g={g} p={p} onOpen={() => setOpenId(p.id)}
+          sub={`${p.role} · ${{ grudge: 'holds a grudge', faded: 'you stopped calling', unknown: 'gone cold' }[coldCause(g, p)]}`} />)}
       </div>)}
       {!inCareer(g) && <div style={{ fontSize: 11.5, color: theme.muted, textAlign: 'center', padding: '14px 10px', opacity: .8 }}>Industry contacts start once your career begins. Keep school friends close on Spotlight — some of them go far.</div>}
     </>}

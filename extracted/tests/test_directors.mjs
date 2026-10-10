@@ -1,6 +1,6 @@
 // The directors you have history with (meta/yourDirectors.js): read off the phone, the grudges
 // and the work, never stored — and every door a row reports is the rule that door uses.
-import { yourDirectors, directorCounts, monthName, grudgeKind } from '../src/systems/meta/yourDirectors.js';
+import { yourDirectors, directorCounts, monthName, grudgeKind, coldCause } from '../src/systems/meta/yourDirectors.js';
 import { FACTIONS } from '../src/systems/meta/factions.js';
 import { noteRefusal } from '../src/systems/meta/stories.js';
 import { walkOffSet, directsYouAgain } from '../src/systems/career/production.js';
@@ -150,6 +150,10 @@ const row = (s, name) => yourDirectors(s).find((r) => r.name === name);
   ok('cold that is not the drift is not given a made-up cause', row(s, 'Esme Brandt').why.label === 'Cold' && /not on record/.test(row(s, 'Esme Brandt').why.text), row(s, 'Esme Brandt').why.text);
   ok('a grudge is its own reason, so no second one', row(s, 'Kaspar Hartigan').why === null && row(s, 'Kaspar Hartigan').grudge);
   ok('somebody who is not cold has no reason to be given', row(s, 'Odile Brandt').why === null);
+  // People's "Drifted away" reads the same cause (it used to say "you stopped calling" of everybody).
+  const cause = (n) => coldCause(s, s.people.find((p) => p.name === n));
+  ok('the shared reading: a grudge, the drift, or not on record', cause('Kaspar Hartigan') === 'grudge' && cause('Zora Whitlock') === 'faded' && cause('Esme Brandt') === 'unknown',
+    `${cause('Kaspar Hartigan')} ${cause('Zora Whitlock')} ${cause('Esme Brandt')}`);
 }
 // ── a grudge shuts every door to work, whatever the closeness ──────────────────
 // Cold and a grudge are different: a chat or a present can lift cold (bonds.js), and you can be

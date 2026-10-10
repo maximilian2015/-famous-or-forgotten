@@ -12,6 +12,7 @@ import { onTheBoard, boardOpen } from '../career/tentpoles.js';
 import { directsYouAgain } from '../career/production.js';
 import { canPropose } from '../career/collab.js';
 import { rumourOn } from './trouble.js';
+import { holdsAGrudge } from './stories.js';
 
 const stamp = (s) => (s.year || 0) * 12 + (s.month || 0);
 const first = (n) => String(n || '').split(' ')[0];
@@ -63,11 +64,22 @@ const span = (m) => (m < 24 ? `${m} month${m === 1 ? '' : 's'}` : `${Math.floor(
 // everybody, to nothing, and makes a contact cold at nothing after ten months unseen; when both
 // hold, that is the reason whatever else happened before it. A walk-off whose grudge has run out
 // leaves nothing behind but a sentence on the timeline, so it is not claimed.
-function coldWhy(s, p, now, latest) {
+function lastContact(s, p, latest) {
   const seen = Math.max(p.lastSeen ?? -Infinity, (s._seen && s._seen[p.id]) ?? -Infinity);
-  const last = Number.isFinite(seen) ? seen : latest && latest.year ? latest.year * 12 : null;
+  return Number.isFinite(seen) ? seen : latest && latest.year ? latest.year * 12 : null;
+}
+// The same reading for anybody cold, director or not — People's "Drifted away" uses it too, so
+// the two screens cannot give one person two different reasons. A live grudge first; then the
+// drift bonds.js applies; otherwise the cause is not on record.
+export function coldCause(s, p, latest) {
+  if (holdsAGrudge(s, p.name)) return 'grudge';
+  const last = lastContact(s, p, latest);
+  return (p.relationship || 0) <= 0 && last != null && stamp(s) - last >= 10 ? 'faded' : 'unknown';
+}
+function coldWhy(s, p, now, latest) {
+  const last = lastContact(s, p, latest);
   const lifts = 'Cold lifts once closeness is back above ten.';
-  if ((p.relationship || 0) <= 0 && last != null && now - last >= 10) {
+  if (coldCause(s, p, latest) === 'faded') {
     return { label: 'Faded', text: `No word between you since ${monthName(last)} — ${span(now - last)}. Closeness runs down by itself every month, and at nothing, after ten months without a word, a contact stops picking up. ${lifts}` };
   }
   return { label: 'Cold', text: `At ${Math.round(p.relationship || 0) || 0}, and what made them cold is not on record any more. ${lifts}` };
