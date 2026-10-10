@@ -246,6 +246,18 @@ test('release closure retains TV terms and connects renewal to the source credit
   assert.equal(o.sourceCreditId, id);
 });
 
+// The renewal knew who ran the show; the next season's set did not read it (13 of 16 measured).
+test('the next season is run on set by the showrunner the renewal names', () => {
+  const s = career({ people: [{ id: 'sr-1', name: 'Lena Ward', role: 'Film Director', relationship: 64, fromSet: 'Black Harbor' }] });
+  startProduction(s, renewal({ showrunner: 'Lena Ward', showrunnerId: 'sr-1' }));
+  const lead = s.productions[0].crew[0];
+  assert.equal(lead.name, 'Lena Ward'); assert.equal(lead.knownId, 'sr-1'); assert.equal(lead.bond, 64);
+});
+test('a showrunner who is not in your phone still runs it, by name', () => {
+  const s = career();
+  startProduction(s, renewal({ showrunner: 'Piet Voss' }));
+  assert.equal(s.productions[0].crew[0].name, 'Piet Voss');
+});
 test('thaw keeps the same character rather than generating another one', () => {
   assert.deepEqual(thawed().o.character, { name: 'Ethan Cole', what: 'the son who stayed', tier: 'lead' });
 });

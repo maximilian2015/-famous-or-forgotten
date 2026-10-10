@@ -173,8 +173,13 @@ export function startProduction(s, offer) {
   // to turn up — see engine/sets.js. The callers check first; this is the last door.
   // The director who sent it, if it came from one you know; the rival, if the picture is
   // the two-hander (stories.js).
-  if (offer.directorId) { const k = (s.people || []).find((x) => x.id === offer.directorId); if (k) { const b = Math.max(10, Math.min(90, k.relationship || 40)); p.crew[0] = { ...p.crew[0], name: k.name, bond: b, bond0: b, knownId: k.id }; } }
-  else if (offer.director) p.crew[0] = { ...p.crew[0], name: offer.director };
+  // A renewal carries the person who runs the show as `showrunner`, not `director`, and this
+  // read only `director` — so the next season of your own show was run by a stranger in 13 of
+  // 16 measured renewals, the bond restarting from nothing (tests/probes/probe_transition_tv.mjs).
+  const leadId = offer.directorId || offer.showrunnerId || null, leadName = offer.director || offer.showrunner || null;
+  const known = leadId ? (s.people || []).find((x) => x.id === leadId) : null;
+  if (known) { const b = Math.max(10, Math.min(90, known.relationship || 40)); p.crew[0] = { ...p.crew[0], name: known.name, bond: b, bond0: b, knownId: known.id }; }
+  else if (leadName) p.crew[0] = { ...p.crew[0], name: leadName };
   if (offer.costarId) { const a = actorById(s, offer.costarId); if (a && p.crew[1]) { const b = rint(15, 35); p.crew[1] = { ...p.crew[1], name: a.name, worldId: a.id, bond: b, bond0: b, trait: 'perfectionist' }; } }
   addSet(s, p);
   const star = p.crew.find((c) => c.worldId);
