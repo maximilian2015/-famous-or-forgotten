@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { theme } from '../theme.js';
 import { FONT, FONT_DISPLAY } from '../chrome.js';
 import { dispatch } from '../../state/store.js';
-import { contractFor, markClause, sendContract, signContract, passContract, openTalks, proposeStart, earliestStart } from '../../systems/career/contract.js';
+import { contractFor, markClause, sendContract, signContract, passContract, openTalks, proposeStart, earliestStart, askChance, askRound, theShowIsYou } from '../../systems/career/contract.js';
 import { STUDIOS } from '../../systems/world/names.js';
 import { Diary } from './Diary.jsx';
 
@@ -61,6 +61,11 @@ export function ContractRoom({ g, onClose }) {
         <div style={{ fontSize: 17, fontWeight: 800 }}>Contract</div>
         <div style={{ fontSize: 10, color: P.muted, letterSpacing: '.08em' }}>{signed ? 'SIGNED' : withThem ? 'WITH THEM' : `ROUND ${k.round + 1}`}</div>
       </div>
+      {/* After a no, the next round is harder, and the chances on the paper already say so
+          (askOdds: a third less ground each round, a little less on a show that is about you). */}
+      {!signed && askRound(o) >= 2 && <div style={{ fontSize: 12, lineHeight: 1.5, color: P.accent, background: 'rgba(139,67,47,.08)', border: `1px solid ${P.accent}44`, borderRadius: 6, padding: '8px 10px', marginBottom: 10 }}>
+        Round {askRound(o)}. Every round after the first, they give {theShowIsYou(o) ? 'a little' : 'about a third'} less ground — the chances on the paper are this round's.
+      </div>}
 
       {/* the paper */}
       <div style={{ background: P.paper, border: `1px solid ${P.ink}`, borderRadius: 3, padding: '18px 18px 22px', boxShadow: '3px 4px 0 rgba(120,97,60,.16)' }}>
@@ -99,7 +104,7 @@ export function ContractRoom({ g, onClose }) {
                   {res && <span style={{ fontSize: 9.5, fontWeight: 800, letterSpacing: '.06em', textTransform: 'uppercase', color: c.result === 'refused' ? P.accent : P.green }}>{res}</span>}
                 </div>
                 <div style={{ fontSize: 12, lineHeight: 1.5, marginTop: 3 }}>{c.text}</div>
-                {c.stance === 'talk' && chosen && <div style={{ fontSize: 11, color: P.accent, marginTop: 4, fontWeight: 700 }}>→ {chosen.label} · {chosen.sure ? 'they will agree' : `about ${chosen.odds}% they agree`}</div>}
+                {c.stance === 'talk' && chosen && (() => { const ch = askChance(g, o, c, chosen); return <div style={{ fontSize: 11, color: P.accent, marginTop: 4, fontWeight: 700 }}>→ {chosen.label} · {ch.sure ? 'they will agree' : `${ch.yes}% they agree${ch.halfway ? `, ${ch.halfway}% they meet you halfway` : ''}`}</div>; })()}
                 {/* the marks: a tick, or discuss */}
                 {forced && !signed && !withThem && <div style={{ marginTop: 7, fontSize: 11.5, lineHeight: 1.5, color: P.accent, fontWeight: 700, background: 'rgba(139,67,47,.08)', border: `1px solid ${P.accent}55`, borderRadius: 6, padding: '7px 9px' }}>⚠ They need an answer on this before anything else. Pick one below, then send the paper back — they reply next month.</div>}
                 {!signed && !withThem && !forced && <div style={{ display: 'flex', gap: 6, marginTop: 7, flexWrap: 'wrap' }}>
@@ -121,10 +126,13 @@ export function ContractRoom({ g, onClose }) {
                     <div style={{ fontSize: 10.5, color: theme.muted, marginBottom: 6, lineHeight: 1.45 }}>Tap the month you want to start. Nothing before {['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'][earliestStart(g, o) % 12]} {Math.floor(earliestStart(g, o) / 12)} — you are not free before then. The further past their date, the longer the odds.</div>
                     <Diary g={g} pick={(abs) => { dispatch(proposeStart, o.id, abs); setPickMonth(false); }} pickFrom={earliestStart(g, o)} picked={(c.options.find((x) => x.id === 'propose') || {}).value?.start} />
                   </div>}
-                  {c.options.filter((op) => op.id !== 'propose' || c.ask === 'propose').map((op) => (<button key={op.id} onClick={() => { dispatch(markClause, o.id, c.id, op.id); setOpen(null); }}
-                    style={{ display: 'flex', justifyContent: 'space-between', gap: 8, width: '100%', textAlign: 'left', background: 'none', border: 'none', borderBottom: `1px solid ${P.line}`, padding: '6px 2px', cursor: 'pointer', color: P.ink, fontSize: 11.5 }}>
-                    <span>{op.label}</span><span style={{ color: op.odds >= 50 ? P.green : op.odds >= 25 ? P.muted : P.accent, fontWeight: 800, whiteSpace: 'nowrap' }}>{op.sure ? 'they will' : `~${op.odds}%`}</span>
-                  </button>))}
+                  {/* The chance the answer will be rolled against, for this actor in this round
+                      (contract.js askChance), not the studio's starting figure. */}
+                  {c.options.filter((op) => op.id !== 'propose' || c.ask === 'propose').map((op) => { const ch = askChance(g, o, c, op); return (<button key={op.id} onClick={() => { dispatch(markClause, o.id, c.id, op.id); setOpen(null); }}
+                    style={{ display: 'flex', justifyContent: 'space-between', gap: 8, width: '100%', textAlign: 'left', background: 'none', border: 'none', borderBottom: `1px solid ${P.line}`, padding: '6px 2px', cursor: 'pointer', color: P.ink, fontSize: 12 }}>
+                    <span>{op.label}{ch.halfway > 0 && <span style={{ display: 'block', fontSize: 11, color: P.muted, marginTop: 2 }}>or {ch.halfway}% they meet you halfway</span>}</span>
+                    <span style={{ color: ch.sure || ch.yes >= 50 ? P.green : ch.yes >= 25 ? P.muted : P.accent, fontWeight: 800, whiteSpace: 'nowrap' }}>{ch.sure ? 'they will' : `${ch.yes}%`}</span>
+                  </button>); })}
                 </div>}
               </div>
             </div>

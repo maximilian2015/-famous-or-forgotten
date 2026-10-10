@@ -64,6 +64,34 @@ function leverage(s, o) {
   if (o.via === 'casting') l -= 0.05;                 // you read for it; they have a list
   return Math.max(0.35, Math.min(1.25, l));
 }
+// The chance they say yes to one ask — the number contractsTick rolls the answer against, and
+// the number the contract room shows. It used to show the studio's starting figure ("~22%")
+// while the roll multiplied it by your leverage (your name, your agent, how much they need
+// somebody) and took a third off it for every round after the first: the screen and the dice
+// disagreed, and the player was the one who did not know. One function now, read by both.
+// `round` is the round the paper is answered in. sendContract counts it on the way out, so
+// while you are still marking the paper up it is the one after the current count (askRound).
+// Walking off your own set needs nobody's permission; holding a part is about their schedule
+// more than your name, so a nobody is not quite as hopeless there.
+export function askOdds(s, o, op, round) {
+  if (!op) return 0;
+  if (op.sure) return 100;
+  const mine = theShowIsYou(o);
+  const lev = leverage(s, o) * Math.pow(mine ? 0.92 : 0.7, Math.max(1, round || 1) - 1) * (mine ? 1.45 : 1);
+  return op.walkOnNo ? op.odds * Math.max(0.6, lev) : op.odds * lev;
+}
+// A "no" about money is usually halfway: on the fee, a roll under this many times the odds
+// meets you in the middle.
+export const HALFWAY = 1.8;
+export function askRound(o) { const k = o && o.contract; return k ? (k.sent ? k.round : k.round + 1) : 1; }
+// What the room prints for one ask on clause `c`: the whole-number chance of a yes, and on the
+// fee — the only clause contractsTick meets halfway — the chance of halfway.
+export function askChance(s, o, c, op) {
+  const odds = askOdds(s, o, op, askRound(o));
+  const yes = Math.max(0, Math.min(100, odds));
+  const half = !op.sure && c && c.id === 'fee' ? Math.max(0, Math.min(100, odds * HALFWAY) - yes) : 0;
+  return { yes: Math.round(yes), sure: !!op.sure, halfway: Math.round(half) };
+}
 
 // ── drafting ──────────────────────────────────────────────────────────────────
 function exclusiveFor(o) {
@@ -462,17 +490,14 @@ export function contractsTick(s) {
     //
     // So: you hold your ground here, and every round costs them rather than you.
     const mine = theShowIsYou(o);
-    const lev = leverage(s, o) * Math.pow(mine ? 0.92 : 0.7, k.round - 1) * (mine ? 1.45 : 1);
     const lines = []; let refused = 0;
     for (const c of k.clauses) {
       if (c.stance !== 'talk') continue;
       const op = c.options.find((x) => x.id === c.ask); if (!op) { c.stance = 'ok'; continue; }
       const roll = Math.random() * 100;
-      // Walking off your own set needs nobody's permission; holding a part is about their
-      // schedule more than your name, so a nobody is not quite as hopeless there.
-      const odds = op.sure ? 100 : op.walkOnNo ? op.odds * Math.max(0.6, lev) : op.odds * lev;
+      const odds = askOdds(s, o, op, k.round);
       if (roll < odds) { c.value = op.value; c.text = textFor(c, o); c.result = 'agreed'; c.stance = 'ok'; c.ask = null; lines.push(`${c.label} — agreed`); }
-      else if (c.id === 'fee' && roll < odds * 1.8) {
+      else if (c.id === 'fee' && roll < odds * HALFWAY) {
         // Halfway, which is what "no" usually means about money.
         c.value = Math.round((c.value + op.value) / 2); c.text = textFor(c, o); c.result = 'counter'; c.stance = 'ok'; c.ask = null; lines.push(`${c.label} — they came halfway: ${money(c.value)}`);
       } else {
