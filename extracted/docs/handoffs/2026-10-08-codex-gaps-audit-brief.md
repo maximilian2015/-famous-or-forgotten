@@ -26,7 +26,21 @@ round-trips, and list every field that is set before and missing or reset after:
 - freeze → thaw, collapse, recast (`stability.js`, `contract.js`)
 - event / story → timeline → filmography (`meta/stories.js`, `meta/aftermath.js`, `meta/press.js`)
 - night out / party → lead → offer (`social/night.js`)
+- award nomination / win → the film's credit and the career history (`career/awards.js`,
+  `meta/knownFor.js`, `meta/legacy.js`): does the credit remember it, does Known For, does the end
+  of a life
+- press article / event → filmography and career history (`meta/press.js`, `meta/news.js`,
+  `meta/aftermath.js`): a piece about a film is written and kept — is it ever connected back to
+  that film, or to the person it was about
+- relationship event → People and the Directors screen (`life/bonds.js`, `life/interactions.js`,
+  `meta/stories.js` grudges, `production.js` keepTheCrew, `meta/yourDirectors.js`): what a set,
+  a refusal, a walk-off or a party changes about a person, and whether People and Directors show it
 - save → load (`state/store.js` `normalize`): what an old save is missing that new code assumes
+
+Pay particular attention to: contract perks (`career/terms.js` — e.g. a guarantee negotiated for
+one season is carried into the next season's offer automatically), character continuity,
+showrunner and director identity, `onSet`, `moments`, `wrappedAt`, the season number, the
+written-out state, the career-impact fields and press history.
 
 **2. Dead features.**
 - Fields written and never read; fields read and never written. `tests/probes/probe_state.mjs`
