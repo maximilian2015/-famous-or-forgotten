@@ -23,7 +23,7 @@ import { labelInfo, activeLabels, isStrong } from './systems/meta/typecast.js';
 import { activeStories } from './systems/meta/stories.js';
 import { coldCause } from './systems/meta/yourDirectors.js';
 import { ambitionProgress } from './systems/meta/ambition.js';
-import { resolveScene, approachesFor, chooseApproach, autoQuality, rulesFor, approachTags, approachOutcome, dayFactors } from './systems/career/scenes.js';
+import { resolveScene, approachesFor, chooseApproach, autoQuality, rulesFor, approachSpec, approachOutcome, dayFactors } from './systems/career/scenes.js';
 import { SetVignette, ScriptPage, ChoiceCard } from './ui/components/OnSet.jsx';
 import { RhythmLine, HoldZone, KeySequence, QuickPick } from './ui/components/SceneGames.jsx';
 import { Chronology, ScriptLines, Motive } from './ui/components/SceneLogic.jsx';
@@ -888,20 +888,22 @@ function SceneModal({ g }) {
     </>}
     {state === 'brief'
       ? (<>
-          {/* The day, drawn: the board, the lamp, and the choice on a page of the script.
-              ui/components/OnSet.jsx. The words under each choice are read off its own numbers
-              (career/scenes.js approachTags), and the locked one shows the real bar. */}
+          {/* The day, drawn from behind the camera: the set for this genre, the mark, the slate,
+              and the choice on a page of the script. ui/components/OnSet.jsx. How hard each way
+              is and what it does are read off its own numbers (career/scenes.js approachSpec),
+              and the locked one shows the real bar. */}
           <SetVignette title={sc.title} genre={sc.genre} scene={sc.label} director={dirName} />
           <ScriptPage kicker={`On set · ${sc.label}`} line={sc.line}>
             <div><b style={{ color: '#302d26' }}>{dirName}</b> is directing · trust on this set {Math.round(lead.bond ?? 40)}</div>
             {factors.harder.length > 0 && <div>Harder today: {factors.harder.join(', ')}.</div>}
             {factors.harder.length === 0 && factors.easier.length > 0 && <div>Easier today: {factors.easier.join(', ')}.</div>}
           </ScriptPage>
-          <div style={{ fontSize: 10.5, fontWeight: 900, letterSpacing: '.08em', textTransform: 'uppercase', color: theme.muted, marginBottom: 8 }}>How are you playing it?</div>
-          {approachesFor(g, onSet).map((ap) => (<ChoiceCard key={ap.id} mark={MARKS[ap.id]} tone={TONES[ap.id]} label={ap.label} blurb={ap.blurb}
-            tags={approachTags(ap)} locked={!ap.open} why={ap.why}
+          <div style={{ fontSize: 11.5, fontWeight: 900, letterSpacing: '.08em', textTransform: 'uppercase', color: theme.muted, marginBottom: 9 }}>How are you playing it?</div>
+          {approachesFor(g, onSet).map((ap) => { const spec = approachSpec(ap, dirFirst); return (<ChoiceCard key={ap.id} mark={MARKS[ap.id]} tone={TONES[ap.id]} label={ap.label} blurb={ap.blurb}
+            right={spec.level} rightColor={spec.level === 'Easier' ? theme.good : spec.level === 'Harder' ? theme.bad : spec.level === 'A little harder' ? theme.gold : theme.muted}
+            effects={spec.effects} locked={!ap.open} why={ap.why}
             progress={!ap.open && ap.needsBond ? { label: `${dirFirst}'s trust on this set`, value: Math.round(lead.bond || 0), need: ap.needsBond } : null}
-            onClick={() => take(ap.id)} />))}
+            onClick={() => take(ap.id)} />); })}
         </>)
       : state === 'ready'
       ? (<>

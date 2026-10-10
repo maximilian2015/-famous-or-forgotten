@@ -1,4 +1,4 @@
-import { maybeScene, resolveScene, SCENES, SCENE_IDS, poolFor, difficulty, dayFactors, APPROACHES, approachTags, approachOutcome, momentAt } from '../src/systems/career/scenes.js';
+import { maybeScene, resolveScene, SCENES, SCENE_IDS, poolFor, difficulty, dayFactors, APPROACHES, approachSpec, approachOutcome, momentAt } from '../src/systems/career/scenes.js';
 import { TAKES, takeTags } from '../src/systems/career/story.js';
 import { startProduction, sets } from '../src/systems/career/production.js';
 
@@ -84,10 +84,14 @@ const month = (s) => { s.month++; if (s.month > 11) { s.month = 0; s.year++; } }
 }
 // ── the words on the choice screens are read off the numbers that decide ───────
 {
-  ok('as written: standard and balanced', approachTags(APPROACHES.written).join('|') === 'Standard|balanced', approachTags(APPROACHES.written).join('|'));
-  ok('bigger: harder, wins and losses, audience over critics, a miss costs with the director', approachTags(APPROACHES.bigger).join('|') === 'Harder|bigger wins and losses|audience over critics|a miss costs you with the director');
-  ok('stripped back: a little harder, critics over audience', approachTags(APPROACHES.back).join('|') === 'A little harder|critics over audience');
-  ok('your version: easier, pays more when it lands', approachTags(APPROACHES.change)[0] === 'Easier' && approachTags(APPROACHES.change).includes('pays more when it lands'));
+  const said = (sp) => sp.level + ': ' + sp.effects.map((e) => (e.good === true ? '+' : e.good === false ? '-' : '.') + e.t).join(' | ');
+  // "Standard · balanced" said nothing. As written is the one with every multiplier at 1.
+  ok('as written: normal difficulty, no extra risk and no extra reward', said(approachSpec(APPROACHES.written)) === 'Normal difficulty: .no extra risk and no extra reward', said(approachSpec(APPROACHES.written)));
+  ok('bigger: harder, a bigger win and a bigger loss, the audience, and a miss costs with the director by name', said(approachSpec(APPROACHES.bigger, 'Milo')) === 'Harder: +a bigger win if it lands | -a bigger loss if it misses | .the audience over the critics | -a miss costs you more with Milo', said(approachSpec(APPROACHES.bigger, 'Milo')));
+  ok('stripped back: a little harder, the critics over the audience', said(approachSpec(APPROACHES.back)) === 'A little harder: .the critics over the audience');
+  ok('your version: easier, pays more when it lands', approachSpec(APPROACHES.change).level === 'Easier' && approachSpec(APPROACHES.change).effects.some((e) => e.t === 'pays more when it lands' && e.good === true));
+  // The words follow the numbers, not the ids: a written day that cost trust on a miss would say so.
+  ok('a level is read off the window', approachSpec({ ...APPROACHES.written, window: 1.3 }).level === 'Harder' && approachSpec({ ...APPROACHES.written, trust: -1 }, 'Ada').effects.some((e) => /Ada/.test(e.t)));
   // The card at the end of the day used to put the moment at 88 whatever the approach; the game
   // makes one from momentAt (72 going bigger). They are one rule now.
   ok('a moment going bigger at 75, as resolveScene makes one', approachOutcome('bigger', 75).moment === true && momentAt(APPROACHES.bigger) < 75);
@@ -99,9 +103,10 @@ const month = (s) => { s.month++; if (s.month > 11) { s.month = 0; s.year++; } }
   const f = dayFactors(tired, { scale: 'blockbuster' }, 'mark');
   ok('harder today names what made it harder', f.harder.includes('you are worn out') && f.harder.includes('you drank this month') && f.harder.includes('a big picture'), f.harder.join(', '));
   ok('and the number is the same one difficulty() returns', f.d === difficulty(tired, { scale: 'blockbuster' }, 'mark'));
-  ok('first day: bigger sells and costs the reviews', takeTags(TAKES.bigger, 'Comedy').join('|') === 'more money|weaker reviews, fewer awards');
-  ok('first day: about something in a crime picture says it becomes a drama', takeTags(TAKES.about, 'Crime').includes('it becomes a drama') && !takeTags(TAKES.about, 'Drama').includes('it becomes a drama'));
-  ok('first day: the strange one can go either way and may fall apart', takeTags(TAKES.strange, 'Drama').join('|') === 'brilliant or unwatchable|may fall apart in the edit');
+  const tt = (t, gen) => takeTags(t, gen).map((e) => (e.good === true ? '+' : e.good === false ? '-' : '.') + e.t).join('|');
+  ok('first day: bigger sells and costs the reviews', tt(TAKES.bigger, 'Comedy') === '+more money|-weaker reviews, fewer awards', tt(TAKES.bigger, 'Comedy'));
+  ok('first day: about something in a crime picture says it becomes a drama', tt(TAKES.about, 'Crime').includes('.it becomes a drama') && !tt(TAKES.about, 'Drama').includes('it becomes a drama'));
+  ok('first day: the strange one can go either way and may fall apart', tt(TAKES.strange, 'Drama') === '.brilliant or unwatchable|-it may fall apart in the edit', tt(TAKES.strange, 'Drama'));
 }
 console.log(fails ? `\n${fails} FAILED` : '\nall passed');
 process.exit(fails ? 1 : 0);

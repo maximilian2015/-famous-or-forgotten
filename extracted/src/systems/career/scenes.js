@@ -226,17 +226,21 @@ export function momentAt(ap) { return Math.max(72, 88 - ((ap || APPROACHES.writt
 
 // The words under each choice, read off its own numbers so they cannot drift from it when the
 // balance moves. Plain words, no multipliers: the player is an actor, not an accountant.
-export function approachTags(ap) {
-  const tags = [];
-  tags.push(ap.window >= 1.25 ? 'Harder' : ap.window > 1.05 ? 'A little harder' : ap.window < 0.95 ? 'Easier' : 'Standard');
-  if (ap.up >= 1.4 && ap.down >= 1.3) tags.push('bigger wins and losses');
-  else if (ap.up >= 1.3) tags.push('pays more when it lands');
-  if (ap.crowd > 0 && ap.prestige < 0) tags.push('audience over critics');
-  else if (ap.crowd < 0 && ap.prestige > 0) tags.push('critics over audience');
-  else if (ap.crowd > 0 && ap.prestige > 0) tags.push('a little for both');
-  if (ap.trust < 0) tags.push('a miss costs you with the director');
-  if (tags.length === 1) tags.push('balanced');
-  return tags;
+// `level` is the size of the window (how hard the day is to land); `effects` are what it does
+// beyond that, each marked good (true), bad (false) or neither (null). `director` is a first name.
+// It used to be four little chips, one of which said "balanced"; Maxi's reviewer asked for fewer
+// and larger, and for words that say what the mechanic does.
+export function approachSpec(ap, director) {
+  const level = ap.window >= 1.25 ? 'Harder' : ap.window > 1.05 ? 'A little harder' : ap.window < 0.95 ? 'Easier' : 'Normal difficulty';
+  const effects = [];
+  if (ap.up >= 1.4 && ap.down >= 1.3) effects.push({ t: 'a bigger win if it lands', good: true }, { t: 'a bigger loss if it misses', good: false });
+  else if (ap.up >= 1.3) effects.push({ t: 'pays more when it lands', good: true });
+  if (ap.crowd > 0 && ap.prestige < 0) effects.push({ t: 'the audience over the critics', good: null });
+  else if (ap.crowd < 0 && ap.prestige > 0) effects.push({ t: 'the critics over the audience', good: null });
+  else if (ap.crowd > 0 && ap.prestige > 0) effects.push({ t: 'a little for the critics and the audience', good: true });
+  if (ap.trust < 0) effects.push({ t: `a miss costs you more with ${director || 'the director'}`, good: false });
+  if (!effects.length) effects.push({ t: 'no extra risk and no extra reward', good: null });
+  return { level, effects };
 }
 
 // What the day you just played did, by the same rules resolveScene applies — said on the card at

@@ -233,16 +233,18 @@ export const TAKE_ORDER = ['straight', 'bigger', 'about', 'strange'];
 // The words under each version on the first day, read off its own numbers (appeal: the release
 // and the money; bump and prestige: the reviews and the awards; swing and apart: how far it can
 // land and whether it survives the edit), so they move when the balance does.
+// Each one marked good (true), bad (false) or neither (null), the way approachSpec marks a
+// shooting day's (scenes.js), so the two screens read alike.
 export function takeTags(t, genre) {
-  if (!t || t.id === 'straight') return ['The film on the page', 'no argument'];
+  if (!t || t.id === 'straight') return [{ t: 'the film as it is on the page', good: null }];
   const tags = [];
-  if (t.appeal >= 1.5) tags.push('more money');
-  else if (t.appeal <= 0.6) tags.push('less money');
-  if ((t.bump || 0) + (t.prestige || 0) <= -8) tags.push('weaker reviews, fewer awards');
-  else if ((t.bump || 0) + (t.prestige || 0) >= 8) tags.push('better reviews, awards');
-  if (t.aim && genre && t.aim !== genre) tags.push(`it becomes a ${t.aim.toLowerCase()}`);
-  if ((t.swing || 0) >= 10) tags.push('brilliant or unwatchable');
-  if ((t.apart || 0) >= 5) tags.push('may fall apart in the edit');
+  if (t.appeal >= 1.5) tags.push({ t: 'more money', good: true });
+  else if (t.appeal <= 0.6) tags.push({ t: 'less money', good: false });
+  if ((t.bump || 0) + (t.prestige || 0) <= -8) tags.push({ t: 'weaker reviews, fewer awards', good: false });
+  else if ((t.bump || 0) + (t.prestige || 0) >= 8) tags.push({ t: 'better reviews, more awards', good: true });
+  if (t.aim && genre && t.aim !== genre) tags.push({ t: `it becomes a ${t.aim.toLowerCase()}`, good: null });
+  if ((t.swing || 0) >= 10) tags.push({ t: 'brilliant or unwatchable', good: null });
+  if ((t.apart || 0) >= 5) tags.push({ t: 'it may fall apart in the edit', good: false });
   return tags;
 }
 
