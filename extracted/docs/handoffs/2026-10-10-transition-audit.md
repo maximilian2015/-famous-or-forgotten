@@ -53,6 +53,19 @@ The day-one `take` reaches the credit in 36% of runs — by design: only an argu
   Moon's save the one nomination sits on its film.
 - **Written out / cancelled:** the source credit is updated (fixed in the contract-continuity patch).
 
+## Status — all fixed the same day
+
+| # | commit | what changed |
+|---|---|---|
+| 1 | `eb4d045` | importSave refuses another version and changes nothing; on startup such a save is kept aside under `fof_react_save_<version>`; another tab's other version is ignored. `tests/test_save_version.mjs`. |
+| 2 | `2ccd7f3` | `startProduction` reads `showrunner`/`showrunnerId` when there is no director: probe 16 / 16. |
+| 3 | `1a75a76` | Decision: honest text, no balance change. Regard bands and notes describe the opinion of your work and promise no part; `opensDoors`, `whyClosed`, `OPENS_AT` deleted; the studio-door line follows the door's own rule. Putting the doors on regard remains a separate design decision. |
+| 4 | `f25e815` | `yourDirectors.js coldCause` is the one reading for People and Directors: holds a grudge / you stopped calling / gone cold. |
+| 5 | `a2e954e` | A piece about a film keeps its headline on the credit (three newest), shown under "In the press"; the feed stays at 30. |
+| 6 | `a694d08` | `critical` settled at load from the rating (Alex Moon 2 → 44). `needed` deliberately not: re-deriving it contradicted 3 of 27 stored verdicts. |
+| 7 | `6873765` | The renewal carries only the share and the producing credit (`terms.js carriedToNextSeason`). |
+| 8 | — | Nothing reads `months` or `offerId` after the wrap; no change. |
+
 ## Reproduce
 
 From `extracted/`: `node tests/probes/probe_transition_audit.mjs 40` and
