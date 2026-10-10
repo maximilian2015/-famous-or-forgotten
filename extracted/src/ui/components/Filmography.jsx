@@ -5,6 +5,7 @@ import { canTakeSet, monthsUntilFree } from '../../engine/sets.js';
 import { isHit, isFlop, moneyVsReviews } from '../../systems/meta/knownFor.js';
 import { sequelDue } from '../../systems/career/franchise.js';
 import { isBillion } from '../../systems/career/billion.js';
+import { monthLabel } from '../../systems/meta/press.js';
 import { pushState, askToPush } from '../../systems/career/contract.js';
 import { isMinor } from '../../systems/meta/legacy.js';
 import { theme } from '../theme.js';
@@ -222,6 +223,14 @@ function CreditRow({ group, g }) {
       {/* What it was about, and the version of it you argued for on the first day. Both have
           been carried on every credit since the story room was built and never shown. */}
       {c.premise && <div style={{ fontSize: 11.5, color: theme.muted, marginTop: 3, lineHeight: 1.45 }}>{c.premise}</div>}
+      {/* What the papers said about it — kept on the film itself, because the feed only keeps
+          the last thirty pieces (meta/press.js keepOnTheFilm). Every season of a show, newest first. */}
+      {(() => { const said = group.parts.flatMap((x) => x.press || []).sort((a, b) => (b.at || 0) - (a.at || 0)).slice(0, 3);
+        return said.length ? (<div style={{ marginTop: 6 }}>
+          <div style={{ fontSize: 9.5, fontWeight: 900, letterSpacing: '.08em', textTransform: 'uppercase', color: theme.muted }}>In the press</div>
+          {said.map((x) => <div key={x.id} style={{ fontSize: 11.5, lineHeight: 1.45, marginTop: 2, color: x.tone === 'pan' ? theme.bad : x.tone === 'praise' ? theme.text : theme.muted }}>
+            {x.head} <span style={{ color: theme.muted }}>— {x.outlet}, {monthLabel(x.at)}</span></div>)}
+        </div>) : null; })()}
       {c.acceptance && !c.running && (
         <div style={{ fontSize: 11.5, color: theme.muted, marginTop: 3, fontStyle: 'italic' }}>{c.acceptance}</div>)}
       {/* What happened while they were shooting it. The test: after a picture wraps, can the

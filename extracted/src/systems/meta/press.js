@@ -293,8 +293,25 @@ export function pressTick(s) {
   s._pressDone = [...(s.timeline || []).filter((e) => keys.has(e.when)).map((e) => e.when + '|' + e.text), ...(s._pressDone || [])].slice(0, 60);
   s._pressScandal = s.scandal || 0;
   if (pieces.length) s.press = [...pieces, ...(s.press || [])].slice(0, 30);
+  keepOnTheFilm(s, pieces);
   return s;
 }
+// The feed keeps thirty pieces — about two years — and everything older was gone for good, so
+// what the press said about a film a decade ago no longer existed anywhere. A piece about a film
+// (its `about` is the title) now also leaves its headline on that film's credit, the three most
+// recent, which is what the filmography shows. The feed stays a newspaper. (transition audit)
+const ON_A_FILM = 3;
+function keepOnTheFilm(s, pieces) {
+  const shelf = [...(s.filmography || []), ...(s.discography || [])];
+  for (const p of [...pieces].reverse()) {
+    if (!p.about) continue;
+    const c = shelf.find((x) => x.title === p.about);
+    if (!c || (c.press || []).some((x) => x.id === p.id)) continue;
+    c.press = [{ id: p.id, at: p.at, outlet: p.outlet, tone: p.tone, head: p.head }, ...(c.press || [])].slice(0, ON_A_FILM);
+  }
+}
+// Old saves: the pieces still in the feed are put on their films once, at load. Idempotent.
+export function settlePress(s) { keepOnTheFilm(s, s.press || []); return s; }
 export function pressThisMonth(s) { const now = stamp(s); return (s.press || []).filter((p) => p.at === now); }
 export function pressUnread(s) { return pressThisMonth(s).filter((p) => !p.seen).length; }
 export function markPressSeen(s) { for (const p of pressThisMonth(s)) p.seen = true; return s; }

@@ -52,5 +52,19 @@ const store = await import('../src/state/store.js');
   ok('and nothing is guessed for needed, which old credits cannot tell', store.getState().filmography.every((c) => c.needed === undefined));
 }
 
+// ── what the papers said stays on the film, not only in a thirty-piece feed ─────
+{
+  const s = JSON.parse(JSON.stringify(life));
+  s.filmography = [{ title: 'Low Tide', rating: 70, running: false }, { title: 'Other', rating: 60, running: false }];
+  s.press = [1, 2, 3, 4].map((i) => ({ id: 'pr' + i, at: 2060 * 12 + i, outlet: 'Frame by Frame', tone: i === 4 ? 'pan' : 'news', head: `Piece ${i}`, about: 'Low Tide' }))
+    .concat([{ id: 'pr9', at: 2060 * 12 + 5, outlet: 'The Wire', tone: 'news', head: 'Nothing to do with it' }]).reverse();
+  store.importSave(JSON.stringify(s));
+  const low = store.getState().filmography.find((c) => c.title === 'Low Tide');
+  ok('a piece about a film is kept on that film, the three newest', (low.press || []).map((x) => x.head).join(',') === 'Piece 4,Piece 3,Piece 2', JSON.stringify(low.press));
+  ok('a piece about nothing in particular stays in the feed only', !store.getState().filmography.find((c) => c.title === 'Other').press);
+  store.importSave(JSON.stringify(store.getState()));
+  ok('and loading again does not repeat them', store.getState().filmography.find((c) => c.title === 'Low Tide').press.length === 3);
+}
+
 console.log(fails ? `\n${fails} failed` : '\nall passed');
 process.exit(fails ? 1 : 0);

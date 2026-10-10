@@ -6,6 +6,7 @@ import { ensureAppearance } from '../systems/life/appearance.js';
 import { dressOffers } from '../systems/career/script.js';
 import { settleBillions } from '../systems/career/billion.js';
 import { settleCritical } from '../systems/career/release.js';
+import { settlePress } from '../systems/meta/press.js';
 const KEY = 'fof_react_save';
 const CURRENT_VERSION = 'r0.8b';
 
@@ -65,6 +66,7 @@ function normalize(saved) {
   ensureAppearance(merged); // saves made before the avatar existed still need a face
   settleBillions(merged);   // billions made before the billion club existed are in it — silently. career/billion.js
   settleCritical(merged);   // and the column's verdict on films closed before it was kept. career/release.js
+  settlePress(merged);      // and what the papers said about each film, while the feed still has it. meta/press.js
   return merged;
 }
 function sanitize(st) {
