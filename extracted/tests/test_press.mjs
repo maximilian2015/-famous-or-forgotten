@@ -7,6 +7,22 @@ const ok = (n, c, e = '') => { if (!c) { fails++; console.log('FAIL  ' + n + (e 
 const st = (over) => ({ version: 'x', name: 'Mira Vale', ageY: 30, stage: 'career', fame: 40, respect: 20, charisma: 50, scandal: 0, mental: 60, cash: 50000,
   year: 2050, month: 5, timeline: [], filmography: [], offers: [], productions: [], production: null, ...over });
 
+// ── a thing coming back after years away is named as itself ─────────────────
+// Maxi: '"Light and Rain II" is coming back — 4 years on', over a part 3. The headline is the
+// franchise; the body names the part it follows.
+{
+  const s = st({ year: 2079, filmography: [{ title: 'Light and Rain II', rating: 78, year: 2075, running: false }],
+    offers: [{ id: 'q3', kind: 'sequel', part: 3, seriesTitle: 'Light and Rain II', projectTitle: 'Light and Rain III', role: 'Lead', type: 'Feature Film', genre: 'Musical', scale: 'blockbuster' }] });
+  pressTick(s);
+  const p = (s.press || []).find((x) => /coming back/.test(x.head || ''));
+  ok('a part 3 is news about "Light and Rain", not about part 2', p && p.head === '"Light and Rain" is coming back — 4 years on', p ? p.head : 'no piece');
+  ok('and the body says which part it follows', p && /4 years after "Light and Rain II", there is a part 3/.test(p.body));
+  const t = st({ year: 2066, filmography: [{ title: 'Lost Signal · season 3', rating: 74, year: 2062, running: false }],
+    offers: [{ id: 'r4', kind: 'renewal', seriesTitle: 'Lost Signal', season: 4, projectTitle: 'Lost Signal · season 4', role: 'Lead', type: 'Network Drama', genre: 'Drama', scale: 'network' }] });
+  pressTick(t);
+  const q = (t.press || []).find((x) => /coming back/.test(x.head || ''));
+  ok('a show is named without its season', q && q.head === '"Lost Signal" is coming back — 4 years on', q ? q.head : 'no piece');
+}
 // ── what they write ──────────────────────────────────────────────────────────
 // Maxi: "the News is stuck — it keeps writing the same thing about a film from two years ago."
 {

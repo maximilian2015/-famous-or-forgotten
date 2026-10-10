@@ -267,8 +267,12 @@ function returnPieces(s) {
     s._backTalk[key] = stamp(s);
     const what = o.kind === 'renewal' ? `season ${o.season}` : `part ${o.part}`;
     const good = g.rating >= 70;
+    // The headline is the thing, not the part before it. Maxi read '"Light and Rain II" is
+    // coming back' over the news that a part 3 was coming, and it was a mistake: the franchise
+    // is coming back, and the part it follows is named in the body.
+    const name = String(g.title).replace(/(\s*·\s*(season|part)\s+\d+)+\s*$/i, '').replace(/\s+(II|III|IV|V|VI)$/, '').trim() || g.title;
     out.push({ tone: good ? 'praise' : 'news', kind: 'you', about: o.projectTitle,
-      head: `"${g.title}" is coming back — ${g.years} years on`,
+      head: `"${name}" is coming back — ${g.years} years on`,
       body: good
         ? `Nobody expected it and everybody wants it. ${g.years} years after "${g.title}", there is a ${what}, and ${fn} is in it. The clips are going round again this week; whether anybody still cares by the time it is on is the question the first night answers.`
         : `There is a ${what} of "${g.title}", ${g.years} years later, with ${fn} back in it. The response is polite. A thing nobody was asking for has to work twice as hard to be noticed at all.` });
