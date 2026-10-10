@@ -1,6 +1,7 @@
 import { theme } from '../theme.js';
 import { FONT, FONT_DISPLAY } from '../chrome.js';
 import { posterPalette, hash, rng } from './poster-spec.js';
+import { setPalette } from './set-spec.js';
 
 // The set, drawn. Maxi wanted the choices on a shooting day to feel like a shooting day and not a
 // questionnaire, with no pictures from outside the file. Two pictures, because the two screens
@@ -119,7 +120,9 @@ function Screen({ k }) {
 const SETS = { room: Room, street: Street, woods: Woods, stage: Stage, screen: Screen };
 
 export function SetVignette({ title, genre, scene, director }) {
-  const pal = posterPalette(title, genre);
+  // The poster's colours, held inside one band of brightness so no poster can wash the set out
+  // or black it in (set-spec.js). The first day's desk keeps the poster's own, for its tabs.
+  const pal = setPalette(title, genre);
   const fam = setFamily(genre);
   const seed = hash(String(title || '') + (genre || '')) || 1;
   const k = 'v' + (hash(String(title || '') + (scene || '')) % 100000);
