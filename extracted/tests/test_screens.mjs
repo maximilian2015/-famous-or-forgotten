@@ -31,6 +31,8 @@ import { visibleApps } from '../src/phone/apps/registry.js';
 import { callTheRoom } from '../src/systems/career/standoff.js';
 import { signEndorsement } from '../src/systems/career/endorsement.js';
 import { hangIt } from '../src/systems/career/bubble.js';
+import { ARCS } from '../src/systems/life/arcs.js';
+import { CHAINS } from '../src/systems/meta/stories.js';
 
 const gameDir = fileURLToPath(new URL('../', import.meta.url));
 const HTML = path.join(gameDir, 'dist/game.html');
@@ -375,6 +377,22 @@ await inState('A shooting day · how are you playing it', {
   scene: { setId: SET.id, id: 'mark', game: 'timing', label: 'Find your mark', title: SET.title, genre: SET.genre,
     line: 'They have taped a cross on the floor and the light only works if you are on it.', hint: 'Hit it.', director: 'Rosalind Varga', difficulty: 1 } },
   /^(?=[\s\S]*How are you playing it\?)(?=[\s\S]*is directing · trust on this set 56)(?=[\s\S]*Normal difficulty)(?=[\s\S]*the audience over the critics)(?=[\s\S]*the critics over the audience)(?=[\s\S]*6 more and it opens)(?=[\s\S]*Rosalind's trust on this set 56 \/ 62)/);
+// The event screen, which every life event, on-set problem, childhood moment and story beat
+// comes through: under each choice what it does (arcs.js arcCard), and for a roll the chance this
+// actor has now and both ways it can go. Maxi's screenshot of "A problem on set" had three
+// buttons and nothing under them, one of them a hidden roll on confidence.
+{
+  const b = ARCS.find((x) => x.id === 'costarWrecked').build({ production: SET });
+  await inState('An event · a problem on set', { pendingArc: { id: 'costarWrecked', speaker: b.speaker, text: b.text, choices: b.choices } },
+    /^(?=[\s\S]*A problem on set)(?=[\s\S]*What do you do\?)(?=[\s\S]*\d+% chance)(?=[\s\S]*If it works)(?=[\s\S]*If it fails)(?=[\s\S]*the set warms to you)(?=[\s\S]*Your performance 58)/);
+  // A story beat says what its function does: the agent who kept you out of the meeting.
+  const me = { ...save, agent: { name: 'Ava Stone', since: 0, level: 1, tier: 'novice' } };
+  const stry = { id: 'agent', beat: 'slip', data: { name: 'Ava Stone' } };
+  const built = CHAINS.agent.beats.slip.build(me, stry);
+  await inState('An event · a story beat', { agent: me.agent, stories: [{ ...stry, due: 0, since: 0 }],
+    pendingArc: { story: 'agent', beat: 'slip', speaker: built.speaker, text: built.text, choices: built.choices.map((c) => ({ label: c.label, hint: c.hint, shows: c.shows })) } },
+    /^(?=[\s\S]*The agent)(?=[\s\S]*65% chance)(?=[\s\S]*more offers from your agent for six months)(?=[\s\S]*fewer offers from your agent for a year)(?=[\s\S]*no agent for at least three months)/);
+}
 // The set asking for something this month: the row with the answers, on Home and in the Calendar.
 {
   const asked = { ...SET, demand: { id: 'nights', at: NOW } };

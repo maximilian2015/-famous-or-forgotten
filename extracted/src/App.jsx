@@ -5,7 +5,7 @@ import { rentApartment, STAGE_LABEL } from './systems/life/stages.js';
 import { runAction, availableActions } from './systems/career/actions.js';
 import { computeAccess } from './systems/career/access.js';
 import { seeDoctor, treatmentCost, pushThrough, PILLS, usePills, infectionOdds } from './systems/life/health.js';
-import { resolveArc } from './systems/life/arcs.js';
+import { resolveArc, arcCard } from './systems/life/arcs.js';
 import { computeLegacy, getHall } from './systems/meta/legacy.js';
 import { fameTier, FAME_TIERS, fameCeiling, ladderBlurb, isForgotten } from './systems/meta/status.js';
 import { meterTier } from './systems/career/production.js';
@@ -951,9 +951,27 @@ function SceneModal({ g }) {
         </>)}
   </div>);
 }
+// Something happens, and you choose. Every life event, on-set problem, childhood moment and
+// story beat comes through here, so this is where a choice must say what it does: under each,
+// what the game will actually apply (arcs.js arcCard — read off the numbers for an event, and off
+// `shows` for a story beat, which tests/test_arcs.mjs holds to the code), and for a roll the
+// chance this actor has now and both ways it can go. Nobody chooses blind.
 function ArcModal({ g }) {
-  const a = g.pendingArc;
-  return (<div style={{ maxWidth: 440, margin: '0 auto', minHeight: '100vh', background: 'transparent', color: theme.text, padding: 16, display: 'flex', flexDirection: 'column', justifyContent: 'center', fontFamily: FONT }}><div style={{ fontSize: 11, fontWeight: 900, letterSpacing: '.1em', textTransform: 'uppercase', color: theme.accent, marginBottom: 10 }}>{a.speaker}</div><div style={{ fontSize: 15, lineHeight: 1.6, marginBottom: 20 }}>{a.text}</div><div style={{ display: 'grid', gap: 9 }}>{a.choices.map((c, i) => (<button key={i} onClick={() => dispatch(resolveArc, i)} style={{ textAlign: 'left', background: theme.panel, border: `1px solid ${theme.line}`, borderRadius: 12, padding: '13px 15px', cursor: 'pointer', color: theme.text, fontSize: 14, fontWeight: 700 }}>{c.label}{c.hint && <div style={{ fontSize: 11.5, fontWeight: 500, color: theme.muted, marginTop: 3 }}>{c.hint}</div>}</button>))}</div></div>);
+  const a = g.pendingArc; const card = arcCard(g, a);
+  const p = g.production; const dir = p && (p.crew || [])[0];
+  const big = card.choices.some((c) => [...(c.tags || []), ...(c.outcomes || []).flatMap((o) => o.tags)].some((x) => /↑↑|↓↓/.test(x.t)));
+  return (<div style={{ maxWidth: 420, margin: '0 auto', minHeight: '100vh', boxSizing: 'border-box', color: theme.text, padding: '24px 16px 16px', display: 'flex', flexDirection: 'column', justifyContent: 'center', fontFamily: FONT }}>
+    <div style={{ fontSize: 11, fontWeight: 900, letterSpacing: '.1em', textTransform: 'uppercase', color: theme.accent, marginBottom: 6 }}>{card.kicker}</div>
+    <div style={{ fontFamily: FONT_DISPLAY, fontSize: 22, fontWeight: 700, lineHeight: 1.2, marginBottom: 8 }}>{a.speaker}</div>
+    <div style={{ fontSize: 15, lineHeight: 1.6, marginBottom: card.onSet && dir ? 8 : 18 }}>{a.text}</div>
+    {card.onSet && dir && <div style={{ fontSize: 12.5, color: theme.muted, marginBottom: 18 }}>Your performance {Math.round(p.meter || 0)} · {dir.name}'s trust {Math.round(dir.bond || 0)}</div>}
+    <div style={{ fontSize: 11.5, fontWeight: 900, letterSpacing: '.08em', textTransform: 'uppercase', color: theme.muted, marginBottom: 9 }}>What do you do?</div>
+    {card.choices.map((c, i) => (<ChoiceCard key={i} mark={c.odds != null ? 'dice' : c.quit ? 'door' : 'ABCDEFG'[card.choices.slice(0, i).filter((x) => x.odds == null && !x.quit).length]}
+      tone={c.odds != null ? theme.gold : c.quit ? theme.bad : theme.muted} label={c.label}
+      right={c.odds != null ? `${c.odds}% chance` : null} rightColor={c.odds >= 60 ? theme.good : c.odds >= 35 ? theme.gold : theme.bad}
+      blurb={c.hint} effects={c.tags} outcomes={c.outcomes} onClick={() => dispatch(resolveArc, i)} />))}
+    {big && <div style={{ fontSize: 12, color: theme.muted, lineHeight: 1.5, margin: '2px 0 4px' }}>↑↑ and ↓↓ are a big change.</div>}
+  </div>);
 }
 function EndLifeModal({ onConfirm, onCancel }) {
   return (<div style={{ maxWidth: 440, margin: '0 auto', minHeight: '100vh', background: 'transparent', color: theme.text, padding: 16, display: 'flex', flexDirection: 'column', justifyContent: 'center', fontFamily: FONT }}>

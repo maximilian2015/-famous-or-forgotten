@@ -3,7 +3,8 @@ import { chance, pick } from '../../engine/rng.js';
 import { addTimeline } from '../../engine/timeline.js';
 import { setFame, setRespect } from '../meta/status.js';
 import { takeJob, JOBS } from './work.js';
-import { resolveStory } from '../meta/stories.js';
+import { resolveStory, CHAINS } from '../meta/stories.js';
+import { STAT, fxWords, showWords } from './choiceWords.js';
 const clamp = (v) => Math.max(0, Math.min(100, v));
 export const ARCS = [
   { id: 'firstCredit', once: true, when: (s) => (s.filmography || []).length + (s.discography || []).length === 1 && s.fame < 20,
@@ -91,7 +92,7 @@ export function resolveArc(s, i) {
   if (arc.story) return resolveStory(s, arc, i);   // a career story's beat (stories.js)
   const c = arc.choices[i]; if (!c) return s;
   let out = c, head = '';
-  if (c.check) { const odds = 30 + (s[c.check.stat] || 0) * 0.6; const ok = chance(odds); out = ok ? c.good : c.bad; head = ok ? '✅ ' : '❌ '; }
+  if (c.check) { const odds = checkOdds(s, c.check); const ok = chance(odds); out = ok ? c.good : c.bad; head = ok ? '✅ ' : '❌ '; }
   const fx = out.fx || {};
   Object.keys(fx).forEach((k) => {
     if (k === 'cash') { s.cash = (s.cash || 0) + fx[k]; return; }
@@ -142,4 +143,49 @@ export function resolveArc(s, i) {
   addTimeline(s, `${arc.speaker}: ${c.label}.`, (fx.mental || 0) < -3 || (fx.scandal || 0) > 3);
   s.pendingArc = null;
   return s;
+}
+
+// ── the words on the event screen (App.jsx ArcModal) ─────────────────────────────
+// Read off the numbers resolveArc applies, so a choice never says one thing and does another.
+// A check is a roll at checkOdds — the chance this actor has now, not a base — and its two
+// outcomes are listed apart. A story beat (stories.js) does what it does in a function and
+// says so in `shows`; tests/test_arcs.mjs runs those functions and holds the words to them.
+export function checkOdds(s, check) { return 30 + (s[check.stat] || 0) * 0.6; }
+const first = (n) => String(n || '').split(' ')[0];
+// [{ t, good }] — good true/false colours the line; null is neither (hype, a day job).
+export function effectTags(s, out, c = out) {
+  const tags = []; const add = (t, good) => tags.push({ t, good });
+  const p = s.production; const prod = out.prod || c.prod; const act = out.act || c.act;
+  if (prod && p) {
+    if (prod.quit) add(`you leave ${p.title} · €${Math.round((p.salary || 0) * 0.3).toLocaleString('en-US')} kill fee`, null);
+    if (prod.meter) add(`Your performance ${prod.meter > 0 ? '↑' : '↓'}${Math.abs(prod.meter) >= 10 ? (prod.meter > 0 ? '↑' : '↓') : ''}`, prod.meter > 0);
+    if (prod.bondLead && p.crew[0]) add(`${first(p.crew[0].name)} trusts you ${Math.abs(prod.bondLead) >= 15 ? 'much ' : ''}${prod.bondLead > 0 ? 'more' : 'less'}`, prod.bondLead > 0);
+    if (prod.bondAll) add(prod.bondAll > 0 ? 'the set warms to you' : `the ${prod.bondAll <= -15 ? 'whole ' : ''}set turns on you`, prod.bondAll > 0);
+  }
+  if (act === 'job' && !s.job) add('you take a day job', null);
+  if (act === 'rest') add(p ? 'two months off · the shoot waits' : 'two months off', null);
+  return [...tags, ...fxWords(out.fx)];
+}
+const pct = (x) => Math.round(Math.max(0, Math.min(100, x)));
+const roll = (label, hint, odds, stat, good, bad) => ({ label, hint, odds: pct(odds), stat,
+  outcomes: [{ label: 'If it works', tags: good }, { label: 'If it fails', tags: bad }] });
+// The whole screen: where it happens, and each choice with what it does.
+export function arcCard(s, a) {
+  const def = a.story || a.youth ? null : ARCS.find((x) => x.id === a.id);
+  const onSet = !!(def && def.scope === 'production' && s.production);
+  const kicker = a.story ? ((CHAINS[a.story] || {}).title || 'A story') : onSet ? `On set · ${s.production.title}` : `Age ${s.ageY}`;
+  const choices = (a.choices || []).map((c) => {
+    // A story beat: what its function does, said by the beat itself.
+    if (a.story) {
+      const sh = c.shows;
+      if (sh && sh.odds != null) return roll(c.label, c.hint || (sh.stat ? `It comes down to your ${(STAT[sh.stat] || sh.stat).toLowerCase()}.` : null), sh.odds, sh.stat ? STAT[sh.stat] || sh.stat : null, showWords(sh.good), showWords(sh.bad));
+      return { label: c.label, hint: c.hint || null, tags: sh ? showWords(sh) : [] };
+    }
+    if (c.check) {
+      const stat = STAT[c.check.stat] || c.check.stat;
+      return roll(c.label, c.hint || `It comes down to your ${stat.toLowerCase()}.`, checkOdds(s, c.check), stat, effectTags(s, c.good || {}, c), effectTags(s, c.bad || {}, c));
+    }
+    return { label: c.label, hint: c.hint || null, tags: effectTags(s, c), quit: !!(c.prod && c.prod.quit) };
+  });
+  return { onSet, kicker, choices };
 }

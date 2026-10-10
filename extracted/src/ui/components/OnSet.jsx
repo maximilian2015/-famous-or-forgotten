@@ -283,9 +283,13 @@ const MARK = {
   pencil: <g><path d="M5 19l1.2-4.4L15.6 5.2a1.6 1.6 0 012.3 0l.9.9a1.6 1.6 0 010 2.3L9.4 17.8z" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinejoin="round" /><line x1="13.6" y1="7.2" x2="16.8" y2="10.4" stroke="currentColor" strokeWidth="1.4" /></g>,
   deeper: <g><circle cx="10.5" cy="10.5" r="5.5" fill="none" stroke="currentColor" strokeWidth="1.6" /><line x1="14.6" y1="14.6" x2="20" y2="20" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" /></g>,
   strange: <path d="M12 4c4.5 0 6.5 3 6.5 5.5 0 3.2-3 4.6-5.5 4.6-2.2 0-3.6-1.4-3.6-3.1 0-1.6 1.2-2.6 2.6-2.6 1.3 0 2 .8 2 1.7" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" />,
+  dice: <g><rect x="4" y="4" width="16" height="16" rx="3.5" fill="none" stroke="currentColor" strokeWidth="1.6" /><circle cx="8.5" cy="8.5" r="1.4" fill="currentColor" /><circle cx="12" cy="12" r="1.4" fill="currentColor" /><circle cx="15.5" cy="15.5" r="1.4" fill="currentColor" /></g>,
+  door: <g><path d="M6 20V5a1 1 0 011-1h8a1 1 0 011 1v15" fill="none" stroke="currentColor" strokeWidth="1.6" /><line x1="3.5" y1="20" x2="20.5" y2="20" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" /><circle cx="13" cy="12.5" r="1.1" fill="currentColor" /><path d="M18 9l2.5 3-2.5 3" fill="none" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round" /></g>,
   lock: <g><rect x="6" y="11" width="12" height="9" rx="2" fill="none" stroke="currentColor" strokeWidth="1.6" /><path d="M8.5 11V8.5a3.5 3.5 0 017 0V11" fill="none" stroke="currentColor" strokeWidth="1.6" /></g>,
 };
 export function Mark({ name, color }) {
+  // A single letter is drawn as itself: choices told apart only by their order.
+  if (name && name.length === 1) return (<span aria-hidden="true" style={{ width: 22, textAlign: 'center', color, fontFamily: TYPE, fontSize: 15, fontWeight: 700, flex: 'none' }}>{name}</span>);
   return (<svg viewBox="0 0 24 24" width="22" height="22" aria-hidden="true" style={{ color, flex: 'none' }}>{MARK[name] || MARK.page}</svg>);
 }
 
@@ -293,9 +297,10 @@ export function Mark({ name, color }) {
 // `effects` are what it does, each { t, good } — marked + when it is good for you, − when it
 // costs, • when it is neither (career/scenes.js approachSpec, career/story.js takeTags).
 // `locked` carries the real condition and how far you are from it. `warm` is the first day's
-// paper-and-wood version; a shooting day is the dark one.
+// paper-and-wood version; a shooting day is the dark one. `outcomes` are the two sides of a
+// roll, [{ label, tags }] — what happens if it works and if it fails (the event screen).
 const SIGN = { true: '+', false: '−', null: '•' };
-export function ChoiceCard({ mark, tone, label, right, rightColor, blurb, effects, locked, why, progress, onClick, warm }) {
+export function ChoiceCard({ mark, tone, label, right, rightColor, blurb, effects, outcomes, locked, why, progress, onClick, warm }) {
   const col = locked ? '#b2aad2' : tone || theme.muted;
   const ink = (good) => (good === true ? theme.good : good === false ? theme.bad : theme.muted);
   return (<button className="fof-choice" disabled={!!locked} onClick={locked ? undefined : onClick}
@@ -312,13 +317,22 @@ export function ChoiceCard({ mark, tone, label, right, rightColor, blurb, effect
         <span style={{ fontSize: 15, fontWeight: 800, color: locked ? '#d4cdea' : theme.text }}>{label}</span>
         {right && !locked && <span style={{ fontSize: 12, fontWeight: 800, whiteSpace: 'nowrap', color: rightColor || theme.muted }}>{right}</span>}
       </div>
-      <div style={{ fontSize: 12.5, color: locked ? '#bdb5da' : theme.muted, marginTop: 3, lineHeight: 1.45 }}>{locked ? why : blurb}</div>
+      {(locked ? why : blurb) && <div style={{ fontSize: 12.5, color: locked ? '#bdb5da' : theme.muted, marginTop: 3, lineHeight: 1.45 }}>{locked ? why : blurb}</div>}
       {!locked && effects && effects.length > 0 && <div style={{ marginTop: 8, display: 'grid', gap: 3 }}>
         {effects.map((e, i) => (<div key={i} style={{ display: 'flex', gap: 7, fontSize: 13, lineHeight: 1.4, color: theme.text }}>
           <span style={{ width: 10, flex: 'none', fontWeight: 900, textAlign: 'center', color: ink(e.good) }}>{SIGN[e.good]}</span>
           <span style={{ opacity: 0.9 }}>{e.t}</span>
         </div>))}
       </div>}
+      {!locked && outcomes && outcomes.map((o, j) => (<div key={j} style={{ marginTop: 8 }}>
+        <div style={{ fontSize: 11, fontWeight: 900, letterSpacing: '.06em', textTransform: 'uppercase', color: j === 0 ? theme.good : theme.bad }}>{j === 0 ? '✓' : '✕'} {o.label}</div>
+        <div style={{ display: 'grid', gap: 3, marginTop: 4 }}>
+          {(o.tags.length ? o.tags : [{ t: 'nothing changes', good: null }]).map((e, i) => (<div key={i} style={{ display: 'flex', gap: 7, fontSize: 13, lineHeight: 1.4, color: theme.text }}>
+            <span style={{ width: 10, flex: 'none', fontWeight: 900, textAlign: 'center', color: ink(e.good) }}>{SIGN[e.good]}</span>
+            <span style={{ opacity: 0.9 }}>{e.t}</span>
+          </div>))}
+        </div>
+      </div>))}
       {locked && progress && <div style={{ marginTop: 9 }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 12, color: '#d4cdea', fontWeight: 700 }}><span>{progress.label}</span><span>{progress.value} / {progress.need}</span></div>
         <div style={{ height: 6, background: 'rgba(255,255,255,.12)', borderRadius: 3, marginTop: 5 }}>
