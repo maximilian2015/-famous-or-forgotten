@@ -218,6 +218,44 @@ export const APPROACHES = {
     needsBond: 62, window: 0.88, up: 1.35, down: 1.2, moment: 1.8, trust: 0.4, crowd: 1, prestige: 2 },
 };
 export const APPROACH_ORDER = ['written', 'bigger', 'back', 'change'];
+
+// The quality at which a day becomes a MOMENT — a take the critics will name. One place, read by
+// resolveScene and by the card at the end of the day, which used to say so only at 88 whatever
+// the approach (going bigger makes one from 72).
+export function momentAt(ap) { return Math.max(72, 88 - ((ap || APPROACHES.written).moment - 1) * 13); }
+
+// The words under each choice, read off its own numbers so they cannot drift from it when the
+// balance moves. Plain words, no multipliers: the player is an actor, not an accountant.
+export function approachTags(ap) {
+  const tags = [];
+  tags.push(ap.window >= 1.25 ? 'Harder' : ap.window > 1.05 ? 'A little harder' : ap.window < 0.95 ? 'Easier' : 'Standard');
+  if (ap.up >= 1.4 && ap.down >= 1.3) tags.push('bigger wins and losses');
+  else if (ap.up >= 1.3) tags.push('pays more when it lands');
+  if (ap.crowd > 0 && ap.prestige < 0) tags.push('audience over critics');
+  else if (ap.crowd < 0 && ap.prestige > 0) tags.push('critics over audience');
+  else if (ap.crowd > 0 && ap.prestige > 0) tags.push('a little for both');
+  if (ap.trust < 0) tags.push('a miss costs you with the director');
+  if (tags.length === 1) tags.push('balanced');
+  return tags;
+}
+
+// What the day you just played did, by the same rules resolveScene applies — said on the card at
+// the end of the day, before you leave it. `director` is a first name.
+export function approachOutcome(id, q, director) {
+  const ap = APPROACHES[id] || APPROACHES.written;
+  const who = director || 'The director';
+  const moment = q >= momentAt(ap);
+  let line = null;
+  if (id === 'bigger') line = q >= 70 ? `Going bigger landed. ${who} trusts you more for it, and the audience will feel it; the critics a little less.`
+    : q >= 50 ? `Going bigger half-landed: some of it will reach the audience.`
+    : `Going bigger missed, and it cost you more with ${who} than a quiet miss would have.`;
+  else if (id === 'back') line = q >= 70 ? `Stripped back, and it held. The critics will notice; the Friday crowd less so.`
+    : `Stripped back, and it did not quite carry. It will read as small to the audience.`;
+  else if (id === 'change') line = q >= 70 ? `Your version of the scene worked.`
+    : q >= 50 ? `Your version of the scene got there in the end.`
+    : `Your version did not land, and ${who} trusts you a little less for it.`;
+  return { moment, line };
+}
 // The fourth one is the relationship paying for itself: you cannot ask a director you barely
 // know to rewrite the day. Everything else is always open.
 export function approachesFor(s, p) {
@@ -267,18 +305,23 @@ export function poolFor(s, p) {
   const live = SCENE_IDS.filter((id) => { try { return SCENES[id].when(s, p); } catch (e) { return false; } });
   return live.length ? live : ['mark', 'takes'];
 }
-// How hard the day is: the size of the picture, the scene, and how tired you are.
-export function difficulty(s, p, id) {
-  const sc = SCENES[id];
-  let d = 1;
-  if (sc.hard) d += 0.45;
-  if (p.scale === 'blockbuster' || p.scale === 'prestige') d += 0.2;
-  if ((s.strain || 0) >= 60) d += 0.25;
-  if ((s.drink && s.drink.thisMonth)) d += 0.3;
+// How hard the day is: the size of the picture, the scene, and how tired you are. The reasons
+// are kept with the number, so the screen that says "harder today: you are worn out" is reading
+// the same conditions that made it harder, not a description of them.
+export function dayFactors(s, p, id) {
+  const sc = SCENES[id] || SCENES.mark;
+  let d = 1; const harder = [], easier = [];
+  if (sc.hard) { d += 0.45; harder.push('a hard scene'); }
+  if (p && (p.scale === 'blockbuster' || p.scale === 'prestige')) { d += 0.2; harder.push(p.scale === 'blockbuster' ? 'a big picture' : 'a serious picture'); }
+  if ((s.strain || 0) >= 60) { d += 0.25; harder.push('you are worn out'); }
+  if ((s.drink && s.drink.thisMonth)) { d += 0.3; harder.push('you drank this month'); }
   // What you can actually do. A trained actor gets a wider window, not a free pass.
-  d -= Math.min(0.45, ((s.acting || 0) - 45) / 120);
-  return Math.max(0.55, Math.min(2, d));
+  const craft = Math.min(0.45, ((s.acting || 0) - 45) / 120);
+  d -= craft;
+  if (craft >= 0.15) easier.push('your training'); else if (craft <= -0.15) harder.push('you are still learning');
+  return { d: Math.max(0.55, Math.min(2, d)), harder, easier };
 }
+export function difficulty(s, p, id) { return dayFactors(s, p, id).d; }
 
 // Monthly, from the production tick. One to three a shoot, never two months running, never
 // in the preparation months and never on the last day.
@@ -371,8 +414,7 @@ export function resolveScene(s, quality) {
   if (ap.prestige) p.prestigeScore = clamp((p.prestigeScore || 50) + ap.prestige * (q >= 70 ? 1 : 0.3));
   let moment = null;
   // Going bigger is how a take ends up in a trailer, and it is the only way the bar comes down.
-  const momentAt = Math.max(72, 88 - (ap.moment - 1) * 13);
-  if (q >= momentAt) {
+  if (q >= momentAt(ap)) {
     moment = MOMENT[sc0.id] ? MOMENT[sc0.id](sc0) : `the ${sc.label.toLowerCase()}`;
     (p.moments = p.moments || []).push(moment);
     addTimeline(s, `${sc.label}: you got it in one, and the set went quiet. ${d.name || 'The director'} watched it twice on the monitor.`);

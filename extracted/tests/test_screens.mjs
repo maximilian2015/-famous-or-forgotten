@@ -368,6 +368,12 @@ await inState('Home · for your consideration', { filmography: [...save.filmogra
       await tap(W2, (d) => [...d.querySelectorAll('button')].find((b) => /^Contact/.test((b.textContent || '').trim())));
     });
 }
+// A shooting day before the choice: the drawn set, the director's trust on this set, the words
+// under each way of playing it (read off career/scenes.js), and the locked one with its real bar.
+await inState('A shooting day · how are you playing it', {
+  scene: { setId: SET.id, id: 'mark', game: 'timing', label: 'Find your mark', title: SET.title, genre: SET.genre,
+    line: 'They have taped a cross on the floor and the light only works if you are on it.', hint: 'Hit it.', director: 'Rosalind Varga', difficulty: 1 } },
+  /^(?=[\s\S]*How are you playing it\?)(?=[\s\S]*is directing · trust on this set 56)(?=[\s\S]*audience over critics)(?=[\s\S]*critics over audience)(?=[\s\S]*Rosalind's trust on this set 56 \/ 62)/);
 // The set asking for something this month: the row with the answers, on Home and in the Calendar.
 {
   const asked = { ...SET, demand: { id: 'nights', at: NOW } };

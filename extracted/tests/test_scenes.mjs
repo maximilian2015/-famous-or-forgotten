@@ -1,4 +1,5 @@
-import { maybeScene, resolveScene, SCENES, SCENE_IDS, poolFor, difficulty } from '../src/systems/career/scenes.js';
+import { maybeScene, resolveScene, SCENES, SCENE_IDS, poolFor, difficulty, dayFactors, APPROACHES, approachTags, approachOutcome, momentAt } from '../src/systems/career/scenes.js';
+import { TAKES, takeTags } from '../src/systems/career/story.js';
 import { startProduction, sets } from '../src/systems/career/production.js';
 
 let fails = 0;
@@ -80,6 +81,27 @@ const month = (s) => { s.month++; if (s.month > 11) { s.month = 0; s.year++; } }
   v.scene = { setId: w.id, id: 'night', game: 'timing', label: 'The night shoot', title: w.title, line: 'x', difficulty: 1 };
   resolveScene(v, 80);
   ok('a night shoot is a night shoot even when it goes well', v.strain > 20);
+}
+// ── the words on the choice screens are read off the numbers that decide ───────
+{
+  ok('as written: standard and balanced', approachTags(APPROACHES.written).join('|') === 'Standard|balanced', approachTags(APPROACHES.written).join('|'));
+  ok('bigger: harder, wins and losses, audience over critics, a miss costs with the director', approachTags(APPROACHES.bigger).join('|') === 'Harder|bigger wins and losses|audience over critics|a miss costs you with the director');
+  ok('stripped back: a little harder, critics over audience', approachTags(APPROACHES.back).join('|') === 'A little harder|critics over audience');
+  ok('your version: easier, pays more when it lands', approachTags(APPROACHES.change)[0] === 'Easier' && approachTags(APPROACHES.change).includes('pays more when it lands'));
+  // The card at the end of the day used to put the moment at 88 whatever the approach; the game
+  // makes one from momentAt (72 going bigger). They are one rule now.
+  ok('a moment going bigger at 75, as resolveScene makes one', approachOutcome('bigger', 75).moment === true && momentAt(APPROACHES.bigger) < 75);
+  ok('and not as written at 75', approachOutcome('written', 75).moment === false);
+  ok('the outcome line follows the trust rule: a missed bigger day costs more with the director', /cost you more with Milo/.test(approachOutcome('bigger', 30, 'Milo').line || ''));
+  ok('playing it as written says nothing extra', approachOutcome('written', 90).line === null);
+  // Why the day is harder: the conditions that made it harder, kept with the number.
+  const tired = { acting: 50, strain: 70, drink: { thisMonth: true } };
+  const f = dayFactors(tired, { scale: 'blockbuster' }, 'mark');
+  ok('harder today names what made it harder', f.harder.includes('you are worn out') && f.harder.includes('you drank this month') && f.harder.includes('a big picture'), f.harder.join(', '));
+  ok('and the number is the same one difficulty() returns', f.d === difficulty(tired, { scale: 'blockbuster' }, 'mark'));
+  ok('first day: bigger sells and costs the reviews', takeTags(TAKES.bigger, 'Comedy').join('|') === 'more money|weaker reviews, fewer awards');
+  ok('first day: about something in a crime picture says it becomes a drama', takeTags(TAKES.about, 'Crime').includes('it becomes a drama') && !takeTags(TAKES.about, 'Drama').includes('it becomes a drama'));
+  ok('first day: the strange one can go either way and may fall apart', takeTags(TAKES.strange, 'Drama').join('|') === 'brilliant or unwatchable|may fall apart in the edit');
 }
 console.log(fails ? `\n${fails} FAILED` : '\nall passed');
 process.exit(fails ? 1 : 0);

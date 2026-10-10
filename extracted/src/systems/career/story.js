@@ -230,6 +230,22 @@ export const TAKES = {
 };
 export const TAKE_ORDER = ['straight', 'bigger', 'about', 'strange'];
 
+// The words under each version on the first day, read off its own numbers (appeal: the release
+// and the money; bump and prestige: the reviews and the awards; swing and apart: how far it can
+// land and whether it survives the edit), so they move when the balance does.
+export function takeTags(t, genre) {
+  if (!t || t.id === 'straight') return ['The film on the page', 'no argument'];
+  const tags = [];
+  if (t.appeal >= 1.5) tags.push('more money');
+  else if (t.appeal <= 0.6) tags.push('less money');
+  if ((t.bump || 0) + (t.prestige || 0) <= -8) tags.push('weaker reviews, fewer awards');
+  else if ((t.bump || 0) + (t.prestige || 0) >= 8) tags.push('better reviews, awards');
+  if (t.aim && genre && t.aim !== genre) tags.push(`it becomes a ${t.aim.toLowerCase()}`);
+  if ((t.swing || 0) >= 10) tags.push('brilliant or unwatchable');
+  if ((t.apart || 0) >= 5) tags.push('may fall apart in the edit');
+  return tags;
+}
+
 // Not every film offers every argument. A blockbuster is not going to become a chamber
 // piece because you asked, and there is no money to make an indie bigger.
 export function takesFor(p) {

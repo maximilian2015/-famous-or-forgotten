@@ -23,7 +23,8 @@ import { labelInfo, activeLabels, isStrong } from './systems/meta/typecast.js';
 import { activeStories } from './systems/meta/stories.js';
 import { coldCause } from './systems/meta/yourDirectors.js';
 import { ambitionProgress } from './systems/meta/ambition.js';
-import { resolveScene, approachesFor, chooseApproach, autoQuality, rulesFor } from './systems/career/scenes.js';
+import { resolveScene, approachesFor, chooseApproach, autoQuality, rulesFor, approachTags, approachOutcome, dayFactors } from './systems/career/scenes.js';
+import { SetVignette, ScriptPage, ChoiceCard } from './ui/components/OnSet.jsx';
 import { RhythmLine, HoldZone, KeySequence, QuickPick } from './ui/components/SceneGames.jsx';
 import { Chronology, ScriptLines, Motive } from './ui/components/SceneLogic.jsx';
 import { FrameCheck, FindTheLight, TheAssembly, WhoSaysIt, TakeSheet } from './ui/components/ScenePuzzles.jsx';
@@ -848,6 +849,14 @@ function SceneModal({ g }) {
   // The thinking days are written from the picture itself, so they need the set the scene
   // belongs to — the modal had only the scene. career/scenework.js
   const onSet = allSets(g).find((x) => x.id === sc.setId) || allSets(g)[0] || null;
+  // Who is directing, how far they trust you on this set, and why the day is harder — the same
+  // conditions that made it harder (career/scenes.js dayFactors), not a description of them.
+  const lead = (onSet && onSet.crew && onSet.crew[0]) || {};
+  const dirName = lead.name || sc.director || 'The director';
+  const dirFirst = String(dirName).split(' ')[0];
+  const factors = onSet ? dayFactors(g, onSet, sc.id) : { harder: [], easier: [] };
+  const MARKS = { written: 'page', bigger: 'burst', back: 'quiet', change: 'pencil' };
+  const TONES = { written: theme.muted, bigger: theme.gold, back: theme.accent, change: theme.good };
   const lines = {
     Horror: ['It was in the house.', 'You said that already.', 'No — listen.', 'It is upstairs.', 'Do not turn round.', 'I said do not.', 'It knows my name.', 'It always did.'],
     Comedy: ['This is fine.', 'This is completely fine.', 'Nobody is panicking.', 'I am not panicking.', 'You are panicking.', 'That is the smoke alarm.', 'That is definitely the smoke alarm.', 'Right.'],
@@ -873,21 +882,27 @@ function SceneModal({ g }) {
     : sc.game === 'nono' ? <TakeSheet difficulty={d} onResult={done} />
     : <QuickPick difficulty={d} prompt={`"${sc.director} has not called cut. Your co-star is looking at you."`} options={opts} onResult={done} />;
   return (<div style={{ maxWidth: 440, margin: '0 auto', minHeight: '100vh', color: theme.text, padding: 16, display: 'flex', flexDirection: 'column', justifyContent: 'center', fontFamily: FONT }}>
-    <div style={{ fontSize: 11, fontWeight: 900, letterSpacing: '.1em', textTransform: 'uppercase', color: theme.gold, marginBottom: 8 }}>🎬 {sc.title} · {sc.label}</div>
-    <div style={{ fontSize: 14.5, lineHeight: 1.6, marginBottom: 14 }}>{sc.line}</div>
+    {state !== 'brief' && <>
+      <div style={{ fontSize: 11, fontWeight: 900, letterSpacing: '.1em', textTransform: 'uppercase', color: theme.gold, marginBottom: 8 }}>🎬 {sc.title} · {sc.label}</div>
+      <div style={{ fontSize: 14.5, lineHeight: 1.6, marginBottom: 14 }}>{sc.line}</div>
+    </>}
     {state === 'brief'
       ? (<>
+          {/* The day, drawn: the board, the lamp, and the choice on a page of the script.
+              ui/components/OnSet.jsx. The words under each choice are read off its own numbers
+              (career/scenes.js approachTags), and the locked one shows the real bar. */}
+          <SetVignette title={sc.title} genre={sc.genre} scene={sc.label} director={dirName} />
+          <ScriptPage kicker={`On set · ${sc.label}`} line={sc.line}>
+            <div><b style={{ color: '#302d26' }}>{dirName}</b> is directing · trust on this set {Math.round(lead.bond ?? 40)}</div>
+            {factors.harder.length > 0 && <div>Harder today: {factors.harder.join(', ')}.</div>}
+            {factors.harder.length === 0 && factors.easier.length > 0 && <div>Easier today: {factors.easier.join(', ')}.</div>}
+          </ScriptPage>
           <div style={{ fontSize: 10.5, fontWeight: 900, letterSpacing: '.08em', textTransform: 'uppercase', color: theme.muted, marginBottom: 8 }}>How are you playing it?</div>
-          <div style={{ display: 'grid', gap: 9, marginBottom: 6 }}>
-            {approachesFor(g, onSet).map((ap) => (<button key={ap.id} disabled={!ap.open} onClick={() => ap.open && take(ap.id)}
-              style={{ textAlign: 'left', background: ap.open ? theme.panel : 'rgba(120,110,150,.10)',
-                border: `1px solid ${ap.id === 'change' && ap.open ? 'rgba(255,209,102,.45)' : theme.line}`,
-                borderRadius: 12, padding: '12px 14px', cursor: ap.open ? 'pointer' : 'default',
-                color: ap.open ? theme.text : '#6b6390', fontSize: 14, fontWeight: 700, fontFamily: FONT }}>
-              {ap.label}
-              <div style={{ fontSize: 11.5, fontWeight: 500, color: ap.open ? theme.muted : '#6b6390', marginTop: 3, lineHeight: 1.45 }}>
-                {ap.open ? ap.blurb : ap.why}</div></button>))}
-          </div></>)
+          {approachesFor(g, onSet).map((ap) => (<ChoiceCard key={ap.id} mark={MARKS[ap.id]} tone={TONES[ap.id]} label={ap.label} blurb={ap.blurb}
+            tags={approachTags(ap)} locked={!ap.open} why={ap.why}
+            progress={!ap.open && ap.needsBond ? { label: `${dirFirst}'s trust on this set`, value: Math.round(lead.bond || 0), need: ap.needsBond } : null}
+            onClick={() => take(ap.id)} />))}
+        </>)
       : state === 'ready'
       ? (<>
           <div style={{ fontSize: 12.5, color: theme.muted, lineHeight: 1.5, marginBottom: 10 }}>{sc.hint}</div>
@@ -923,7 +938,13 @@ function SceneModal({ g }) {
               : score >= 25 ? 'It never quite landed. They have enough to cut around it.'
               : 'It did not work. They moved on, and the schedule moved with them.'}
           </div>
-          {score >= 88 && <div style={{ fontSize: 12, color: theme.gold, textAlign: 'center', marginBottom: 14, lineHeight: 1.5 }}>★ That take is in the film now — the critics will have something to name.</div>}
+          {/* What the way you played it did with the day, by the rules resolveScene applies; and
+              the moment at the bar that approach really has — this said it only at 88, while
+              going bigger makes one from 72 (career/scenes.js momentAt, approachOutcome). */}
+          {(() => { const out = approachOutcome(sc.approach, score, dirFirst); return (<>
+            {out.line && <div style={{ fontSize: 12.5, color: theme.muted, textAlign: 'center', marginBottom: 10, lineHeight: 1.5 }}>{out.line}</div>}
+            {out.moment && <div style={{ fontSize: 12, color: theme.gold, textAlign: 'center', marginBottom: 14, lineHeight: 1.5 }}>★ That take is in the film now — the critics will have something to name.</div>}
+          </>); })()}
           <Button kind="pri" onClick={finish}>{score >= 70 ? 'That is the day' : 'Move on'}</Button>
         </>)}
   </div>);
