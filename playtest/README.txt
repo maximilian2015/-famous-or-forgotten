@@ -27,3 +27,18 @@ Jocasta Radovan держит обиду до сентября 2062 — ты уш
   он остынет ниже 50, и полоска упадёт до 0 — последняя открытая дверь закроется.
 
 Пересобрать это сохранение заново: node extracted/tests/probes/probe_directors_save.mjs playtest/directors-4.json
+
+
+maya-rent.json — Relationships 2.0, первая просьба друга
+
+КТО ЭТО
+Alex Moon, 31 год, апрель 2071, €60 000. Подруга Maya Ortiz (Fellow Actor, отношения 55)
+уже звонит: ей не хватает €2 400 на аренду. Карточка «MAYA ORTIZ — wants to talk» на Home.
+
+ЧТО ПОПРОБОВАТЬ
+- «Hear them out ›» → выбери ответ: Pay it / Lend it / Stay at mine / I cannot / Let me think.
+- «Let me think» — карточка остаётся до июня 2071; если не ответить до срока, Майя запомнит,
+  что ты не перезвонил.
+- Lend it → живи 12 месяцев → она вернёт деньги. People → Contact → Maya: блок «Between you».
+- Pay it → потом уйди в минус (потрать деньги) → Майя сама прикроет тебя: «My turn.»
+Загрузка — как выше: 💾 → «Load a life from a file» → playtest/maya-rent.json.
