@@ -233,6 +233,12 @@ export function rerollBoard(s) {
   return s;
 }
 
+export function leaningPick(ids, weight) {
+  const total = ids.reduce((n, id) => n + weight(id), 0);
+  let r = Math.random() * total;
+  for (const id of ids) { r -= weight(id); if (r < 0) return id; }
+  return ids[ids.length - 1];
+}
 export function refreshCastingPool(s, force, extra = 0) {
   s.castingPool = s.castingPool || [];
   // The roster of directors hangs off the world, so the world has to be there first —
@@ -273,9 +279,9 @@ export function refreshCastingPool(s, force, extra = 0) {
   let guard = 0;
   while (s.castingPool.length < want && guard++ < 400) {
     const short = shelfNames.filter((id) => countOn(id) < floorOf(id));
-    // What is left after the floors leans a little toward the television the ten-year-old wanted.
-    const tvLean = ambitionLean(s, 'tvpath') - 1;
-    const shelf = short.length ? pick(short) : (tvLean > 0 && shelves.tv && chance(tvLean * 100) ? 'tv' : pick(shelfNames));
+    // What is left after the floors leans a little toward the television the ten-year-old wanted:
+    // the TV shelf weighs ambitionLean (1.4) against 1 for each of the others.
+    const shelf = short.length ? pick(short) : leaningPick(shelfNames, (id) => (id === 'tv' ? ambitionLean(s, 'tvpath') : 1));
     const row = pick(shelves[shelf]);
     const perEpisode = shelf === 'tv';
     const [type, role, span] = row;
