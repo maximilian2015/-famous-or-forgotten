@@ -4,6 +4,7 @@ import { addTimeline } from '../../engine/timeline.js';
 import { setFame, setRespect } from '../meta/status.js';
 import { takeJob, JOBS } from './work.js';
 import { resolveStory, CHAINS } from '../meta/stories.js';
+import { resolveNeed } from './needs.js';
 import { STAT, fxWords, showWords, softenLoss } from './choiceWords.js';
 const clamp = (v) => Math.max(0, Math.min(100, v));
 export const ARCS = [
@@ -90,6 +91,7 @@ export function maybeStartArc(s) {
 export function resolveArc(s, i) {
   const arc = s.pendingArc; if (!arc) return s;
   if (arc.story) return resolveStory(s, arc, i);   // a career story's beat (stories.js)
+  if (arc.need) return resolveNeed(s, arc, i);     // somebody close asking for something (needs.js)
   const c = arc.choices[i]; if (!c) return s;
   let out = c, head = '';
   if (c.check) { const odds = checkOdds(s, c.check); const ok = chance(odds); out = ok ? c.good : c.bad; head = ok ? '✅ ' : '❌ '; }
@@ -180,13 +182,13 @@ const roll = (label, hint, odds, stat, good, bad, statValue) => ({ label, hint, 
 export function arcCard(s, a) {
   const def = a.story || a.youth ? null : ARCS.find((x) => x.id === a.id);
   const onSet = !!(def && def.scope === 'production' && s.production);
-  const kicker = a.story ? ((CHAINS[a.story] || {}).title || 'A story') : onSet ? `On set · ${s.production.title}` : `Age ${s.ageY}`;
+  const kicker = a.kicker || (a.story ? ((CHAINS[a.story] || {}).title || 'A story') : onSet ? `On set · ${s.production.title}` : `Age ${s.ageY}`);
   const choices = (a.choices || []).map((c) => {
-    // A story beat: what its function does, said by the beat itself.
-    if (a.story) {
+    // A story beat or a need (needs.js): what its function does, said by the beat itself.
+    if (a.story || a.need) {
       const sh = c.shows;
       if (sh && sh.odds != null) return roll(c.label, c.hint || (sh.stat ? `It comes down to your ${(STAT[sh.stat] || sh.stat).toLowerCase()}.` : null), sh.odds, sh.stat ? STAT[sh.stat] || sh.stat : null, showWords(sh.good, s), showWords(sh.bad, s), sh.stat ? Math.round(s[sh.stat] || 0) : null);
-      return { label: c.label, hint: c.hint || null, tags: sh ? showWords(sh, s) : [] };
+      return { label: c.label, hint: c.hint || null, tags: sh ? showWords(sh, s) : [], locked: c.locked || null, later: !!c.later };
     }
     if (c.check) {
       const stat = STAT[c.check.stat] || c.check.stat;

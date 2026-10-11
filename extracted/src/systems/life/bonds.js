@@ -36,13 +36,15 @@ const FADE = { parent: 0.45, spouse: 0.7, child: 0.5, sibling: 0.7, grandparent:
 const REPEAT = [1, 0.55, 0.3, 0.15];
 function repeatFactor(n) { return REPEAT[n] ?? 0.08; }
 
-// The only way closeness should ever move from an interaction.
-export function applyBond(s, p, raw) {
+// The only way closeness should ever move from an interaction. `opts.seen: false` moves it
+// without counting as having seen them — a request you never answered hurts, and it is not
+// contact (life/needs.js; the friendship-drift rule reads lastSeen).
+export function applyBond(s, p, raw, opts = {}) {
   const now = monthStamp(s);
   if (p.touchedMonth !== now) { p.touchedMonth = now; p.touched = 0; }
   const factor = raw > 0 ? repeatFactor(p.touched) : 1;   // you can always make it worse
   p.touched = (p.touched || 0) + 1;
-  p.lastSeen = now;
+  if (opts.seen !== false) p.lastSeen = now;
   // Going up gets harder the higher you already are; going down never does.
   const resistance = raw > 0 ? 1 - Math.max(0, (p.relationship || 0)) / 150 : 1;
   // The floor belongs to the FIRST thing you do in a month: turning up is always worth

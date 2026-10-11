@@ -7,6 +7,7 @@ import { computeAccess } from './systems/career/access.js';
 import { seeDoctor, treatmentCost, pushThrough, PILLS, usePills, infectionOdds } from './systems/life/health.js';
 import { resolveArc, arcCard } from './systems/life/arcs.js';
 import { arrivalBonus } from './systems/life/money.js';
+import { memoryLines, needCards, openNeed } from './systems/life/needs.js';
 import { computeLegacy, getHall } from './systems/meta/legacy.js';
 import { fameTier, FAME_TIERS, fameCeiling, ladderBlurb, isForgotten } from './systems/meta/status.js';
 import { meterTier } from './systems/career/production.js';
@@ -234,6 +235,14 @@ export default function App() {
         {inCareer(g) && <SeasonCard g={g} />}
         {inCareer(g) && <BubbleCard g={g} />}
         {inCareer(g) && <CollabCard g={g} />}
+        {/* Somebody close needs something (life/needs.js). A card, not a pop-up: it waits for
+            you until its date, and not opening it in time is an answer they remember. */}
+        {inCareer(g) && needCards(g).map((n) => (<Card key={n.pid} style={{ marginBottom: 14, borderColor: 'rgba(255,138,181,.4)' }}>
+          <div style={{ fontSize: 11, fontWeight: 900, letterSpacing: '.08em', textTransform: 'uppercase', color: '#ff8ab5', marginBottom: 5 }}>{n.name}</div>
+          <div style={{ fontSize: 13, lineHeight: 1.5, marginBottom: 6 }}>{n.text}</div>
+          <div style={{ fontSize: 11.5, color: theme.muted, marginBottom: 9 }}>They are waiting until {n.until}. Not answering is an answer.</div>
+          <Button kind="pri" onClick={() => dispatch(openNeed, n.pid)}>Hear them out ›</Button>
+        </Card>))}
         {inCareer(g) && <StoriesCard g={g} />}
         {g.illness && (<Card style={{ marginBottom: 14, borderColor: 'rgba(255,90,122,.5)' }}>
           <div style={{ fontSize: 11, fontWeight: 900, letterSpacing: '.08em', textTransform: 'uppercase', color: theme.bad, marginBottom: 5 }}>🤒 {g.illness.name}{g.illness.serious ? ' · serious' : ''}</div>
@@ -971,7 +980,7 @@ function ArcModal({ g }) {
       tone={c.odds != null ? theme.gold : c.quit ? theme.bad : theme.muted} label={c.label}
       right={c.odds != null ? `${c.odds}% chance` : null} rightColor={c.odds >= 60 ? theme.good : c.odds >= 35 ? theme.gold : theme.bad}
       rightSub={c.stat && c.statValue != null ? `${c.stat} ${c.statValue}` : null}
-      blurb={c.hint} effects={c.tags} outcomes={c.outcomes} onClick={() => dispatch(resolveArc, i)} />))}
+      blurb={c.hint} effects={c.tags} outcomes={c.outcomes} locked={!!c.locked} why={c.locked} onClick={() => dispatch(resolveArc, i)} />))}
     {big && <div style={{ fontSize: 12, color: theme.muted, lineHeight: 1.5, margin: '2px 0 4px' }}>↑↑ and ↓↓ are a big change.</div>}
   </div>);
 }
@@ -1047,6 +1056,12 @@ function PersonSheet({ g, id, onClose }) {
           </div>
         </div>
       </div>
+      {/* What has passed between you — read off the facts the person remembers (life/needs.js
+          memoryLines), not written down as prose anywhere. */}
+      {memoryLines(p).length > 0 && <Card style={{ margin: '12px 0' }}>
+        <div style={{ fontSize: 11, fontWeight: 900, letterSpacing: '.08em', textTransform: 'uppercase', color: theme.muted, marginBottom: 6 }}>Between you</div>
+        {memoryLines(p).map((line, i) => <div key={i} style={{ fontSize: 12.5, lineHeight: 1.5, color: theme.text, opacity: 0.9 }}>{line}</div>)}
+      </Card>}
       {/* Making something together. Maxi: "what about collaborations?" The card says what
           the two of you would be making, how likely they are to say yes and why — the
           button itself is down in the practical group with everything else. career/collab.js */}

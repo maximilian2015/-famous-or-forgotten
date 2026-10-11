@@ -8,6 +8,7 @@ import { maybeGenerateOffer, maybeBrandOffer, offersTick } from '../systems/care
 import { emailTick } from '../systems/meta/email.js';
 import { agentTick } from '../systems/career/agent.js';
 import { smsTick } from '../systems/social/sms.js';
+import { needsTick } from '../systems/life/needs.js';
 import { standingTick } from '../systems/meta/standing.js';
 import { maybeStartArc } from '../systems/life/arcs.js';
 import { maybeYouthEvent } from '../systems/life/youth.js';
@@ -208,6 +209,7 @@ export function advanceMonth(state) {
   setsTick(s);       // and the month a second set, or a third, opens to you
   emailTick(s);
   smsTick(s);        // and the people in your life text about what just happened
+  needsTick(s);      // and one of them, now and then, needs something from you (life/needs.js)
   maybeScene(s);     // and one day on the set that is a day, not a month
   maybeStartArc(s);
   iconTick(s);        // and the last rung says why it is out of reach
