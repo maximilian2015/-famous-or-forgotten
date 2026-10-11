@@ -28,8 +28,8 @@ import { newTitle } from '../world/titles.js';
 import { personName, namesInUse } from '../world/names.js';
 import { setFame, setRespect } from '../meta/status.js';
 import { addHype } from '../meta/hype.js';
+import { skillCap } from './actions.js';
 
-const clamp = (v, a = 0, b = 100) => Math.max(a, Math.min(b, v));
 const stamp = (s) => (s.year || 0) * 12 + (s.month || 0);
 
 // ── where you actually are ────────────────────────────────────────────────────
@@ -117,7 +117,11 @@ export const LATER = {
   stage: {
     label: 'A theatre', min: 'cooling', pay: [18000, 60000], months: 4, scale: 'festival',
     line: (s) => `A run somewhere nobody sends a critic from London. Eight shows a week, a dressing room with a window, and an audience that has paid to be there.`,
-    note: 'Nobody will see it who can give you a job. You will be better afterwards than you have been in ten years.',
+    // The promise holds only for somebody with room left to grow; at the talent ceiling the
+    // stage keeps you sharp and buys standing, and the offer says that instead.
+    note: (s) => ((s.acting || 0) < skillCap(s)
+      ? 'Nobody will see it who can give you a job. You will be better afterwards than you have been in ten years.'
+      : 'Nobody will see it who can give you a job. You are as good as you are going to get; the stage keeps it that way, and the people who matter hear about it.'),
   },
   tellAll: {
     label: 'The interview', min: 'former', pay: [25000, 90000], months: 1, scale: 'oneoff',
@@ -176,7 +180,7 @@ export function declineTick(s) {
     scale: k.scale, tier: 'supporting', months: k.months, fame: id === 'reality' ? 6 : 1,
     salary: fee, prestigeScore: id === 'parent' ? rint(45, 65) : rint(8, 24),
     stability: 90, deadline: rint(2, 3),
-    note: `${k.line(s)} ${k.note}`,
+    note: `${k.line(s)} ${typeof k.note === 'function' ? k.note(s) : k.note}`,
   });
   addTimeline(s, `${k.label} came in.`);
   return s;
@@ -226,7 +230,11 @@ export function laterOutcome(s, id) {
     // Nobody who can give you a job will see it, and you will be better than you have been
     // in ten years — which is the sort of thing that reaches the right person eventually.
     setRespect(s, (s.respect || 0) + rint(4, 8));
-    s.acting = clamp((s.acting || 0) + rint(2, 4));
+    // Up to what you were born with and no further, like every other way a working actor gets
+    // better (sets, a great day, a reading). It was the one source that went past the talent
+    // ceiling the Training screen draws in gold — an accident, not a rule (11 Oct audit).
+    const cap = skillCap(s);
+    if ((s.acting || 0) < cap) s.acting = Math.min(cap, (s.acting || 0) + rint(2, 4));
     s._stageRun = stamp(s);
     out.line = `Eight shows a week for four months, and by the third you were doing something you have not done since drama school. Nobody who could hire you came. Two people who can did, quietly, on separate Tuesdays, and neither of them said so.`;
     out.tone = 'earned';

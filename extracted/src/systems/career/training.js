@@ -19,14 +19,14 @@ export function trainingKey(s) { return s.dream === 'singer' ? 'singing' : 'acti
 // (docs/handoffs/2026-10-11-confidence-discipline-audit.md).
 export const DISCIPLINE_LINE = 65;
 export function disciplineBonus(s) { return (s.discipline || 0) > DISCIPLINE_LINE ? 1 : 0; }
-// What a session teaches once the roll of `g` is in: discipline, then the halving past 70 (the
-// last points are the hardest), then no further than the cap. The skill itself can be
-// fractional (a set teaches in tenths), so the gap to the cap is rounded up — "+2.7739696411595958"
-// was on somebody's timeline. train() and the screen's ranges (gainRange) both read this.
+// What a session teaches once the roll of `g` is in: discipline, then no further than the
+// lesson cap. The skill itself can be fractional (a set teaches in tenths), so the gap to the
+// cap is rounded up — "+2.7739696411595958" was on somebody's timeline. train() and the
+// screen's ranges (gainRange) both read this. There used to be a halving past 70 here; lessons
+// stop at 40, so it could never run, and it went (11 Oct skill audit).
 export function sessionGain(s, g) {
   const skill = s[trainingKey(s)] || 0;
   g += disciplineBonus(s);
-  if (skill >= 70) g = Math.ceil(g * 0.5);
   return Math.max(1, Math.min(g, Math.ceil(lessonCap() - skill)));
 }
 export function gainRange(s, sc) { return [sessionGain(s, sc.gain[0]), sessionGain(s, sc.gain[1])]; }

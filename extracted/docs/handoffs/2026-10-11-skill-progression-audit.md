@@ -69,3 +69,12 @@ A scratch probe (not in the repo; 30 lives each, every event answered at random)
 - Stage run: cap it at talent, or keep it as the exception and say so on the offer.
 - Whether a player who never trains should be stuck near zero for a whole life, or whether the
   smallest parts should teach a little more.
+
+## Status
+
+- 1 — the dead halving is removed (`training.js` `sessionGain`); no session changes, because no
+  lesson is ever given past 40.
+- 2 — the stage run now stops at the talent ceiling like every other source, and its offer only
+  promises "better" to somebody with room left to grow (`decline.js`).
+- 3 — left as it is, on purpose: a balance question. Next: a simulation of trained against
+  untrained careers and a proposed catch-up for low Acting that does not lift mid and late careers.
