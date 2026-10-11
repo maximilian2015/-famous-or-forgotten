@@ -4,7 +4,7 @@ import { addTimeline } from '../../engine/timeline.js';
 import { setFame, setRespect } from '../meta/status.js';
 import { takeJob, JOBS } from './work.js';
 import { resolveStory, CHAINS } from '../meta/stories.js';
-import { STAT, fxWords, showWords } from './choiceWords.js';
+import { STAT, fxWords, showWords, softenLoss } from './choiceWords.js';
 const clamp = (v) => Math.max(0, Math.min(100, v));
 export const ARCS = [
   { id: 'firstCredit', once: true, when: (s) => (s.filmography || []).length + (s.discography || []).length === 1 && s.fame < 20,
@@ -102,7 +102,7 @@ export function resolveArc(s, i) {
     // feature film — shot, released, reviewed — is worth about 2. A playtest finished four
     // years and one film in at fame 0, exactly where it started, because one arc took more
     // than the film gave. Nobody can be made less famous than unknown.
-    if ((k === 'fame' || k === 'respect') && d < 0) d = Math.max(d, -Math.max(1, (s[k] || 0) * 0.22));
+    d = softenLoss(s, k, d);   // choiceWords.js — the event screen reads the same formula
     // Fame and standing have single write points. The 0..100 clamp here put a name at −20
     // standing back on 0 for helping a director (+2) — a story choice was the one thing in
     // the game that could not stay below zero. Found by ChatGPT's review.
@@ -157,17 +157,24 @@ export function effectTags(s, out, c = out) {
   const tags = []; const add = (t, good) => tags.push({ t, good });
   const p = s.production; const prod = out.prod || c.prod; const act = out.act || c.act;
   if (prod && p) {
+    // Only what would really move: a performance at 100 cannot go up, a set already at the
+    // bottom cannot turn further (resolveArc holds them to 0..100).
+    const room = (v, d) => Math.max(0, Math.min(100, (v || 0) + d)) - (v || 0);
     if (prod.quit) add(`you leave ${p.title} · €${Math.round((p.salary || 0) * 0.3).toLocaleString('en-US')} kill fee`, null);
-    if (prod.meter) add(`Your performance ${prod.meter > 0 ? '↑' : '↓'}${Math.abs(prod.meter) >= 10 ? (prod.meter > 0 ? '↑' : '↓') : ''}`, prod.meter > 0);
-    if (prod.bondLead && p.crew[0]) add(`${first(p.crew[0].name)} trusts you ${Math.abs(prod.bondLead) >= 15 ? 'much ' : ''}${prod.bondLead > 0 ? 'more' : 'less'}`, prod.bondLead > 0);
-    if (prod.bondAll) add(prod.bondAll > 0 ? 'the set warms to you' : `the ${prod.bondAll <= -15 ? 'whole ' : ''}set turns on you`, prod.bondAll > 0);
+    const m = prod.meter ? room(p.meter, prod.meter) : 0;
+    if (m) add(`Your performance ${m > 0 ? '↑' : '↓'}${Math.abs(m) >= 10 ? (m > 0 ? '↑' : '↓') : ''}`, m > 0);
+    const bl = prod.bondLead && p.crew[0] ? room(p.crew[0].bond, prod.bondLead) : 0;
+    if (bl) add(`${first(p.crew[0].name)} trusts you ${Math.abs(bl) >= 15 ? 'much ' : ''}${bl > 0 ? 'more' : 'less'}`, bl > 0);
+    if (prod.bondAll && (p.crew || []).some((cr) => room(cr.bond, prod.bondAll))) add(prod.bondAll > 0 ? 'the set warms to you' : `the ${prod.bondAll <= -15 ? 'whole ' : ''}set turns on you`, prod.bondAll > 0);
   }
   if (act === 'job' && !s.job) add('you take a day job', null);
   if (act === 'rest') add(p ? 'two months off · the shoot waits' : 'two months off', null);
-  return [...tags, ...fxWords(out.fx)];
+  return [...tags, ...fxWords(out.fx, s, true)];
 }
 const pct = (x) => Math.round(Math.max(0, Math.min(100, x)));
-const roll = (label, hint, odds, stat, good, bad) => ({ label, hint, odds: pct(odds), stat,
+// `statValue` is the number the chance was worked out from, printed beside it: the player can
+// see where 58% comes from without the stat becoming a bar anywhere else.
+const roll = (label, hint, odds, stat, good, bad, statValue) => ({ label, hint, odds: pct(odds), stat, statValue,
   outcomes: [{ label: 'If it works', tags: good }, { label: 'If it fails', tags: bad }] });
 // The whole screen: where it happens, and each choice with what it does.
 export function arcCard(s, a) {
@@ -178,12 +185,12 @@ export function arcCard(s, a) {
     // A story beat: what its function does, said by the beat itself.
     if (a.story) {
       const sh = c.shows;
-      if (sh && sh.odds != null) return roll(c.label, c.hint || (sh.stat ? `It comes down to your ${(STAT[sh.stat] || sh.stat).toLowerCase()}.` : null), sh.odds, sh.stat ? STAT[sh.stat] || sh.stat : null, showWords(sh.good), showWords(sh.bad));
-      return { label: c.label, hint: c.hint || null, tags: sh ? showWords(sh) : [] };
+      if (sh && sh.odds != null) return roll(c.label, c.hint || (sh.stat ? `It comes down to your ${(STAT[sh.stat] || sh.stat).toLowerCase()}.` : null), sh.odds, sh.stat ? STAT[sh.stat] || sh.stat : null, showWords(sh.good, s), showWords(sh.bad, s), sh.stat ? Math.round(s[sh.stat] || 0) : null);
+      return { label: c.label, hint: c.hint || null, tags: sh ? showWords(sh, s) : [] };
     }
     if (c.check) {
       const stat = STAT[c.check.stat] || c.check.stat;
-      return roll(c.label, c.hint || `It comes down to your ${stat.toLowerCase()}.`, checkOdds(s, c.check), stat, effectTags(s, c.good || {}, c), effectTags(s, c.bad || {}, c));
+      return roll(c.label, c.hint || `It comes down to your ${stat.toLowerCase()}.`, checkOdds(s, c.check), stat, effectTags(s, c.good || {}, c), effectTags(s, c.bad || {}, c), Math.round(s[c.check.stat] || 0));
     }
     return { label: c.label, hint: c.hint || null, tags: effectTags(s, c), quit: !!(c.prod && c.prod.quit) };
   });

@@ -42,8 +42,14 @@ does nothing.
 **Goes up**: the teen "Focus on school" action (+2…+4, once a year), childhood choices (+2…+5),
 four adult choices (+2…+5), a friend's advice (+1…+3). **Never goes down.** No decay.
 
-**Is read** in exactly one place: a paid training session teaches one point more if discipline
-is above 65 (`career/training.js`).
+**Is read** in exactly one place: a training session — any of the four, the free "Drill alone"
+too (this said "paid" at first, which was wrong) — teaches one point more if discipline is above
+65, before the halving past 70 (`career/training.js`).
+
+Narrower still: lessons only teach up to 40 (`career/actions.js` `LESSON_CAP`); past that training
+refuses and it is sets from there. So the bonus can only ever apply while the skill is under 40,
+and the "halving past 70" inside training can never run at all (found while writing the training
+screen's ranges; left as it is — a balance question, not a display one).
 
 **What happens to it in a life.** In the probe (which starts at 20 and skips childhood) no
 career ever passed 65 — 237 samples, the 90th percentile 55 — so the one thing it does never

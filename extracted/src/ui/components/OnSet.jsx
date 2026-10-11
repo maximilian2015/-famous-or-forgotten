@@ -300,7 +300,7 @@ export function Mark({ name, color }) {
 // paper-and-wood version; a shooting day is the dark one. `outcomes` are the two sides of a
 // roll, [{ label, tags }] — what happens if it works and if it fails (the event screen).
 const SIGN = { true: '+', false: '−', null: '•' };
-export function ChoiceCard({ mark, tone, label, right, rightColor, blurb, effects, outcomes, locked, why, progress, onClick, warm }) {
+export function ChoiceCard({ mark, tone, label, right, rightColor, rightSub, blurb, effects, outcomes, locked, why, progress, onClick, warm }) {
   const col = locked ? '#b2aad2' : tone || theme.muted;
   const ink = (good) => (good === true ? theme.good : good === false ? theme.bad : theme.muted);
   return (<button className="fof-choice" disabled={!!locked} onClick={locked ? undefined : onClick}
@@ -315,7 +315,7 @@ export function ChoiceCard({ mark, tone, label, right, rightColor, blurb, effect
     <div style={{ minWidth: 0, flex: 1 }}>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', gap: 8 }}>
         <span style={{ fontSize: 15, fontWeight: 800, color: locked ? '#d4cdea' : theme.text }}>{label}</span>
-        {right && !locked && <span style={{ fontSize: 12, fontWeight: 800, whiteSpace: 'nowrap', color: rightColor || theme.muted }}>{right}</span>}
+        {right && !locked && <span style={{ fontSize: 12, fontWeight: 800, whiteSpace: 'nowrap', color: rightColor || theme.muted, textAlign: 'right' }}>{right}{rightSub && <span style={{ display: 'block', fontSize: 11, fontWeight: 700, color: theme.muted, marginTop: 1 }}>{rightSub}</span>}</span>}
       </div>
       {(locked ? why : blurb) && <div style={{ fontSize: 12.5, color: locked ? '#bdb5da' : theme.muted, marginTop: 3, lineHeight: 1.45 }}>{locked ? why : blurb}</div>}
       {!locked && effects && effects.length > 0 && <div style={{ marginTop: 8, display: 'grid', gap: 3 }}>

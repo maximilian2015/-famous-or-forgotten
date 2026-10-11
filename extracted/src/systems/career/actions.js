@@ -32,12 +32,14 @@ export function talentHint(s) {
 // askmoney is on the parent's card in People; networking is Career → Events; practice is
 // paid training in Career → Training; odd jobs are shifts in the Work app; extra work is
 // the OpenCall app. What is left are the beats that live nowhere else.
+export function playOdds(s) { return 40 + (s.confidence || 0) * 0.3 + (s.charisma || 0) * 0.15; }
 export const ACTIONS = [
-  { id: 'schoolplay', label: () => 'Audition for the school play', desc: () => 'A stage, a hundred parents, and nerves', when: (s) => s.stage === 'teen',
+  // A roll on confidence that used to say nothing about its odds: the chance and the two numbers
+  // it is made of are on the button now, from the same playOdds the audition rolls.
+  { id: 'schoolplay', label: () => 'Audition for the school play', desc: (s) => `A stage, a hundred parents, and nerves · ${Math.round(Math.min(100, playOdds(s)))}% you get the part (confidence ${Math.round(s.confidence || 0)}, charisma ${Math.round(s.charisma || 0)})`, when: (s) => s.stage === 'teen',
     run: (s) => {
       const key = s.dream === 'singer' ? 'singing' : 'acting';
-      const odds = 40 + (s.confidence || 0) * 0.3 + (s.charisma || 0) * 0.15;
-      if (chance(odds)) {
+      if (chance(playOdds(s))) {
         const g = rint(2, 4);
         s[key] = Math.min(100, (s[key] || 0) + g);
         s.confidence = clamp(s.confidence + rint(2, 5));

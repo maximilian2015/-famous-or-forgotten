@@ -14,6 +14,22 @@ export const SCHOOLS = [
   { id: 'academy', label: 'Conservatory intensive', blurb: 'The kind of place casting directors have heard of.', cost: 4000, gain: [6, 9], mental: 1, respect: 1 },
 ];
 export function trainingKey(s) { return s.dream === 'singer' ? 'singing' : 'acting'; }
+// Discipline's one job in the game: above this line, every session — any of the four, the free
+// one too — teaches a point more. The training screen says so; nothing else shows discipline
+// (docs/handoffs/2026-10-11-confidence-discipline-audit.md).
+export const DISCIPLINE_LINE = 65;
+export function disciplineBonus(s) { return (s.discipline || 0) > DISCIPLINE_LINE ? 1 : 0; }
+// What a session teaches once the roll of `g` is in: discipline, then the halving past 70 (the
+// last points are the hardest), then no further than the cap. The skill itself can be
+// fractional (a set teaches in tenths), so the gap to the cap is rounded up — "+2.7739696411595958"
+// was on somebody's timeline. train() and the screen's ranges (gainRange) both read this.
+export function sessionGain(s, g) {
+  const skill = s[trainingKey(s)] || 0;
+  g += disciplineBonus(s);
+  if (skill >= 70) g = Math.ceil(g * 0.5);
+  return Math.max(1, Math.min(g, Math.ceil(lessonCap() - skill)));
+}
+export function gainRange(s, sc) { return [sessionGain(s, sc.gain[0]), sessionGain(s, sc.gain[1])]; }
 export function train(s, id) {
   const sc = SCHOOLS.find((x) => x.id === id); if (!sc) return s;
   if (!canAfford(s, COST.train)) { s.lastEvent = tooTired(s, COST.train); return s; }
@@ -28,13 +44,7 @@ export function train(s, id) {
   }
   spend(s, COST.train);
   s.cash = (s.cash || 0) - sc.cost;
-  let gain = rint(sc.gain[0], sc.gain[1]);
-  if ((s.discipline || 0) > 65) gain += 1;
-  // Diminishing returns as you approach mastery — the last ten points are the hardest.
-  if (skill >= 70) gain = Math.ceil(gain * 0.5);
-  // The skill itself can be fractional (a set teaches in tenths), so the gap to the cap is
-  // rounded up — "+2.7739696411595958" was on somebody's timeline.
-  gain = Math.max(1, Math.min(gain, Math.ceil(cap - skill)));
+  const gain = sessionGain(s, rint(sc.gain[0], sc.gain[1]));
   s[key] = clamp(Math.min(cap, skill + gain));
   if (sc.mental) s.mental = clamp((s.mental || 50) + sc.mental);
   if (sc.respect) setRespect(s, (s.respect || 0) + sc.respect);

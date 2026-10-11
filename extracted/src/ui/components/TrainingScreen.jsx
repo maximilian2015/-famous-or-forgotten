@@ -1,6 +1,6 @@
 import { dispatch } from '../../state/store.js';
 import { canAfford, COST } from '../../engine/energy.js';
-import { trainingKey, SCHOOLS, train } from '../../systems/career/training.js';
+import { trainingKey, SCHOOLS, train, disciplineBonus, DISCIPLINE_LINE, gainRange } from '../../systems/career/training.js';
 import { lessonCap, skillCap, talentHint } from '../../systems/career/actions.js';
 import { theme } from '../theme.js';
 import { Card } from './Card.jsx';
@@ -25,6 +25,13 @@ export function TrainingScreen({ g }) {
           : skill >= cap ? `Lessons stop at ${cap}. It is sets from here — the teachers said you were ${talentHint(g)}.`
           : `Teachers can take you to ${cap}. Past that it is sets — and the teachers already have a view: ${talentHint(g)}.`}
       </div>
+      {/* Discipline is shown here and nowhere else, because this is the one thing it does
+          (training.js disciplineBonus). Not a Passport bar: see the 2026-10-11 audit. */}
+      {skill < cap && <div style={{ fontSize: 12, lineHeight: 1.5, marginTop: 8, paddingTop: 8, borderTop: `1px solid ${theme.line}`, color: disciplineBonus(g) ? theme.good : theme.muted }}>
+        {disciplineBonus(g)
+          ? <><b>High discipline · {Math.round(g.discipline || 0)}.</b> Every session teaches a point more.</>
+          : <>Discipline {Math.round(g.discipline || 0)}. Above {DISCIPLINE_LINE}, every session teaches a point more.</>}
+      </div>}
     </Card>
     <div style={{ fontSize: 11, fontWeight: 900, letterSpacing: '.09em', textTransform: 'uppercase', color: theme.muted, marginBottom: 8 }}>Where to study</div>
     <div style={{ display: 'grid', gap: 8 }}>
@@ -34,7 +41,9 @@ export function TrainingScreen({ g }) {
             <div style={{ fontSize: 13.5, fontWeight: 800 }}>{sc.label}</div>
             <div style={{ fontSize: 12.5, fontWeight: 900, color: sc.cost ? theme.gold : theme.muted }}>{sc.cost ? `€${sc.cost.toLocaleString()}` : 'Free'}</div>
           </div>
-          <div style={{ fontSize: 11.5, color: theme.muted, margin: '3px 0 8px' }}>{sc.blurb} · +{sc.gain[0]}–{sc.gain[1]}{sc.mental < 0 ? ` · mental ${sc.mental}` : ''}</div>
+          {/* What a session will really teach you now — discipline, the halving past 70 and the cap
+              already in (training.js gainRange), not the school's brochure figure. */}
+          <div style={{ fontSize: 11.5, color: theme.muted, margin: '3px 0 8px' }}>{sc.blurb}{skill < cap && (() => { const [lo, hi] = gainRange(g, sc); return ` · +${lo === hi ? lo : `${lo}–${hi}`}`; })()}{sc.mental < 0 ? ` · mental ${sc.mental}` : ''}</div>
           <button onClick={() => dispatch(train, sc.id)} disabled={off} style={{ width: '100%', border: 'none', borderRadius: 10, padding: '9px', fontSize: 12.5, fontWeight: 800,
             cursor: off ? 'default' : 'pointer', background: off ? 'rgba(120,110,150,.15)' : `linear-gradient(135deg,${theme.accent2},${theme.accent})`, color: off ? '#6b6390' : '#fff' }}>
             {tooPoor ? "Can't afford it" : 'Study'}

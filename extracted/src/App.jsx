@@ -969,6 +969,7 @@ function ArcModal({ g }) {
     {card.choices.map((c, i) => (<ChoiceCard key={i} mark={c.odds != null ? 'dice' : c.quit ? 'door' : 'ABCDEFG'[card.choices.slice(0, i).filter((x) => x.odds == null && !x.quit).length]}
       tone={c.odds != null ? theme.gold : c.quit ? theme.bad : theme.muted} label={c.label}
       right={c.odds != null ? `${c.odds}% chance` : null} rightColor={c.odds >= 60 ? theme.good : c.odds >= 35 ? theme.gold : theme.bad}
+      rightSub={c.stat && c.statValue != null ? `${c.stat} ${c.statValue}` : null}
       blurb={c.hint} effects={c.tags} outcomes={c.outcomes} onClick={() => dispatch(resolveArc, i)} />))}
     {big && <div style={{ fontSize: 12, color: theme.muted, lineHeight: 1.5, margin: '2px 0 4px' }}>↑↑ and ↓↓ are a big change.</div>}
   </div>);
