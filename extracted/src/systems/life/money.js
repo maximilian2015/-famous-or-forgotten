@@ -139,7 +139,8 @@ export const THINGS = {
   watch:  { label: 'A watch that says something', price: 140000, minFame: 20, looks: 1, resale: 0.7,
     blurb: 'Nobody asks what it cost. Everybody who matters already knows.' },
   car:    { label: 'A car people photograph', price: 480000, minFame: 35, looks: 1, night: 4, resale: 0.45, upkeep: 2200,
-    blurb: 'You arrive differently. That is the entire purchase.' },
+    blurb: 'You arrive differently. That is the entire purchase.',
+    perk: '+4 at the first door of an event you are not on the list for.' },
   boat:   { label: 'Something to disappear on', price: 2600000, minFame: 55, mental: 0.7, resale: 0.5, upkeep: 14000,
     blurb: 'Two weeks where nobody can reach you, whenever you want them.' },
   art:    { label: 'A painting somebody argued about', price: 5500000, minFame: 60, respect: 2, resale: 0.95,
@@ -194,7 +195,7 @@ export function sellThing(s, id) {
   addTimeline(s, `Sold ${t.label.toLowerCase()} for ${money(back)}.`, lost > t.price * 0.3);
   return s;
 }
-// Read by systems/social/events.js — arriving in something matters on a carpet.
+// Read by systems/social/events.js sneakIntoEvent — arriving in something matters at a door.
 export function arrivalBonus(s) { return owns(s, 'car') ? THINGS.car.night : 0; }
 // Read by systems/meta/legacy.js — what is actually left when you go.
 export function estateValue(s) {

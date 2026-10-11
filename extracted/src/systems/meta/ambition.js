@@ -58,7 +58,10 @@ export function ambitionVerdict(s) {
     : `You wanted to be ${p.label.toLowerCase()}. It did not go that way. It went another way, and some of that was good.`;
   return { ...p, text, points: v >= 0.75 ? 150 : v >= 0.4 ? 50 : 0 };
 }
-// The stories lean a little toward the thing you wanted (stories.js).
+// What comes your way leans a little toward the thing you wanted at ten. Written in September
+// and never read until the 11 Oct sweep; read now by tentpoles.js (the board, the star),
+// offers.js (the brands, fewer for the serious actor), castings.js (the TV shelf) and
+// decline.js (the reality format, for the one who wanted to be famous).
 export function ambitionLean(s, kind) {
   const id = ambitionOf(s); if (!id) return 1;
   if (kind === 'reality' && id === 'face') return 1.5;

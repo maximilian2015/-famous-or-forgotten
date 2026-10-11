@@ -14,6 +14,8 @@
 const AVOIDED = -15;
 export function comboOf(s) {
   const f = s.fame || 0, r = s.respect || 0;
+  // The same rule as systems/meta/status.js isForgotten, written out on purpose: this file
+  // imports nothing, because engine/economy.js needs it and engine cannot reach into systems.
   const forgotten = (s.peakFame || 0) >= 35 && f < 15;
   if (forgotten) return r < AVOIDED ? 'tale' : r >= 40 ? 'asked' : 'faded';
   if (f >= 55) return r < AVOIDED ? 'liability' : r < 30 ? 'face' : r >= 60 ? 'real' : 'star';

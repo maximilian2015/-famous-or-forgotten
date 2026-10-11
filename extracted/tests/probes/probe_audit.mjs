@@ -61,8 +61,7 @@ for (let i = 0; i < N; i++) {
     if ((t.strain || 0) >= 80) A.runAction(t, 'rest');
     if (HY.canGoQuiet(t) && Math.random() < 0.25) { const before = HY.hype(t); A.runAction(t, 'quiet'); if (HY.hype(t) < before) saw('a month out of sight'); }
     if (!t.production) { const b = [...T.SCHOOLS].reverse().find((sc) => (t.cash || 0) > sc.cost * 4); if (b && (t.ap || 0) >= 20) T.train(t, b.id); }
-    // the stance: a third of lives coast, a third steady, a third all in
-    for (const p of PR.sets(t)) { const want = ['coast', 'steady', 'allin'][i % 3]; if (PR.stanceOf(p) !== want) { PR.setStance(t, p.id, want); saw('stance set'); } if (p._stanceDone === want && want !== 'coast') saw('stance did the month'); if (p._stanceDone === 'broke') saw('stance could not be afforded'); }
+    // (the stance on a set was removed from the game; it used to be steered here)
     // name one project a life, to prove the road works from a real state
     if (!named) { const r = NM.renameable(t)[0]; if (r && NM.canRename(t, r.kind, r.id).ok && !NM.whyNot(t, r.kind, r.id, 'My Own Title')) { NM.rename(t, r.kind, r.id, 'My Own Title'); named = 1; saw('named a project'); } }
     // a life that is actually lived: a post, a drink, and now and then a set walked off
@@ -237,7 +236,7 @@ group('Career stories (meta/stories.js)', ['a story started', 'story beat shown'
 group('Hype v2 (meta/hype.js)', ['hype:hit', 'hype:award', 'hype:viral', 'hype:scandal', 'something went viral', 'booked on a show', 'a month out of sight', 'an ad on the board']);
 group('Kinds of paper (career/contract.js)', ['clause:fee', 'clause:schedule', 'clause:exclusive', 'clause:prep', 'clause:backend', 'clause:option', 'clause:seasons', 'clause:exit', 'clause:payOrPlay', 'clause:merch', 'clause:points', 'asked for something', 'signed with season options', 'signed with an exit', 'signed pay-or-play', 'signed for merchandise', 'signed for points', 'the network took its option', 'pay-or-play paid out', 'merchandise paid out']);
 group('Franchises (career/franchise.js)', ['potential:built', 'potential:open', 'potential:closed', 'a sequel made', 'a sequel died in development', 'a dead sequel on the shelf', 'a cult classic', 'a cult classic on the shelf']);
-group('The set (career/production.js, naming.js)', ['stance set', 'stance did the month', 'stance could not be afforded', 'named a project', 'a rename landed']);
+group('The set (career/production.js, naming.js)', ['named a project', 'a rename landed']);
 group('Collaborations (career/collab.js)', ['asked somebody to collaborate', 'they said yes', 'they passed', 'a collaboration died in development', 'a collaboration got financed']);
 group('The story of it (career/script.js, chapter.js)', ['a continuation knows who you play', 'credits that know who you played', 'chose where it goes', ...CH.DIRECTION_ORDER.map((d) => 'direction:' + d), 'direction:mine', 'a season you steered', 'a season you pitched', 'a pitch of yours that missed', 'your idea worked', 'your idea did not', 'seasons measured end to end', 'a season that grew', 'a season that lost them', 'offered a campaign after a long gap', 'bought one', 'a season you sold back to people', 'a return made the news']);
 group('The board (meta/goals.js, ambition.js, factions.js)', ['goal:fame', 'goal:respect', 'goal:ambition', 'goal:aaa', 'goal:agent', 'goal:room', 'goal:poison', 'goal:comeback', 'goal:risk', 'ambition read', 'ambition met']);

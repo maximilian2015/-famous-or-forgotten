@@ -4,6 +4,7 @@ import { uid } from '../../engine/id.js';
 import { rint, chance, pick } from '../../engine/rng.js';
 import { addTimeline } from '../../engine/timeline.js';
 import { startNight, expectedAt, energyFor, canHost, hostNight } from './night.js';
+import { arrivalBonus } from '../life/money.js';
 export { expectedAt, energyFor, canHost, hostNight };
 const clamp = (v) => Math.max(0, Math.min(100, v));
 
@@ -116,8 +117,11 @@ export function sneakIntoEvent(s, eventId, quality = 0) {
   if (ev.doorTried) { s.lastEvent = ev.note = 'The door remembers you from last time. Not tonight.'; return s; }
   if (!canAfford(s, COST.askHelp)) { s.lastEvent = tooTired(s, COST.askHelp); return s; }
   spend(s, COST.askHelp);
-  // The first door: a face that looks like it belongs. Steep on purpose.
-  if (quality >= 75) {
+  // The first door: a face that looks like it belongs. Steep on purpose. What you arrive in
+  // counts for a little here — the car's whole point (money.js arrivalBonus), written in Sept
+  // and never read by anything until the 11 Oct sweep found it. Being filmed on the way out is
+  // still your own doing: the car does not save a walk that fell apart.
+  if (quality + arrivalBonus(s) >= 75) {
     ev.door = { stage: 1, quiz: quizFor(s, ev), asked: 0, right: 0 };
     s.lastEvent = ev.note = 'You walk up like you belong. The door looks at you a moment too long. "And you are here for…?"';
   } else bounced(s, ev, quality < 30);

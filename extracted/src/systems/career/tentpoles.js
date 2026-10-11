@@ -29,6 +29,7 @@ import { activeActors, ageOf } from '../world/world.js';
 import { canTakeSet } from '../../engine/sets.js';
 import { insurability } from '../life/strain.js';
 import { holdsAGrudge } from '../meta/stories.js';
+import { ambitionLean } from '../meta/ambition.js';
 
 const stamp = (s) => (s.year || 0) * 12 + (s.month || 0);
 const BOARD = 3;
@@ -101,6 +102,7 @@ export function tentpoleOdds(s, p) {
   if (p.directorId) v *= 1.9;                                    // the one thing that really moves it
   if (hypeSource(s) === 'hit') v *= 1 + hype(s) / 110;
   if (hypeSource(s) === 'scandal') v *= 0.6;
+  v *= ambitionLean(s, 'tent');                                  // the ten-year-old who wanted the poster
   if ((s.poisonUntil || 0) > stamp(s)) v = 0;
   return Math.max(0, Math.min(72, Math.round(v)));
 }

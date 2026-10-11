@@ -25,10 +25,11 @@ import { rint, chance, pick } from '../../engine/rng.js';
 import { addTimeline } from '../../engine/timeline.js';
 import { inCareer } from '../../engine/stage.js';
 import { newTitle } from '../world/titles.js';
-import { personName, namesInUse } from '../world/names.js';
-import { setFame, setRespect } from '../meta/status.js';
+import { personName, namesInUse, OUTLETS } from '../world/names.js';
+import { setFame, setRespect, isForgotten } from '../meta/status.js';
 import { addHype } from '../meta/hype.js';
 import { skillCap } from './actions.js';
+import { ambitionLean } from '../meta/ambition.js';
 
 const stamp = (s) => (s.year || 0) * 12 + (s.month || 0);
 
@@ -38,15 +39,15 @@ const stamp = (s) => (s.year || 0) * 12 + (s.month || 0);
 //
 //   fame 82, nothing for four years   FORMER STAR.  Everybody knows you. Nobody calls.
 //   fame 19, nothing for nine years   FORGOTTEN.    They would have to be told who you were.
-export const STATES = {
-  climbing: { label: 'On the way up', note: 'Nobody has decided about you yet, which is the best thing about it.' },
-  hot: { label: 'Wanted', note: 'Everything is being sent to you, and none of it will be next year.' },
-  steady: { label: 'Working', note: 'Not the name on the poster and never out of work, which is most careers and none of the films about them.' },
-  cooling: { label: 'Cooling', note: 'The calls are the same people saying the same warm things about nothing in particular.' },
-  fading: { label: 'Fading', note: 'What arrives now is not what used to arrive, and the difference is not subtle.' },
-  former: { label: 'A former star', note: 'Everybody knows the name. Nobody in this business has a use for it this year.' },
-  forgotten: { label: 'Forgotten', note: 'They would have to be told who you were, and then they would say ah, of course.' },
-};
+//
+// This is the career's DIRECTION — climbing, steady, hot, cooling, fading, former, forgotten —
+// and it decides one thing: which of the later offers below can find you. It is not shown. What
+// the player sees of where they stand is engine/combo.js (fame × standing, on Home), and that is
+// the one vocabulary on screen. This file used to carry its own labels and a declineLine "for
+// the screen" that no screen ever read: a second set of words for the same career, removed in
+// the 11 Oct sweep so there is one. Forgotten itself is status.js isForgotten, the one the
+// Home screen, the casting board and the goals already read; this file had its own, a little
+// looser, and the two could disagree about the same actor in the same month.
 
 export function idleMonths(s) { return s._idleMonths || 0; }
 export function lastGood(s) {
@@ -58,26 +59,14 @@ export function yearsSinceGood(s) {
   const c = lastGood(s);
   return c ? Math.max(0, (s.year || 0) - (c.year || 0)) : 99;
 }
-// Two in a row is a wobble; three is a reputation. The business counts.
-export function flopStreak(s) {
-  const done = (s.filmography || []).filter((c) => !c.minor && !c.running && c.year != null)
-    .sort((a, b) => (b.year || 0) - (a.year || 0) || (b.closedAt || 0) - (a.closedAt || 0));
-  let n = 0;
-  for (const c of done) {
-    const bad = c.verdict === 'bomb' || c.verdict === 'ignored' || (c.rating || 0) < 45;
-    if (!bad) break;
-    n++;
-  }
-  return n;
-}
 
 export function stateOf(s) {
   if (!inCareer(s)) return null;
   const fame = s.fame || 0, peak = s.peakFame || 0;
   const idle = idleMonths(s), quiet = yearsSinceGood(s);
   const fell = peak >= 35 && fame < peak * 0.45;
-  // Forgotten is about the NAME. Former is about the phone.
-  if (fell && fame < 18 && quiet >= 6) return 'forgotten';
+  // Forgotten is about the NAME (status.js, one definition). Former is about the phone.
+  if (isForgotten(s) && quiet >= 6) return 'forgotten';
   if (fell && quiet >= 3) return 'former';
   if (peak >= 30 && (fame < peak * 0.7 || quiet >= 3) && idle >= 10) return 'fading';
   if (peak >= 30 && (fame < peak * 0.85 || quiet >= 2)) return 'cooling';
@@ -96,26 +85,31 @@ export function isDeclining(s) {
 export const LATER = {
   convention: {
     label: 'A convention', min: 'former', pay: [4000, 14000], months: 1, scale: 'oneoff',
+    title: (s) => `A convention · ${MONTHS[(s.month || 0) % 12]} ${s.year || ''}`,
     line: (s) => `A hall off a motorway, a table, and four hundred people who have waited a very long time to tell you what that film meant to them when they were eleven.`,
     note: 'Two days. The queue is longer than anybody warned you and every single one of them is kind.',
   },
   reality: {
     label: 'A reality format', min: 'fading', pay: [40000, 160000], months: 3, scale: 'oneoff',
+    title: (s) => newTitle(s, 'Comedy'),
     line: (s) => `A format. Twelve people you half recognise, a house, and a production team whose whole job is to make you interesting by Thursday.`,
     note: 'Everybody says it is beneath them and everybody has done one. Fame goes up. What kind of fame is the question.',
   },
   horror: {
     label: 'A horror sequel', min: 'fading', pay: [30000, 120000], months: 2, scale: 'small',
+    title: (s) => `${newTitle(s, 'Horror')} V`,   // "the fifth one"
     line: (s) => `The fifth one. Nineteen days, a house in the woods, and a part written as "the older woman who knows what happened here".`,
     note: 'It will be on a streamer by spring and somebody will be genuinely pleased to see you in it.',
   },
   parent: {
     label: 'The parent of the new one', min: 'cooling', pay: [60000, 400000], months: 3, scale: 'feature',
+    title: (s) => newTitle(s, pick(['Drama', 'Romance', 'Comedy'])),
     line: (s) => `Somebody twenty-three is carrying a studio picture and they want you as the mother. Four scenes, one of them very good, and your name below the title for the first time in your life.`,
     note: 'It is a real part in a real film. It is also the sentence that ends one half of a career and starts the other.',
   },
   stage: {
     label: 'A theatre', min: 'cooling', pay: [18000, 60000], months: 4, scale: 'festival',
+    title: (s) => newTitle(s, 'Drama'),   // the play
     line: (s) => `A run somewhere nobody sends a critic from London. Eight shows a week, a dressing room with a window, and an audience that has paid to be there.`,
     // The promise holds only for somebody with room left to grow; at the talent ceiling the
     // stage keeps you sharp and buys standing, and the offer says that instead.
@@ -125,13 +119,21 @@ export const LATER = {
   },
   tellAll: {
     label: 'The interview', min: 'former', pay: [25000, 90000], months: 1, scale: 'oneoff',
+    title: (s) => `The interview · ${pick(OUTLETS)}, ${MONTHS[(s.month || 0) % 12]} ${s.year || ''}`,
     line: (s) => `They want the whole thing: the marriage, the year you do not talk about, the one you fell out with. Two hours, unedited, and they have already written the headline.`,
     note: 'It pays, it puts your name back in the world for a fortnight, and you will not get to decide which fortnight.',
   },
 };
 export const LATER_IDS = Object.keys(LATER);
+const MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
 const ORDER = ['climbing', 'steady', 'hot', 'cooling', 'fading', 'former', 'forgotten'];
 function deepEnough(state, min) { return ORDER.indexOf(state) >= ORDER.indexOf(min); }
+function pickWeighted(ids, weight) {
+  const total = ids.reduce((n, id) => n + weight(id), 0);
+  let r = Math.random() * total;
+  for (const id of ids) { r -= weight(id); if (r < 0) return id; }
+  return ids[ids.length - 1];
+}
 
 // ── and the one that is not like the others ───────────────────────────────────
 // The reason this half of the game exists. A first film, no money, and a script better than
@@ -170,13 +172,16 @@ export function declineTick(s) {
   const open = LATER_IDS.filter((id) => deepEnough(state, LATER[id].min));
   if (!open.length) return s;
   if (!chance(34)) return s;
-  const id = pick(open);
+  // The one who wanted to be famous, whatever it takes, is offered the format a little more often.
+  const id = pickWeighted(open, (x) => (x === 'reality' ? ambitionLean(s, 'reality') : 1));
   const k = LATER[id];
   s._laterAt = stamp(s);
   const fee = rint(k.pay[0], k.pay[1]);
   (s.offers = s.offers || []).push({
     id: uid(s, 'late'), kind: 'later', later: id, via: 'agent',
-    projectTitle: k.label, role: k.label, type: k.label, genre: 'Commercial',
+    // Its own name, and the kind as the part: two theatre runs in a year were two credits called
+    // "A theatre" (11 Oct sweep). The kind still reads underneath, as the role and the type.
+    projectTitle: k.title ? k.title(s) : k.label, role: k.label, type: k.label, genre: 'Commercial',
     scale: k.scale, tier: 'supporting', months: k.months, fame: id === 'reality' ? 6 : 1,
     salary: fee, prestigeScore: id === 'parent' ? rint(45, 65) : rint(8, 24),
     stability: 90, deadline: rint(2, 3),
@@ -270,14 +275,3 @@ export function laterOutcome(s, id) {
   return s;
 }
 
-// For the screen: where you are, and what it means.
-export function declineLine(s) {
-  const k = stateOf(s);
-  if (!k) return null;
-  const spec = STATES[k];
-  return {
-    id: k, label: spec.label, note: spec.note,
-    idle: idleMonths(s), quiet: yearsSinceGood(s), streak: flopStreak(s),
-    falling: isDeclining(s),
-  };
-}

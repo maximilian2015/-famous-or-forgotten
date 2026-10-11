@@ -12,6 +12,7 @@ import { canWork } from '../life/strain.js';
 import { newTitle } from '../world/titles.js';
 import { refusedOnType } from '../meta/typecast.js';
 import { storyOfferFactor, noteRefusal, noteSequelLoss, holdsAGrudge } from '../meta/stories.js';
+import { ambitionLean } from '../meta/ambition.js';
 import { hypeDemand, hype, hypeBrands } from '../meta/hype.js';
 import { socialBrandLift } from '../social/posting.js';
 import { signEndorsement, clauseTaken } from './endorsement.js';
@@ -155,6 +156,7 @@ export function maybeBrandOffer(s) {
   p *= hypeBrands(s);
   p *= 1 + (s.looks || 50) / 200;
   p *= Math.max(0.3, 1 - (s.scandal || 0) / 120);
+  p *= ambitionLean(s, 'brand');                           // the serious actor is not sent as many
   if (!chance(p)) return;
   const [what, mult, standing] = pick(GOODS);
   // One country only, once in five, and it changes both halves of the deal.

@@ -115,7 +115,6 @@ for (let i = 0; i < N; i++) {
     if ((t.strain || 0) >= 80 && Math.random() < 0.6) A.runAction(t, 'rest');
     if (HY.canGoQuiet(t) && Math.random() < 0.2) A.runAction(t, 'quiet');
     if (!t.production && Math.random() < 0.4) { const b = [...T.SCHOOLS].reverse().find((sc) => (t.cash || 0) > sc.cost * 4); if (b && (t.ap || 0) >= 20) T.train(t, b.id); }
-    for (const p of PR.sets(t)) { const want = ['coast', 'steady', 'allin'][(i + m) % 3]; if (PR.stanceOf(p) !== want) PR.setStance(t, p.id, want); }
     if (Math.random() < 0.06) { const r = NM.renameable(t)[Math.floor(Math.random() * Math.max(1, NM.renameable(t).length))]; if (r && !NM.whyNot(t, r.kind, r.id, 'Title ' + m)) NM.rename(t, r.kind, r.id, 'Title ' + m); }
     if ((t.ap || 0) >= 12 && Math.random() < 0.25) TW.goOut(t, 'post');
     if (PR.sets(t).length && Math.random() < 0.01) PR.walkOffSet(t, PR.sets(t)[0].id, 'something bigger');

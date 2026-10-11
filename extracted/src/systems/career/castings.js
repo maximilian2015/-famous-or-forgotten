@@ -23,6 +23,7 @@ import { seasonCap, slotNorm, tvMonths } from './franchise.js';
 import { rumourFactor } from '../meta/trouble.js';
 import { typeFit, typeFactor, typecastAfterDayWork, isStrong, activeLabels, boxedInto } from '../meta/typecast.js';
 import { storyCastFactor, hiding, holdsAGrudge } from '../meta/stories.js';
+import { ambitionLean } from '../meta/ambition.js';
 import { hypeReach, hypeBrands } from '../meta/hype.js';
 import { socialReach } from '../social/posting.js';
 import { heirReach } from '../life/origin.js';
@@ -272,7 +273,9 @@ export function refreshCastingPool(s, force, extra = 0) {
   let guard = 0;
   while (s.castingPool.length < want && guard++ < 400) {
     const short = shelfNames.filter((id) => countOn(id) < floorOf(id));
-    const shelf = short.length ? pick(short) : pick(shelfNames);
+    // What is left after the floors leans a little toward the television the ten-year-old wanted.
+    const tvLean = ambitionLean(s, 'tvpath') - 1;
+    const shelf = short.length ? pick(short) : (tvLean > 0 && shelves.tv && chance(tvLean * 100) ? 'tv' : pick(shelfNames));
     const row = pick(shelves[shelf]);
     const perEpisode = shelf === 'tv';
     const [type, role, span] = row;

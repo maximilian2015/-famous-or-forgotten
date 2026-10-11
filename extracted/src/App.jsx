@@ -6,6 +6,7 @@ import { runAction, availableActions } from './systems/career/actions.js';
 import { computeAccess } from './systems/career/access.js';
 import { seeDoctor, treatmentCost, pushThrough, PILLS, usePills, infectionOdds } from './systems/life/health.js';
 import { resolveArc, arcCard } from './systems/life/arcs.js';
+import { arrivalBonus } from './systems/life/money.js';
 import { computeLegacy, getHall } from './systems/meta/legacy.js';
 import { fameTier, FAME_TIERS, fameCeiling, ladderBlurb, isForgotten } from './systems/meta/status.js';
 import { meterTier } from './systems/career/production.js';
@@ -1367,6 +1368,7 @@ function EventsScreen({ g }) {
             {sneak.game === 'timing'
               ? 'Time your walk past the door — tap dead centre of the green.'
               : 'Pick your way through the back corridors. Some are watched. Stop while you\'re ahead.'}
+            {arrivalBonus(g) > 0 && <div style={{ fontSize: 11, color: theme.muted, marginTop: 4 }}>You came in the car: +{arrivalBonus(g)} on this door.</div>}
           </div>
           {sneak.game === 'timing'
             ? <TimingBar zoneStart={sneak.cfg.zoneStart} zoneWidth={sneak.cfg.zoneWidth} speed={sneak.cfg.speed}
