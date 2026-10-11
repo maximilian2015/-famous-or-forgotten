@@ -33,6 +33,7 @@ import { signEndorsement } from '../src/systems/career/endorsement.js';
 import { hangIt } from '../src/systems/career/bubble.js';
 import { ARCS } from '../src/systems/life/arcs.js';
 import { CHAINS } from '../src/systems/meta/stories.js';
+import { openNeed } from '../src/systems/life/needs.js';
 
 const gameDir = fileURLToPath(new URL('../', import.meta.url));
 const HTML = path.join(gameDir, 'dist/game.html');
@@ -392,6 +393,17 @@ await inState('A shooting day · how are you playing it', {
   await inState('An event · a story beat', { agent: me.agent, stories: [{ ...stry, due: 0, since: 0 }],
     pendingArc: { story: 'agent', beat: 'slip', speaker: built.speaker, text: built.text, choices: built.choices.map((c) => ({ label: c.label, hint: c.hint, shows: c.shows })) } },
     /^(?=[\s\S]*The agent)(?=[\s\S]*65% chance)(?=[\s\S]*more offers from your agent for six months)(?=[\s\S]*fewer offers from your agent for a year)(?=[\s\S]*no agent for at least three months)/);
+}
+// Somebody close needs something (life/needs.js): a card on Home that waits for you, and the
+// choice on the event screen, every answer saying what it does.
+{
+  const maya = { id: 'f1', name: 'Maya Ortiz', role: 'Fellow Actor', industryWeight: 30, relationship: 55,
+    need: { id: 'rent', since: NOW, until: NOW + 2, data: { amount: 2400 } } };
+  await inState('Home · a friend needs something', { people: [...save.people, maya] },
+    /^(?=[\s\S]*Maya Ortiz)(?=[\s\S]*wants to talk)(?=[\s\S]*Not answering is an answer)(?=[\s\S]*Hear them out)/);
+  const me = { ...save, people: [...save.people, maya] }; openNeed(me, 'f1');
+  await inState('An event · a friend asks for the rent', { people: me.people, pendingArc: me.pendingArc },
+    /^(?=[\s\S]*Maya Ortiz · a friend)(?=[\s\S]*€2,400 short on the rent)(?=[\s\S]*Pay it)(?=[\s\S]*Maya owes you)(?=[\s\S]*Lend it)(?=[\s\S]*Let me think about it)/);
 }
 // The set asking for something this month: the row with the answers, on Home and in the Calendar.
 {

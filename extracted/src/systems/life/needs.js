@@ -15,9 +15,11 @@
 //   p.neglect   how many times you said no or never answered (the drift rule reads it)
 //   p.owes      already existed (favours.js wrote it, nobody read it); written and read here
 // And on the player: s.needAt, the month the last need was put to you.
-import { chance } from '../../engine/rng.js';
+import { rint, chance } from '../../engine/rng.js';
 import { addTimeline } from '../../engine/timeline.js';
 import { inCareer } from '../../engine/stage.js';
+import { COST, canAfford, spend, tooTired } from '../../engine/energy.js';
+import { applyBond } from './bonds.js';
 
 export const SPACING = 3;       // months between two needs put to you, across everybody
 export const MEMORY_CAP = 8;
@@ -74,6 +76,8 @@ function everyone(s) {
 // A close friend: the rule sms.js already uses for who texts you — a contact you are close to
 // (40 or more) who has not gone cold — and not somebody who has drifted out of your life.
 export function closeFriend(p) { return !!p && !!p.role && !p.agent && !p.cold && !p.drifted && (p.relationship || 0) >= 40; }
+// A roof of your own to put somebody up under: not your parents', not the street, not theirs.
+function ownRoof(s) { return !!s.hasApartment && !s.homeless && s.livingWith !== 'parents' && !s.hostedBy; }
 
 // ── the needs ────────────────────────────────────────────────────────────────
 // Each: who can have it (from their state), how likely in a month it holds, how long they wait
@@ -81,7 +85,59 @@ export function closeFriend(p) { return !!p && !!p.role && !p.agent && !p.cold &
 // screen, the choice, and what not answering does. `shows` on every choice is what the event
 // screen prints (life/choiceWords.js), and tests/test_needs.mjs holds it to `apply`.
 export const NEEDS = {
-  // The needs themselves arrive one at a time, each in its own commit, each played through first.
+  // A friend who cannot make the rent. The one need that tests the whole loop without touching
+  // a set: money or no, a debt, a memory, and the debt coming back when it is you who is short.
+  rent: {
+    deadline: 2, cooldown: 18, urgency: 1,
+    // A fellow actor — the contacts this business pays least — close to you, while you are doing
+    // well enough to help. From their state, not a roll from a list.
+    wants: (s, p) => closeFriend(p) && p.role === 'Fellow Actor' && (s.cash || 0) >= 20000 && !s.homeless,
+    chance: () => 4,
+    data: () => ({ amount: Math.round(rint(1800, 4500) / 100) * 100 }),
+    call: (s, p) => `${p.name} rang. Twice. "Have you got a minute?"`,
+    card: (s, p) => `${first(p)} wants to talk. It is about money; you can tell from how long they took to say so.`,
+    build: (s, p, need) => {
+      const n = need.data.amount; const name = first(p);
+      const back = stamp(s) + 12;
+      // The last time, if there was one — the call opens with it.
+      const last = recall(p, 'rent');
+      const opener = !last ? ''
+        : last.a === 'paid' ? `"I hate asking twice. You just paid it last time." `
+        : last.a === 'lent' && last.ok === true ? `"I paid you back last time, and I will this time." `
+        : last.a === 'lent' ? `"I still owe you from last time. I know." `
+        : last.a === 'hosted' ? `"Your sofa saved me once." `
+        : last.a === 'refused' ? `"I know what you said last time. It is worse now." `
+        : last.a === 'ignored' ? `"You did not call back last time. I am trying again." ` : '';
+      const choices = [
+        { id: 'pay', label: `Pay it — ${money(n)}`, hint: 'No conditions. A friend would.',
+          shows: { fx: { cash: -n }, more: [{ t: `you and ${name}: closer`, good: true }, { t: `${name} owes you`, good: true }] },
+          apply: () => { s.cash = (s.cash || 0) - n; applyBond(s, p, 12); p.owes = true; remember(s, p, { k: 'rent', a: 'paid', n });
+            return `You transferred it before ${name} finished the sentence. ${name} did not say anything for a while, and then said thank you twice.`; } },
+        { id: 'lend', label: `Lend it — ${money(n)}, back in a year`, hint: 'Help, and keep it a loan.',
+          shows: { fx: { cash: -n }, more: [{ t: `back by ${when(back)}, if all is well between you`, good: true }, { t: `you and ${name}: a little closer`, good: true }] },
+          apply: () => { s.cash = (s.cash || 0) - n; applyBond(s, p, 6); remember(s, p, { k: 'rent', a: 'lent', n, due: back });
+            return `"A year," ${name} says. "I will pay you back in a year." You both write it down, which makes it feel like a thing friends do.`; } },
+      ];
+      if (ownRoof(s)) choices.push({ id: 'host', label: 'Stay at mine for a month', hint: 'A sofa, not a cheque.',
+        locked: canAfford(s, COST.evening) ? null : tooTired(s, COST.evening),
+        shows: { more: [{ t: `${COST.evening} energy`, good: false }, { t: `you and ${name}: closer`, good: true }, { t: `${name} owes you`, good: true }] },
+        apply: () => {
+          if (!canAfford(s, COST.evening)) return { refused: tooTired(s, COST.evening) };
+          spend(s, COST.evening); applyBond(s, p, 10); p.owes = true; remember(s, p, { k: 'rent', a: 'hosted' });
+          return `${name} arrives with two bags and a plant, and leaves a month later with the plant. The flat is quieter after, and you notice.`; } });
+      choices.push({ id: 'no', label: 'I cannot right now', hint: 'Sometimes true.',
+        shows: { more: [{ t: `you and ${name}: further apart`, good: false }] },
+        apply: () => { applyBond(s, p, -5); p.neglect = (p.neglect || 0) + 1; remember(s, p, { k: 'rent', a: 'refused' });
+          return `"No, of course. I shouldn't have asked." ${name} has already hung up by the time you think of what else to say.`; } });
+      choices.push({ id: 'later', later: true, label: 'Let me think about it', hint: `${name} is waiting until ${when(need.until)}.`,
+        shows: { more: [{ t: `if you never answer, ${name} remembers that too`, good: null }] } });
+      return { speaker: `${p.name} · a friend`, text: `${opener}${name} is ${money(n)} short on the rent, and the landlord has stopped being patient. They would not be asking if there were anybody else to ask.`, choices };
+    },
+    ignored: (s, p) => {
+      applyBond(s, p, -8, { seen: false }); p.neglect = (p.neglect || 0) + 1; remember(s, p, { k: 'rent', a: 'ignored' });
+      addTimeline(s, `You never called ${first(p)} back about the rent. They sorted it out somehow.`, true);
+    },
+  },
 };
 
 // ── the month ────────────────────────────────────────────────────────────────
