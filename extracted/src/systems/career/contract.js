@@ -300,12 +300,19 @@ export function openContract(s, id) { const o = (s.offers || []).find((x) => x.i
 export function contractFor(s, id) { const o = (s.offers || []).find((x) => x.id === id); return o ? draftContract(s, o) : null; }
 
 // ── your marks on the paper ───────────────────────────────────────────────────
+// The asks still worth making on a clause: not the one the paper already says. Maxi, 11 Oct:
+// after they agreed to 5% of the gross the clause read "5% of the gross past break-even" and
+// Discuss still offered "Ask for 5%" at 18% — asking for what you had, at odds, as if it might
+// be refused. Same on pay-or-play. A refused ask stays: asking again next round is real.
+const sameValue = (a, b) => JSON.stringify(a) === JSON.stringify(b);
+export function openAsks(c) { return ((c && c.options) || []).filter((op) => !sameValue(op.value, c.value)); }
 export function markClause(s, id, clauseId, askId) {
   const o = (s.offers || []).find((x) => x.id === id); if (!o) return s;
   const c = draftContract(s, o).clauses.find((x) => x.id === clauseId); if (!c) return s;
   if (o.contract.sent) return s;                  // it is with them; wait for the answer
   if (!askId) { c.stance = 'ok'; c.ask = null; return s; }
   if (!c.options.some((op) => op.id === askId)) return s;
+  if (!openAsks(c).some((op) => op.id === askId)) { s.lastEvent = 'The paper already says that.'; return s; }
   c.stance = 'talk'; c.ask = askId;
   return s;
 }

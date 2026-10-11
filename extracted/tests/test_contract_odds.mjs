@@ -2,7 +2,7 @@
 // figure ("~22%") while the answer was rolled against that figure times your leverage, a third
 // less every round after the first. Here the printed number is held to the roll itself: the
 // answer is forced just under it and just over it, and must come back yes and no.
-import { draftContract, markClause, sendContract, contractsTick, askOdds, askChance, askRound, HALFWAY } from '../src/systems/career/contract.js';
+import { draftContract, markClause, sendContract, contractsTick, askOdds, askChance, askRound, HALFWAY, openAsks } from '../src/systems/career/contract.js';
 
 let fails = 0;
 const ok = (n, c, e = '') => { if (!c) { fails++; console.log('FAIL  ' + n + (e ? ' :: ' + e : '')); } else console.log('ok    ' + n); };
@@ -61,6 +61,28 @@ const answerAt = (s, o, roll) => { sendContract(s, o.id); s.month += 1; Math.ran
   } else ok('a blockbuster has a fee to discuss', false);
   const m = setUp(); const mc = clause(m.o, 'merch');
   ok('nothing but the fee promises halfway', askChance(m.s, m.o, mc, mc.options[0]).halfway === 0);
+}
+// ── what they already gave is not offered again ─────────────────────────────
+// Maxi, 11 Oct: back end agreed at 5%, and Discuss still offered "Ask for 5%" at 18%; the same on
+// pay-or-play. An ask they said yes to is the paper now. An ask they refused can be made again.
+{
+  const { s, o } = setUp({ fame: 90 });   // back end is for the A-list
+  const asked = ['backend', 'payOrPlay', 'merch'].filter((id) => clause(o, id) && clause(o, id).options.length);
+  ok('an A-lister\'s blockbuster paper has back end, pay-or-play and merchandise to discuss', asked.length === 3, asked.join(','));
+  for (const id of ['backend', 'payOrPlay']) markClause(s, o.id, id, clause(o, id).options[0].id);
+  markClause(s, o.id, 'merch', 'two');
+  // Yes to the first two, no to the merchandise: the roll is forced per clause, in order.
+  sendContract(s, o.id); s.month += 1;
+  const rolls = [0, 0, 0.999]; let n = 0; Math.random = () => rolls[Math.min(n++, rolls.length - 1)];
+  try { contractsTick(s); } finally { Math.random = realRandom; }
+  for (const id of ['backend', 'payOrPlay']) {
+    const c = clause(o, id);
+    ok(`${id}: agreed, and nothing left to ask for`, c.result === 'agreed' && openAsks(c).length === 0, `${c.result} · ${openAsks(c).map((x) => x.label).join('|')}`);
+    const before = c.stance; markClause(s, o.id, id, c.options[0].id);
+    ok(`${id}: asking again for what the paper says is refused, out loud`, c.stance === before && /already says/.test(s.lastEvent || ''));
+  }
+  const m = clause(o, 'merch');
+  ok('merchandise: refused, and still there to ask for next round', m.result === 'refused' && openAsks(m).length === 1);
 }
 console.log(fails ? `\n${fails} FAILED` : '\nall passed');
 process.exit(fails ? 1 : 0);

@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { theme } from '../theme.js';
 import { FONT, FONT_DISPLAY } from '../chrome.js';
 import { dispatch } from '../../state/store.js';
-import { contractFor, markClause, sendContract, signContract, passContract, openTalks, proposeStart, earliestStart, askChance, askRound, theShowIsYou } from '../../systems/career/contract.js';
+import { contractFor, markClause, sendContract, signContract, passContract, openTalks, proposeStart, earliestStart, askChance, askRound, theShowIsYou, openAsks } from '../../systems/career/contract.js';
 import { STUDIOS } from '../../systems/world/names.js';
 import { Diary } from './Diary.jsx';
 
@@ -112,11 +112,11 @@ export function ContractRoom({ g, onClose }) {
                     style={{ display: 'inline-flex', alignItems: 'center', gap: 5, border: `1px solid ${c.stance === 'ok' ? P.green : P.line}`, background: c.stance === 'ok' ? P.green : 'transparent', color: c.stance === 'ok' ? P.paper : P.ink, borderRadius: 4, padding: '4px 9px', fontSize: 11, fontWeight: 800, cursor: 'pointer' }}>
                     <span style={{ width: 12, height: 12, border: `1.5px solid ${c.stance === 'ok' ? P.paper : P.ink}`, borderRadius: 2, display: 'inline-flex', alignItems: 'center', justifyContent: 'center', fontSize: 9 }}>{c.stance === 'ok' ? '✓' : ''}</span>Agreed
                   </button>
-                  {c.options.length > 0 && <button onClick={() => setOpen(isOpen ? null : c.id)}
+                  {openAsks(c).length > 0 && <button onClick={() => setOpen(isOpen ? null : c.id)}
                     style={{ border: `1px solid ${c.stance === 'talk' ? P.accent : P.line}`, background: c.stance === 'talk' ? 'rgba(139,67,47,.10)' : 'transparent', color: c.stance === 'talk' ? P.accent : P.ink, borderRadius: 4, padding: '4px 9px', fontSize: 11, fontWeight: 800, cursor: 'pointer' }}>
                     Discuss {isOpen ? '▴' : '▾'}
                   </button>}
-                  {c.options.length === 0 && <span style={{ fontSize: 10.5, color: P.muted, alignSelf: 'center' }}>not up for discussion</span>}
+                  {openAsks(c).length === 0 && <span style={{ fontSize: 10.5, color: P.muted, alignSelf: 'center' }}>{c.options.length ? 'settled' : 'not up for discussion'}</span>}
                 </div>}
                 {isOpen && !signed && !withThem && <div style={{ marginTop: 7, background: P.shade, borderRadius: 6, padding: '6px 8px' }}>
                   {c.id === 'schedule' && <button onClick={() => setPickMonth(!pickMonth)} style={{ display: 'flex', justifyContent: 'space-between', gap: 8, width: '100%', textAlign: 'left', background: 'none', border: 'none', borderBottom: `1px solid ${P.line}`, padding: '6px 2px', cursor: 'pointer', color: P.accent, fontSize: 11.5, fontWeight: 800 }}>
@@ -128,7 +128,7 @@ export function ContractRoom({ g, onClose }) {
                   </div>}
                   {/* The chance the answer will be rolled against, for this actor in this round
                       (contract.js askChance), not the studio's starting figure. */}
-                  {c.options.filter((op) => op.id !== 'propose' || c.ask === 'propose').map((op) => { const ch = askChance(g, o, c, op); return (<button key={op.id} onClick={() => { dispatch(markClause, o.id, c.id, op.id); setOpen(null); }}
+                  {openAsks(c).filter((op) => op.id !== 'propose' || c.ask === 'propose').map((op) => { const ch = askChance(g, o, c, op); return (<button key={op.id} onClick={() => { dispatch(markClause, o.id, c.id, op.id); setOpen(null); }}
                     style={{ display: 'flex', justifyContent: 'space-between', gap: 8, width: '100%', textAlign: 'left', background: 'none', border: 'none', borderBottom: `1px solid ${P.line}`, padding: '6px 2px', cursor: 'pointer', color: P.ink, fontSize: 12 }}>
                     <span>{op.label}{ch.halfway > 0 && <span style={{ display: 'block', fontSize: 11, color: P.muted, marginTop: 2 }}>or {ch.halfway}% they meet you halfway</span>}</span>
                     <span style={{ color: ch.sure || ch.yes >= 50 ? P.green : ch.yes >= 25 ? P.muted : P.accent, fontWeight: 800, whiteSpace: 'nowrap' }}>{ch.sure ? 'they will' : `${ch.yes}%`}</span>
