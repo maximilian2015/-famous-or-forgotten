@@ -121,6 +121,16 @@ plus a high floor (campaign + studio muscle). Two words add to the impression:
   any of them, or Comedy, at €220m; Comedy at €90m as the default rather than the exception.
   Sci-Fi and Musical at €90m are fine, and Sci-Fi at €220m is fine.
 
+## A side finding on the same card: SCORE 5.9 and CRITICS 3.5
+
+Maxi's card showed SCORE 5.9, KINOMARK C+, AUDIENCE 6.7 and CRITICS 3.5. SCORE and KINOMARK are
+the film's rating (`gradeOf`: 54–59 is C+). CRITICS is a separate number from `critics.js`
+`reviewsFor`: the average stars of the 3–5 named critics, × 2. `starsFor` buckets the rating
+coarsely: 48–61 → 2 stars, which is 4.0/10. Harsh critics (or ones who hate the genre) take one
+more star off. So any film rated 4.8–6.1 shows critics of about 3–4.5 next to a score of 4.8–6.1,
+and a 6.1 → 6.2 step jumps the critics' figure from 4.0 to 6.0. The two numbers are on different
+scales and the card puts them side by side. Not changed.
+
 ## Options (not done; for Maxi to choose)
 
 1. **HIT** (small, display only): judge the money part against `needed` instead of absolute euros.
@@ -133,3 +143,5 @@ plus a high floor (campaign + studio muscle). Two words add to the impression:
    0.7–0.9 ("lost money"). verdictOf's comment warns that call sites switch on the four strings.
 4. **Player-feature generosity** (balance): if wanted, the place is the floor (campaign + muscle)
    or hype's weight, not the legs. The industry's features are fine as they are.
+5. **CRITICS figure** (display): put the critics' average on the score's own scale, or label it
+   as stars ("critics ★★ of 5"), so it cannot read as a second, lower score.
