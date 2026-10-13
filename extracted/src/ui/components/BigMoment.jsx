@@ -375,12 +375,6 @@ export function BigMoment({ moment, look, onClose }) {
             value={String(moment.money).replace(' at the box office', '').replace(' watching', '')} accent={accent} />
         </div>
       )}
-      {/* The sum the verdict is measured against (release.js breakEvenFor): the film, what it cost
-          to sell, and the cinemas' half of every ticket. */}
-      {moment.id === 'verdict' && moment.breakEven && (() => { const b = moment.breakEven; const m = (n) => n >= 1e9 ? `€${(n / 1e9).toFixed(2)}bn` : `€${Math.round(n / 1e6)}m`; const x = b.need ? b.gross / b.need : 0;
-        return (<div style={{ fontSize: 12, lineHeight: 1.5, margin: '0 0 12px', padding: '8px 11px', borderRadius: 9, background: theme.panel2, border: `1px solid ${theme.line}`, color: theme.muted, textAlign: 'left' }}>
-          To break even it had to take about <b style={{ color: theme.text }}>{m(b.need)}</b>: the {m(b.budget)} film, {m(b.sell)} to sell it, and the cinemas keep about half of every ticket. It took {m(b.gross)} — {x.toFixed(2)} times that, so <b style={{ color: theme.text }}>{b.verdict}</b>{b.verdict === 'broke even' ? ' (0.7 to 1.25)' : b.verdict === 'profitable' ? ' (1.25 to 2)' : b.verdict === 'smash' ? ' (2 and over)' : ' (under 0.7)'}.
-        </div>); })()}
       {moment.id === 'verdict' && moment.reviews && <Reviews page={moment.reviews} accent={accent} />}
       {moment.id === 'yearbook' && moment.sections && (
         <div style={{ margin: '0 0 12px', textAlign: 'left' }}>

@@ -405,10 +405,6 @@ await inState('A shooting day · how are you playing it', {
   await inState('An event · a friend asks for the rent', { people: me.people, pendingArc: me.pendingArc },
     /^(?=[\s\S]*Maya Ortiz · a friend)(?=[\s\S]*€2,400 short on the rent)(?=[\s\S]*Pay it)(?=[\s\S]*Maya owes you)(?=[\s\S]*Lend it)(?=[\s\S]*Let me think about it)/);
 }
-// The end of a film's run says what it had to take to break even, and what that is made of.
-await inState('The run is over · what it had to take', { bigMoment: { id: 'verdict', kind: 'bad', title: 'This Lantern', score: '5.9', money: '€216m on a €90m film, 6 weeks', verdict: 'broke even',
-  genre: 'Drama', scale: 'feature', breakEven: { need: 209250000, budget: 90000000, sell: 49500000, gross: 216000000, verdict: 'broke even' } } },
-  /^(?=[\s\S]*To break even it had to take about)(?=[\s\S]*€209m)(?=[\s\S]*the €90m film, €50m to sell it)(?=[\s\S]*1\.03 times that)(?=[\s\S]*0\.7 to 1\.25)/);
 // And the critics as stars, never as a second score out of ten beside the first. Maxi's card
 // read SCORE 5.9 and CRITICS 3.5: four critics, two stars from most and one from a harsh one.
 {

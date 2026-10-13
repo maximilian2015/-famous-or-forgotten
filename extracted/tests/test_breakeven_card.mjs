@@ -1,7 +1,8 @@
-// The card at the end of a film's run says what it had to take to break even — the number the
-// verdict is measured against (release.js breakEvenFor) — and what that number is made of.
-// Maxi, at "€216m on a €90m film · broke even": "how much does the film itself cost? isn't that
-// a success?" The verdict was right; the card kept its reason to itself.
+// The verdict moment at the end of a film's run carries what the film cost and took — the sum the
+// verdict is measured against (release.js breakEvenFor) and what it is made of — for the money
+// card it will get (gross, total cost, studio revenue, profit). Maxi, at "€216m on a €90m film ·
+// broke even": "how much does the film itself cost? isn't that a success?" Nothing draws it yet;
+// a one-line "needed" version was tried and kept out of main.
 import { scheduleRelease, releaseTick, runTick, breakEvenFor, campaignSpend } from '../src/systems/career/release.js';
 
 let fails = 0;
