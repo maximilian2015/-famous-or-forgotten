@@ -4,6 +4,7 @@ import { FONT, FONT_DISPLAY } from '../chrome.js';
 import { play, playGenre } from '../sfx.js';
 import { Avatar } from './Avatar.jsx';
 import { criticStars } from '../../systems/world/critics.js';
+import { Poster } from './Poster.jsx';
 
 // Some things should stop the game rather than scroll past in a list. Eviction, an
 // inheritance, the street. One modal, a drawn scene, and a sound made in code —
@@ -292,7 +293,52 @@ function Scene({ id, look, accent, moment }) {
   </svg>);
 }
 
-const CTA = { premiere: 'Go home', shutdown: 'Go home', nomination: 'Let it sink in', ceremony: 'Take the night', yearbook: 'Close the paper', contract: 'Read it',
+// ── opening night ─────────────────────────────────────────────────────────────
+// The film, not a cinema: the poster is the thing you see first, then what kind of picture it
+// is, who you played and who made it with you, and what is really known tonight
+// (career/release.js premiereCard — every line there is a real input to the money, and there is
+// no money). A save from before the card exists has no `card` and gets the old night.
+// The light behind the poster leans toward the genre, a little, never a rainbow.
+const GENRE_TINT = { Comedy: '#e3a447', Romance: '#e07a9a', Drama: '#c98a5a', Musical: '#d77ad6',
+  Thriller: '#6f7bd9', Crime: '#7d86c9', Horror: '#c4314b', 'Sci-Fi': '#4fc3d9' };
+function PremiereHero({ moment, accent }) {
+  const c = moment.card;
+  const tint = GENRE_TINT[moment.genre] || accent;
+  const kind = [c.type, c.genre, c.role].filter(Boolean).join(' · ');
+  return (<div>
+    <div style={{ position: 'relative', height: 214, margin: '-4px -6px 0', borderRadius: 14, overflow: 'hidden',
+      background: `radial-gradient(ellipse at 50% 38%, ${tint}55, ${tint}10 55%, transparent 75%)` }}>
+      {/* Searchlights and a carpet for a night that has them. Television goes out on a screen in
+          a kitchen ("no carpet, no room"), so it gets the glow and nothing else. */}
+      {!moment.tv && <svg viewBox="0 0 200 120" preserveAspectRatio="none" style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', opacity: .22 }}>
+        <path d="M10 120 L58 0 L74 0 Z" fill={theme.gold} /><path d="M190 120 L142 0 L126 0 Z" fill={theme.gold} />
+      </svg>}
+      {!moment.tv && <div style={{ position: 'absolute', left: 0, right: 0, bottom: 0, height: 26, background: 'linear-gradient(180deg, transparent, #8a345966)' }} />}
+      <div style={{ position: 'absolute', left: '50%', top: 12, transform: 'translateX(-50%)', boxShadow: `0 0 34px -6px ${tint}` }}>
+        <Poster title={moment.title} type={c.type} genre={moment.genre} director={c.director} tall size={126} />
+      </div>
+    </div>
+    <div style={{ fontFamily: FONT_DISPLAY, fontSize: 25, fontWeight: 700, lineHeight: 1.15, margin: '14px 0 4px' }}>{moment.title}</div>
+    {kind && <div style={{ fontSize: 11, fontWeight: 800, letterSpacing: '.08em', textTransform: 'uppercase', color: tint, marginBottom: 6 }}>{kind}</div>}
+    {/* A festival night has a result, and the old marquee said it (LAURELS, SOLD, UNSOLD). */}
+    {moment.festival && moment.verdict && <div style={{ display: 'inline-block', fontSize: 11, fontWeight: 900, letterSpacing: '.12em', textTransform: 'uppercase', margin: '0 0 8px', padding: '4px 10px', borderRadius: 20,
+      color: moment.result === 'unsold' ? theme.bad : theme.gold, border: `1px solid ${moment.result === 'unsold' ? theme.bad : theme.gold}66` }}>
+      {moment.result === 'prize' ? '🏆 ' : ''}{moment.verdict}</div>}
+    <div style={{ fontSize: 12.5, color: theme.muted, lineHeight: 1.55, marginBottom: 12 }}>
+      {c.you && c.character && <div><span style={{ color: theme.text, fontWeight: 700 }}>{c.you}</span> as <span style={{ color: theme.text, fontWeight: 700 }}>{c.character}</span></div>}
+      {c.with && <div>with <span style={{ color: c.withIcon ? theme.gold : theme.text, fontWeight: 700 }}>{c.with}</span></div>}
+      {c.director && <div>Directed by <span style={{ color: theme.text, fontWeight: 700 }}>{c.director}</span></div>}
+    </div>
+    {c.sequel && <div style={{ fontSize: 12, lineHeight: 1.5, margin: '0 0 10px', padding: '8px 11px', borderRadius: 9, background: theme.panel2, border: `1px solid ${theme.gold}44`, color: theme.gold, textAlign: 'left' }}>{c.sequel}</div>}
+    {c.tonight.length > 0 && <div style={{ textAlign: 'left', margin: '0 0 12px', padding: '9px 12px', borderRadius: 10, background: theme.panel2, border: `1px solid ${theme.line}` }}>
+      <div style={{ fontSize: 9.5, fontWeight: 900, letterSpacing: '.14em', textTransform: 'uppercase', color: theme.muted, marginBottom: 5 }}>Tonight</div>
+      {c.tonight.map((l) => <div key={l.k} style={{ fontSize: 12, lineHeight: 1.45, color: theme.text, padding: '2px 0 2px 11px', position: 'relative' }}>
+        <span style={{ position: 'absolute', left: 0, top: 8, width: 4, height: 4, borderRadius: 2, background: tint }} />{l.t}</div>)}
+    </div>}
+  </div>);
+}
+
+const CTA = { premiere: 'See what tomorrow brings', shutdown: 'Go home', nomination: 'Let it sink in', ceremony: 'Take the night', yearbook: 'Close the paper', contract: 'Read it',
   burnout: 'Sleep', depression: 'Close the curtains', lifted: 'Open them', sets: 'Good to know',
   checkpoint: 'Keep going', rehab: 'Walk out' };
 function headFor(m) {
@@ -356,8 +402,10 @@ export function BigMoment({ moment, look, onClose }) {
       <div style={{ fontSize: 11, fontWeight: 900, letterSpacing: '.18em', textTransform: 'uppercase', color: accent, marginBottom: 14 }}>
         {headFor(moment)}
       </div>
-      <Scene id={moment.id} look={look} accent={accent} moment={moment} />
-      <div style={{ fontFamily: FONT_DISPLAY, fontSize: 25, fontWeight: 700, lineHeight: 1.15, margin: '16px 0 10px' }}>{moment.title}</div>
+      {moment.id === 'premiere' && moment.card ? <PremiereHero moment={moment} accent={accent} /> : (<>
+        <Scene id={moment.id} look={look} accent={accent} moment={moment} />
+        <div style={{ fontFamily: FONT_DISPLAY, fontSize: 25, fontWeight: 700, lineHeight: 1.15, margin: '16px 0 10px' }}>{moment.title}</div>
+      </>)}
       {/* Opening night has no numbers on it any more — that is the whole point of splitting
           it from the verdict — so this must not assume they are there. It crashed the modal
           outright the first time a film opened. See systems/career/release.js. */}

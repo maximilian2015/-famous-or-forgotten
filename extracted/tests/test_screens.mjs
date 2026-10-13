@@ -419,6 +419,14 @@ await inState('A shooting day · how are you playing it', {
       await tapIn(W2, (d) => { const all = [...d.querySelectorAll('div,span')].filter((e) => (e.textContent || '').includes('Ivo Moon')); return all.filter((e) => ![...e.children].some((k) => (k.textContent || '').includes('Ivo Moon'))).pop(); });
     });
 }
+// Opening night is the film: the poster, what kind of picture, who you played, who made it, what
+// is known tonight — and no money. And a premiere saved before the card existed still opens.
+await inState('Opening night · the film, not a cinema', { bigMoment: { id: 'premiere', kind: 'good', title: 'My Crazy Family', verdict: 'opening night', genre: 'Comedy', scale: 'feature',
+  body: 'A full house, the carpet.', card: { type: 'Feature Film', genre: 'Comedy', role: 'Lead', you: 'Alex Moon', character: 'Nora Hale', director: 'Ines Kalder', with: 'Teo Albright', withIcon: false,
+    sequel: null, tonight: [{ k: 'campaign', t: 'Selling it: a real campaign — properly sold.' }, { k: 'date', t: 'The date: a good date.' }] } } },
+  /^(?![\s\S]*€)(?=[\s\S]*My Crazy Family)(?=[\s\S]*Feature Film · Comedy · Lead)(?=[\s\S]*Alex Moon)(?=[\s\S]*Nora Hale)(?=[\s\S]*with\s+Teo Albright)(?=[\s\S]*Directed by\s+Ines Kalder)(?=[\s\S]*Tonight)(?=[\s\S]*Selling it: a real campaign)(?=[\s\S]*See what tomorrow brings)/);
+await inState('Opening night · a premiere from an old save', { bigMoment: { id: 'premiere', kind: 'good', title: 'Old Night', verdict: 'opening night', genre: 'Drama', scale: 'feature', body: 'You stood on a carpet.' } },
+  /^(?=[\s\S]*Old Night)(?=[\s\S]*You stood on a carpet)(?=[\s\S]*See what tomorrow brings)/);
 // And the critics as stars, never as a second score out of ten beside the first. Maxi's card
 // read SCORE 5.9 and CRITICS 3.5: four critics, two stars from most and one from a harsh one.
 {

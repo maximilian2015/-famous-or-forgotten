@@ -21,7 +21,7 @@ import { appetiteFor, marketAfterRelease } from '../meta/market.js';
 import { maybeContinue } from './franchise.js';
 import { tvTermsOf } from './terms.js';
 import { appealShift } from './story.js';
-import { dirAppeal, remindLift, holdFactor, retentionLine } from './chapter.js';
+import { dirAppeal, remindLift, reminderOf, holdFactor, retentionLine } from './chapter.js';
 import { comebackFloor } from '../meta/standing.js';
 import { paid } from './agent.js';
 import { reviewsFor } from '../world/critics.js';
@@ -519,12 +519,65 @@ function previousAudience(s, rel) {
 // Found the same way previousAudience finds last season: by the title with the part stripped
 // off, because nothing on the production carries a pointer back to the picture before it.
 export function previousRating(s, rel) {
+  const prev = previousPart(s, rel);
+  return prev ? (prev.rating ?? null) : null;
+}
+export function previousPart(s, rel) {
   if (!rel || (rel.part || 1) < 2) return null;
   const root = String(rel.title || '').replace(/(\s*(?:·|:)?\s*part\s+\d+)+\s*$/i, '').trim();
   if (!root) return null;
   const prev = (s.filmography || []).filter((c) => (c.part || 1) === (rel.part || 1) - 1
     && String(c.title || '').replace(/(\s*(?:·|:)?\s*part\s+\d+)+\s*$/i, '').trim() === root);
-  return prev.length ? (prev[prev.length - 1].rating ?? null) : null;
+  return prev.length ? prev[prev.length - 1] : null;
+}
+
+// ── opening night ─────────────────────────────────────────────────────────────
+// Maxi, at the old card: one generic cinema, a paragraph, a button — "it does not feel like an
+// event". It is now the film: its poster, what kind of picture it is, who you played, who made
+// it with you, and what is actually known tonight. ONLY what the game knows and what really
+// goes into the money — the campaign, the date, what opened against it, the talk about you —
+// read off the same fields demandFor and openingFor read. Nothing invented: no screen counts, no
+// forecast, and no money at all. The money is the next weeks, and that is the point.
+// Anything an old save does not have is left out rather than guessed.
+export function premiereCard(s, rel, talk) {
+  const film = isFilm(rel.scale);
+  const ch = rel.character;
+  const character = typeof ch === 'string' ? ch : (ch && ch.name) || null;
+  const card = { type: rel.type || null, genre: rel.genre || null, role: rel.role || null,
+    you: s.name || null, character, director: rel.director || null, with: rel.with || null, withIcon: !!rel.withIcon,
+    tonight: [], sequel: null };
+  if (film && rel.campaignTier) {
+    const c = campaignOf(rel);
+    // Not "the studio's": a festival picture is sold by whoever bought it.
+    card.tonight.push({ k: 'campaign', t: `Selling it: ${c.label.toLowerCase()} — ${c.word}.` });
+  }
+  if (film && rel._window != null) card.tonight.push({ k: 'date', t: `The date: ${windowWord(s.month || 0)}.` });
+  if (film && rel._against != null) card.tonight.push({ k: 'against', t: rel._against < 1 ? 'Something enormous opened the same weekend.' : 'Nothing big opened against it.' });
+  if (film && rel.tour) card.tonight.push({ k: 'tour', t: 'You did the press tour.' });
+  else if (film && rel.tourSkipped) card.tonight.push({ k: 'tour', t: 'You skipped the press tour.' });
+  if (film && reminderOf(rel)) card.tonight.push({ k: 'remind', t: `${reminderOf(rel).label}, paid for.` });
+  if (film && talk) {
+    const h = talk.hype || 0;
+    card.tonight.push({ k: 'talk', t: talk.source === 'scandal' ? 'The talk about you this month is a scandal. That does not sell a ticket.'
+      : h >= 45 ? 'Everybody is talking about you this month.' : h >= 20 ? 'People are talking about you this month.' : 'Nobody much is talking about you this month.' });
+  }
+  // A sequel, from the part before it and nothing else: which part, how long ago, how the room took it.
+  const prev = film ? previousPart(s, rel) : null;
+  if (prev) {
+    const gap = Math.max(0, (s.year || 0) - (prev.year || s.year || 0));
+    const room = Number.isFinite(prev.audience) ? prev.audience : null;
+    const took = room == null ? '' : room >= 70 ? ` The audience loved that one (${(room / 10).toFixed(1)}).`
+      : room >= 55 ? ` The audience liked that one well enough (${(room / 10).toFixed(1)}).` : ` The audience did not care for that one (${(room / 10).toFixed(1)}).`;
+    card.sequel = `Part ${rel.part}. The last one opened ${gap === 0 ? 'this year' : gap === 1 ? 'a year ago' : `${gap} years ago`}.${took}`;
+  }
+  return card;
+}
+// The words under the poster: short, and different for the kind of night it is.
+export function premiereBody(rel) {
+  const after = ' Nobody knows anything yet — not the reviews, not the money, not you.';
+  if (rel.scale === 'blockbuster') return 'Searchlights, barriers, a carpet two blocks long, and a studio that needs this one to land.' + after;
+  if (rel.scale === 'feature') return 'A full house, the carpet, the same four questions eleven times. Then the lights went down and the film belonged to the room.' + after;
+  return 'A smaller room, but the right people are in it. A picture this size lives on what they tell each other.' + after;
 }
 
 // ── three different questions, and they must not be collapsed into one ────────
@@ -842,6 +895,9 @@ function studioCall(s, credit, festival) {
 
 function open(s, rel) {
   const film = isFilm(rel.scale);
+  // What was being said about you as it opened — the number demandFor reads, taken before the
+  // opening's own noise lands on top of it below.
+  const talk = { hype: hype(s), source: hypeSource(s) };
   // A festival picture is decided in the room, before anybody else sees it: a prize sells
   // it, a buyer sells it a little, and no buyer means there is nothing to open.
   let fest = null;
@@ -934,6 +990,8 @@ function open(s, rel) {
     addTimeline(s, `"${rel.title}" screened at ${fest.name}. No distributor.`, rel.rating < 60);
     showMoment(s, {
       id: 'premiere', kind: rel.rating >= 74 ? 'good' : 'bad', festival: fest.name, result: 'unsold', title: rel.title, verdict: 'no buyer',
+      // The film and who made it, and nothing about a release that is not going to happen.
+      genre: rel.genre, scale: rel.scale, card: premiereCard(s, { ...rel, campaignTier: null }, null),
       body: rel.rating >= 74
         ? `Two screenings in a room that was half full, and the half that came stood up at the end. The buyers did not. Nobody could say what shelf it belonged on, so it stays on none — but the people who saw it will remember who was in it.`
         : `Two screenings, a bar afterwards where everybody said kind things, and a flight home. No distributor rang. It will exist on a hard drive somewhere, and nowhere else.`,
@@ -997,18 +1055,17 @@ function open(s, rel) {
   addTimeline(s, fest ? (fest.result === 'prize' ? `"${rel.title}" won at ${fest.name}.` : `"${rel.title}" sold at ${fest.name}.`) : film ? `"${rel.title}" opened.` : `"${rel.title}" went out.`);
   showMoment(s, fest ? {
     id: 'premiere', kind: 'good', festival: fest.name, result: fest.result, genre: rel.genre, scale: rel.scale, title: rel.title,
+    card: premiereCard(s, rel, talk),
     verdict: fest.result === 'prize' ? 'the jury prize' : 'sold on the Sunday',
     body: fest.result === 'prize'
       ? `A cinema at nine in the morning, a jury in the front row, and at the end of the week your title read out in a room of people who buy films for a living. Three distributors by Sunday. The trades used the word "discovery", and they used your name.`
       : `Two screenings, a good one and a quiet one, and on the Sunday a distributor who liked the quiet one. A small release, a few cities, a poster with the laurels on it. It exists now. What it does is the next few weeks.`,
   } : film ? {
     id: 'premiere', kind: 'good', title: rel.title, verdict: 'opening night', genre: rel.genre, scale: rel.scale,
-    body: 'You stood on a carpet and answered the same four questions eleven times, and then '
-      + 'the lights went down and you watched it with strangers. Nobody knows anything yet — '
-      + 'not the reviews, not the money, not you. That comes over the next few weeks.',
+    card: premiereCard(s, rel, talk), body: premiereBody(rel),
   } : {
     id: 'premiere', kind: 'good', tv: tvKind, genre: rel.genre, scale: rel.scale, title: rel.title, verdict: (rel.season || 0) > 1 ? `season ${rel.season}` : 'season one',
-    episodes: rel.episodes || 0,
+    episodes: rel.episodes || 0, card: premiereCard(s, rel, null),
     body: tvKind === 'soap'
       ? `Seven o'clock, a Tuesday. The theme, the titles, your face for the first time in ${(rel.episodes || 25)} episodes of it. Nobody watches a soap for the reviews — they watch it every week, or they do not, and you find out over the run.`
       : tvKind === 'prestige'
