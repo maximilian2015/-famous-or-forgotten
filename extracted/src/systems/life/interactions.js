@@ -11,10 +11,11 @@ import { addTimeline } from '../../engine/timeline.js';
 import { onCooldown, markUsed } from '../../engine/cooldown.js';
 import { homeBond, canRaiseChild, HOUSING, spent } from '../../engine/economy.js';
 import { askFamilyForMoney } from './family.js';
-import { proposeMarriage, tryForBaby, WANTS } from './dating.js';
+import { proposeMarriage, tryForBaby, WANTS, wantsOf } from './dating.js';
 import { bondGain, contactAge } from './relationships.js';
 import { genderOfName } from '../world/names.js';
 import { applyBond } from './bonds.js';
+import { fertility, fertilityNote } from './children.js';
 import { canSupport, support, canBack, backChild, supportCost, backingCost } from './money.js';
 import { canPropose, propose, kindFor } from '../career/collab.js';
 import { holdsAGrudge } from '../meta/stories.js';
@@ -40,7 +41,6 @@ export function findPerson(s, id) {
   return null;
 }
 
-const isRomantic = (rel) => rel === 'partner' || rel === 'spouse';
 // ── a contact becomes something else ─────────────────────────────────────────
 // Maxi: "Piet, a director, closeness 94 — and there is nothing: no starting a relationship,
 // no kiss, no moving in, no marrying. I thought all of that was already there." It was, for
@@ -80,7 +80,43 @@ function lands(s, p, base) {
 // decay rules cannot be sidestepped by adding a new interaction later.
 function move(s, p, by) { return applyBond(s, p, by); }
 
+// ── a marriage is not a date ─────────────────────────────────────────────────
+// Maxi, married to Ivo for years: "Kiss them — Not yet, get closer first." The spouse ran on the
+// dating menu, with the dating gates: a kiss at 40, a night at 55, blame at 20. A marriage that
+// has gone cold is not one where you are not allowed to kiss — it is one where you try and they
+// pull away. So for a spouse nothing here is locked by how close you are. Everything is open, and
+// how it goes reads the marriage: the closer you are, the more it lands; and what THEY want
+// (dating.js WANTS: home, dinner, being seen, going away) makes some evenings easy and some hard.
+// The big conversations — a child, moving, their own career — are meant to come FROM them, as
+// needs (life/needs.js), not as buttons you press until they say yes.
+const isSpouse = (rel) => rel === 'spouse';
+const MON = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+const whenOf = (stamp) => `${MON[stamp % 12]} ${Math.floor(stamp / 12)}`;
+// The chance a married evening lands: mostly the marriage, a little you, and what they like.
+function marriageLands(s, p, base, like = null) {
+  const w = wantsOf(p);
+  const taste = like ? (w.likes.includes(like) ? 15 : w.hates.includes(like) ? -15 : 0) : 0;
+  return chance(Math.max(5, Math.min(95, base + taste + (p.relationship || 0) * 0.6 + (s.charisma || 0) * 0.1)));
+}
+// Something of yours that opens in the next two months, which is the premiere they could stand at.
+const OPENS_WITHIN = 2;
+function nextOpening(s) {
+  const now = abs(s);
+  return (s.releases || []).filter((r) => r.due >= now && r.due - now <= OPENS_WITHIN).sort((a, b) => a.due - b.due)[0] || null;
+}
+const TRIP_EVERY = 6;
+export const tripCost = (s) => Math.max(2500, Math.min(60000, Math.round((s.cash || 0) * 0.02)));
+const FUTURE = {
+  family: (s, p) => (s.family || []).some((x) => x.relation === 'Child' && x.alive)
+    ? `${first(p)} talks about the children — who they are turning into, and whether you will be there to see it.`
+    : `${first(p)} wants to talk about children. Not someday. Soon.`,
+  thelife: (s, p) => `${first(p)} talks about the next house, the next city, the next carpet. They light up doing it.`,
+  quiet: (s, p) => `${first(p)} wants fewer photographers and more Sundays. They have wanted it for a while.`,
+  ambitious: (s, p) => `${first(p)} talks about their own work for an hour. You realise you had not asked in months.`,
+};
+
 export const GROUPS = [
+  { id: 'together', label: 'Together', tone: 'love' },
   { id: 'friendly', label: 'Friendly', tone: 'good' },
   { id: 'romantic', label: 'Romantic', tone: 'love' },
   { id: 'practical', label: 'Practical', tone: 'plain' },
@@ -88,6 +124,56 @@ export const GROUPS = [
 ];
 
 export const INTERACTIONS = [
+  // ── together: the marriage ──────────────────────────────────────────────────
+  { id: 'mEvening', group: 'together', label: 'Spend the evening together', blurb: 'At home, the two of you', ap: COST.evening,
+    applies: ({ rel }) => isSpouse(rel),
+    run: ({ s, p }) => {
+      if (marriageLands(s, p, 30, 'home')) { const g = move(s, p, Math.round(rint(5, 11) * homeBond(s))); s.mental = clamp(s.mental + rint(2, 5)); return `A long evening with ${first(p)}, like the old ones. (+${g})`; }
+      const g = move(s, p, rint(0, 1)); return `You were in the same room all evening. ${first(p)} was somewhere else. (+${g})`;
+    } },
+
+  { id: 'mTrip', group: 'together', label: 'Take a trip', blurb: 'A week away from all of it', ap: COST.dateAway,
+    applies: ({ rel }) => isSpouse(rel), cost: ({ s }) => tripCost(s),
+    when: ({ s, p }) => !s.production && !(p.tripAt != null && abs(s) - p.tripAt < TRIP_EVERY),
+    lockedWhy: ({ s, p }) => (s.production ? 'You are on a shoot. They would be on the trip alone.'
+      : p.tripAt != null && abs(s) - p.tripAt < TRIP_EVERY ? `You were away together in ${whenOf(p.tripAt)}. Not again so soon.` : ''),
+    run: ({ s, p, cost }) => {
+      s.cash -= cost; spent(s, 'people', cost); p.tripAt = abs(s);
+      if (marriageLands(s, p, 45, 'away')) { const g = move(s, p, rint(10, 18)); s.mental = clamp(s.mental + rint(5, 9)); addTimeline(s, `A week away with ${p.name}.`); return `A week away with ${first(p)}. You came back closer than you left. €${cost.toLocaleString()}. (+${g})`; }
+      const g = move(s, p, rint(1, 3)); s.mental = clamp(s.mental + 1);
+      return `A beautiful place, and the same argument you have at home. €${cost.toLocaleString()}. (+${g})`;
+    } },
+
+  // What they make of standing next to you in front of the cameras is the whole of who they are:
+  // somebody who wants the life loves it, somebody who wants a quiet one pays for it.
+  { id: 'mPremiere', group: 'together', label: 'Bring them to the premiere', blurb: 'The carpet, the cameras, your arm',
+    applies: ({ rel }) => isSpouse(rel),
+    when: ({ s }) => !!nextOpening(s) && !nextOpening(s).spouseAsked,
+    lockedWhy: ({ s }) => (!nextOpening(s) ? `Nothing of yours opens in the next ${OPENS_WITHIN} months.` : nextOpening(s).spouseAsked ? 'They are already coming.' : ''),
+    run: ({ s, p }) => {
+      const r = nextOpening(s); r.spouseAsked = true;
+      const w = wantsOf(p);
+      if (w.likes.includes('public')) { const g = move(s, p, rint(8, 14)); return `${first(p)} will be on the carpet with you for "${r.title}". They have already picked what to wear. (+${g})`; }
+      if (w.hates.includes('public')) { const g = move(s, p, -rint(3, 7)); return `${first(p)} said yes for you. Forty photographs, and they will not smile in one of them. (${g})`; }
+      const g = move(s, p, rint(3, 7)); return `${first(p)} will come to "${r.title}" with you. (+${g})`;
+    } },
+
+  { id: 'mFuture', group: 'together', label: 'Talk about the future', blurb: 'Where the two of you are going', ap: COST.realTalk,
+    applies: ({ rel }) => isSpouse(rel),
+    run: ({ s, p }) => {
+      if (marriageLands(s, p, 35)) { const g = move(s, p, rint(6, 12)); s.mental = clamp(s.mental + 3); return `${(FUTURE[p.wants] || FUTURE.quiet)(s, p)} (+${g})`; }
+      const g = move(s, p, -rint(1, 4)); s.mental = clamp(s.mental - 2);
+      return `You tried to talk about the future and it turned into the past. (${g})`;
+    } },
+
+  { id: 'mClose', group: 'together', label: 'Intimacy', blurb: 'Not a date. A marriage.', ap: COST.evening,
+    applies: ({ rel }) => isSpouse(rel),
+    run: ({ s, p }) => {
+      if (marriageLands(s, p, 30)) { const g = move(s, p, Math.round(rint(6, 12) * homeBond(s))); s.mental = clamp(s.mental + rint(4, 8)); return `The night was yours, the way it used to be. (+${g})`; }
+      if ((p.relationship || 0) < 25) { const g = move(s, p, -rint(1, 3)); s.mental = clamp(s.mental - 2); return `${first(p)} pulls away. "We haven't been okay for a while." (${g})`; }
+      return `${first(p)} was tired. Another night.`;
+    } },
+
   // ── friendly ────────────────────────────────────────────────────────────────
   { id: 'chat', group: 'friendly', label: 'Chat', blurb: 'Nothing in particular. That is the point.', ap: COST.chat,
     when: () => true,
@@ -105,7 +191,7 @@ export const INTERACTIONS = [
     run: ({ s, p }) => { const g = move(s, p,rint(3, 6)); return `You told ${first(p)} something true and kind. (+${g})`; } },
 
   { id: 'advice', group: 'friendly', label: 'Ask their advice', blurb: 'They have lived longer than this year', ap: COST.advice,
-    when: ({ p }) => (p.relationship || 0) >= 25,
+    when: ({ p, rel }) => isSpouse(rel) || (p.relationship || 0) >= 25,
     run: ({ s, p }) => {
       const g = move(s, p,rint(2, 4));
       const key = chance(50) ? 'discipline' : 'confidence';
@@ -132,6 +218,7 @@ export const INTERACTIONS = [
     } },
 
   { id: 'evening', group: 'friendly', label: 'Spend the evening together', blurb: 'A whole evening, and it shows', ap: COST.evening,
+    applies: ({ rel }) => !isSpouse(rel),   // a marriage has its own (mEvening)
     when: ({ p }) => (p.relationship || 0) >= 20,
     run: ({ s, p, kind }) => {
       const raw = kind === 'contact' ? bondGain(s, p) : Math.round(rint(5, 11) * homeBond(s));
@@ -140,6 +227,7 @@ export const INTERACTIONS = [
     } },
 
   { id: 'deep', group: 'friendly', label: 'Talk about something real', blurb: 'The conversation you have been avoiding', ap: COST.realTalk,
+    applies: ({ rel }) => !isSpouse(rel),   // a marriage has its own (mFuture)
     when: ({ p }) => (p.relationship || 0) >= 40,
     run: ({ s, p }) => {
       if (lands(s, p, 45)) { const g = move(s, p,rint(9, 16)); s.mental = clamp(s.mental + 4); return `You told ${first(p)} the truth about something. It went well. (+${g})`; }
@@ -148,19 +236,20 @@ export const INTERACTIONS = [
     } },
 
   // ── romantic ────────────────────────────────────────────────────────────────
+  // Dating. A spouse has the marriage above instead, with no gates on it.
   { id: 'flirt', group: 'romantic', label: 'Flirt', blurb: 'Test the water', ap: COST.chat,
-    applies: ({ rel }) => isRomantic(rel),
+    applies: ({ rel }) => rel === 'partner',
     run: ({ s, p }) => {
       if (lands(s, p, 30)) { const g = move(s, p,rint(6, 12)); s.mental = clamp(s.mental + 2); return `${first(p)} flirted right back. (+${g})`; }
       const g = move(s, p,-rint(2, 5)); return `You misread the room. ${first(p)} changed the subject. (${g})`;
     } },
 
   { id: 'kiss', group: 'romantic', label: 'Kiss them', blurb: 'No words involved', ap: COST.chat,
-    applies: ({ rel }) => isRomantic(rel), when: ({ p }) => (p.relationship || 0) >= 40,
+    applies: ({ rel }) => rel === 'partner', when: ({ p }) => (p.relationship || 0) >= 40,
     run: ({ s, p }) => { const g = move(s, p,rint(5, 10)); s.mental = clamp(s.mental + 3); return `You kissed ${first(p)}. (+${g})`; } },
 
   { id: 'night', group: 'romantic', label: 'Spend the night together', blurb: 'Needs a place of your own', ap: COST.evening,
-    applies: ({ rel }) => isRomantic(rel),
+    applies: ({ rel }) => rel === 'partner',
     when: ({ p, s }) => (p.relationship || 0) >= 55 && s.hasApartment,
     lockedWhy: ({ s, p }) => (!s.hasApartment ? 'Not under your parents’ roof — you need a place of your own.'
       : (p.relationship || 0) < 55 ? 'You are not there yet.' : ''),
@@ -212,9 +301,12 @@ export const INTERACTIONS = [
     applies: ({ rel }) => rel === 'partner', when: ({ p }) => (p.relationship || 0) >= 65,
     run: ({ s }) => { proposeMarriage(s); return s.lastEvent; } },
 
-  { id: 'baby', group: 'romantic', label: 'Try for a baby', blurb: 'Needs a room to put them in', ap: COST.ask,
+  { id: 'baby', group: 'together', label: 'Try for a baby', blurb: 'Needs a room to put them in', ap: COST.ask,
     applies: ({ rel }) => rel === 'spouse',
-    lockedWhy: ({ s }) => (!canRaiseChild(s) ? `Not until you have at least a ${HOUSING.flat.label.toLowerCase()}.` : ''),
+    // On the button, before it is pressed: at sixty-six it used to open, take the energy and
+    // only then say it was too late.
+    lockedWhy: ({ s, p }) => (!canRaiseChild(s) ? `Not until you have at least a ${HOUSING.flat.label.toLowerCase()}.`
+      : fertility(s, p) <= 0 ? fertilityNote(s, p) : ''),
     run: ({ s }) => { tryForBaby(s); return s.lastEvent; } },
 
   // ── practical ───────────────────────────────────────────────────────────────
@@ -270,7 +362,7 @@ export const INTERACTIONS = [
     run: ({ s, p }) => { const g = move(s, p,-rint(8, 16)); s.mental = clamp(s.mental - 3); return `You and ${first(p)} said things. (${g})`; } },
 
   { id: 'blame', group: 'mean', label: 'Blame them', blurb: 'For how any of this turned out', ap: COST.chat,
-    when: ({ p }) => (p.relationship || 0) >= 20,
+    when: ({ p, rel }) => isSpouse(rel) || (p.relationship || 0) >= 20,
     run: ({ s, p }) => { const g = move(s, p,-rint(14, 25)); s.mental = clamp(s.mental - 6); return `You told ${first(p)} it was their fault. Some of it was. (${g})`; } },
 
   { id: 'cutoff', group: 'mean', label: 'Cut them out of your life', blurb: 'Gone, and not coming back',

@@ -141,10 +141,51 @@ const reach = new Set([...onMum, ...onContact, ...keen, ...married, ...onKid, ..
   ...ids(st({ people: [{ ...contact(), relationship: 94 }] }), 'c1'),
   // a contact who actually makes films — that is who you can propose something to
   ...ids(st({ people: [{ ...contact(), role: 'Film Director', relationship: 94 }] }), 'c1'),
-  ...ids(st({ family: [{ ...mum(), relationship: 90 }] }), 'f1')]);
+  ...ids(st({ family: [{ ...mum(), relationship: 90 }] }), 'f1'),
+  // a spouse with something of yours opening next month — the carpet is open
+  ...ids(st({ family: [spouse()], releases: [{ id: 'r1', title: 'Opening', due: 2030 * 12 + 4 }] }), 'f2')]);
 const unreachable = INTERACTIONS.map((a) => a.id).filter((id) => !reach.has(id));
 ok('no dead entries in the menu', unreachable.length === 0, unreachable.join(','));
 ok('every action belongs to a real group', INTERACTIONS.every((a) => GROUPS.some((gr) => gr.id === a.group)));
+
+// ── a marriage is not a date ─────────────────────────────────────────────────
+// Maxi, married to Ivo for years: "Kiss them — Not yet, get closer first." A spouse runs on the
+// marriage now: nothing is locked by closeness, and how it goes reads the marriage.
+{
+  const ivo = (r, o = {}) => ({ id: 'f2', name: 'Ivo Moon', relation: 'Spouse', age: 71, alive: true, relationship: r, job: 'architect', wants: 'quiet', marriedOn: 2061 * 12, ...o });
+  const cold = interactionsFor(st({ family: [ivo(8)], cash: 200000 }), 'f2');
+  const has = (id) => cold.find((a) => a.id === id);
+  ok('no first-date moves on a spouse', !has('flirt') && !has('kiss') && !has('night') && !has('evening') && !has('deep'), cold.map((a) => a.id).join(','));
+  ok('the marriage has its own: evening, trip, premiere, the future, intimacy', ['mEvening', 'mTrip', 'mPremiere', 'mFuture', 'mClose'].every((id) => has(id) && has(id).group === 'together'));
+  ok('at 8, nothing about closeness is locked', ['mEvening', 'mTrip', 'mFuture', 'mClose', 'advice', 'blame'].every((id) => has(id).open && !has(id).why),
+    cold.filter((a) => !a.open || a.why).map((a) => a.id + ': ' + a.why).join(' | '));
+  ok('and nothing anywhere says "get closer first"', !cold.some((a) => /get closer/i.test(a.why)));
+  // Open is not the same as easy: at 8 they mostly pull away, at 90 they mostly do not.
+  const tries = (r) => { let warm = 0, away = 0; for (let i = 0; i < 300; i++) { const s = st({ family: [ivo(r)] }); interact(s, 'f2', 'mClose'); if (/pulls away/.test(s.lastEvent)) away++; else if (/used to be/.test(s.lastEvent)) warm++; } return { warm, away }; };
+  const c8 = tries(8), c90 = tries(90);
+  ok('a cold marriage pulls away: "We haven\'t been okay for a while."', c8.away > 120 && c8.away > c8.warm, JSON.stringify(c8));
+  ok('a warm one does not', c90.away === 0 && c90.warm > 220, JSON.stringify(c90));
+  // What they want decides the carpet.
+  const opening = [{ id: 'r1', title: 'Night Ferry', due: 2030 * 12 + 4 }];
+  const quiet = st({ family: [ivo(60)], releases: opening.map((r) => ({ ...r })) }); interact(quiet, 'f2', 'mPremiere');
+  const loud = st({ family: [ivo(60, { wants: 'thelife' })], releases: opening.map((r) => ({ ...r })) }); interact(loud, 'f2', 'mPremiere');
+  ok('somebody who wants a quiet life pays for the carpet', quiet.family[0].relationship < 60 && /will not smile/.test(quiet.lastEvent), quiet.lastEvent);
+  ok('somebody who wants the life loves it', loud.family[0].relationship > 60 && /Night Ferry/.test(loud.lastEvent), loud.lastEvent);
+  ok('and once they are coming, they are coming', /already coming/.test(interactionsFor(loud, 'f2').find((a) => a.id === 'mPremiere').why));
+  ok('no premiere to go to says so on the button', /Nothing of yours opens/.test(interactionsFor(st({ family: [ivo(60)] }), 'f2').find((a) => a.id === 'mPremiere').why));
+  // A week away costs money and is not a monthly button.
+  const away = st({ family: [ivo(60)], cash: 100000 }); interact(away, 'f2', 'mTrip');
+  ok('a trip costs money and energy', away.cash === 100000 - 2500 && away.ap === 100 - 40, `${away.cash} ${away.ap}`);
+  away.month += 2;
+  ok('and not again for half a year', /Not again so soon/.test(interactionsFor(away, 'f2').find((a) => a.id === 'mTrip').why));
+  ok('not in the middle of a shoot', /on a shoot/.test(interactionsFor(st({ family: [ivo(60)], production: { id: 'p' } }), 'f2').find((a) => a.id === 'mTrip').why));
+  // Too late for a child is said on the button, not after it has taken the evening.
+  const late = interactionsFor(st({ ageY: 66, family: [ivo(50, { gender: 'male' })], housing: 'house' }), 'f2').find((a) => a.id === 'baby');
+  ok('too late for a child says so before you press it', !!late.why && /other ways/.test(late.why), late.why);
+  // Dating is untouched: a partner still flirts, still waits for the kiss.
+  const dating = interactionsFor(st({ partner: { ...date(), relationship: 30 } }), 'd1');
+  ok('a partner still dates, gates and all', dating.some((a) => a.id === 'flirt') && !dating.find((a) => a.id === 'kiss').open && !dating.some((a) => a.group === 'together'));
+}
 
 console.log(fails ? `\n${fails} FAILED` : '\nall passed');
 process.exit(fails ? 1 : 0);

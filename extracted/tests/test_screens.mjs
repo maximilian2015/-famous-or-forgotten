@@ -405,6 +405,20 @@ await inState('A shooting day · how are you playing it', {
   await inState('An event · a friend asks for the rent', { people: me.people, pendingArc: me.pendingArc },
     /^(?=[\s\S]*Maya Ortiz · a friend)(?=[\s\S]*€2,400 short on the rent)(?=[\s\S]*Pay it)(?=[\s\S]*Maya owes you)(?=[\s\S]*Lend it)(?=[\s\S]*Let me think about it)/);
 }
+// A spouse's card runs on the marriage: who they are, a Together section, and nothing locked by
+// closeness. Maxi, married for years: "Kiss them — Not yet, get closer first."
+{
+  const ivo = { id: 'fIvo', name: 'Ivo Moon', relation: 'Spouse', gender: 'male', age: 71, alive: true, relationship: 8, job: 'architect', wants: 'quiet', marriedOn: 2061 * 12, livingTogether: true };
+  const tapIn = async (W2, find) => { const el = find(W2.document); if (el) el.dispatchEvent(new W2.MouseEvent('click', { bubbles: true })); await sleep(300); };
+  const btn = (re) => (d) => [...d.querySelectorAll('button')].find((b) => re.test((b.textContent || '').trim()));
+  await inState('People · a spouse, on the marriage', { family: [...(save.family || []).filter((p) => p.relation !== 'Spouse'), ivo], partner: null },
+    /^(?![\s\S]*get closer first)(?![\s\S]*Kiss them)(?=[\s\S]*Wants a quiet life · married since 2061)(?=[\s\S]*Together)(?=[\s\S]*Take a trip)(?=[\s\S]*Bring them to the premiere)(?=[\s\S]*Talk about the future)(?=[\s\S]*Intimacy)/,
+    async (W2) => {
+      await tapIn(W2, btn(/People$/));
+      await tapIn(W2, btn(/^Family/));
+      await tapIn(W2, (d) => { const all = [...d.querySelectorAll('div,span')].filter((e) => (e.textContent || '').includes('Ivo Moon')); return all.filter((e) => ![...e.children].some((k) => (k.textContent || '').includes('Ivo Moon'))).pop(); });
+    });
+}
 // And the critics as stars, never as a second score out of ten beside the first. Maxi's card
 // read SCORE 5.9 and CRITICS 3.5: four critics, two stars from most and one from a harsh one.
 {

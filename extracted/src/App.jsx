@@ -50,7 +50,7 @@ import { HOUSING } from './engine/economy.js';
 import { Phone } from './phone/Phone.jsx';
 import { an, count } from './engine/text.js';
 import { inCareer } from './engine/stage.js';
-import { hostName } from './systems/life/dating.js';
+import { hostName, wantsOf } from './systems/life/dating.js';
 import { comboOf, COMBOS, agentDropped } from './systems/meta/standing.js';
 import { theme, setSkin, skinId, onSkinChange } from './ui/theme.js';
 import { THEMES, THEME_ORDER } from './ui/skins.js';
@@ -1050,6 +1050,10 @@ function PersonSheet({ g, id, onClose }) {
         <div style={{ flex: 1 }}>
           <div style={{ fontSize: 19, fontWeight: 900 }}>{p.name}</div>
           <div style={{ fontSize: 12, color: theme.muted, marginTop: 2 }}>{p.relation || (rel === 'partner' ? 'Partner' : p.role)}{(p.born ? (g.year || 0) - p.born : p.age) != null ? ` · ${p.born ? (g.year || 0) - p.born : p.age}` : ''}{p.job ? ` · ${p.job}` : ''}{rel === 'contact' && g.partner && g.partner.contactId === p.id ? <span style={{ color: '#ff8ab5', fontWeight: 800 }}> · seeing each other</span> : null}</div>
+          {/* Who they are, not only what they are to you. Maxi: "it is not clear who he is" —
+              the wedding has always kept what they want and when it was (dating.js). */}
+          {rel === 'spouse' && <div style={{ fontSize: 11.5, color: '#ff8ab5', marginTop: 2, fontWeight: 700 }}>
+            {wantsOf(p).label}{p.marriedOn != null ? ` · married since ${Math.floor(p.marriedOn / 12)}` : ''}</div>}
           <BondBar value={p.relationship} height={6} />
           <div style={{ fontSize: 11, color: relBand(p.relationship || 0).tone === 'bad' ? theme.bad : theme.muted }}>
             {relBand(p.relationship || 0).label} · {Math.round(p.relationship || 0)}
