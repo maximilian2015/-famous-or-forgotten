@@ -1293,6 +1293,11 @@ function closeRun(s, credit, r) {
     retention: !film && r.scale !== 'episode' ? retentionLine(credit.openViewers, credit.endViewers) : null,
     // When the column and the room have seen different films. career/release.js splitLine
     split: splitLine(r.rating, credit.audience),
+    // What it had to take to break even, and what that sum is made of. Maxi, at a 5.9 that took
+    // €216m on a €90m film and was called "broke even": "how much does the film itself cost?
+    // isn't that a success?" The card gave the gross and the budget and kept the third number —
+    // the one the verdict is actually measured against — to itself.
+    breakEven: film && credit.needed ? { need: credit.needed, budget: bud, sell: Math.round(campaignSpend(r) * 1000000), gross: credit.boxOffice || 0, verdict } : null,
     renewal: credit.renewal || null,
     body: r.worldHit
       ? 'Nobody expected this. It has stopped being a film and started being an event.'
