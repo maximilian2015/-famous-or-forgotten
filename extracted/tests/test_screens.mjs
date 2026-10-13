@@ -409,6 +409,14 @@ await inState('A shooting day · how are you playing it', {
 await inState('The run is over · what it had to take', { bigMoment: { id: 'verdict', kind: 'bad', title: 'This Lantern', score: '5.9', money: '€216m on a €90m film, 6 weeks', verdict: 'broke even',
   genre: 'Drama', scale: 'feature', breakEven: { need: 209250000, budget: 90000000, sell: 49500000, gross: 216000000, verdict: 'broke even' } } },
   /^(?=[\s\S]*To break even it had to take about)(?=[\s\S]*€209m)(?=[\s\S]*the €90m film, €50m to sell it)(?=[\s\S]*1\.03 times that)(?=[\s\S]*0\.7 to 1\.25)/);
+// And the critics as stars, never as a second score out of ten beside the first. Maxi's card
+// read SCORE 5.9 and CRITICS 3.5: four critics, two stars from most and one from a harsh one.
+{
+  const rv = (stars) => ({ critic: 'A. Critic', outlet: 'The Paper', stars, text: 'It is a film.' });
+  await inState('The run is over · the critics in stars', { bigMoment: { id: 'verdict', kind: 'bad', title: 'This Lantern', score: '5.9', money: '€216m on a €90m film, 6 weeks', verdict: 'broke even',
+    genre: 'Comedy', scale: 'feature', reviews: { grade: 'C+', audience: 6.7, critics: 3.5, reviews: [rv(2), rv(2), rv(1), rv(2)] } } },
+    /^(?![\s\S]*Critics\s*3\.5)(?=[\s\S]*Critics ★★ of 5 · 4 reviews)(?=[\s\S]*Audience 6\.7)/);
+}
 // The set asking for something this month: the row with the answers, on Home and in the Calendar.
 {
   const asked = { ...SET, demand: { id: 'nights', at: NOW } };

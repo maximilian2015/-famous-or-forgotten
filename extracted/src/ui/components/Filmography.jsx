@@ -2,12 +2,13 @@ import { useState } from 'react';
 import { dispatch } from '../../state/store.js';
 import { count } from '../../engine/text.js';
 import { canTakeSet, monthsUntilFree } from '../../engine/sets.js';
-import { isHit, isFlop, moneyVsReviews } from '../../systems/meta/knownFor.js';
+import { isHit, isFlop, hitTags, moneyVsReviews } from '../../systems/meta/knownFor.js';
 import { sequelDue } from '../../systems/career/franchise.js';
 import { isBillion } from '../../systems/career/billion.js';
 import { monthLabel } from '../../systems/meta/press.js';
 import { pushState, askToPush } from '../../systems/career/contract.js';
 import { isMinor } from '../../systems/meta/legacy.js';
+import { criticStars } from '../../systems/world/critics.js';
 import { theme } from '../theme.js';
 import { money, allSets } from '../helpers.js';
 import { Poster } from './Poster.jsx';
@@ -176,9 +177,12 @@ function CreditRow({ group, g }) {
       {/* the marks that never come off, and what it made */}
       {(group.worldHit || hit || group.askers > 0 || group.askerNoms > 0 || c.comeback > 0 || group.boxOffice > 0 || group.viewers > 0 || c.festival) && (
         <div style={{ fontSize: 10.5, marginTop: 4, display: 'flex', gap: 7, alignItems: 'center', flexWrap: 'wrap' }}>
+          {/* Each reason named for what it is, not one ★ HIT for the money and the reviews at
+              once, and the money only when the film made it — knownFor.js hitTags. A cult
+              classic is a different thing again and can stand beside either. */}
           {group.worldHit ? <span style={{ fontWeight: 900, color: theme.gold }}>🌍 WORLD HIT</span>
-            : hit ? <span style={{ fontWeight: 900, letterSpacing: '.06em', color: theme.gold }}>★ HIT</span>
-            : c.cult ? <span style={{ fontWeight: 900, letterSpacing: '.06em', color: theme.accent }}>🌙 CULT CLASSIC · {c.cult}</span> : null}
+            : hitTags(c).map((t) => <span key={t.id} style={{ fontWeight: 900, letterSpacing: '.06em', color: theme.gold }}>{t.text}</span>)}
+          {!group.worldHit && c.cult ? <span style={{ fontWeight: 900, letterSpacing: '.06em', color: theme.accent }}>🌙 CULT CLASSIC · {c.cult}</span> : null}
           {/* Where it screened, and what happened there. See release.js, the festival. */}
           {c.festival && <span style={{ fontWeight: 900, letterSpacing: '.06em', color: c.festival.result === 'prize' ? theme.gold : c.festival.result === 'sold' ? theme.good : theme.muted }}>
             🎞️ {String(c.festival.name).replace(/^the /, '').toUpperCase()} · {c.festival.result === 'prize' ? 'PRIZE' : c.festival.result === 'sold' ? 'SOLD' : 'NEVER RELEASED'}</span>}
@@ -215,7 +219,8 @@ function CreditRow({ group, g }) {
           {/* What was written, on the same row as the marks — it used to cost every credit
               a line of its own. world/critics.js keeps it from the night the run closed. */}
           {c.reviews && !c.running && <button onClick={() => setShowReviews(!showReviews)} style={{ background: 'none', border: 'none', padding: 0, cursor: 'pointer', fontSize: 10.5, fontWeight: 800, color: theme.accent }}>
-            Kinomark {c.reviews.grade} · {c.reviews.audience.toFixed(1)}/{c.reviews.critics.toFixed(1)} {showReviews ? '▾' : '▸'}
+            {/* "6.7/3.5" read as two scores out of ten. The critics are stars (critics.js). */}
+            Kinomark {c.reviews.grade} · audience {c.reviews.audience.toFixed(1)} · critics {criticStars(c.reviews.critics)} {showReviews ? '▾' : '▸'}
           </button>}
         </div>
       )}

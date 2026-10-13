@@ -213,6 +213,16 @@ export function audienceScore(rating, verdict, genre, audience = null) {
   return Math.round(clamp(v + (Math.random() - 0.5) * 0.8, 1, 10) * 10) / 10;
 }
 
+// How the page's critics figure is written: in stars, to the nearest half. It is their average
+// stars doubled (reviewsFor below), and as a number out of ten it sat beside the film's score as
+// a second, lower score — Maxi's 5.9 read "critics 3.5", which was two stars from a neutral
+// critic and one from a harsh one.
+export function criticStars(critics) {
+  const n = Math.max(0, Math.min(10, Math.round(Number(critics) || 0))) / 2;
+  const full = Math.floor(n);
+  return full || n % 1 ? '★'.repeat(full) + (n % 1 ? '½' : '') : '—';
+}
+
 // ctx: { title, rating, genre, verdict, director, actorName, meter, fellApart, viaPartner, worldHit,
 //        take, costar, costarIcon, comeback, sequel, lateShelf, month }
 export function reviewsFor(s, ctx) {

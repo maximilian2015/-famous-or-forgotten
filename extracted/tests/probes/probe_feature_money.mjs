@@ -213,16 +213,19 @@ console.log(`\n3. ★ HIT (knownFor.js hitWeight > 0) AGAINST THE COMMERCIAL VER
 for (const v of ['smash', 'profitable', 'broke even', 'bomb']) {
   const xs = credits.filter((x) => x.c.verdict === v);
   const hits = xs.filter((x) => x.hit > 0);
-  const why = { gross200: 0, gross300: 0, score: 0, rank: 0, nom: 0, other: 0 };
+  // Since film-labels the money only counts when the film made it, so a film that broke even or
+  // bombed can be a hit only by its reviews, the year's chart or an Asker.
+  const why = { money: 0, score: 0, rank: 0, nom: 0 };
   for (const x of hits) {
-    const c = x.c, sc = c.score != null ? c.score : (c.rating || 0) / 10, bo = c.boxOffice || 0;
+    const c = x.c, sc = c.score != null ? c.score : (c.rating || 0) / 10;
     if (c.status === 'World Hit' || (c.asker || 0) > 0 || (c.nominated || 0) > 0) why.nom++;
-    else if (bo >= 300e6) why.gross300++;
-    else if (bo >= 200e6) why.gross200++;
+    else if (c.verdict === 'smash' || c.verdict === 'profitable') why.money++;
     else if (sc >= 7.5) why.score++;
     else why.rank++;
   }
-  console.log(`   ${v.padEnd(11)} n=${pad(xs.length, 4)}  ★HIT ${pad(hits.length, 4)} (${pct(xs, (x) => x.hit > 0)}%)  — because: €300m+ ${why.gross300}, €200m+ ${why.gross200}, score ≥7.5/8.5 ${why.score}, year's top ten ${why.rank}, Asker/world hit ${why.nom}`);
+  console.log(`   ${v.padEnd(11)} n=${pad(xs.length, 4)}  ★HIT ${pad(hits.length, 4)} (${pct(xs, (x) => x.hit > 0)}%)  — because: made money ${why.money}, score ≥7.5 ${why.score}, year's top ten ${why.rank}, Asker/world hit ${why.nom}`);
+  const money = hits.filter((x) => x.c.verdict !== 'smash' && x.c.verdict !== 'profitable' && KF.hitTags(x.c).some((t) => t.id === 'money')).length;
+  if (money) console.log(`   FAIL ${money} ${v} films carry 💰 COMMERCIAL HIT`);
 }
 const fb = credits.filter((x) => x.c.scale === 'feature' && x.c.verdict === 'broke even');
 console.log(`   features that broke even: ${fb.length}, of them ★HIT ${pct(fb, (x) => x.hit > 0)}%; blockbusters that BOMBED and are ★HIT: ${credits.filter((x) => x.c.scale === 'blockbuster' && x.c.verdict === 'bomb' && x.hit > 0).length} of ${credits.filter((x) => x.c.scale === 'blockbuster' && x.c.verdict === 'bomb').length}`);

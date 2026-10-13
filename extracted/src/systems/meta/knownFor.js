@@ -12,8 +12,16 @@ function rankOf(s, c) {
 // A hit is what the business would call one — by the reviews OR by the money. Maxi: "the
 // film took 627 million and was on the year's list, and it still says the series?" A score
 // alone missed a blockbuster that made its money and sat sixth in its year. The weight is
-// how big a hit: a world hit, an Asker, a smash or three hundred million, the year's top
-// ten or a rave, and the plain good ones.
+// how big a hit: a world hit, an Asker, a smash, the year's top ten or a rave, and the plain
+// good ones.
+//
+// The money counts only when the film MADE money. This used to read the gross in euros:
+// €200m was a hit and €300m was "the one that printed money", whatever the picture cost. A
+// €90m feature that took €216m against the €209m it needed — BROKE EVEN — wore ★ HIT, and so
+// did 23 of 25 blockbusters that bombed, because a €577m tentpole that takes €300m has lost a
+// fortune and is still three hundred million (docs/handoffs/2026-10-13-hit-boxoffice-budget-
+// audit.md). The verdict is already that sum, so it is the only thing asked now.
+const madeMoney = (c) => c.verdict === 'smash' || c.verdict === 'profitable';
 export function hitWeight(c, s) {
   if (!c || minor(c) || c.running) return 0;
   const score = scoreOf(c), bo = c.boxOffice || 0;
@@ -23,10 +31,23 @@ export function hitWeight(c, s) {
   // now, and so is being up for one. A nomination sits above a smash and below a win,
   // which is where the business puts it.
   if ((c.nominated || 0) > 0) return 3.5;
-  if (c.verdict === 'smash' || bo >= 300e6) return 3;
-  if (score >= 8.5 || rankOf(s, c) <= 10 || bo >= 200e6) return 2;
-  if (score >= 7.5 || (c.verdict === 'profitable' && c.scale === 'blockbuster')) return 1;
+  if (c.verdict === 'smash') return 3;
+  // The year's chart is a list of grosses, so a bomb can sit on it — the expensive flop every
+  // year has. It is still named on the credit (hitTags) and does not make the film a hit.
+  if (score >= 8.5 || (rankOf(s, c) <= 10 && c.verdict !== 'bomb') || (madeMoney(c) && bo >= 200e6)) return 2;
+  if (score >= 7.5 || madeMoney(c)) return 1;
   return 0;
+}
+// What made it one, each named for what it is. One word — HIT — stood for the money, the
+// reviews and the year's chart at once, and a player reads that word as "it worked". The
+// Askers, a world hit and the year's chart ("#3 OF 2071") have their own marks on the credit
+// already (Filmography.jsx), so they are not here.
+export function hitTags(c) {
+  if (!c || minor(c) || c.running) return [];
+  const out = [];
+  if (madeMoney(c)) out.push({ id: 'money', text: '💰 COMMERCIAL HIT' });
+  if (scoreOf(c) >= 7.5) out.push({ id: 'critics', text: '★ CRITICAL HIT' });
+  return out;
 }
 export function isHit(c, s) { return hitWeight(c, s) > 0; }
 export function isFlop(c) {
@@ -42,8 +63,8 @@ function whyOf(s, c) {
   if ((c.asker || 0) > 0) return (c.asker || 0) > 1 ? `${c.asker} Askers` : 'Asker';
   if ((c.nominated || 0) > 0) return 'Asker nominee';
   if (c.verdict === 'smash') return 'smash';
-  if ((c.boxOffice || 0) >= 200e6) return '€' + Math.round((c.boxOffice || 0) / 1e6) + 'm';
-  if (rankOf(s, c) <= 10) return '#' + rankOf(s, c) + ' of ' + c.year;
+  if (madeMoney(c) && (c.boxOffice || 0) >= 200e6) return '€' + Math.round((c.boxOffice || 0) / 1e6) + 'm';
+  if (rankOf(s, c) <= 10 && c.verdict !== 'bomb') return '#' + rankOf(s, c) + ' of ' + c.year;
   return scoreOf(c).toFixed(1) + '/10';
 }
 // Everything the business would call a hit, biggest first. Maxi: "make Known for tappable
@@ -82,7 +103,7 @@ function bandsFor(s, c, ctx) {
   if (c.worldHit || c.status === 'World Hit') out.push('The one the whole world saw');
   if (sc >= 8 && sc === ctx.topScore) out.push('The best thing you have done');
   if (c.verdict === 'smash') out.push('A smash', 'Another smash');
-  if (bo >= 300e6) out.push('The one that printed money');
+  if (bo >= 300e6 && madeMoney(c)) out.push('The one that printed money');
   const r = rankOf(s, c);
   if (r <= 10) out.push(`Number ${r} of ${c.year}`);
   if (sc >= 8.5) out.push('The reviews nobody expected');
@@ -114,8 +135,14 @@ export function theHits(s, limit = CREAM_MAX) {
   return shown.map((x) => {
     // The weight bands are the floor, for a wall where every specific reason is already spoken
     // for. They are allowed to repeat; the reasons above are not.
+    // Each floor says the reason the film is on the wall. A nomination used to fall through to
+    // "printed money" (3.5 is above 3), and a weight of two said "A real hit" whether the two
+    // was the money, the reviews or the chart.
+    const c = x.c, made = madeMoney(c);
     const floor = x.w >= 5 ? 'The one the whole world saw' : x.w >= 4 ? 'The one that won'
-      : x.w >= 3 ? 'The one that printed money' : x.w >= 2 ? 'A real hit' : 'It worked';
+      : x.w >= 3.5 ? 'The performance they nominated' : x.w >= 3 ? 'The one that printed money'
+      : x.w >= 2 ? (made && (c.boxOffice || 0) >= 200e6 ? 'A real hit' : scoreOf(c) >= 8.5 ? 'The reviews nobody expected' : `One of the big ones of ${c.year}`)
+      : made ? 'It made its money' : 'The critics liked it';
     const band = bandsFor(s, x.c, ctx).find((b) => !used.has(b)) || floor;
     used.add(band);
     return {

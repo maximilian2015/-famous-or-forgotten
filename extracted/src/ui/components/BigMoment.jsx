@@ -3,6 +3,7 @@ import { theme } from '../theme.js';
 import { FONT, FONT_DISPLAY } from '../chrome.js';
 import { play, playGenre } from '../sfx.js';
 import { Avatar } from './Avatar.jsx';
+import { criticStars } from '../../systems/world/critics.js';
 
 // Some things should stop the game rather than scroll past in a list. Eviction, an
 // inheritance, the street. One modal, a drawn scene, and a sound made in code —
@@ -448,7 +449,8 @@ export function Reviews({ page, accent, compact }) {
     {!compact && <div style={{ display: 'flex', gap: 8, marginBottom: 10 }}>
       <Figure label="Kinomark" value={page.grade} accent={accent} />
       <Figure label="Audience" value={page.audience.toFixed(1)} accent={theme.good} />
-      <Figure label="Critics" value={page.critics.toFixed(1)} accent={theme.accent} />
+      {/* In stars, because that is what it is: the named critics below, averaged (critics.js). */}
+      <Figure label="Critics" value={criticStars(page.critics)} note={`of 5 · ${page.reviews.length} reviews`} accent={theme.gold} />
     </div>}
     {page.reviews.map((r, i) => (<div key={i} style={{ padding: '7px 0', borderTop: `1px solid ${theme.line}` }}>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', gap: 8 }}>
@@ -460,9 +462,10 @@ export function Reviews({ page, accent, compact }) {
   </div>);
 }
 
-function Figure({ label, value, accent }) {
+function Figure({ label, value, accent, note }) {
   return (<div style={{ flex: 1, background: theme.panel2, border: `1px solid ${theme.line}`, borderRadius: 12, padding: '9px 6px' }}>
     <div style={{ fontSize: 9, fontWeight: 800, letterSpacing: '.12em', textTransform: 'uppercase', color: theme.muted }}>{label}</div>
     <div style={{ fontSize: 16, fontWeight: 900, color: accent, marginTop: 2 }}>{value}</div>
+    {note && <div style={{ fontSize: 9.5, color: theme.muted, marginTop: 1 }}>{note}</div>}
   </div>);
 }
