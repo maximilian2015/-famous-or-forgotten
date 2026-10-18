@@ -36,10 +36,16 @@ export function generateOffer(s) {
   let tier;
   if (acc.aaa && fame >= 60 && chance(40)) tier = 'tentpole';
   else if (fame >= 35) tier = 'lead'; else tier = 'supporting';
+  // The size of the PROJECT is the project's, not the size of your part (Budget V2). It used to
+  // be read straight off the part — a lead was always a studio feature and a supporting part was
+  // always an indie — so a lead in a small film and a supporting part in a big one could not
+  // come through an agent at all. `tier` stays what it is: how big your part is.
+  const scale = scaleForOffer(tier, fame);
   // An offer that reached you through an agent is priced off the same quote tables as
-  // everything else, so it cannot drift out of step with what OpenCall pays.
-  const medium = tier === 'tentpole' ? 'film_tentpole' : tier === 'lead' ? 'film_studio' : 'film_indie';
-  const share = tier === 'supporting' ? 0.6 : 1;
+  // everything else, so it cannot drift out of step with what OpenCall pays. Priced by the
+  // project's size and then by the part: a supporting part in a tentpole is studio money.
+  const medium = scale === 'blockbuster' ? (tier === 'supporting' ? 'film_studio' : 'film_tentpole') : scale === 'feature' ? 'film_studio' : 'film_indie';
+  const share = tier === 'supporting' ? (scale === 'blockbuster' ? 0.8 : 0.6) : 1;
   const quote = quoteFor(s, medium) || quoteFor(s, 'film_indie');
   const prestige = { tentpole: rint(70, 95), lead: rint(45, 70), supporting: rint(20, 45) }[tier];
   const salary = Math.round(quote * share * (0.85 + Math.random() * 0.45));
@@ -53,13 +59,29 @@ export function generateOffer(s) {
   return { id: uid(s, 'off'), via: 'agent', director: dir ? dir.name : undefined, directorId: dir ? dir.id : undefined,
     projectTitle: (tier === 'tentpole' ? '⭐ ' : '') + title(s, genre),
     role: tier === 'supporting' ? 'Supporting' : 'Lead',
-    type: s.dream === 'singer' ? (tier === 'tentpole' ? 'World Tour' : 'Album') : (tier === 'tentpole' ? 'Blockbuster' : 'Feature Film'),
+    type: s.dream === 'singer' ? (tier === 'tentpole' ? 'World Tour' : 'Album') : ({ blockbuster: 'Blockbuster', feature: 'Feature Film', indie: 'Indie Film' }[scale]),
     genre,
-    salary, months: tier === 'tentpole' ? rint(5, 8) : tier === 'lead' ? rint(3, 5) : rint(2, 3), fame: { tentpole: 9, lead: 5, supporting: 2 }[tier], prestigeScore: prestige, tier,
+    // How long the shoot is follows the picture, and a smaller part in it is fewer days.
+    salary, months: monthsForOffer(scale, tier), fame: { tentpole: 9, lead: 5, supporting: 2 }[tier], prestigeScore: prestige, tier,
     // What kind of picture it is — decides the post-production wait and the box office it can take.
-    scale: { tentpole: 'blockbuster', lead: 'feature', supporting: 'indie' }[tier],
-    stability: rollStability({ tentpole: 'blockbuster', lead: 'feature', supporting: 'indie' }[tier]),
+    scale,
+    stability: rollStability(scale),
     deadline: rint(2, 4) };
+}
+// Which size of picture an agent's offer is for. A tentpole part is a tentpole; a lead is mostly
+// a studio feature and sometimes a small film; a supporting part is mostly small, often a studio
+// picture, and now and then a minor part in something enormous.
+export function scaleForOffer(tier, fame = 0) {
+  if (tier === 'tentpole') return 'blockbuster';
+  if (tier === 'lead') return chance(68) ? 'feature' : 'indie';
+  const r = Math.random() * 100;
+  return r < (fame >= 15 ? 10 : 4) ? 'blockbuster' : r < 45 ? 'feature' : 'indie';
+}
+function monthsForOffer(scale, tier) {
+  const big = tier !== 'supporting';
+  if (scale === 'blockbuster') return big ? rint(5, 8) : rint(3, 5);
+  if (scale === 'feature') return big ? rint(3, 5) : rint(2, 3);
+  return big ? rint(2, 4) : rint(1, 3);
 }
 // The one in a million. Somebody you are close to is in the business, and there was a
 // dinner, and somebody at it was casting. Straight to a studio picture whatever your fame
