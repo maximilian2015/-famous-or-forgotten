@@ -661,7 +661,7 @@ function wrapProduction(s, p) {
   let exceptional = false;
   if (rating >= 90 && p.tier !== 'supporting') {
     let odds = 1.5 + (rating - 90) * 0.4;
-    if (p.genre === hotGenre(s)) odds += 7;
+    if (p.genre === hotGenre(s, p.scale)) odds += 7;   // a tentpole reads the old track for now (meta/market.js)
     if (p.campaign) odds += 5;
     exceptional = chance(Math.min(18, odds));
   }

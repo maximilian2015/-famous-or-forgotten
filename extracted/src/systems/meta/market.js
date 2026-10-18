@@ -23,6 +23,20 @@
 // years in 95% of cases, by 24% on average. After a lean year it rose. The gap between making
 // too many and making too few is 27 points of appetite, and not one line of that is scripted.
 //
+// What a genre is judged against (the genre audit, 18 Oct 2026). It used to be judged against
+// the other genres: did horror do better than everything else this year? Horror always does — it
+// has the widest natural audience (APPEAL in career/release.js) — so it rose every year, the
+// pictures it then lifted proved it right, and in played lives horror was hot 84% of all years
+// with a hot spell of thirty-two, while drama was never hot once. The same horror-is-popular was
+// being counted in the demand, again in the crowd, and a third time here.
+//
+// Now every release reports how it did against what a picture of ITS scale and ITS genre
+// ordinarily does in the market it opened into (genreResidual in release.js): a drama that
+// outdraws the usual drama heats drama, even if it took less than a horror picture; a horror
+// picture that takes less than horror usually does cools horror. One picture is an anecdote,
+// several are evidence. And every year a tenth of the way back towards neutral, so nothing stays
+// hot or cold on old history alone.
+//
 // Three things had to be got right before it did any of that, and each one was wrong first:
 //
 //   1. Glut has to be measured RELATIVE to what everything else is supplying. In absolute
@@ -55,6 +69,9 @@ export function marketOf(s) {
     s.market = m;
   }
   if (s.market.total == null) s.market.total = 1;    // saves made before there was a total
+  // TEMPORARY: the old way of judging, kept running for tentpoles alone (see TENTPOLES below). A
+  // save from before it starts it where its one trend stood, which is exactly what it was.
+  if (!s.market.legacy) s.market.legacy = { ...s.market.trend };
   return s.market;
 }
 
@@ -77,10 +94,17 @@ export function totalWord(s) {
   return 'nobody is going to the cinema this year';
 }
 // The share alone, for anybody who needs to say which genres are up against which.
-export function genreShare(s, genre) {
+// TENTPOLES, TEMPORARY. A blockbuster still reads the market judged the old way, against the
+// other genres. The Billion Club was calibrated on it: the billions were horror and science-
+// fiction tentpoles opening into a genre held permanently hot, and with the market judged fairly a
+// career's tentpoles past a billion fell from about 40% to about 22% (the audit, NO-MARKET). That
+// is a regression target protected for this pass, not how a tentpole should work; when tentpoles
+// are next tuned on their own, this track and its branch in marketYear go. test_genre_layers.mjs.
+const trackOf = (m, scale) => (scale === 'blockbuster' ? m.legacy : m.trend);
+export function genreShare(s, genre, scale) {
   const m = marketOf(s);
   if (!m || !genre) return 1;
-  return Math.max(0.5, (m.trend[genre] || 1) * (1 - fatigueOf(s, genre)));
+  return Math.max(0.5, (trackOf(m, scale)[genre] || 1) * (1 - fatigueOf(s, genre)));
 }
 
 export function fatigueOf(s, genre) {
@@ -94,16 +118,17 @@ export function fatigueOf(s, genre) {
 // What the appetite is worth right now: 0.5 dead, 1.0 ordinary, 1.5 everybody wants one.
 // What the appetite is worth right now: the genre's share of attention, times how much
 // attention there is to go round. 0.5 dead, 1.0 ordinary, 1.5 everybody wants one.
-export function appetiteFor(s, genre) {
+export function appetiteFor(s, genre, scale) {
   if (!genre) return totalDemand(s);
-  return Math.max(0.42, genreShare(s, genre) * totalDemand(s));
+  return Math.max(0.42, genreShare(s, genre, scale) * totalDemand(s));
 }
 
 // The hottest thing in town. Same signature as the old hotGenre, so every screen that asked
 // the calendar now asks the market — and the answer means something.
-export function hotGenre(s) {
+// A scale reads its own track: a tentpole asks the old one (TENTPOLES above), everything else the fair one.
+export function hotGenre(s, scale) {
   let best = GENRES[0], top = -1;
-  for (const g of GENRES) { const v = appetiteFor(s, g); if (v > top) { top = v; best = g; } }
+  for (const g of GENRES) { const v = appetiteFor(s, g, scale); if (v > top) { top = v; best = g; } }
   return best;
 }
 export function coldGenre(s) {
@@ -113,8 +138,8 @@ export function coldGenre(s) {
 }
 
 // For the screen, because a number out of nowhere is not information.
-export function appetiteWord(s, genre) {
-  const v = appetiteFor(s, genre);
+export function appetiteWord(s, genre, scale) {
+  const v = appetiteFor(s, genre, scale);
   if (v >= 1.22) return 'everybody wants one';
   if (v >= 1.08) return 'on the way up';
   if (v >= 0.94) return 'steady';
@@ -123,12 +148,12 @@ export function appetiteWord(s, genre) {
   return 'dead for now';
 }
 // And whether that is because the audience moved on or because the town drowned it.
-export function appetiteWhy(s, genre) {
+export function appetiteWhy(s, genre, scale) {
   const f = fatigueOf(s, genre);
-  const m = marketOf(s);
+  const tr = trackOf(marketOf(s), scale)[genre] || 1;
   if (f >= 0.22) return 'too many of them came out';
-  if ((m.trend[genre] || 1) >= 1.15) return 'the last few worked';
-  if ((m.trend[genre] || 1) <= 0.82) return 'the audience moved on';
+  if (tr >= 1.15) return 'the last few worked';
+  if (tr <= 0.82) return 'the audience moved on';
   return null;
 }
 
@@ -147,17 +172,22 @@ export function exposureOf(scale, campaignShare = 0.35, part = 1) {
   const again = 1 + Math.min(0.5, Math.max(0, (part || 1) - 1) * 0.14);
   return size * loud * again;
 }
-export function marketAfterRelease(s, genre, scale, ratio, campaignShare, part) {
+// ratio: how many came against the usual for the scale — the size of the business, and the old
+// judging the tentpoles still read. residual: against the usual for the scale AND the genre, in
+// the market it opened into — what a genre is judged on now (see the top of this file).
+export function marketAfterRelease(s, genre, scale, ratio, campaignShare, part, residual) {
   const m = marketOf(s);
   if (!m || !genre || !GENRES.includes(genre)) return s;
   m.glut[genre] = (m.glut[genre] || 0) + exposureOf(scale, campaignShare ?? 0.35, part ?? 1);
-  if (Number.isFinite(ratio)) {
-    const t = (m.tally[genre] = m.tally[genre] || { n: 0, sum: 0 });
-    t.n++; t.sum += ratio;
-  }
+  const t = (m.tally[genre] = m.tally[genre] || { n: 0, sum: 0 });
+  if (Number.isFinite(ratio)) { t.n++; t.sum += ratio; }
+  if (Number.isFinite(residual)) { t.rn = (t.rn || 0) + 1; t.res = (t.res || 0) + residual; }
   return s;
 }
 
+// How hard the evidence moves a genre, how many pictures make it evidence, and how fast it goes
+// back to ordinary. Measured on lives with nobody playing (tests/probes/probe_appetite.mjs).
+export const JUDGE = { gain: 0.3, sure: 2, back: 0.1 };
 // A year passes. See the three corrections at the top — all of them live in here.
 export function marketYear(s) {
   const m = marketOf(s);
@@ -165,31 +195,48 @@ export function marketYear(s) {
   const fat = {};
   for (const g of GENRES) fat[g] = fatigueOf(s, g);     // measured BEFORE the glut decays
   const meanFat = GENRES.reduce((n, g) => n + fat[g], 0) / GENRES.length;
-  let n = 0, sum = 0;
-  for (const g of GENRES) { const t = m.tally[g]; if (t && t.n) { n += t.n; sum += t.sum; } }
-  const marketMean = n ? sum / n : 1;
+  let n = 0, sum = 0, rn = 0, res = 0;
   for (const g of GENRES) {
     const t = m.tally[g];
-    if (t && t.n) {
-      // Did this genre do better than everything else did? That, and nothing absolute.
-      const mine = t.sum / t.n;
-      m.trend[g] += Math.max(-0.17, Math.min(0.19, (mine - marketMean) * 0.15));
+    if (t && t.n) { n += t.n; sum += t.sum; }
+    if (t && t.rn) { rn += t.rn; res += t.res; }
+  }
+  const marketMean = n ? sum / n : 1;
+  const resMean = rn ? res / rn : 1;
+  for (const g of GENRES) {
+    const t = m.tally[g];
+    if (t && t.rn && resMean > 0) {
+      // Did this genre's pictures do better than pictures of their kind usually do? Measured
+      // against the year's own average surprise, so a good year for everybody heats nobody.
+      // One picture is an anecdote: the evidence counts in full only as the pictures add up.
+      const own = t.res / t.rn / resMean - 1;
+      const sure = t.rn / (t.rn + JUDGE.sure);
+      m.trend[g] += Math.max(-0.17, Math.min(0.19, own * sure * JUDGE.gain));
     }
+    // TENTPOLES, TEMPORARY: their track is still judged the old way, against everything else.
+    if (t && t.n) m.legacy[g] += Math.max(-0.17, Math.min(0.19, (t.sum / t.n - marketMean) * 0.15));
     // Fatigue eats the appetite. This is the one that turns a boom into a bust: too much
     // horror does not only make you skip this horror film, it stops you being somebody who
     // goes to horror, for a few years.
     m.trend[g] -= (fat[g] - meanFat) * 0.42;
-    // And everything drifts back towards ordinary, slowly, because nothing stays anything.
-    m.trend[g] = m.trend[g] * 0.988 + 1.0 * 0.012;
+    m.legacy[g] -= (fat[g] - meanFat) * 0.42;
+    // And everything goes back towards ordinary, because nothing stays anything: a tenth of the
+    // way each year, so a genre is hot on what it did lately and not on what it did in 2040.
+    // (It was 1.2% a year, which with nothing to cool it meant never.)
+    m.trend[g] = 1 + (m.trend[g] - 1) * (1 - JUDGE.back);
     m.trend[g] = Math.max(0.5, Math.min(1.6, m.trend[g] + (Math.random() - 0.5) * 0.06));
+    m.legacy[g] = m.legacy[g] * 0.988 + 1.0 * 0.012;
+    m.legacy[g] = Math.max(0.5, Math.min(1.6, m.legacy[g] + (Math.random() - 0.5) * 0.06));
     m.glut[g] = (m.glut[g] || 0) * 0.5;
   }
   // Share is finite, enforced rather than hoped for. Only the SHAPE of it may move — the SIZE
   // of the thing being shared is the separate number below, which is the whole point of
   // splitting them: a genre can only get hot at another genre's expense, but the cinema as a
   // whole is free to have a good year or a bad one.
-  const mean = GENRES.reduce((acc, g) => acc + m.trend[g], 0) / GENRES.length;
-  if (mean > 0.01) for (const g of GENRES) m.trend[g] = Math.max(0.5, Math.min(1.6, m.trend[g] / mean));
+  for (const tr of [m.trend, m.legacy]) {
+    const mean = GENRES.reduce((acc, g) => acc + tr[g], 0) / GENRES.length;
+    if (mean > 0.01) for (const g of GENRES) tr[g] = Math.max(0.5, Math.min(1.6, tr[g] / mean));
+  }
   // How many people went this year against how many went last year. Slow, mean-reverting, and
   // once in a while something happens to the whole business at once.
   const swing = marketMean > 0 ? Math.max(-0.05, Math.min(0.06, (marketMean - 1) * 0.05)) : 0;
@@ -214,8 +261,10 @@ export function ageMarket(s, years = 12) {
       for (let j = 0; j < GENRES.length; j++) { r -= w[j]; if (r <= 0) { g = GENRES[j]; break; } }
       const scale = Math.random() < 0.25 ? 'blockbuster' : Math.random() < 0.45 ? 'feature' : 'indie';
       // A rough stand-in for how it did: the appetite it opened into, plus noise. Good enough
-      // to give the trends a history, and none of it is ever shown to anybody.
-      marketAfterRelease(s, g, scale, appetiteFor(s, g) * (0.6 + Math.random() * 0.9));
+      // to give the trends a history, and none of it is ever shown to anybody. Against its own
+      // kind, how it did is the noise alone.
+      const luck = 0.6 + Math.random() * 0.9;
+      marketAfterRelease(s, g, scale, appetiteFor(s, g, 'blockbuster') * luck, undefined, undefined, luck / 1.05);
     }
     marketYear(s);
   }

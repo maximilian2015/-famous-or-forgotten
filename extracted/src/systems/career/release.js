@@ -56,6 +56,11 @@ const BUDGET = { small: 1, festival: 1.5, indie: 12, feature: 90, blockbuster: 2
 // widths and the campaigns real budgets buy, an ordinary feature takes 0.56 of what it did and an
 // ordinary indie 0.54, so the yardstick is that much of the old flat budget.
 export const PAR = { small: 1, festival: 1.5, indie: 6.4, feature: 50, blockbuster: 220 };   // millions
+// What an ordinary run makes of an opening, by scale — the legs, the widening and the dice of a
+// picture nobody loved or hated. Measured on the world's own pictures so their average surprise
+// comes out at 1.00 (tests/probes/probe_market_par.mjs ordinary). The yardstick genreResidual reads.
+export const ORDINARY = { small: 1.48, festival: 1.48, indie: 3.38, feature: 3.37, blockbuster: 3.15 };
+const ORDINARY_NAME = 40;   // the fame of the name on an ordinary picture's poster
 // Television does not sell tickets. It has an audience, in millions per episode.
 const VIEWERS = { episode: [0.4, 6], recurring: [1, 9], prestige: [2, 14] };
 
@@ -270,7 +275,7 @@ export function demandFor(s, rel) {
   return demandCore({
     scale: rel.scale, genre: rel.genre,
     cast: [s.fame || 0, rel.withFame || 0],
-    appetite: appetiteFor(s, rel.genre),
+    appetite: appetiteFor(s, rel.genre, rel.scale),
     campaignTier: rel.campaignTier, budget: rel.budget ?? null,
     part: rel.part || 1, lastRating: rel.lastRating, appealMod: rel.appealMod,
     // Scandal is not the kind of talk that sells a ticket, which was always the rule here.
@@ -289,6 +294,29 @@ export function reachOf(rel) {
   if (!rel || !(rel.scale === 'feature' || rel.scale === 'indie')) return 1;
   const base = BUDGET[rel.scale];
   return Math.max(0.5, Math.min(1.4, Math.pow(budgetM(rel) / base, REACH.k)));
+}
+// How a picture did against its own kind. The expectation is the same arithmetic as the real
+// thing — demandCore, then the opening — for an ordinary picture of exactly this scale, genre,
+// budget, campaign and part, opening into exactly this market: everything about the picture's
+// KIND is in it, so what is left is what was its own (who was on the poster, how good it was, how
+// the crowd took it, luck). 1.0 is a picture that did exactly what pictures like it do. This is
+// what the genre market judges a genre on (meta/market.js): a drama against dramas, not against
+// horror pictures, and a dear picture's bigger campaign is not taken for appetite.
+export function genreResidual({ scale, genre, gross, budget = null, appetite = 1, campaignTier = null, part = 1 }) {
+  const d = demandCore({ scale, genre, cast: [ORDINARY_NAME], appetite: appetite ?? 1, campaignTier, budget, part: part || 1 });
+  const expect = Math.pow(Math.max(2, d), 1.45) * OPEN_K * (SCREENS[scale] ?? 0.09) * reachOf({ scale, budget }) * (ORDINARY[scale] || 0) * 1e6;
+  return expect > 0 && Number.isFinite(gross) ? gross / expect : null;
+}
+// TENTPOLES, TEMPORARY (meta/market.js, TENTPOLES). The old track judged a genre on pictures that
+// opened into ITS heat, and that is what held its genres hot: hot, so they took more, so hotter.
+// Pictures under a tentpole open into the fair market now, and fed as they are the old track lost
+// that and cooled — a career's tentpoles past a billion fell from about 39% to about 32%, nearly
+// all of it science-fiction and thriller tentpoles opening cooler. So each report to the old track
+// is told what the same picture would have taken in the old track's heat. Goes with the track.
+export function asOldTrackSawIt(ratio, appetite, legacy) {
+  if (!Number.isFinite(ratio)) return ratio;
+  const heat = (a) => 0.52 + (a ?? 1) * 0.48;
+  return ratio * Math.pow(heat(legacy) / heat(appetite), 1.45);
 }
 export function openingFor(s, rel, demand) {
   const wide = (SCREENS[rel.scale] ?? 0.09) * reachOf(rel);
@@ -510,6 +538,8 @@ export function boxOfficeFor(s, rel) {
   // information. The screen can say what opened it, what carried it, and what killed it.
   if (rel.campaignTier == null) rel.campaignTier = studioCampaign(rel.scale);
   if (rel.lastRating == null) rel.lastRating = previousRating(s, rel);
+  rel._appetite = appetiteFor(s, rel.genre, rel.scale);   // what it opened into, for the market at the close
+  rel._oldAppetite = appetiteFor(s, rel.genre, 'blockbuster');   // and what the old track had (temporary, asOldTrackSawIt)
   rel._demand = demandFor(s, rel);
   rel._opening = openingFor(s, rel, rel._demand);
   rel._legs = legsFor(rel);
@@ -1074,7 +1104,7 @@ function open(s, rel) {
     // The campaign has to survive to closeRun. The verdict is measured against what the thing
     // cost to make AND to sell, and without this line every picture would be judged at the end
     // against a default campaign instead of the one it actually had.
-    campaignTier: rel.campaignTier, genre: rel.genre, part: rel.part,
+    campaignTier: rel.campaignTier, genre: rel.genre, part: rel.part, appetite: rel._appetite ?? null, oldAppetite: rel._oldAppetite ?? null,
     // Read by closeRun and by the critics. These were read off _rel and never written to it,
     // so a carried set and a part got over dinner were both invisible once the run closed.
     meter: rel.meter || 0, viaPartner: rel.viaPartner || null, fellApart: !!rel.fellApart, backend: rel.backend || 0, merch: rel.merch || 0, potential: rel.potential || null,
@@ -1194,9 +1224,12 @@ function closeRun(s, credit, r) {
   // comedy at the top; fed the gross alone, it read the screens a dear picture buys as appetite
   // and pinned science fiction there instead (tests/probes/probe_appetite.mjs).
   const usual = breakEvenFor({ scale: r.scale, campaignTier: r.campaignTier, budget: PAR[r.scale] ?? null }) * reachOf({ scale: r.scale, budget: r.budget ?? credit.budget ?? null });
+  // And, now the one a genre is judged on, how it did against its own kind (genreResidual).
   if (r.film && r.genre) marketAfterRelease(s, r.genre, r.scale,
-    usual ? (credit.boxOffice || 0) / usual : null,
-    campaignOf({ campaignTier: r.campaignTier }).share, r.part || 1);
+    asOldTrackSawIt(usual ? (credit.boxOffice || 0) / usual : null, r.appetite ?? appetiteFor(s, r.genre, r.scale), r.oldAppetite ?? appetiteFor(s, r.genre, 'blockbuster')),
+    campaignOf({ campaignTier: r.campaignTier }).share, r.part || 1,
+    genreResidual({ scale: r.scale, genre: r.genre, gross: credit.boxOffice || 0, budget: r.budget ?? credit.budget ?? null,
+      appetite: r.appetite ?? appetiteFor(s, r.genre, r.scale), campaignTier: r.campaignTier, part: r.part || 1 }));
   const film = r.film;
 
   // The score buys respect; the money buys reach. They are different currencies, and both

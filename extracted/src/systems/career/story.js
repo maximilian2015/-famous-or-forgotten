@@ -293,8 +293,8 @@ export function opensIn(p) {
 }
 export function trendNote(s, p) {
   const hot = hotGenre(s);
-  const word = appetiteWord(s, p.genre);
-  const why = appetiteWhy(s, p.genre);
+  const word = appetiteWord(s, p.genre, p.scale);
+  const why = appetiteWhy(s, p.genre, p.scale);
   const because = why ? ` — ${why}` : '';
   // The trap is the same as it ever was and is now worth stating: you are choosing today for
   // something that opens later, and the appetite moves over years. See meta/market.js.
