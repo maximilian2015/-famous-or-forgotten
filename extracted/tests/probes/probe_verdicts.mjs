@@ -90,5 +90,7 @@ console.log('\n WORLD, by scale');
 for (const sc of ['small', 'indie', 'feature', 'blockbuster']) row(sc, world.filter((f) => f.scale === sc));
 console.log('\n WORLD standard features, by rating');
 for (const [lo, hi] of [[0, 49], [50, 59], [60, 69], [70, 100]]) row(`${(lo / 10).toFixed(1)}–${((hi + 1) / 10).toFixed(1)}`, world.filter((f) => f.scale === 'feature' && f.rating >= lo && f.rating <= hi));
+console.log('\n WORLD standard features, by genre');
+for (const g of ['Comedy', 'Drama', 'Romance', 'Horror', 'Thriller', 'Crime', 'Musical', 'Sci-Fi']) row(g, world.filter((f) => f.scale === 'feature' && f.genre === g));
 const wb = world.filter((f) => f.scale === 'blockbuster');
 console.log(`\n WORLD blockbusters: €1bn+ ${pct(wb, (f) => f.gross >= 1e9)}% · gross median €${Math.round(q(wb.map((f) => f.gross), 0.5) / 1e6)}m`);
