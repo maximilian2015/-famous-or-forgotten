@@ -66,6 +66,8 @@ export function heirOpts(s, childId) {
     city: s.city, dream: s.dream, created: true, startYear: s.year,
     heir: {
       parent: s.name, parentGender: s.gender === 'female' ? 'f' : 'm',
+      // When and how old, for the family tree. The dead parent used to carry an age of 0.
+      parentDiedAge: s.ageY || null, parentDiedOn: (s.year || 0) * 12 + (s.month || 0),
       tier: L.tier, parentPeak: Math.round(L.peakFame), estate,
       // Being close to them is the difference between growing up inside the work and growing
       // up next to somebody who was never in.

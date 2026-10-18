@@ -369,6 +369,7 @@ export function divorce(s, filedByThem = false) {
   s.cash = Math.max(0, (s.cash || 0) - take);
   if (s.hostedBy === spouse.id) unhost(s, 'It was their house.');
   spouse.alive = true; spouse.relation = 'Ex-spouse';
+  spouse.divorcedOn = (s.year || 0) * 12 + (s.month || 0);   // for the family (life/kin.js)
   spouse.relationship = clampRel((spouse.relationship || 0) - 30);
   s.mental = clamp((s.mental || 50) - 18);
   // The children stay where the stability is, and that is rarely the person on location.

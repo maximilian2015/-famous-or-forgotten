@@ -59,7 +59,10 @@ function newChild(s, over = {}) {
     relation: 'Child', gender, age: 0, alive: true, health: rint(85, 99), relationship: 80,
     job: 'infant', retired: false, bornOn: (s.year || 0) * 12 + (s.month || 0), raisedBy: 'you',
     // Their own life, filled in as it happens. See childYear below.
-    talent: rint(20, 75), schooled: false, ownFame: 0, path: null, ...over };
+    talent: rint(20, 75), schooled: false, ownFame: 0, path: null,
+    // Whose child, besides yours — the family tree draws them under both (life/kin.js). The
+    // spouse at the time, if there is one; nobody is guessed for an old save.
+    otherParent: (() => { const sp = spouseOf(s); return sp ? { id: sp.id, name: sp.name } : null; })(), ...over };
 }
 
 export function spouseOf(s) { return (s.family || []).find((p) => p.relation === 'Spouse' && p.alive) || null; }

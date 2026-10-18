@@ -39,6 +39,7 @@ import { StairsGame } from './ui/components/StairsGame.jsx';
 import { WalkOfFame } from './ui/components/WalkOfFame.jsx';
 import { Diary } from './ui/components/Diary.jsx';
 import { FamilyTree } from './ui/components/FamilyTree.jsx';
+import { household, children, kin, formers, workOf, childLine, exLine, ageNow, withAge } from './systems/life/kin.js';
 import { ContractRoom } from './ui/components/ContractRoom.jsx';
 import { NightRoom } from './ui/components/NightRoom.jsx';
 import { Passport } from './ui/components/Passport.jsx';
@@ -1208,6 +1209,58 @@ const CONTACT_FILTERS = [
   ['business', 'Business', (p) => /Agent|Casting|Manager|Journalist|Studio/.test(p.role || '')],
   ['friends', 'Friends', (p) => /Friend|School|Classmate|Ex/.test(p.role || '')],
 ];
+// ── Family V1 ────────────────────────────────────────────────────────────────
+// Maxi: the household first, then the children, then the rest of the family; the tree in its own
+// window, and the dead only there. Every line is read off what the person carries (life/kin.js),
+// so an old save simply shows less. Who they are and what they want lives on their own card.
+function KinRow({ p, sub, onOpen, faded }) {
+  const band = relBand(p.relationship || 0);
+  return (<div onClick={onOpen} style={{ display: 'flex', gap: 10, alignItems: 'center', padding: '7px 4px', borderBottom: `1px solid ${theme.line}`, cursor: 'pointer', opacity: faded ? .7 : 1 }}>
+    <Avatar look={lookOfPerson(p)} size={38} title={p.name} />
+    <div style={{ flex: 1, minWidth: 0 }}>
+      <div style={{ fontSize: 13, fontWeight: 800 }}>{p.name}{p.ill && <span style={{ fontSize: 11, color: theme.bad }}> · ill</span>}</div>
+      <div style={{ fontSize: 11, color: theme.muted, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{sub}</div>
+    </div>
+    <div style={{ fontSize: 11, fontWeight: 800, color: band.tone === 'bad' ? theme.bad : theme.accent, whiteSpace: 'nowrap' }}>{Math.round(p.relationship || 0)} ›</div>
+  </div>);
+}
+function FamilyTab({ g, onOpen, deceased }) {
+  const [tree, setTree] = useState(false);
+  const home = household(g), kids = children(g), rest = kin(g), exes = formers(g);
+  const head = (t) => <div style={{ fontSize: 11, fontWeight: 900, letterSpacing: '.09em', textTransform: 'uppercase', color: theme.muted, margin: '14px 0 6px' }}>{t}</div>;
+  if (tree) return (<div>
+    <button onClick={() => setTree(false)} style={{ background: 'rgba(158,116,255,.16)', border: 'none', borderRadius: 10, padding: '7px 12px', fontSize: 12.5, fontWeight: 800, cursor: 'pointer', color: '#d9cffa', marginBottom: 10 }}>‹ Family</button>
+    <div style={{ fontSize: 16, fontWeight: 900, marginBottom: 8 }}>Family tree</div>
+    <FamilyTree g={g} onOpen={onOpen} yourLook={lookOf(g)} />
+    {deceased > 0 && <div style={{ fontSize: 11, color: theme.muted, marginTop: 8, lineHeight: 1.5 }}>Those who have died are here, and only here.</div>}
+  </div>);
+  return (<div>
+    <button onClick={() => setTree(true)} style={{ width: '100%', textAlign: 'left', background: theme.panel, border: `1px solid ${theme.line}`, borderRadius: 12, padding: '10px 13px', cursor: 'pointer', color: theme.text }}>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline' }}>
+        <div style={{ fontSize: 13.5, fontWeight: 800 }}>🌳 Family tree</div><div style={{ fontSize: 12, color: theme.accent, fontWeight: 800 }}>›</div>
+      </div>
+      <div style={{ fontSize: 11.5, color: theme.muted, marginTop: 2 }}>Every generation{deceased > 0 ? `, and the ${deceased === 1 ? 'one' : deceased} who ${deceased === 1 ? 'has' : 'have'} died` : ''}.</div>
+    </button>
+    {home && (<>
+      {head(home.kind === 'spouse' ? 'Household' : 'Together')}
+      <Card style={{ display: 'flex', gap: 12, alignItems: 'center', cursor: 'pointer', borderColor: 'rgba(255,138,181,.35)' }} onClick={() => onOpen(home.p.id)}>
+        <Avatar look={lookOfPerson(home.p)} size={60} title={home.p.name} />
+        <div style={{ flex: 1, minWidth: 0 }}>
+          <div style={{ fontSize: 15, fontWeight: 900 }}>{home.p.name}</div>
+          <div style={{ fontSize: 11.5, color: theme.muted, marginTop: 1 }}>{home.kind === 'spouse' ? 'Spouse' : 'Partner'}{ageNow(g, home.p) != null ? ` · ${ageNow(g, home.p)}` : ''}{workOf(home.p) ? ` · ${workOf(home.p)}` : ''}</div>
+          {home.p.wants && <div style={{ fontSize: 11.5, color: '#ff8ab5', fontWeight: 700, marginTop: 1 }}>{wantsOf(home.p).label}{home.since ? ` · ${home.sinceWord} ${home.since}` : ''}</div>}
+          {!home.p.wants && home.since && <div style={{ fontSize: 11.5, color: '#ff8ab5', fontWeight: 700, marginTop: 1 }}>{home.sinceWord} {home.since}</div>}
+          <BondBar value={home.p.relationship} height={5} />
+          <div style={{ fontSize: 11, color: relBand(home.p.relationship || 0).tone === 'bad' ? theme.bad : theme.muted }}>{relBand(home.p.relationship || 0).label} · {Math.round(home.p.relationship || 0)} · tap ›</div>
+        </div>
+      </Card>
+    </>)}
+    {kids.length > 0 && (<>{head(`Children · ${kids.length}`)}<Card style={{ padding: '2px 10px' }}>{kids.map((k) => <KinRow key={k.id} p={k} sub={[ageNow(g, k) != null ? `${ageNow(g, k)}` : '', childLine(k)].filter(Boolean).join(' · ')} onOpen={() => onOpen(k.id)} />)}</Card></>)}
+    {rest.length > 0 && (<>{head('Family')}<Card style={{ padding: '2px 10px' }}>{rest.map((p) => <KinRow key={p.id} p={p} sub={[withAge(g, p, String(p.relation).replace(/ \(dad's side\)/, ' (dad’s side)')), workOf(p)].filter(Boolean).join(' · ')} onOpen={() => onOpen(p.id)} />)}</Card></>)}
+    {exes.length > 0 && (<>{head('Family once')}<Card style={{ padding: '2px 10px' }}>{exes.map((p) => <KinRow key={p.id} p={p} faded sub={[withAge(g, p, 'Ex-spouse'), exLine(p)].join(' · ')} onOpen={() => onOpen(p.id)} />)}</Card></>)}
+    {!home && !kids.length && !rest.length && !exes.length && <div style={{ fontSize: 12.5, color: theme.muted, textAlign: 'center', padding: 18, lineHeight: 1.5 }}>Nobody living. {deceased > 0 ? 'They are in the family tree.' : ''}</div>}
+  </div>);
+}
 function PeopleScreen({ g, openId, setOpenId }) {
   const [ptab, setPtab] = useState('family');
   const [filter, setFilter] = useState('all');
@@ -1230,13 +1283,7 @@ function PeopleScreen({ g, openId, setOpenId }) {
     background: ptab === id ? `linear-gradient(135deg,${theme.accent2},${theme.accent})` : 'rgba(158,116,255,.16)', color: ptab === id ? '#fff' : '#d9cffa' }}>{label}</button>);
   return (<div>
     <div style={{ display: 'flex', gap: 6, marginBottom: 12 }}>{tabBtn('family', `Family · ${family.length + (g.partner ? 1 : 0)}`)}{tabBtn('contacts', `Contacts · ${people.filter((p) => !p.cold).length}`)}</div>
-    {ptab === 'family' && <>
-      <FamilyTree g={g} onOpen={(id) => setOpenId(id)} yourLook={lookOf(g)} />
-      <div style={{ fontSize: 11, fontWeight: 900, letterSpacing: '.09em', textTransform: 'uppercase', color: theme.muted, margin: '14px 0 8px' }}>Everyone</div>
-      {g.partner && <PersonRow g={g} p={g.partner} sub={`${g.partner.job} · ${g.partner.age}`} onOpen={() => setOpenId(g.partner.id)} />}
-      {family.map((p) => (<PersonRow key={p.id} g={g} p={p} sub={`${p.relation}, ${p.age}`} onOpen={() => setOpenId(p.id)} />))}
-      {deceased.length > 0 && <div style={{ fontSize: 11, color: theme.muted, marginTop: 4, marginBottom: 10, opacity: .7 }}>In memory: {deceased.map((p) => `${p.name} (${p.relation})`).join(', ')}</div>}
-    </>}
+    {ptab === 'family' && <FamilyTab g={g} onOpen={(id) => setOpenId(id)} deceased={deceased.length} />}
     {ptab === 'contacts' && <>
       {/* Who represents you. A person like the others — tap to talk — with what the desk is doing for you. */}
       <div style={{ fontSize: 11, fontWeight: 900, letterSpacing: '.09em', textTransform: 'uppercase', color: theme.muted, marginBottom: 8 }}>Your agent</div>

@@ -161,7 +161,7 @@ function beginAsHeir(s) {
   const slot = s.family.findIndex((p) => p.relation === famousWas);
   const dead = { id: 'famheir', name: h.parent, relation: famousWas, gender: h.parentGender || 'f',
     age: 0, alive: false, health: 0, relationship: h.close || 0, job: s.dream === 'singer' ? 'singer' : 'actor',
-    retired: false, deathAge: 0, wasFamous: true, tier: h.tier };
+    retired: false, deathAge: h.parentDiedAge || 0, diedOn: h.parentDiedOn ?? undefined, wasFamous: true, tier: h.tier };
   if (slot >= 0) s.family[slot] = dead; else s.family.unshift(dead);
 
   s.fame = Math.max(0, h.fame || 0);

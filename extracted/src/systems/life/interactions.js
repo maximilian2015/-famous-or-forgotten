@@ -30,7 +30,8 @@ export function findPerson(s, id) {
   const f = (s.family || []).find((x) => x.id === id && x.alive);
   if (f) {
     const r = f.relation || '';
-    const rel = r === 'Spouse' ? 'spouse'
+    // An ex-spouse fell through to 'grandparent' here (bonds.js has always called them 'ex').
+    const rel = r === 'Spouse' ? 'spouse' : r === 'Ex-spouse' ? 'ex'
       : (r === 'Mother' || r === 'Father') ? 'parent'
       : (r === 'Brother' || r === 'Sister') ? 'sibling'
       : r === 'Child' ? 'child' : 'grandparent';

@@ -426,6 +426,25 @@ await inState('A shooting day · take after take, said plainly', {
       await tapIn(W2, (d) => { const all = [...d.querySelectorAll('div,span')].filter((e) => (e.textContent || '').includes('Ivo Moon')); return all.filter((e) => ![...e.children].some((k) => (k.textContent || '').includes('Ivo Moon'))).pop(); });
     });
 }
+// Family V1: the household, the children, the living family and the family once on the tab; the
+// dead only in the tree, with the years where they are known.
+{
+  const fam = [
+    { id: 'fa1', name: 'Ivo Kessler', relation: 'Spouse', gender: 'male', age: 52, alive: true, relationship: 61, job: 'retired', formerJob: 'architect', wants: 'quiet', marriedOn: 2061 * 12 + 5 },
+    { id: 'fa2', name: 'Ines Moon', relation: 'Child', gender: 'f', age: 9, alive: true, relationship: 70, job: 'in school', otherParent: { id: 'fa1', name: 'Ivo Kessler' } },
+    { id: 'fa3', name: 'Anna Moon', relation: 'Mother', gender: 'f', age: 68, alive: true, relationship: 55, job: 'retired', formerJob: 'nurse' },
+    { id: 'fa4', name: 'Petra Lind', relation: 'Ex-spouse', gender: 'f', age: 44, alive: true, relationship: 5, divorcedOn: 2058 * 12 },
+    { id: 'fa5', name: 'Maria Moon', relation: 'Grandmother', gender: 'f', age: 79, alive: false, deathAge: 79, diedOn: 2060 * 12 + 2, formerJob: 'teacher', job: 'retired', relationship: 40 },
+  ];
+  const tapIn = async (W2, find) => { const el = find(W2.document); if (el) el.dispatchEvent(new W2.MouseEvent('click', { bubbles: true })); await sleep(300); };
+  const btn = (re) => (d) => [...d.querySelectorAll('button')].find((b) => re.test((b.textContent || '').trim()));
+  await inState('People · Family, the household first', { family: fam, partner: null },
+    /^(?![\s\S]*In memory)(?![\s\S]*Maria Moon)(?=[\s\S]*Family tree)(?=[\s\S]*Household)(?=[\s\S]*Ivo Kessler)(?=[\s\S]*retired architect)(?=[\s\S]*Wants a quiet life · married since Jun 2061)(?=[\s\S]*Children · 1)(?=[\s\S]*Ines Moon)(?=[\s\S]*Mother, 68 · retired nurse)(?=[\s\S]*Family once)(?=[\s\S]*Ex-spouse, 44 · divorced 2058)/,
+    async (W2) => { await tapIn(W2, btn(/People$/)); });
+  await inState('People · Family tree, and the dead in it', { family: fam, partner: null },
+    /^(?=[\s\S]*Grandparents)(?=[\s\S]*Maria Moon †)(?=[\s\S]*1981–2060 · died at 79)(?=[\s\S]*teacher)(?=[\s\S]*Those who have died are here, and only here)/,
+    async (W2) => { await tapIn(W2, btn(/People$/)); await tapIn(W2, btn(/Family tree/)); });
+}
 // A story thread with nothing coming for a year folds into one quiet line, with the month the next
 // news is due; one with something coming stays on top and says when. Maxi: "it never changes?"
 await inState('Home · a story running quietly', { stories: [

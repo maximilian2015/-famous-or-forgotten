@@ -133,10 +133,14 @@ export function familyYear(s) {
         else if (p.job === 'unemployed' && chance(35)) { p.job = pick(JOBS); events.push(`${p.name} found work as ${/^[aeiou]/i.test(p.job) ? 'an' : 'a'} ${p.job}.`); }
       }
     }
-    if (!p.retired && p.age >= 65) { p.retired = true; p.job = 'retired'; events.push(`${p.name} retired.`); }
+    // What they did is kept when they stop doing it — the family tree says "Teacher", not
+    // "retired". Grandparents are born with it (formerJob above); everybody else keeps it here.
+    if (!p.retired && p.age >= 65) { if (!p.formerJob && !/^(unemployed|student|in school|infant)$/.test(p.job || '')) p.formerJob = p.job; p.retired = true; p.job = 'retired'; events.push(`${p.name} retired.`); }
     const deathChance = p.age > 85 ? 22 : p.age > 78 ? 12 : p.age > 70 ? 6 : (p.health < 20 ? 8 : 0);
     if (chance(deathChance)) {
       p.alive = false; p.deathAge = p.age;
+      // The year, for the family tree (life/kin.js). Only the age was ever kept.
+      p.diedOn = (s.year || 0) * 12 + (s.month || 0);
       events.push(`💔 ${p.name}, your ${p.relation.toLowerCase()}, has passed away at ${p.age}.`);
       // Not all of these are the same size, and burying a child is not an eight.
       const grief = p.relation === 'Child' ? 34 : p.relation === 'Spouse' ? 24
