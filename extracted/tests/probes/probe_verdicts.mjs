@@ -14,6 +14,7 @@ const W = await import(P + 'systems/life/work.js');
 const R = await import(P + 'systems/career/release.js');
 const HY = await import(P + 'systems/meta/hype.js');
 const WD = await import(P + 'systems/world/world.js');
+const MK = await import(P + 'systems/meta/market.js');
 
 const CAREERS = Number(process.argv[2] || 30), LABEL = process.argv[3] || '', YEARS = 32;
 // Optional: try other standard/indie widths without editing the game (calibration runs).
@@ -45,14 +46,15 @@ for (let k = 0; k < CAREERS; k++) {
     let g = 0; while ((s.ap || 0) > 0 && g++ < 5) { if (s.production) PR.rehearse(s); else break; }
     const fame = s.fame || 0, hype = HY.hypeSource(s) === 'scandal' ? 0 : HY.hype(s);
     const due = (s.releases || []).filter((r) => R.isFilm(r.scale));
+    const heat = new Map(due.map((r) => [r.title, MK.appetiteFor(s, r.genre, r.scale)]));
     s = advanceMonth(s);
     if (!s.alive) break;
-    for (const r of due) if (r._demand != null && !at.has(r.title)) at.set(r.title, { fame, hype });
+    for (const r of due) if (r._demand != null && !at.has(r.title)) at.set(r.title, { fame, hype, appetite: heat.get(r.title) });
   }
   for (const c of s.filmography || []) {
     if (c.running || c.minor || !c.verdict || !R.isFilm(c.scale) || c.scale === 'festival' || !(c.boxOffice > 0)) continue;
     const a = at.get(c.title) || {};
-    mine.push({ scale: c.scale, genre: c.genre, rating: c.rating || 0, verdict: c.verdict, gross: c.boxOffice, needed: c.needed || 0, budget: c.budget || null, fame: a.fame ?? null, hype: a.hype ?? null, lead: !/Supporting|Victim|Elder|Grandparent/.test(c.role || '') });
+    mine.push({ scale: c.scale, genre: c.genre, rating: c.rating || 0, verdict: c.verdict, gross: c.boxOffice, needed: c.needed || 0, budget: c.budget || null, fame: a.fame ?? null, hype: a.hype ?? null, appetite: a.appetite ?? null, part: c.part || 1, lead: !/Supporting|Victim|Elder|Grandparent/.test(c.role || '') });
   }
   WD.ensureWorld(s);
   const actors = WD.activeActors(s); const saved = JSON.stringify(s.market || null);
@@ -85,6 +87,11 @@ for (const [lo, hi] of [[0, 59], [60, 100]]) row(`${(lo / 10).toFixed(1)}–${((
 const bb = mine.filter((f) => f.scale === 'blockbuster');
 const bbl = bb.filter((f) => f.lead), bbs = bb.filter((f) => !f.lead);
 console.log(`\n PLAYER blockbusters, your lead n=${bbl.length}: €1bn+ ${pct(bbl, (f) => f.gross >= 1e9)}% · fame at opening med ${q(bbl.map((f) => f.fame ?? 0), 0.5)} · a supporting part n=${bbs.length}: €1bn+ ${pct(bbs, (f) => f.gross >= 1e9)}%`);
+console.log('\n PLAYER blockbusters, what they opened into: genre · n · €1bn+ · appetite med · hype med · rating med · sequels');
+for (const g of ['Horror', 'Sci-Fi', 'Comedy', 'Thriller', 'Crime', 'Drama', 'Romance', 'Musical', null]) {
+  const l = g ? bb.filter((f) => f.genre === g) : bb;
+  if (l.length) console.log(`   ${(g || 'all').padEnd(9)} ${String(l.length).padStart(3)} · ${String(pct(l, (f) => f.gross >= 1e9)).padStart(2)}% · ${q(l.map((f) => f.appetite ?? 1), 0.5).toFixed(2)} · ${Math.round(q(l.map((f) => f.hype ?? 0), 0.5))} · ${q(l.map((f) => f.rating), 0.5)} · ${pct(l, (f) => f.part > 1)}%`);
+}
 console.log(`\n PLAYER blockbusters: gross median €${Math.round(q(bb.map((f) => f.gross), 0.5) / 1e6)}m · p90 €${Math.round(q(bb.map((f) => f.gross), 0.9) / 1e6)}m · €1bn+ ${pct(bb, (f) => f.gross >= 1e9)}% · budget median €${q(bb.map((f) => f.budget || 220), 0.5)}m`);
 console.log('\n WORLD, by scale');
 for (const sc of ['small', 'indie', 'feature', 'blockbuster']) row(sc, world.filter((f) => f.scale === sc));
