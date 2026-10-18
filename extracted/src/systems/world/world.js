@@ -11,7 +11,7 @@
 import { rint, chance, pick } from '../../engine/rng.js';
 import { fameTier } from '../meta/status.js';
 import { ensureDirectors } from './directors.js';
-import { grossFor, verdictOf as relVerdict } from '../career/release.js';
+import { grossFor, verdictOf as relVerdict, PAR, reachOf } from '../career/release.js';
 import { planBudget } from '../career/budget.js';
 import { appetiteFor, marketAfterRelease } from '../meta/market.js';
 import { personName, namesInUse, OUTLETS } from './names.js';
@@ -106,8 +106,10 @@ export function makeWorldFilm(s, a, year, taken) {
   const gross = grossFor({ scale, rating, genre, fame: a.fame, trend: appetiteFor(s, genre), budget });
   // Everything the rest of the industry releases uses its genre up, and reports how it did. The
   // glut cannot come from the player alone: one picture every year or two against the twenty the
-  // world makes, and the audience would never tire of anything.
-  marketAfterRelease(s, genre, scale, gross / Math.max(1, budget * 1.5e6),
+  // world makes, and the audience would never tire of anything. How it did is told per screen,
+  // against what a picture of its scale ordinarily takes (PAR), not its own budget: the audience's
+  // appetite, not the studio's margin (see closeRun in career/release.js).
+  marketAfterRelease(s, genre, scale, gross / Math.max(1, (PAR[scale] || 12) * 1.5e6 * reachOf({ scale, budget })),
     scale === 'blockbuster' ? 0.75 : scale === 'feature' ? 0.55 : 0.35, 1);
   const pr = PRESTIGE[scale] || PRESTIGE.indie;
   return { id, title: newTitle(s, genre, taken), genre, scale, rating, gross, year, budget,

@@ -47,7 +47,15 @@ export function postProduction(scale) {
 
 // Everything commercial is measured against the budget, because that is the only number
 // the industry compares anything to. A picture is not "big" — it is big AGAINST its cost.
+// Since Budget V2 a picture has its own (career/budget.js); this is the fallback for one that has none.
 const BUDGET = { small: 1, festival: 1.5, indie: 12, feature: 90, blockbuster: 220 };   // millions
+// What the genre market measures a picture against, per screen it was given, by scale: what an
+// ordinary picture of its size takes, so that an ordinary one reports to the market what it did
+// before Budget V2 and the size of the whole business does not drift. Not what this picture cost
+// (see closeRun). Measured on the world's own pictures, old tree against new: at the narrower
+// widths and the campaigns real budgets buy, an ordinary feature takes 0.56 of what it did and an
+// ordinary indie 0.54, so the yardstick is that much of the old flat budget.
+export const PAR = { small: 1, festival: 1.5, indie: 6.4, feature: 50, blockbuster: 220 };   // millions
 // Television does not sell tickets. It has an audience, in millions per episode.
 const VIEWERS = { episode: [0.4, 6], recurring: [1, 9], prestige: [2, 14] };
 
@@ -1159,8 +1167,15 @@ function closeRun(s, credit, r) {
   credit.needed = breakEvenFor({ scale: r.scale, campaignTier: r.campaignTier, budget: r.budget ?? credit.budget ?? null });
   // And the genre is used up by what you released into it, exactly as the world's pictures are.
   // Weighted by what anybody actually saw of it, not counted as one release. See exposureOf.
+  // The appetite is the AUDIENCE's, and an audience does not know what a picture cost: it is told
+  // how many went to each screen the picture was given, against what a picture of this scale
+  // ordinarily takes (PAR) — never against this one's own budget, and never by how wide its budget sent it.
+  // Fed the real budget (Budget V2), the market read cheapness as appetite and pinned horror and
+  // comedy at the top; fed the gross alone, it read the screens a dear picture buys as appetite
+  // and pinned science fiction there instead (tests/probes/probe_appetite.mjs).
+  const usual = breakEvenFor({ scale: r.scale, campaignTier: r.campaignTier, budget: PAR[r.scale] ?? null }) * reachOf({ scale: r.scale, budget: r.budget ?? credit.budget ?? null });
   if (r.film && r.genre) marketAfterRelease(s, r.genre, r.scale,
-    credit.needed ? (credit.boxOffice || 0) / credit.needed : null,
+    usual ? (credit.boxOffice || 0) / usual : null,
     campaignOf({ campaignTier: r.campaignTier }).share, r.part || 1);
   const film = r.film;
 
