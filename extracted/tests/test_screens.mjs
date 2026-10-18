@@ -377,7 +377,14 @@ await inState('Home · for your consideration', { filmography: [...save.filmogra
 await inState('A shooting day · how are you playing it', {
   scene: { setId: SET.id, id: 'mark', game: 'timing', label: 'Find your mark', title: SET.title, genre: SET.genre,
     line: 'They have taped a cross on the floor and the light only works if you are on it.', hint: 'Hit it.', director: 'Rosalind Varga', difficulty: 1 } },
-  /^(?=[\s\S]*How are you playing it\?)(?=[\s\S]*is directing · trust on this set 56)(?=[\s\S]*Normal difficulty)(?=[\s\S]*the audience over the critics)(?=[\s\S]*the critics over the audience)(?=[\s\S]*6 more and it opens)(?=[\s\S]*Rosalind's trust on this set 56 \/ 62)/);
+  /^(?=[\s\S]*How are you playing it\?)(?=[\s\S]*trusts you 56 of 100)(?=[\s\S]*at 62 you could "ask to change the scene")(?=[\s\S]*A marker runs back and forth)(?=[\s\S]*Normal difficulty)(?=[\s\S]*the audience over the critics)(?=[\s\S]*the critics over the audience)(?=[\s\S]*6 more and it opens)(?=[\s\S]*Rosalind's trust on this set 56 \/ 62)/);
+// Maxi, at "Take after take": "что этот текст вообще значит для игрока". The page says the game
+// (twelve takes, one bad one and it is a zero) and what a hard day costs in it, in takes.
+await inState('A shooting day · take after take, said plainly', {
+  strain: 72,
+  scene: { setId: SET.id, id: 'takes', game: 'grid', label: 'Take after take', title: SET.title, genre: SET.genre,
+    line: 'The scene is not working and everybody knows it.', hint: 'Push while it works.', director: 'Rosalind Varga', difficulty: 1.6 } },
+  /^(?=[\s\S]*Twelve takes\. Most of them work)(?=[\s\S]*the whole thing is a zero)(?=[\s\S]*Harder today: you are worn out — about 4 of the 12 takes go wrong, 3 on an ordinary day)/);
 // The event screen, which every life event, on-set problem, childhood moment and story beat
 // comes through: under each choice what it does (arcs.js arcCard), and for a roll the chance this
 // actor has now and both ways it can go. Maxi's screenshot of "A problem on set" had three

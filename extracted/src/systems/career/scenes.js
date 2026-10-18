@@ -316,14 +316,19 @@ export function dayFactors(s, p, id) {
   const sc = SCENES[id] || SCENES.mark;
   let d = 1; const harder = [], easier = [];
   if (sc.hard) { d += 0.45; harder.push('a hard scene'); }
-  if (p && (p.scale === 'blockbuster' || p.scale === 'prestige')) { d += 0.2; harder.push(p.scale === 'blockbuster' ? 'a big picture' : 'a serious picture'); }
+  // 'prestige' is the television tier, never a film (release.js): Maxi's comedy SERIES was
+  // called "a serious picture" here.
+  if (p && (p.scale === 'blockbuster' || p.scale === 'prestige')) { d += 0.2; harder.push(p.scale === 'blockbuster' ? 'a big picture' : 'a prestige series'); }
   if ((s.strain || 0) >= 60) { d += 0.25; harder.push('you are worn out'); }
   if ((s.drink && s.drink.thisMonth)) { d += 0.3; harder.push('you drank this month'); }
   // What you can actually do. A trained actor gets a wider window, not a free pass.
   const craft = Math.min(0.45, ((s.acting || 0) - 45) / 120);
   d -= craft;
   if (craft >= 0.15) easier.push('your training'); else if (craft <= -0.15) harder.push('you are still learning');
-  return { d: Math.max(0.55, Math.min(2, d)), harder, easier };
+  // `usual` is the same day without anything that made it harder, so the screen can say what
+  // "harder" costs in the game's own numbers (App.jsx gridWrong).
+  const usual = Math.max(0.55, Math.min(2, 1 - Math.max(0, craft)));
+  return { d: Math.max(0.55, Math.min(2, d)), usual, harder, easier };
 }
 export function difficulty(s, p, id) { return dayFactors(s, p, id).d; }
 

@@ -112,7 +112,7 @@ function CreditRow({ group, g }) {
       <div style={{ display: 'flex', alignItems: 'center', gap: 7, marginTop: 3, flexWrap: 'wrap', fontSize: 11.5 }}>
         {c.running
           ? <span style={{ fontSize: 10.5, fontWeight: 900, letterSpacing: '.06em', textTransform: 'uppercase', color: theme.gold }}>
-              {(c.tv || !['small', 'indie', 'festival', 'feature', 'blockbuster'].includes(c.scale)) ? `On air · episode ${Math.max(1, Math.round(((c.weeks || 0) / Math.max(1, c.weeksTotal || 1)) * (c.episodes || 1)))} of ${c.episodes || '?'}` : `In cinemas · week ${c.weeks || 0} of ${c.weeksTotal}`}</span>
+              {(c.tv || !['small', 'indie', 'festival', 'feature', 'blockbuster'].includes(c.scale)) ? `On air · episode ${Math.max(1, Math.round(((c.weeks || 0) / Math.max(1, c.weeksTotal || 1)) * (c.episodes || 1)))} of ${c.episodes || '?'}` : `In cinemas · week ${Math.max(1, c.weeks || 0)} of ${c.weeksTotal}`}</span>
           : <span style={{ fontWeight: 900, color: starCol }}>★ {stars}</span>}
         <span style={{ color: theme.muted }}>{group.to}</span>
         {eps > 0 && <span style={{ color: theme.muted }}>{eps}eps</span>}
@@ -303,7 +303,13 @@ export function CreditsList({ g, credits, label }) {
                 return (<>
                   <div style={{ fontSize: 11, color: late ? theme.bad : theme.gold, lineHeight: 1.4, marginBottom: 2 }}>
                     {late ? `⚠ They cast somebody else in ${MONS[dies % 12]} — you are not free until ${MONS[start % 12]}.`
-                      : `They hold it until ${MONS[dies % 12]}.`}
+                      // Maxi: "They hold it until Jul." — hold what, and why? The card is up because you
+                      // are on another set right now; it says that, and that you make it.
+                      : start === dies
+                        ? `You are on another set until ${MONS[start % 12]}, the last month they will hold the part. You make it, just.`
+                      : start > (o.startAt || 0)
+                        ? `You are on another set until ${MONS[start % 12]}. They hold the part until ${MONS[dies % 12]}, so you make it.`
+                        : `You are on another set now, and free in time. They would hold the part until ${MONS[dies % 12]}.`}
                   </div>
                   {late && ps && (ps.asked
                     ? <div style={{ fontSize: 11, color: theme.muted, lineHeight: 1.4, marginBottom: 3 }}>

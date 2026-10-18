@@ -839,6 +839,19 @@ function LegacyScreen({ g }) {
 }
 // A day on the set. One of six games, skinned by the scene and scaled by how hard the day
 // is, and what comes out of it moves the picture. See systems/career/scenes.js.
+// How many of the twelve takes go wrong at a difficulty — the GridRisk call below and the
+// brief's "harder today" read this one formula, so the number on the page is the board's.
+const gridWrong = (d) => Math.max(2, Math.round(2 + d));
+// What "harder" costs, in the game's own terms, where the brief can know it before the way you
+// play it moves the day again (career/scenes.js chooseApproach). Only the games whose cost is
+// one number on the call site say it; the rest say the reasons and nothing invented.
+function harderMeans(game, d, usual) {
+  // The count is said even when it is the usual one: a trained actor can be worn out and still
+  // face three bad takes in twelve, and "harder" with no number would imply more than that.
+  if (game === 'grid') return ` — about ${gridWrong(d)} of the 12 takes go wrong${gridWrong(d) > gridWrong(usual) ? `, ${gridWrong(usual)} on an ordinary day` : ''}`;
+  if (game === 'timing') return ' — the green is narrower and the marker faster';
+  return '';
+}
 function SceneModal({ g }) {
   const sc = g.scene;
   // A relayed note: a scene was a test of whether you could play it and never a question about
@@ -878,7 +891,7 @@ function SceneModal({ g }) {
     { label: 'Wait for the director to call cut', good: 24 },
   ];
   const game = sc.game === 'timing' ? <TimingBar zoneStart={14 + Math.random() * 58} zoneWidth={Math.max(6, 15 - d * 3.5)} speed={2.2 + d * 1.4} onResult={done} />
-    : sc.game === 'grid' ? <GridRisk cols={4} rows={3} bad={Math.max(2, Math.round(2 + d))} labelSafe="✓" labelBad="✕" onResult={done} />
+    : sc.game === 'grid' ? <GridRisk cols={4} rows={3} bad={gridWrong(d)} labelSafe="✓" labelBad="✕" onResult={done} />
     : sc.game === 'rhythm' ? <RhythmLine difficulty={d} lines={lines} onResult={done} />
     : sc.game === 'hold' ? <HoldZone difficulty={d} seconds={6} onResult={done} />
     : sc.game === 'keys' ? <KeySequence difficulty={d} onResult={done} />
@@ -903,9 +916,17 @@ function SceneModal({ g }) {
               is and what it does are read off its own numbers (career/scenes.js approachSpec),
               and the locked one shows the real bar. */}
           <SetVignette title={sc.title} genre={sc.genre} scene={sc.label} director={dirName} />
+          {/* Maxi, at this page: "что этот текст вообще значит для игрока". The line is mood; the
+              game it stands for, what the trust number buys and what "harder" costs were all
+              unsaid. Each is said now, from the thing that decides it: the rules from RULES
+              (written off the components), the trust bar from the approach that needs it, and
+              the cost in the game's own numbers where the brief can know them. */}
           <ScriptPage kicker={`On set · ${sc.label}`} line={sc.line}>
-            <div><b style={{ color: '#302d26' }}>{dirName}</b> is directing · trust on this set {Math.round(lead.bond ?? 40)}</div>
-            {factors.harder.length > 0 && <div>Harder today: {factors.harder.join(', ')}.</div>}
+            {rulesFor(sc.game) && <div style={{ color: '#302d26', marginBottom: 4 }}>{rulesFor(sc.game).slice(0, 2).join(' ')}</div>}
+            {(() => { const bond = Math.round(lead.bond ?? 40); const gated = approachesFor(g, onSet).find((a) => a.needsBond);
+              return (<div><b style={{ color: '#302d26' }}>{dirName}</b> is directing and trusts you {bond} of 100{gated
+                ? (bond >= gated.needsBond ? ` — enough to "${gated.label.toLowerCase()}" (${gated.needsBond}).` : ` — at ${gated.needsBond} you could "${gated.label.toLowerCase()}".`) : '.'}</div>); })()}
+            {factors.harder.length > 0 && <div>Harder today: {factors.harder.join(', ')}{harderMeans(sc.game, d, factors.usual)}.</div>}
             {factors.harder.length === 0 && factors.easier.length > 0 && <div>Easier today: {factors.easier.join(', ')}.</div>}
           </ScriptPage>
           <div style={{ fontSize: 11.5, fontWeight: 900, letterSpacing: '.08em', textTransform: 'uppercase', color: theme.muted, marginBottom: 9 }}>How are you playing it?</div>
