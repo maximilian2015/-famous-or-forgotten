@@ -160,7 +160,7 @@ function runPieces(s) {
     else if (!c._press.mid && weeks >= 4 && weeks < (c.weeksTotal || 8)) {
       c._press.mid = now;
       if (film && (s.fame || 0) >= 15 && c.scale !== 'small') {
-        const bud = budgetFor({ scale: c.scale }) || 1;
+        const bud = budgetFor({ scale: c.scale, budget: c.budget ?? null }) || 1;
         const share = Math.min(1, weeks / Math.max(1, c.weeksTotal || 8));
         const pace = (c.boxOffice || 0) / (bud * 2.2 * Math.max(0.2, Math.pow(share, 0.55)));
         add(pace >= 1.4 ? 'praise' : pace >= 0.8 ? 'news' : 'pan', pace >= 1.4 ? `"${c.title}" is ahead of the studio's numbers` : pace >= 0.8 ? `"${c.title}": on track, the studio says` : `"${c.title}" is soft, and the studio knows it`,

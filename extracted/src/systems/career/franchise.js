@@ -9,6 +9,7 @@ import { quoteBand } from '../meta/status.js';
 import { priceYoungReturn } from './youngblood.js';
 import { onTheBubble, hangIt, takeDecided } from './bubble.js';
 import { carriedToNextSeason } from './terms.js';
+import { sequelBudget } from './budget.js';
 
 // How long a format can plausibly run. Daytime soaps run for decades; prestige
 // streaming shows are written to end. This is the ceiling, not the expectation —
@@ -495,6 +496,8 @@ export function maybeContinue(s, credit, p, force = false) {
     offer: {
     id: uid(s, 'seq'),
     kind: 'sequel', part: nextPart, optioned: p.optioned, optionParts: p.optionParts, scale: p.scale,
+    // Bigger than the last one, with the same needs (career/budget.js).
+    budget: Number.isFinite(p.budget) ? sequelBudget(p.budget, p.scale, nextPart) : null, needs: p.needs ?? null,
     stability: Math.max(85, p.stability || 85),   // nobody defunds a sequel to something that made money
     projectTitle: sequelTitle(p.title, nextPart), role: p.role, type: p.type, genre: p.genre,
     salary, baseSalary: first, months: Math.max(2, Math.round((p.months || 5) * (0.95 + Math.random() * 0.25))),

@@ -9,6 +9,7 @@
 // agent puts your name forward, or does not. Then you wait, and mostly you hear nothing.
 //
 // Everything here is read against what you are: your reach, your standing, whether the
+import { planBudget } from './budget.js';
 // director knows you, whether the part is on type, and whether they have heard your name
 // this month. There is no button that buys a tentpole.
 import { rint, chance, pick } from '../../engine/rng.js';
@@ -65,7 +66,10 @@ function makeOne(s) {
     id: uid(s, 'tp'), title: newTitle(s, genre), studio, genre, role: part.role, share: part.share, hard: part.hard, want: part.want,
     director, directorId: mine ? mine.id : null,
     withName: star ? star.name : null, withId: star ? star.id : null, withIcon: !!(star && star.icon),
-    budget: rint(120, 320), months: rint(5, 8), prep: chance(45) ? 1 : 0,
+    // What the board shows is what the picture costs (career/budget.js). It used to show a number
+    // rolled here, €120–320m, and judge the film against a different one.
+    ...(() => { const b = planBudget({ seed: uid(s, 'tpb'), genre, scale: 'blockbuster' }); return { budget: b.budget, needs: b.needs }; })(),
+    months: rint(5, 8), prep: chance(45) ? 1 : 0,
     startAt: stamp(s) + gap, decideBy: stamp(s) + rint(2, Math.max(3, gap - 2)),
     since: stamp(s), sent: null, due: null,
   };
@@ -153,7 +157,7 @@ function answer(s, p) {
     id: uid(s, 'off'), via: 'studio', kind: 'tentpole', from: p.studio,
     projectTitle: '⭐ ' + p.title, role: p.role, type: 'Blockbuster', genre: p.genre,
     salary: fee, months: p.months, prep: p.prep, fame: 9, prestigeScore: rint(58, 86),
-    tier: p.role === 'Lead' ? 'tentpole' : 'lead', scale: 'blockbuster',
+    tier: p.role === 'Lead' ? 'tentpole' : 'lead', scale: 'blockbuster', budget: p.budget ?? null, needs: p.needs ?? null,
     stability: Math.max(70, rollStability('blockbuster')), deadline: rint(2, 3),
     startAt: p.startAt > stamp(s) + 1 ? p.startAt : 0, waitsForWrap: true,
     director: p.director, directorId: p.directorId || undefined,

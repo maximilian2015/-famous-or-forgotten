@@ -27,6 +27,7 @@ import { ambitionLean } from '../meta/ambition.js';
 import { hypeReach, hypeBrands } from '../meta/hype.js';
 import { socialReach } from '../social/posting.js';
 import { heirReach } from '../life/origin.js';
+import { ensureBudget } from './budget.js';
 export { tvMonths, TV_PACE } from './franchise.js';
 // What a casting office will see you for. Usually that is fame — but an Asker counts,
 // and it is the one route into work above your level that does not run through
@@ -586,6 +587,7 @@ function answerSubmission(s, sub) {
   // A running show is "Title · season 8" on the call sheet and "Title" in the filmography —
   // the same convention a renewal uses (franchise.js), so the seasons group under one name.
   const season = c.perEpisode ? (c.season || 1) : 0;
+  ensureBudget(c, c.id);   // the picture you read for has its cost, seeded by the listing (career/budget.js)
   (s.offers = s.offers || []).push({
     id: uid(s, 'off'), via: 'casting',
     // Who is directing it. The listing has carried this since the register was written and
@@ -597,6 +599,7 @@ function answerSubmission(s, sub) {
     directorBand: c.directorBand || null, directorTop: !!c.directorTop,
     projectTitle: season > 1 ? `${c.title} · season ${season}` : c.title, role: c.role, type: c.type, genre: c.genre,
     salary: c.salary, months: c.months, tier: sc.tier, scale: c.scale,
+    budget: c.budget ?? null, needs: c.needs ?? null,   // the picture's, from the listing (career/budget.js)
     episodes: c.episodes, episodeFee: c.episodeFee, season, seriesTitle: c.perEpisode ? c.title : undefined,
     joined: season > 1, audience: c.audience || 0,
     stability: c.stability, perEpisode: c.perEpisode, medium: c.medium,

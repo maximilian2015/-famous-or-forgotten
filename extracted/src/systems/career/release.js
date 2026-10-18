@@ -31,6 +31,7 @@ import { networkLine, slotNorm } from './franchise.js';
 import { typecastAfterCredit, typeFit, castingExpectation, roleAcceptance, acceptanceWord } from '../meta/typecast.js';
 import { storyAfterCredit } from '../meta/stories.js';
 import { addHype, flopHype, hype, hypeSource } from '../meta/hype.js';
+import { ensureBudget } from './budget.js';
 
 const clamp = (v, a = 0, b = 100) => Math.max(a, Math.min(b, v));
 
@@ -350,12 +351,12 @@ export function expansionFor(rel) {
 // it does not have stays absent rather than being invented: no monthly hype, no press tour, no
 // reminders, because nobody is doing any of that for it.
 export function grossFor({ scale, rating, genre, fame = 0, withFame = 0, trend = 1, appealMod = 1,
-  crowd = null, campaignTier = null, part = 1, lastRating = 65 }) {
+  crowd = null, campaignTier = null, part = 1, lastRating = 65, budget = null }) {
   if (!BUDGET[scale]) return 0;
-  const rel = { scale, genre, rating, reception: crowd != null ? crowd : rating,
+  const rel = { scale, genre, rating, reception: crowd != null ? crowd : rating, budget,
     appealMod, part, lastRating, campaignTier: campaignTier || studioCampaign(scale) };
   const demand = demandCore({ scale, genre, cast: [fame, withFame], appetite: trend,
-    campaignTier: rel.campaignTier, part, lastRating, appealMod });
+    campaignTier: rel.campaignTier, part, lastRating, appealMod, budget });
   // The same opening every one of your films goes through — the window is rolled rather than
   // read off a calendar, because a world film is not released in any particular month of yours.
   const opening = openingFor({ month: rint(0, 11) }, rel, demand);
@@ -700,6 +701,8 @@ export function scheduleRelease(s, credit, p) {
     ...tvTermsOf(p),
     title: credit.title, role: credit.role, type: credit.type, genre: credit.genre,
     scale: p.scale || 'feature', tier: p.tier || 'lead', season: p.season || 0,
+    // What it cost and what it needed (career/budget.js), carried to the night it closes.
+    budget: p.budget ?? null, needs: p.needs ?? null,
     episodes: p.episodes || 0, part: p.part || 1, salary: credit.salary,
     rating: credit.rating, status: credit.status, worldHit: credit.status === 'World Hit',
     // The shoot where everything landed (production.js). It has to ride all the way to the
@@ -749,6 +752,8 @@ export function scheduleRelease(s, credit, p) {
       showrunnerId: ((p.crew || [])[0] || {}).knownId || null,
       months: p.months, episodes: p.episodes || 0, episodeFee: p.episodeFee || 0, baseSalary: p.baseSalary || p.salary, arc: p.arc || null,
       season: p.season || 0, part: p.part || 1, tier: p.tier, scale: p.scale, stability: p.stability,
+      // What this one cost, so the next part is priced off it (franchise.js, budget.js sequelBudget).
+      budget: p.budget ?? null, needs: p.needs ?? null,
       // Who you played, what it was about, and where you said it should go. The next season
       // and the next part are built from this object and nothing else — leaving these out
       // meant season four was about a stranger with a new name, under a brief that said
@@ -760,6 +765,7 @@ export function scheduleRelease(s, credit, p) {
       optionSeasons: p.optionSeasons || 0, optionFrom: p.optionFrom || 0, exitAfter: p.exitAfter || 0,
     },
   };
+  ensureBudget(rel, p.id || credit.title);   // a set from before budgets: priced now, the same way every time
   (s.releases = s.releases || []).push(rel);
   addTimeline(s, `"${rel.title}" wrapped. It opens in about ${count(wait, 'month')}.`);
   return rel;
@@ -956,6 +962,7 @@ function open(s, rel) {
     part: rel.part > 1 ? rel.part : 0, episodes: rel.episodes,
     // In cinemas. Everything below is provisional until runTick closes it.
     running: true, weeks: 0, weeksTotal: runWeeks(rel, verdict), openedAt: (s.year || 0) * 12 + (s.month || 0),
+    budget: rel.budget ?? null, needs: rel.needs ?? null,   // what it cost, for the filmography and the press (budget.js)
     boxOffice: 0, viewers: rel.viewers || 0, openViewers: rel.openViewers || 0, endViewers: rel.endViewers || 0,
     // What the room thought, which is not what the column thought. See audienceFor above.
     // The credit carries the RECEPTION — out of a hundred, what splitLine and the critics
@@ -1017,7 +1024,7 @@ function open(s, rel) {
   setFame(s, (s.fame || 0) + opening * headroom(118, s.fame));
   if (fest && fest.result === 'prize') setRespect(s, (s.respect || 0) + 4 * Math.max(0.16, 1 - (s.respect || 0) / 112));
   // The finished thing is kept ON the release so runTick can close it out properly.
-  credit._rel = { rating: rel.rating, worldHit: rel.worldHit, tier: rel.tier, scale: rel.scale,
+  credit._rel = { rating: rel.rating, worldHit: rel.worldHit, tier: rel.tier, scale: rel.scale, budget: rel.budget ?? null,
     salary: rel.salary, finalGross: rel.finalGross || 0, job: rel.job, film,
     // The campaign has to survive to closeRun. The verdict is measured against what the thing
     // cost to make AND to sell, and without this line every picture would be judged at the end
@@ -1126,13 +1133,13 @@ function closeRun(s, credit, r) {
   const rating = Number.isFinite(r.rating) ? r.rating : (Number.isFinite(credit.rating) ? credit.rating : 50);
   credit.score = Number((rating / 10).toFixed(1));
   r = { ...r, rating };
-  const verdict = verdictOf({ scale: r.scale, rating: r.rating, boxOffice: credit.boxOffice,
+  const verdict = verdictOf({ scale: r.scale, budget: r.budget ?? credit.budget ?? null, rating: r.rating, boxOffice: credit.boxOffice,
     // What it cost to sell, so the bar is the one this picture actually had to clear.
     campaignTier: r.campaignTier,
     // Television needs to know who turned up; without these it fell back to the column.
     type: credit.type, endViewers: credit.endViewers, viewers: credit.viewers });
   credit.verdict = verdict;
-  credit.needed = breakEvenFor({ scale: r.scale, campaignTier: r.campaignTier });
+  credit.needed = breakEvenFor({ scale: r.scale, campaignTier: r.campaignTier, budget: r.budget ?? credit.budget ?? null });
   // And the genre is used up by what you released into it, exactly as the world's pictures are.
   // Weighted by what anybody actually saw of it, not counted as one release. See exposureOf.
   if (r.film && r.genre) marketAfterRelease(s, r.genre, r.scale,
@@ -1272,7 +1279,7 @@ function closeRun(s, credit, r) {
     if (cut > 0) { paid(s, cut, `"${credit.title}" — ${r.merch}% of the merchandise`); credit.merchPaid = cut; addTimeline(s, `Your face is on the toys, and ${r.merch}% of the toys is yours: €${cut.toLocaleString()}.`); }
   }
   if (film && r.backend > 0) {
-    const over = Math.max(0, (credit.boxOffice || 0) - budgetFor({ scale: r.scale }) * 2.2);
+    const over = Math.max(0, (credit.boxOffice || 0) - budgetFor({ scale: r.scale, budget: r.budget ?? credit.budget ?? null }) * 2.2);
     const cut = Math.round(over * (r.backend / 100));
     if (cut > 0) { paid(s, cut, `"${credit.title}" — ${r.backend}% of the gross`); credit.backendPaid = cut; }
     else addTimeline(s, `"${credit.title}" never passed break-even. Your points are worth nothing.`, true);
@@ -1280,7 +1287,7 @@ function closeRun(s, credit, r) {
 
   // The gross means nothing on its own — "a billion" is only a triumph next to what it cost.
   // The industry never quotes one without the other and neither should this.
-  const bud = budgetFor({ scale: r.scale });
+  const bud = budgetFor({ scale: r.scale, budget: r.budget ?? credit.budget ?? null });
   // Past a billion it is written as a billion. "€1163m" is a number you have to stop and count
   // the digits of, which is the opposite of what that line is for. This half came in with an
   // uncommitted cut to the opening constant that was reverted — the cut made a billion

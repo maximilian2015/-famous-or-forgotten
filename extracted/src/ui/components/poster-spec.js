@@ -5,8 +5,8 @@
 //
 // Poster.jsx draws the shapes and imports everything here. Nothing else should need it, except
 // a probe.
-export function hash(str) { let h = 2166136261; for (let i = 0; i < str.length; i++) { h ^= str.charCodeAt(i); h = Math.imul(h, 16777619) >>> 0; } return h; }
-export function rng(seed) { let x = seed || 1; return () => { x ^= x << 13; x >>>= 0; x ^= x >> 17; x ^= x << 5; x >>>= 0; return (x % 10000) / 10000; }; }
+export { hash, rng } from '../../engine/hash.js';
+import { hash, rng } from '../../engine/hash.js';
 export const one = (arr, r) => arr[Math.floor(r() * arr.length) % arr.length];
 
 // ── colour ────────────────────────────────────────────────────────────────────

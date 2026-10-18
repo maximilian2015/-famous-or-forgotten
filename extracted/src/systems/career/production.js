@@ -25,6 +25,7 @@ import { tvTermsOf } from './terms.js';
 import { dirBump, dirSwing, pitchAftermath } from './chapter.js';
 import { youngAfterCredit } from './youngblood.js';
 import { sets, addSet, removeSet, setById, canTakeSet, slotsFree, isShort, MAX_SETS, SET_RESPECT } from '../../engine/sets.js';
+import { ensureBudget } from './budget.js';
 export { sets, canTakeSet, slotsFree, MAX_SETS, SET_RESPECT };
 const clamp = (v) => Math.max(0, Math.min(100, v));
 // A shoot opens on 20 and 20 used to be labelled "Disaster", so the very first thing the
@@ -168,7 +169,11 @@ export function startProduction(s, offer) {
     youngId: offer.youngId || null,
     // Franchise material, or a story that ends. Rolled once, here, and kept — see franchise.js.
     potential: offer.potential || rollPotential(scaleOfOffer(offer), offer.genre),
+    // What the picture costs and what it needs (career/budget.js), from the offer — or given now,
+    // seeded by the offer, for an offer that came from somewhere that did not price it.
+    budget: offer.budget ?? null, needs: offer.needs ?? null,
   };
+  ensureBudget(p, offer.id || p.id);
   // One more set. Three at most, and the second and third only for somebody they trust
   // to turn up — see engine/sets.js. The callers check first; this is the last door.
   // The director who sent it, if it came from one you know; the rival, if the picture is

@@ -13,6 +13,7 @@ import { newTitle } from '../world/titles.js';
 import { refusedOnType } from '../meta/typecast.js';
 import { storyOfferFactor, noteRefusal, noteSequelLoss, holdsAGrudge } from '../meta/stories.js';
 import { recordPassed } from '../meta/passed.js';
+import { ensureBudget } from './budget.js';
 import { ambitionLean } from '../meta/ambition.js';
 import { hypeDemand, hype, hypeBrands } from '../meta/hype.js';
 import { socialBrandLift } from '../social/posting.js';
@@ -56,7 +57,7 @@ export function generateOffer(s) {
   const dir = known.length && chance(25) ? pick(known) : null;
   // Who brought it. Messages says so on the card — Maxi had three copies of one offer in
   // three apps and no idea where any of them had come from.
-  return { id: uid(s, 'off'), via: 'agent', director: dir ? dir.name : undefined, directorId: dir ? dir.id : undefined,
+  return ensureBudget({ id: uid(s, 'off'), via: 'agent', director: dir ? dir.name : undefined, directorId: dir ? dir.id : undefined,
     projectTitle: (tier === 'tentpole' ? '⭐ ' : '') + title(s, genre),
     role: tier === 'supporting' ? 'Supporting' : 'Lead',
     type: s.dream === 'singer' ? (tier === 'tentpole' ? 'World Tour' : 'Album') : ({ blockbuster: 'Blockbuster', feature: 'Feature Film', indie: 'Indie Film' }[scale]),
@@ -66,7 +67,7 @@ export function generateOffer(s) {
     // What kind of picture it is — decides the post-production wait and the box office it can take.
     scale,
     stability: rollStability(scale),
-    deadline: rint(2, 4) };
+    deadline: rint(2, 4) });   // what the picture costs, given with it (career/budget.js)
 }
 // Which size of picture an agent's offer is for. A tentpole part is a tentpole; a lead is mostly
 // a studio feature and sometimes a small film; a supporting part is mostly small, often a studio
