@@ -186,6 +186,16 @@ export function startProduction(s, offer) {
   if (known) { const b = Math.max(10, Math.min(90, known.relationship || 40)); p.crew[0] = { ...p.crew[0], name: known.name, bond: b, bond0: b, knownId: known.id }; }
   else if (leadName) p.crew[0] = { ...p.crew[0], name: leadName };
   if (offer.costarId) { const a = actorById(s, offer.costarId); if (a && p.crew[1]) { const b = rint(15, 35); p.crew[1] = { ...p.crew[1], name: a.name, worldId: a.id, bond: b, bond0: b, trait: 'perfectionist' }; } }
+  // A supporting part is in somebody else's picture, and that somebody sells it. Before Budget V2 an
+  // agent never put you in a supporting part in a studio picture or a tentpole, so the box office
+  // never had to ask who the lead was; measured after it could, a minor part of yours in a tentpole
+  // opened on YOUR name and the tentpoles of a career fell by a tenth. The lead is somebody from
+  // the world of a size that fits the picture, and they are on the poster.
+  if (offer.tier === 'supporting' && (p.scale === 'feature' || p.scale === 'blockbuster') && !p.crew.some((c) => c.worldId) && p.crew[1]) {
+    const floor = p.scale === 'blockbuster' ? 65 : 40;
+    const leads = activeActors(s).filter((a) => (a.fame || 0) >= floor).sort((a, b) => (b.fame || 0) - (a.fame || 0)).slice(0, p.scale === 'blockbuster' ? 25 : 60);
+    if (leads.length) { const a = leads[rint(0, leads.length - 1)]; const b = rint(15, 35); p.crew[1] = { ...p.crew[1], name: a.name, worldId: a.id, bond: b, bond0: b }; }
+  }
   addSet(s, p);
   const star = p.crew.find((c) => c.worldId);
   if (star) {
