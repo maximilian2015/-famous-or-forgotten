@@ -12,6 +12,7 @@ import { canWork } from '../life/strain.js';
 import { newTitle } from '../world/titles.js';
 import { refusedOnType } from '../meta/typecast.js';
 import { storyOfferFactor, noteRefusal, noteSequelLoss, holdsAGrudge } from '../meta/stories.js';
+import { recordPassed } from '../meta/passed.js';
 import { ambitionLean } from '../meta/ambition.js';
 import { hypeDemand, hype, hypeBrands } from '../meta/hype.js';
 import { socialBrandLift } from '../social/posting.js';
@@ -113,6 +114,7 @@ export function offersTick(s) {
     if (o.kind === 'thaw') addTimeline(s, `${title} finally went ahead without you.`, true);
     else addTimeline(s, `They stopped waiting on ${title} and cast someone else.`, true);
     if (o.kind === 'sequel' || o.kind === 'renewal') noteSequelLoss(s, o, o.story === 'recast' ? 'meeting' : 'expired');
+    recordPassed(s, o, o.story === 'recast' ? 'meeting' : 'expired');
     s.inbox = (s.inbox || []).filter((m) => m.offerId !== o.id);
   }
   if (kept.length !== s.offers.length && !s.lastEvent) {
@@ -284,6 +286,8 @@ export function declineOffer(s, id) {
   }
   if (o.kind === 'sequel' || o.kind === 'renewal') noteSequelLoss(s, o, o.story === 'recast' ? 'meeting' : 'passed');
   else if (o.tier !== 'supporting' && o.via !== 'casting') noteRefusal(s, o);
+  // Kept for good, whatever the stories above make of it (meta/passed.js).
+  recordPassed(s, o, o.story === 'recast' ? 'meeting' : 'passed');
   // And saying no to the box is how you get out of it — see meta/typecast.js refusedOnType.
   refusedOnType(s, o);
   // Walking out of a season the network holds an option on is walking out of a contract.

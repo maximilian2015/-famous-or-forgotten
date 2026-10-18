@@ -23,6 +23,7 @@ import { newTitle } from '../world/titles.js';
 import { GENRES } from './news.js';
 import { rollStability } from '../career/stability.js';
 import { ambitionOf } from './ambition.js';
+import { notePassedOutcome } from './passed.js';
 
 const clamp = (v, a = 0, b = 100) => Math.max(a, Math.min(b, v));
 const stamp = (s) => (s.year || 0) * 12 + (s.month || 0);
@@ -252,6 +253,8 @@ export const CHAINS = {
           const hit = !!g.hit;
           const a = activeActors(s).filter((x) => Math.abs(ageOf(s, x) - (s.ageY || 30)) <= 8)[0];
           const other = a ? a.name : 'somebody younger';
+          // What this beat decides is kept on the part you passed on (meta/passed.js).
+          notePassedOutcome(s, st.data.title, { replacedBy: a ? a.name : null, outcome: { hit, gross: hit ? (g.gross || 0) : 0 } });
           if (!hit) return { speaker: 'The trades', text: `${st.data.who}’s "${st.data.title}" — the one you passed on — opened and sank. The part went to ${other}, and the reviews mention them the way reviews mention a weather forecast.`,
             choices: [{ label: 'You dodged it', shows: { fx: { mental: 3 } }, apply: () => { s.mental = clamp((s.mental || 50) + 3); return { reply: 'You dodged it. Nobody will ever know you were nearly in it, which is the point.', end: true }; } }] };
           return { speaker: 'The trades', text: `${st.data.who}’s "${st.data.title}" — the one you passed on — opened at ${money(g.gross || 0)}. The part went to ${other}, and the reviews use their name in the first line. ${st.data.who} has not sent you anything since, and will not.`,
@@ -300,6 +303,8 @@ export const CHAINS = {
           if (st.data.hit == null) st.data.hit = chance(tv ? 50 : 45);
           const other = st.data.other || (st.data.other = (activeActors(s).filter((x) => Math.abs(ageOf(s, x) - (s.ageY || 30)) <= 8 && x.gender === s.gender)[0] || {}).name || 'somebody younger');
           const gross = st.data.gross || (st.data.gross = tv ? 0 : (st.data.scale === 'blockbuster' ? rint(250, 800) : rint(60, 220)) * 1e6 * (st.data.hit ? 1 : 0.4));
+          // Kept on the part you lost (meta/passed.js): who has it, and how it went.
+          notePassedOutcome(s, st.data.title, { replacedBy: other !== 'somebody younger' ? other : null, outcome: { hit: !!st.data.hit, gross } });
           const text = tv
             ? (st.data.hit ? `Season ${st.data.season} of "${st.data.title}" went out without you. ${other} has your part, the numbers held, and the piece about it says the show was always bigger than any one name. That is the sentence.` : `Season ${st.data.season} of "${st.data.title}" went out without you. ${other} has your part and the numbers fell off a cliff. The fans blame the recast, loudly, and the piece agrees with them.`)
             : (st.data.hit ? `"${st.data.title}" opened at ${money(gross)} without you. ${other} has your part, and the reviews use their name in the first line. The fans were furious for a week and then they went to see it.` : `"${st.data.title}" opened at ${money(gross)} without you, which is not a number the studio wanted. ${other} has your part, and the fans have decided, loudly, that this is why.`);
