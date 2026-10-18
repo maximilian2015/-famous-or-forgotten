@@ -265,8 +265,17 @@ export function demandFor(s, rel) {
 }
 
 // ── 2. OPENING ────────────────────────────────────────────────────────────────
+// How far a picture's budget carries it past its scale's usual width (Budget V2). A €25m comedy
+// is a studio release and still does not open on the screens a €110m one does; a tentpole is
+// everywhere whatever it cost, so its reach is left exactly where it was.
+export const REACH = { k: 0.3 };
+export function reachOf(rel) {
+  if (!rel || !(rel.scale === 'feature' || rel.scale === 'indie')) return 1;
+  const base = BUDGET[rel.scale];
+  return Math.max(0.5, Math.min(1.4, Math.pow(budgetM(rel) / base, REACH.k)));
+}
 export function openingFor(s, rel, demand) {
-  const wide = SCREENS[rel.scale] ?? 0.09;
+  const wide = (SCREENS[rel.scale] ?? 0.09) * reachOf(rel);
   // Superlinear, because the gap between seventy and ninety matters far more than the gap
   // between twenty and forty. The top of this market is winner-take-most and always was.
   const base = Math.pow(Math.max(2, demand), 1.45) * OPEN_K * wide;
