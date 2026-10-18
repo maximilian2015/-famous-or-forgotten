@@ -158,12 +158,16 @@ export function studioCampaign(scale) {
   return 'minimal';
 }
 export function campaignOf(rel) { return CAMPAIGN[rel && rel.campaignTier] || CAMPAIGN.standard; }
-export function campaignSpend(rel) { return (BUDGET[rel.scale] || 0) * campaignOf(rel).share; }
+// The production budget in millions: the project's own when it carries one (Budget V2), and the
+// scale's single number otherwise — which is every film made before it, so nothing moves until
+// a project is given a budget of its own.
+export function budgetM(rel) { return rel && Number.isFinite(rel.budget) && rel.budget > 0 ? rel.budget : (BUDGET[rel && rel.scale] || 0); }
+export function campaignSpend(rel) { return budgetM(rel) * campaignOf(rel).share; }
 // What it has to clear. The trades’ own rule: worldwide takes about two and a half times the
 // negative before anybody sees a profit, because the cinema keeps roughly half of every ticket.
 // This is the number that replaces comparing the gross to the bare budget.
 export function breakEvenFor(rel) {
-  const b = BUDGET[rel.scale] || 0;
+  const b = budgetM(rel);
   if (!b) return 0;
   return Math.round((b + b * campaignOf(rel).share) * 1.5 * 1000000);
 }
@@ -215,11 +219,11 @@ export function castDraw(names) {
 // The order of operations is exactly what demandFor did, because a refactor that moves a
 // player's results is not a refactor. test_demandcore holds that to the decimal.
 export function demandCore({ scale, genre, cast = [], appetite = 1, campaignTier = null,
-  part = 1, lastRating = 65, appealMod = 1, buzz = 0, anticipation = 0, tour = 1, remind = 1 } = {}) {
+  part = 1, lastRating = 65, appealMod = 1, buzz = 0, anticipation = 0, tour = 1, remind = 1, budget = null } = {}) {
   let d = 6;
   d += castDraw(cast) * 0.52;                                      // who is on the poster
   d += buzz * 0.28;                                                // what is being said this month
-  d += Math.min(26, Math.sqrt(Math.max(0, campaignSpend({ scale, campaignTier }))) * 2.1);
+  d += Math.min(26, Math.sqrt(Math.max(0, campaignSpend({ scale, campaignTier, budget }))) * 2.1);
   // Weighted heavily on purpose: the bigger the picture, the LESS of it is the actor. Nobody
   // buys a ticket to a tentpole for whoever is third on the poster — the franchise, the studio
   // and the campaign sell it.
@@ -250,7 +254,7 @@ export function demandFor(s, rel) {
     scale: rel.scale, genre: rel.genre,
     cast: [s.fame || 0, rel.withFame || 0],
     appetite: appetiteFor(s, rel.genre),
-    campaignTier: rel.campaignTier,
+    campaignTier: rel.campaignTier, budget: rel.budget ?? null,
     part: rel.part || 1, lastRating: rel.lastRating, appealMod: rel.appealMod,
     // Scandal is not the kind of talk that sells a ticket, which was always the rule here.
     buzz: hypeSource(s) === 'scandal' ? 0 : hype(s),
@@ -658,7 +662,7 @@ export function careerOf(d) {
 }
 
 // Did it make its money back? This is what the industry actually remembers.
-export function budgetFor(rel) { return Math.round((BUDGET[rel.scale] || 0) * 1000000); }
+export function budgetFor(rel) { return Math.round(budgetM(rel) * 1000000); }
 export function verdictOf(rel) {
   if (!isFilm(rel.scale)) {
     // Television is judged on how many turned up, not on the column. Maxi: "thirty-seven
