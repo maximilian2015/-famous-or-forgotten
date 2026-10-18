@@ -13,7 +13,10 @@ const st = (over) => ({ version: 'x', ageY: 30, stage: 'career', dream: 'actor',
   filmography: [], discography: [], offers: [], releases: [], timeline: [], year: 2030, month: 0, ...over });
 const job = (over) => ({ title: 'Golden Echo', role: 'Lead', type: 'Feature Film', genre: 'Thriller',
   salary: 900000, months: 6, scale: 'feature', tier: 'lead', prestigeScore: 60, part: 1, season: 0,
-  episodes: 0, episodeFee: 0, crew: [{ id: 'c', name: 'Mira Croft', role: 'Director', bond: 50 }], ...over });
+  episodes: 0, episodeFee: 0, crew: [{ id: 'c', name: 'Mira Croft', role: 'Director', bond: 50 }],
+  // Budget V2: a picture costs what its project costs. Golden Echo's own seed makes it a €130m
+  // thriller, the top of the range, so the scenarios here name an ordinary one (career/budget.js).
+  budget: { blockbuster: 220, feature: 45, indie: 6, small: 1, festival: 1.5 }[(over && over.scale) || 'feature'] ?? null, ...over });
 const credit = (over) => ({ title: 'Golden Echo', role: 'Lead', type: 'Feature Film', genre: 'Thriller',
   salary: 900000, rating: 80, status: 'Well-received', year: 2030, season: 0, part: 1, episodes: 0, ...over });
 const money = (n) => n >= 1000000000 ? '€' + (n / 1000000000).toFixed(2) + 'bn'
@@ -96,9 +99,9 @@ ok('under the budget is a bomb', verdictOf({ scale: 'feature', boxOffice: budget
 // month 3 puts Sci-Fi on the front pages, so neither of these two is riding a trend.
 let adoredFlops = 0, panneHits = 0;
 for (let i = 0; i < 600; i++) {
-  const a = { scale: 'feature', rating: 90, genre: 'Drama' }; a.boxOffice = boxOfficeFor(st({ fame: 30, month: 3 }), a);
+  const a = { scale: 'feature', rating: 90, genre: 'Drama', budget: 33 }; a.boxOffice = boxOfficeFor(st({ fame: 30, month: 3 }), a);
   if (verdictOf(a) === 'bomb' || verdictOf(a) === 'broke even') adoredFlops++;
-  const b = { scale: 'feature', rating: 62, genre: 'Horror' }; b.boxOffice = boxOfficeFor(st({ fame: 90, month: 3 }), b);
+  const b = { scale: 'feature', rating: 62, genre: 'Horror', budget: 30 }; b.boxOffice = boxOfficeFor(st({ fame: 90, month: 3 }), b);
   if (verdictOf(b) === 'smash' || verdictOf(b) === 'profitable') panneHits++;
 }
 ok('a beloved drama can still lose money', adoredFlops > 0, `${adoredFlops}/600`);

@@ -36,9 +36,14 @@ export function planBudget({ seed, genre, scale }) {
   const [lo, hi] = RANGE[scale] || RANGE.indie;
   const r = rng(hash('budget:' + String(seed) + '|' + (genre || '') + '|' + scale));
   let t = GENRE_AT[genre] ?? 0.4;
+  // A studio feature's genre places it less far apart than an indie's or a tentpole's: measured,
+  // the full spread made a €22m horror picture nearly always a smash and a €116m science-fiction
+  // one almost never (tests/probes/probe_calibrate_v2.mjs). What it needs and the project itself
+  // still move it the whole way, so a feature comedy can still cost €90m.
+  if (scale === 'feature') t = 0.4 + (t - 0.4) * 0.4;
   const needs = [];
   for (const [k, n] of Object.entries(NEEDS)) if (r() * 100 < (n.odds[genre] || 0)) { t += n.push; needs.push(k); }
-  t += (r() - 0.5) * 0.36;
+  t += (r() - 0.5) * 0.48;
   // Every tentpole is expensive, whatever it is about: the genre moves one half as far, so a
   // science-fiction tentpole does not need €900m to break even (the box office and the Billion
   // Club for tentpoles were calibrated at €220m, and this keeps them near it).

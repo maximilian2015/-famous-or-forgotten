@@ -190,7 +190,7 @@ export function startProduction(s, offer) {
   // agent never put you in a supporting part in a studio picture or a tentpole, so the box office
   // never had to ask who the lead was; measured after it could, a minor part of yours in a tentpole
   // opened on YOUR name and the tentpoles of a career fell by a tenth. The lead is somebody from
-  // the world of a size that fits the picture, and they are on the poster.
+  // the world of a size that fits the picture: your co-star, named on the set and on opening night.
   if (offer.tier === 'supporting' && (p.scale === 'feature' || p.scale === 'blockbuster') && !p.crew.some((c) => c.worldId) && p.crew[1]) {
     const floor = p.scale === 'blockbuster' ? 65 : 40;
     const leads = activeActors(s).filter((a) => (a.fame || 0) >= floor).sort((a, b) => (b.fame || 0) - (a.fame || 0)).slice(0, p.scale === 'blockbuster' ? 25 : 60);

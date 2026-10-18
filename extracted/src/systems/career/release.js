@@ -73,7 +73,7 @@ function watchPull(rating) {
 // Not everything good is commercial. A prestige drama and a horror picture with the same
 // score do not do the same business, and that is the whole reason the score and the money
 // are two separate numbers rather than one number written twice.
-const APPEAL = {
+export const APPEAL = {
   Horror: 1.35, 'Sci-Fi': 1.25, Comedy: 1.1, Thriller: 1.05, Crime: 0.95,
   Musical: 0.85, Romance: 0.8, Drama: 0.7,
 };
@@ -175,7 +175,15 @@ export function breakEvenFor(rel) {
 
 // How wide it can physically go. THIS is what the budget buys instead of buying tickets, and
 // the real gap between a platform release and a global day-and-date is enormous.
-const SCREENS = { small: 0.012, festival: 0.02, indie: 0.09, prestige: 0.12, feature: 0.55, blockbuster: 0.78 };
+// Budget V2 recalibrated the two middle scales, measured on played careers (tests/probes/
+// probe_calibrate_v2.mjs, probe_verdicts.mjs): feature 0.55 and indie 0.09 were set against a
+// €90m and a €12m budget for every picture. With budgets of their own most pictures cost a
+// fraction of that, and at the old widths nearly every standard feature of yours was a smash.
+// Tentpoles are untouched.
+export const SCREENS = { small: 0.012, festival: 0.02, indie: 0.05, prestige: 0.12, feature: 0.34, blockbuster: 0.78 };
+// How far a platform release can widen, as a multiple of where it opened. Kept where the old
+// widths put it, so the indie sleeper did not grow its ceiling by accident when the indie width moved.
+const EXPAND_CAP = { indie: 4, festival: 18, small: 30 };
 // Worldwide opening per unit of demand, raised to the power below. ONE source of truth: this
 // number existed twice as a bare literal — once here and once inside grossFor — and when
 // somebody changed it they changed one of them.
@@ -347,7 +355,7 @@ export function expansionFor(rel) {
   // the reason a twelve-million picture was reaching a billion in testing. There are only so
   // many cinemas: however beloved it is, a platform release widens to about the breadth of an
   // ordinary wide release and stops. That is still an enormous result.
-  return Math.min(grow, 0.36 / (SCREENS[rel.scale] ?? 0.09));
+  return Math.min(grow, EXPAND_CAP[rel.scale] ?? (0.36 / (SCREENS[rel.scale] ?? 0.09)));
 }
 
 // The commercial result, for anybody. Your films and the ones the rest of the world makes in

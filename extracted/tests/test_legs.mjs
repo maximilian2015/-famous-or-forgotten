@@ -38,16 +38,18 @@ const M = (n) => (n >= 1e9 ? '€' + (n / 1e9).toFixed(3) + 'bn' : '€' + Math.
 }
 
 // ── CASE A: a feature nobody can stop talking about ──────────────────────────
-// Rating 8.8, fame 70, a standard campaign. The smash line is twice its break-even, €365m. This
-// is the case a single global range killed outright.
+// Rating 8.8, fame 70, a standard campaign. The smash line is twice its break-even. This is the
+// case a single global range killed outright. Since Budget V2 a picture has its own budget: this
+// one costs what a studio drama now usually costs, €33m, not the old flat €90m for every feature.
 {
-  const bar = breakEvenFor({ scale: 'feature', campaignTier: 'standard' }) * 2;
+  const BUDGET = 33;
+  const bar = breakEvenFor({ scale: 'feature', campaignTier: 'standard', budget: BUDGET }) * 2;
   const out = [];
   for (let i = 0; i < 20000; i++) {
     const s = { fame: 70, media: 15 + Math.random() * 20, hypeSource: null, year: 2066,
       month: Math.floor(Math.random() * 12), typecast: { scores: {}, active: [] }, acting: 70 };
     const rel = { scale: 'feature', genre: 'Drama', campaignTier: 'standard', part: 1, appealMod: 1,
-      rating: 88, reception: 88, withFame: 0 };
+      rating: 88, reception: 88, withFame: 0, budget: BUDGET };
     out.push(gross(s, rel));
   }
   out.sort((a, b) => a - b);

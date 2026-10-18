@@ -34,7 +34,7 @@ const st = (o = {}) => ({ version: 'x', name: 'Mira Vale', dream: 'actor', stage
   const med = (l) => l[Math.floor(l.length / 2)];
   const com = many('Comedy', 'feature'), hor = many('Horror', 'feature'), sci = many('Sci-Fi', 'feature'), mus = many('Musical', 'feature');
   ok('a studio comedy costs tens of millions, not ninety', med(com) >= 22 && med(com) <= 45, String(med(com)));
-  ok('and is not one number: €18m, €38m, now and then €90m when it needs it', com[100] < 24 && com[1900] > 45 && com.some((x) => x >= 90), `${com[100]} / ${com[1900]} / max ${com.at(-1)}`);
+  ok('and is not one number: under €20m, €38m, now and then €90m when it needs it', com[0] < 21 && com[1900] > 45 && com.some((x) => x >= 90), `${com[0]} / ${com[1900]} / max ${com.at(-1)}`);
   ok('horror is cheap to make, a musical builds its stage, science fiction its world', med(hor) < med(com) && med(com) < med(mus) && med(mus) < med(sci), `${med(hor)} ${med(com)} ${med(mus)} ${med(sci)}`);
   const all = ['Comedy', 'Drama', 'Romance', 'Horror', 'Thriller', 'Crime', 'Musical', 'Sci-Fi'].flatMap((g) => many(g, 'blockbuster', 300)).sort((a, b) => a - b);
   ok('a tentpole still costs about what it did', med(all) >= 200 && med(all) <= 240, String(med(all)));
