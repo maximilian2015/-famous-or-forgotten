@@ -339,8 +339,14 @@ export function legsFor(rel) {
   const [lo, span] = LEGS[rel.scale] || LEGS_DEFAULT;
   let m = lo + Math.pow(Math.max(0, w - 35) / 60, 1.5) * span;
   // Frontloading, which is a mechanism and not a punishment: everybody who was ever going to
-  // see a bad blockbuster goes on the first weekend, and then it falls off a cliff.
-  if (!isPlatform(rel.scale) && w < 60) m *= 0.78;
+  // see a bad blockbuster goes on the first weekend, and then it falls off a cliff. The run does;
+  // the rule must not. It was a step — word 59 ran at 0.78 and word 60 in full, a fifth of the
+  // gross on one point — and now it is a slope: a picture the crowd shrugged at (word 52 and
+  // under) burns out at 0.78, a mediocre one (58) at about 0.89, and from 64, an ordinary picture
+  // people were content with, the run is whole. Centred where the step was, so the pictures that
+  // used to sit just under it — nearly every film rated in the fives — still run short of a
+  // normal one; a slope ending at 60 gave them their whole run back (probe_verdicts, the genre audit).
+  if (!isPlatform(rel.scale) && w < 64) { const k = Math.max(0, Math.min(1, (w - 52) / 12)); m *= 0.78 + 0.22 * k * k * (3 - 2 * k); }
   return Math.max(1.35, m * (0.92 + Math.random() * 0.16));
 }
 
@@ -401,15 +407,29 @@ export function grossFor({ scale, rating, genre, fame = 0, withFame = 0, trend =
 // The crowd and the column want different films, and they are only asked about the same
 // one. What they agree about is the middle — a competent picture is fine by everybody —
 // and they come apart at both ends.
-const CROWD = { Horror: 9, Comedy: 8, 'Sci-Fi': 6, Thriller: 4, Crime: 0, Romance: 0, Musical: -3, Drama: -7 };
+//
+// There was a genre table here too — horror +9, comedy +8, drama -7 — and it was the second of
+// three places the genre was counted (the genre audit, tests/probes/probe_genre_audit.mjs,
+// 18 Oct 2026). How many people want a horror picture is APPEAL's question, asked once, in
+// demandCore. What the crowd made of THIS picture is this function's, and a drama people liked
+// is liked as much as a horror picture people liked. With the table, a drama the critics called
+// a 6.0 was scored 53 by its own audience and ran like a picture nobody wanted.
+//
+// TEMPORARY, AND ONLY FOR TENTPOLES. The table is kept for blockbusters alone, untouched, to hold
+// the Billion Club where it was calibrated: without it a star's tentpoles past a billion fell from
+// 19.7% to 13.5% on the controlled probe (tests/probes/probe_tentpoles.mjs), because the billions
+// were the horror and science-fiction tentpoles riding it. That is a regression target protected for one
+// pass, not how a tentpole should work — when tentpoles are next tuned on their own, this goes.
+// test_genre_layers.mjs holds both halves: no genre in the crowd below a tentpole, and this one.
+export const TENTPOLE_CROWD = { Horror: 9, Comedy: 8, 'Sci-Fi': 6, Thriller: 4, Crime: 0, Romance: 0, Musical: -3, Drama: -7 };
 const CROWD_SCALE = { blockbuster: 9, feature: 3, recurring: 2, episode: 0, small: -3, indie: -6, prestige: -6, festival: -11 };
 export function audienceFor(s, rel) {
   const r = rel.rating || 0;
   // Half of the critics' opinion, flattened: they are kinder to a bad film and colder
   // about a masterpiece, because they paid for a Friday night either way.
   let v = 46 + (r - 50) * 0.55;
-  v += CROWD[rel.genre] ?? 0;
   v += CROWD_SCALE[rel.scale] ?? 0;
+  if (rel.scale === 'blockbuster') v += TENTPOLE_CROWD[rel.genre] ?? 0;   // temporary, see above
   // They came for you, and for whoever is on the poster with you.
   v += Math.min(11, Math.max(s.fame || 0, (rel.withFame || 0) * 0.9) / 9);
   // The version you argued for on day one is the whole trade, said plainly (story.js).
