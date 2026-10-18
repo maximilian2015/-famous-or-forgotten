@@ -10,7 +10,7 @@
 // count: how BRIGHT a genre's posters are, and how far apart two of them are from each other.
 // It reads the real palette through posterPalette, not a copy of the seeding — a copy would be
 // a second source of truth and would be wrong the first time anybody touched the hash.
-import { posterPalette, posterCount } from '../src/ui/components/poster-spec.js';
+import { posterPalette, posterCount, posterPlan, fitTitle, stackTitle, GLYPH } from '../src/ui/components/poster-spec.js';
 
 let fails = 0;
 const ok = (n, c, e = '') => { if (!c) { fails++; console.log('FAIL  ' + n + (e ? ' :: ' + e : '')); } else console.log('ok    ' + n); };
@@ -76,13 +76,62 @@ for (const g of GENRES) {
     `tightest genre varies by ${Math.min(...spread).toFixed(1)} points`);
 }
 
-// ── and there are a lot of them ───────────────────────────────────────────────
+// ── Posters V2: structure, not layers ─────────────────────────────────────────
+// The old count multiplied layers into the thousands and every one of them was the same layout.
+// What Maxi asked for is checked instead: ten in a row look different in STRUCTURE, the genre
+// reads in more than colour, a tentpole is not an indie, a sequel is family and not a clone, an
+// advert and a soap are their own kind of sheet, and the title fits.
 {
   const counts = GENRES.map((g) => posterCount(g));
-  ok('every genre can draw at least a thousand different one-sheets', Math.min(...counts) >= 1000,
-    `smallest is ${Math.min(...counts)}`);
-  console.log('      one-sheets per genre: ' + GENRES.map((g, i) => `${g} ${counts[i]}`).join(' · '));
-  console.log('      total: ' + counts.reduce((a, b) => a + b, 0));
+  console.log('      structures per genre (composition × motif × scheme): ' + GENRES.map((g, i) => `${g} ${counts[i]}`).join(' · '));
+  // A filmography as it really comes: mixed genres and sizes, in order.
+  const KINDS = [['Feature Film', 'feature'], ['Feature Film', 'indie'], ['Blockbuster', 'blockbuster'], ['Drama Series', 'recurring']];
+  const run = titles(200).map((t, i) => posterPlan({ title: t, genre: GENRES[(i * 3) % GENRES.length], type: KINDS[i % 4][0], scale: KINDS[i % 4][1] }).composition);
+  let worst = 99;
+  for (let i = 0; i + 10 <= run.length; i++) worst = Math.min(worst, new Set(run.slice(i, i + 10)).size);
+  ok('any ten in a row use at least five different compositions', worst >= 5, `worst window: ${worst}`);
+  for (const g of GENRES) {
+    const used = new Set(titles(300).map((t) => posterPlan({ title: t, genre: g, type: 'Feature Film', scale: 'feature' }).composition));
+    ok(`${g} reaches at least five compositions`, used.size >= 5, [...used].join(','));
+  }
+  // The genre is in the structure: a horror sheet is mostly an object or a corridor, a romance mostly two people.
+  const share = (g, set, scale = 'feature') => titles(400).filter((t) => set.includes(posterPlan({ title: t, genre: g, type: 'Feature Film', scale }).composition)).length / 400;
+  ok('horror is an object, a corridor or a face in the dark', share('Horror', ['symbol', 'corridor', 'closeup']) > 0.6, share('Horror', ['symbol', 'corridor', 'closeup']).toFixed(2));
+  ok('romance is two people or a horizon', share('Romance', ['faceoff', 'split', 'vista']) > 0.6, share('Romance', ['faceoff', 'split', 'vista']).toFixed(2));
+  ok('a musical is mostly a stage or a company', share('Musical', ['stage', 'ensemble']) > 0.5, share('Musical', ['stage', 'ensemble']).toFixed(2));
+  ok('a comedy is no longer five little people in six', share('Comedy', ['ensemble']) < 0.4, share('Comedy', ['ensemble']).toFixed(2));
+  // Size changes the structure.
+  const tent = titles(400).map((t) => posterPlan({ title: t, genre: 'Thriller', type: 'Blockbuster', scale: 'blockbuster' }));
+  const small = titles(400).map((t) => posterPlan({ title: t, genre: 'Thriller', type: 'Feature Film', scale: 'indie' }));
+  const pc = (list, set) => list.filter((p) => set.includes(p.composition)).length / list.length;
+  ok('a tentpole is sold on spectacle', pc(tent, ['action', 'hero', 'skyline', 'faceoff']) > pc(small, ['action', 'hero', 'skyline', 'faceoff']) + 0.25,
+    `${pc(tent, ['action', 'hero', 'skyline', 'faceoff']).toFixed(2)} vs ${pc(small, ['action', 'hero', 'skyline', 'faceoff']).toFixed(2)}`);
+  ok('an indie on a mood or an object', pc(small, ['symbol', 'type', 'vista', 'closeup']) > pc(tent, ['symbol', 'type', 'vista', 'closeup']) + 0.25);
+  ok('and a tentpole is never a typographic sheet', !tent.some((p) => p.composition === 'type'));
+  // A franchise is a family.
+  const one = posterPlan({ title: 'Light and Rain', genre: 'Musical', type: 'Blockbuster', scale: 'blockbuster' });
+  const two = posterPlan({ title: 'Light and Rain II', genre: 'Musical', type: 'Blockbuster', scale: 'blockbuster' });
+  const three = posterPlan({ title: 'Light and Rain III', genre: 'Musical', type: 'Blockbuster', scale: 'blockbuster' });
+  ok('a part two is the same family: composition, motif and colour scheme', two.root === 'Light and Rain' && two.part === 2 && two.composition === one.composition && two.motif === one.motif && two.c.scheme === one.c.scheme);
+  ok('and turned, not cloned: mirrored, closer, its colour moved', two.mirror && !one.mirror && two.c.sky[0] !== one.c.sky[0]);
+  ok('a part three escalates', three.base === one.composition && three.part === 3, `${one.composition} -> ${three.composition}`);
+  ok('"· Part 2" and a season suffix are read the same way', posterPlan({ title: 'Iron Harbour · Part 2', genre: 'Sci-Fi' }).part === 2
+    && posterPlan({ title: 'Lost Signal · season 2 · season 3', genre: 'Drama', type: 'Drama Series' }).root === 'Lost Signal');
+  // Formats.
+  ok('an advert is the product', titles(50).every((t) => posterPlan({ title: t, genre: 'Comedy', type: 'Brand Campaign' }).composition === 'product'));
+  const soaps = titles(200).map((t) => posterPlan({ title: t, genre: 'Drama', type: 'Soap Opera', scale: 'recurring' }).composition);
+  ok('a soap is mostly its cast', soaps.filter((x) => x === 'panels' || x === 'ensemble').length / soaps.length > 0.5);
+  ok('a festival picture is small', posterPlan({ title: 'Salt Season', genre: 'Drama', type: 'Festival Film', scale: 'festival' }).tier === 'small');
+  // The title fits the sheet.
+  for (const t of ['Light and Rain', 'A Voice Above Your Door', 'Nordhavn — a soft drink', 'Blue Roommate', 'Midnight Talker']) {
+    const words = t.split(' ');
+    for (const base of [13, 11.5, 10]) {
+      const f = fitTitle(words, base);
+      ok(`"${t}" fits at ${base}`, f.lines.every((l) => l.length * GLYPH * f.size <= 88.5), JSON.stringify(f));
+    }
+  }
+  const st = stackTitle('A Voice Above Your Door'.split(' '));
+  ok('a typographic sheet keeps every word', st.lines.join(' ') === 'A Voice Above Your Door', st.lines.join('|'));
 }
 
 console.log(fails ? `\n${fails} failed` : '\nall passed');

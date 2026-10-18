@@ -101,7 +101,7 @@ function CreditRow({ group, g }) {
     background: group.worldHit ? 'linear-gradient(100deg, rgba(255,209,102,.16), rgba(255,209,102,.04))'
       : hit ? 'linear-gradient(100deg, rgba(255,209,102,.10), rgba(255,209,102,.02))' : flop ? 'rgba(255,106,138,.05)' : 'transparent',
     border: `${hit || group.worldHit ? '1.5px' : '1px'} solid ${group.worldHit ? 'rgba(255,209,102,.6)' : hit ? 'rgba(255,209,102,.45)' : flop ? 'rgba(255,106,138,.3)' : theme.line}` }}>
-    <Poster title={group.root} type={c.type} genre={c.genre} director={c.director} tall size={46} />
+    <Poster title={group.root} type={c.type} genre={c.genre} director={c.director} scale={c.scale} tall size={46} />
     <div style={{ flex: 1, minWidth: 0 }}>
       <div style={{ fontSize: 14, fontWeight: 800, lineHeight: 1.2 }}>{group.root}</div>
       {/* line two: what it is, when, and which season — the way a listing says it */}
@@ -260,7 +260,7 @@ export function CreditsList({ g, credits, label }) {
     {shooting.length > 0 && (<div style={{ marginBottom: 16 }}>
       <div style={{ fontSize: 11, fontWeight: 900, letterSpacing: '.09em', textTransform: 'uppercase', color: theme.gold, marginBottom: 8 }}>In production · {shooting.length}</div>
       {shooting.map((p) => (<div key={p.id || p.title} style={{ display: 'flex', gap: 11, padding: '10px 2px', borderBottom: `1px solid ${theme.line}`, opacity: .85 }}>
-        <Poster title={p.title} type={p.type} genre={p.genre} director={(p.crew || [])[0] && p.crew[0].name} />
+        <Poster title={p.title} type={p.type} genre={p.genre} director={(p.crew || [])[0] && p.crew[0].name} scale={p.scale} />
         <div style={{ flex: 1, minWidth: 0 }}>
           <TitleLine g={g} kind="set" id={p.id} title={p.title} size={14} />
           <div style={{ fontSize: 11.5, color: theme.gold, margin: '4px 0 3px' }}>{p.prepLeft > 0 ? `Preparing · ${p.prepLeft} mo` : `Shooting · ${p.monthsLeft} mo left`}</div>
@@ -282,7 +282,7 @@ export function CreditsList({ g, credits, label }) {
           const start = Math.max(o.startAt || 0, now + (canTakeSet(g, o).ok ? 0 : monthsUntilFree(g, o)));
           const away = Math.max(0, start - now);
           return (<div key={o.id} style={{ display: 'flex', gap: 11, padding: '9px 2px', borderBottom: `1px solid ${theme.line}`, opacity: .85 }}>
-            <Poster title={title} type={o.type} genre={o.genre} director={o.director} size={46} />
+            <Poster title={title} type={o.type} genre={o.genre} director={o.director} scale={o.scale} size={46} />
             <div style={{ flex: 1, minWidth: 0 }}>
               <TitleLine g={g} kind="offer" id={o.id} title={title} size={13.5} />
               <div style={{ fontSize: 11.5, color: INK.signed, margin: '3px 0 2px' }}>
@@ -339,7 +339,7 @@ export function CreditsList({ g, credits, label }) {
         {queue.map((r) => {
           const left = Math.max(0, r.due - now);
           return (<div key={r.id} style={{ display: 'flex', gap: 11, padding: '10px 2px', borderBottom: `1px solid ${theme.line}`, opacity: .85 }}>
-            <Poster title={r.title} type={r.type} genre={r.genre} director={r.director} />
+            <Poster title={r.title} type={r.type} genre={r.genre} director={r.director} scale={r.scale} />
             <div style={{ flex: 1, minWidth: 0 }}>
               <TitleLine g={g} kind="release" id={r.id} title={r.title} size={14} />
               <div style={{ fontSize: 11.5, color: theme.accent, margin: '4px 0 3px' }}>
@@ -361,7 +361,7 @@ export function CreditsList({ g, credits, label }) {
         {g.frozen.map((f) => {
           const waited = Math.max(0, now - (f.since || now));
           return (<div key={f.id} style={{ display: 'flex', gap: 11, padding: '10px 2px', borderBottom: `1px solid ${theme.line}`, opacity: .8 }}>
-            <Poster title={f.title} type={f.type} genre={f.genre} />
+            <Poster title={f.title} type={f.type} genre={f.genre} scale={f.scale} />
             <div style={{ flex: 1, minWidth: 0 }}>
               <div style={{ fontSize: 14, fontWeight: 800 }}>{f.title}</div>
               <div style={{ fontSize: 11.5, color: theme.bad, margin: '4px 0 3px' }}>

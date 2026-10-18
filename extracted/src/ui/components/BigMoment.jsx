@@ -315,7 +315,7 @@ function PremiereHero({ moment, accent }) {
       </svg>}
       {!moment.tv && <div style={{ position: 'absolute', left: 0, right: 0, bottom: 0, height: 26, background: 'linear-gradient(180deg, transparent, #8a345966)' }} />}
       <div style={{ position: 'absolute', left: '50%', top: 12, transform: 'translateX(-50%)', boxShadow: `0 0 34px -6px ${tint}` }}>
-        <Poster title={moment.title} type={c.type} genre={moment.genre} director={c.director} tall size={126} />
+        <Poster title={moment.title} type={c.type} genre={moment.genre} director={c.director} scale={moment.scale} tall size={126} />
       </div>
     </div>
     <div style={{ fontFamily: FONT_DISPLAY, fontSize: 25, fontWeight: 700, lineHeight: 1.15, margin: '14px 0 4px' }}>{moment.title}</div>

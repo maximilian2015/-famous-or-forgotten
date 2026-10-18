@@ -106,9 +106,11 @@ const SCHEME_OF = {
   Crime: ['night', 'duotone', 'flat', 'neon', 'sunset'],
   Horror: ['night', 'neon', 'duotone', 'flat', 'night'],
 };
-export function palette(genre, r) {
+// `shift` turns the whole scheme round the wheel together — how a part two keeps its family's
+// colour and is still not the same sheet (posterPlan).
+export function palette(genre, r, shift = 0) {
   const [h0, spread] = HUE[genre] || HUE.Drama;
-  const h = Math.round(h0 + (r() - 0.5) * spread * 2);
+  const h = (Math.round(h0 + (r() - 0.5) * spread * 2) + shift + 360) % 360;
   const sat = 26 + Math.round(r() * 24);
   const [lo, span] = TONE[genre] || TONE.Drama;
   const L = lo + Math.round(r() * span) + (BRIGHT[genre] || 0);
@@ -130,22 +132,169 @@ export const G = {
   Comedy: { back: ['room', 'hills', 'plain', 'skyline', 'sea', 'crowd', 'stairs', 'sunburst', 'blocks', 'arch'], subj: ['three', 'pair', 'figure', 'car', 'apart', 'group'], lit: ['sun', 'halo', 'pool', 'shaft'], wx: ['none', 'snow', 'rain'] },
   Horror: { back: ['trees', 'room', 'corridor', 'plain', 'moonrise', 'stairs', 'wires', 'arch'], subj: ['door', 'looming', 'figure', 'window', 'back', 'hand', 'fall', 'profile'], lit: ['none', 'shaft', 'pool'], wx: ['fog', 'rain', 'none'] },
 };
-// For anybody counting: how many one-sheets a genre can actually produce, before the hue and the
-// dozen seeded positions inside each layer are counted at all. The scheme belongs in the count —
-// it is the layer that decides whether a picture is bright or dark, which is the first thing
-// anybody sees and the thing that used to be the same on all of them.
+// For anybody counting: how many different STRUCTURES a genre can produce — composition, motif
+// and colour scheme. The old count multiplied every layer and reached thousands, and every one of
+// them was the same layout; a count of layers is not a count of posters. (G.subj is the old
+// subject list and is no longer drawn; it stays because old probes read it.)
 export function posterCount(genre) {
-  const g = G[genre] || G.Drama;
+  const comps = Object.keys(GENRE_T[genre] || GENRE_T.Drama).length;
+  const motifs = new Set(MOTIF[genre] || MOTIF.Drama).size;
   const schemes = new Set(SCHEME_OF[genre] || SCHEME_OF.Drama).size;
-  return g.back.length * g.subj.length * g.lit.length * g.wx.length * schemes;
+  return comps * motifs * schemes;
 }
 
 // What a given picture is actually coloured, without drawing it. The probe measures brightness
 // and spread through this rather than re-deriving the seed, which would be a second source of
 // truth and would be wrong the first time anybody touched the hash.
 export function posterPalette(title, genre) {
-  const r = rng(hash(String(title || '') + (genre || '')));
-  return palette(genre, r);
+  return posterPlan({ title, genre }).c;
+}
+
+// ── Posters V2: what the one-sheet is OF, before anything is drawn ─────────────
+// Maxi's filmography, measured (docs: the poster audit, 14 Oct 2026): every sheet was the same
+// LAYOUT — a field, a backdrop across the bottom, a figure in the middle, the title at the foot —
+// so the tens of thousands of layer combinations all read as one thing at forty-four pixels. Five
+// of six comedy subjects were the same round-headed body. The generator knew a title and a genre
+// and nothing else, so a tentpole looked like an indie, and a part two was seeded off its own
+// title and had nothing in common with part one.
+//
+// So a poster is planned first, from everything the credit knows: the franchise it belongs to,
+// which part, what format (film, series, soap, an advert, a festival picture), how big it is, and
+// the genre. The plan picks a COMPOSITION — fourteen of them, each a different structure with its
+// own place for the title — and a motif. Poster.jsx draws the plan. Everything here is plain .js
+// so the tests can read it.
+const ROMAN_N = { II: 2, III: 3, IV: 4, V: 5, VI: 6 };
+export function titleParts(title) {
+  let t = String(title || '').replace(/^⭐\s*/, '').trim();
+  const sm = t.match(/season\s+(\d+)\s*$/i);
+  const season = sm ? Number(sm[1]) : 0;
+  t = t.replace(/(\s*·\s*season\s+\d+)+\s*$/i, '').trim();
+  let part = 1;
+  const rm = t.match(/\s+(II|III|IV|V|VI)$/);
+  if (rm) { part = ROMAN_N[rm[1]]; t = t.replace(/\s+(II|III|IV|V|VI)$/, '').trim(); } else {
+    const pm = t.match(/\s*(?:·|:)?\s*part\s+(\d+)\s*$/i);
+    if (pm) { part = Number(pm[1]); t = t.replace(/\s*(?:·|:)?\s*part\s+(\d+)\s*$/i, '').trim(); }
+  }
+  return { root: t, part, season };
+}
+// What kind of thing it is. Read off the type the game writes, with the scale as a fallback.
+export function formatOf(type, scale) {
+  const ty = String(type || '');
+  if (/Brand|Commercial|Jingle|Campaign|Music Video|Session|Voice/.test(ty)) return 'ad';
+  if (/Soap/.test(ty)) return 'soap';
+  if (/Series|Show|Network Drama|Drama Series|Talent/.test(ty) || ['episode', 'recurring', 'prestige'].includes(scale)) return 'series';
+  if (scale === 'festival' || /Festival/.test(ty)) return 'festival';
+  return 'film';
+}
+// How big. The scale when the credit has one; old credits and offers fall back on the type.
+export function tierOf(type, scale) {
+  const ty = String(type || '');
+  if (scale === 'blockbuster' || /Blockbuster/.test(ty)) return 'event';
+  if (scale === 'feature') return 'studio';
+  if (['indie', 'small', 'festival'].includes(scale) || /Indie|Short|Festival|Horror Movie/.test(ty)) return 'small';
+  return 'studio';
+}
+export const COMPOSITIONS = ['hero', 'faceoff', 'ensemble', 'symbol', 'vista', 'closeup', 'corridor', 'split', 'stage', 'skyline', 'action', 'type', 'panels', 'product'];
+// Which structures a genre reaches for, and how often. Not colour: a horror sheet is an object in
+// the dark or a corridor, a romance is two people or a horizon, a musical is a stage.
+export const GENRE_T = {
+  Comedy: { ensemble: 4, hero: 2, stage: 2, type: 2, faceoff: 2, split: 2, vista: 1 },
+  Musical: { stage: 5, ensemble: 3, hero: 2, symbol: 2, type: 1, action: 1 },
+  Romance: { faceoff: 4, split: 3, vista: 3, symbol: 2, closeup: 2, hero: 1 },
+  Drama: { closeup: 3, vista: 3, symbol: 2, hero: 2, type: 2, split: 2, corridor: 1 },
+  Thriller: { corridor: 3, closeup: 3, symbol: 2, split: 2, action: 2, skyline: 1, hero: 1 },
+  Crime: { skyline: 3, faceoff: 2, corridor: 2, symbol: 2, closeup: 2, split: 2, hero: 1 },
+  Horror: { symbol: 4, corridor: 3, closeup: 2, vista: 2, type: 1, hero: 1 },
+  'Sci-Fi': { action: 3, vista: 3, symbol: 2, skyline: 2, closeup: 2, hero: 2 },
+};
+// Size changes the structure, not only the polish: a small picture is sold on a mood or an
+// object, a tentpole on spectacle and a face.
+export const TIER_T = {
+  small: { symbol: 1.8, type: 2, vista: 1.5, closeup: 1.3, action: 0, skyline: 0.4, ensemble: 0.6, stage: 0.8, hero: 0.7 },
+  studio: { type: 0.5 },
+  event: { action: 2.5, hero: 1.8, skyline: 1.6, faceoff: 1.3, ensemble: 1.2, type: 0, symbol: 0.4, vista: 0.7, corridor: 0.6 },
+};
+// What a format adds or takes away. Television is people more than objects; a soap is the
+// cast in panels; an advert is the product and nothing else.
+export const FORMAT_T = {
+  series: { add: { panels: 3 }, mul: { ensemble: 2, skyline: 1.3, type: 0.5, action: 0.6 } },
+  soap: { add: { panels: 6, ensemble: 2 }, mul: { ensemble: 1.5, faceoff: 1.2, symbol: 0.3, vista: 0.3, corridor: 0.3, type: 0.3, closeup: 0.5, split: 0.6, hero: 0.6 } },
+  ad: { only: 'product' },
+};
+// The object a sheet can be built around, by genre. One bold shape each, so it reads at 44px.
+export const MOTIF = {
+  Comedy: ['balloon', 'umbrella', 'car', 'cake'],
+  Musical: ['mic', 'star', 'note', 'mic'],
+  Romance: ['ring', 'flowers', 'heart', 'letter'],
+  Drama: ['chair', 'window', 'house', 'letter'],
+  Thriller: ['knife', 'eye', 'key', 'phone'],
+  Crime: ['car', 'badge', 'key', 'knife'],
+  Horror: ['moon', 'house', 'hand', 'mask'],
+  'Sci-Fi': ['planet', 'ring', 'helmet', 'planet'],
+};
+const PRODUCTS = ['bottle', 'box', 'phone', 'watch'];
+// A part three escalates — the composition moves to the next thing up, the way a franchise's
+// third sheet is a bigger gesture than its first.
+const ESCALATE = { hero: 'action', faceoff: 'closeup', ensemble: 'hero', symbol: 'closeup', vista: 'hero', closeup: 'symbol',
+  corridor: 'closeup', split: 'faceoff', stage: 'ensemble', skyline: 'action', action: 'closeup', type: 'symbol', panels: 'ensemble', product: 'product' };
+// How wide an uppercase display title is, per character at size 1, with the .04em spacing the
+// sheet sets it in. Used to fit a title to the sheet instead of guessing from its length.
+export const GLYPH = 0.74;
+export function fitTitle(words, base, width = 88) {
+  const all = words.join(' ');
+  if (all.length * GLYPH * base <= width || words.length < 2) return { lines: [all], size: Math.max(5, Math.min(base, width / (Math.max(1, all.length) * GLYPH))) };
+  let best = null;
+  for (let k = 1; k < words.length; k++) {
+    const a = words.slice(0, k).join(' '), b = words.slice(k).join(' ');
+    const m = Math.max(a.length, b.length);
+    if (!best || m < best.m) best = { a, b, m };
+  }
+  return { lines: [best.a, best.b], size: Math.max(5, Math.min(base * 0.88, width / (best.m * GLYPH))) };
+}
+// The title stacked a word to a line, as large as the sheet allows — the typographic poster.
+// `height` is the room the stack has; a festival sheet keeps the foot for its laurels.
+export function stackTitle(words, maxLines = 5, height = 80) {
+  const lines = words.length <= maxLines ? [...words] : [...words.slice(0, maxLines - 1), words.slice(maxLines - 1).join(' ')];
+  const longest = Math.max(1, ...lines.map((l) => l.length));
+  return { lines, size: Math.min(20, 76 / (longest * GLYPH), height / (lines.length * 1.02)) };
+}
+export function pickWeighted(weights, r) {
+  const ks = Object.keys(weights).filter((k) => weights[k] > 0);
+  const total = ks.reduce((n, k) => n + weights[k], 0);
+  let x = r() * total;
+  for (const k of ks) { x -= weights[k]; if (x < 0) return k; }
+  return ks[ks.length - 1];
+}
+export function compositionWeights(genre, tier, format) {
+  if (FORMAT_T[format] && FORMAT_T[format].only) return { [FORMAT_T[format].only]: 1 };
+  const base = { ...(GENRE_T[genre] || GENRE_T.Drama) };
+  const f = FORMAT_T[format] || {};
+  for (const [k, v] of Object.entries(f.add || {})) base[k] = (base[k] || 0) + v;
+  const tierMul = TIER_T[tier] || {};
+  const out = {};
+  for (const [k, v] of Object.entries(base)) out[k] = v * (tierMul[k] ?? 1) * ((f.mul || {})[k] ?? 1);
+  return out;
+}
+// The plan. Seeded by the FRANCHISE (its root title and genre), so every part draws the same
+// family — palette, composition, motif — and the part number turns it: a part two is mirrored and
+// its colour moved round the wheel a little, a part three escalates to a bigger composition.
+export function posterPlan({ title, genre, type, scale } = {}) {
+  const { root, part, season } = titleParts(title);
+  const format = formatOf(type, scale);
+  const tier = format === 'festival' ? 'small' : tierOf(type, scale);
+  const r = rng(hash(root + (genre || '')));
+  const shift = part <= 1 ? 0 : part === 2 ? 40 : part === 3 ? -36 : (part * 37) % 90;
+  const c = palette(genre, r, shift);
+  // On a dark sheet the hue of the ground barely shows; the light is what the eye finds (the eyes,
+  // the open door). A part two takes its light from another turn of the same family, so Hive of
+  // Sisters II is not Hive of Sisters with a numeral on it.
+  if (part === 2) c.light = palette(genre, rng(hash(root + (genre || '') + '·II')), shift + 150).light;
+  let composition = pickWeighted(compositionWeights(genre, tier, format), r);
+  const motif = format === 'ad' ? one(PRODUCTS, r) : one(MOTIF[genre] || MOTIF.Drama, r);
+  const base = composition;
+  if (part >= 3 && part % 2 === 1) composition = ESCALATE[composition] || composition;
+  const mirror = part % 2 === 0 && composition !== 'type' && composition !== 'product';
+  return { root, part, season, format, tier, genre: genre || 'Drama', composition, base, motif, mirror, c, r };
 }
 
 // How many one-sheets a genre can produce, before the hue and the dozen seeded positions
