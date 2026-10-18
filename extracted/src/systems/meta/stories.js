@@ -271,7 +271,10 @@ export const CHAINS = {
   recast: {
     title: 'Without you', cooldown: 0,
     start: () => null,   // started by noteSequelLoss, not by a roll
-    status: (s, st) => (st.beat === 'meeting' ? `${st.data.title}: they will make it anyway. ${first(st.data.director)} has asked to meet.` : st.beat === 'answer' ? `${st.data.title}: the paper came back changed. They are waiting.` : st.beat === 'again' ? `${st.data.title} goes on without you.` : `${st.data.title} is shooting with somebody else in your part.`),
+    // Said from what has happened, not only which beat is next. Maxi, at "Small Wedding · season 5
+    // goes on without you" sitting on Home for a year: "it never changes?" It waited twelve months
+    // for the next piece of news and said the same half-sentence the whole time.
+    status: (s, st) => recastStatus(s, st),
     beats: {
       meeting: {
         build: (s, st) => ({ speaker: `${st.data.director} · a letter`, text: `"${st.data.title}" is going ahead. They would rather go ahead with you. ${first(st.data.director)} wants an hour — not business affairs, just the two of you — to hear what it was that did not work, and see what can be moved.`,
@@ -315,6 +318,21 @@ export const CHAINS = {
 };
 export const CHAIN_ORDER = ['scandal', 'refused', 'recast', 'comeback', 'ageing', 'agent', 'rival'];
 
+// What the recast thread has come to, in words: which season or part, who has your part, and
+// how it went — each of those is on st.data by the time the line can be shown.
+function recastStatus(s, st) {
+  const d = st.data, tv = d.kind === 'renewal';
+  const root = d.root || String(d.title || '').replace(/(\s*·\s*season\s+\d+)+\s*$/i, '').replace(/\s+(II|III|IV|V|VI)$/, '');
+  const which = tv ? `Season ${d.season || 2} of "${root}"` : `"${d.title}"`;
+  if (st.beat === 'meeting') return `${which}: they will make it anyway. ${first(d.director)} has asked to meet.`;
+  if (st.beat === 'answer') return `${which}: the paper came back changed. They are waiting.`;
+  if (st.beat === 'again') {
+    const who = d.other ? `${d.other} has your part` : 'Somebody else has your part';
+    return tv ? `${which} went out without you. ${who}, and the numbers held.`
+      : `${which} opened without you${d.gross ? ` at ${money(d.gross)}` : ''}. ${who}, and it did fine.`;
+  }
+  return `${which} is being made with somebody else in your part.`;
+}
 function wentBack(s, st) {
   const t = st.data.title;
   const sets = (s.productions || []).concat(s.production ? [s.production] : []);
@@ -400,8 +418,18 @@ export function resolveStory(s, arc, i) {
   return s;
 }
 // For the main screen: what is running, and where it stands.
+// `next` is the month the thread's next beat is due (the beat decides what it is), and a thread
+// with nothing coming for a while is `quiet`: the Home card folds those into one small line, so a
+// story waiting a year for its postscript does not sit at the top of the screen saying nothing.
+export const QUIET_AFTER = 3;
 export function activeStories(s) {
-  return stories(s).map((st) => { const chain = CHAINS[st.id]; let line = ''; try { line = chain.status(s, st); } catch (e) { line = ''; } return { id: st.id, title: chain.title, line, since: st.since }; });
+  const now = stamp(s);
+  return stories(s).map((st) => {
+    const chain = CHAINS[st.id]; let line = '';
+    try { line = chain.status(s, st); } catch (e) { line = ''; }
+    const next = st.due != null ? Math.max(now, st.due) : null;
+    return { id: st.id, title: chain.title, line, since: st.since, next, quiet: next != null && next - now > QUIET_AFTER };
+  });
 }
 
 // ── what the chains reach into ──────────────────────────────────────────────────

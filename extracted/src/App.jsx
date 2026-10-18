@@ -762,15 +762,31 @@ function CollabCard({ g }) {
 // show nothing; a careful life has a clean main screen.
 // The career stories that are running (stories.js): a title and where it stands. The
 // beats arrive as the same modal a life dilemma uses; this is the thread between them.
+// Maxi, at "Without you" unchanged on Home for a year: "it never changes? we have to do something
+// with this field". Every thread now says when the next thing happens (its real due month), and
+// the ones with nothing for months fold into a small line underneath instead of headlining.
+const STORY_MONS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+function storyWhen(g, next) {
+  if (next == null) return null;
+  const now = (g.year || 0) * 12 + (g.month || 0);
+  return next - now <= 1 ? 'Next: any day now.' : `Next: around ${STORY_MONS[next % 12]} ${Math.floor(next / 12)}.`;
+}
 function StoriesCard({ g }) {
   const list = activeStories(g);
   if (!list.length) return null;
-  return (<Card style={{ marginBottom: 14, borderColor: `${theme.accent}40` }}>
-    <div style={{ fontSize: 11, fontWeight: 900, letterSpacing: '.09em', textTransform: 'uppercase', color: theme.accent, marginBottom: 6 }}>In your life now</div>
+  const live = list.filter((x) => !x.quiet), quiet = list.filter((x) => x.quiet);
+  return (<Card style={{ marginBottom: 14, borderColor: `${theme.accent}${live.length ? '40' : '22'}` }}>
+    <div style={{ fontSize: 11, fontWeight: 900, letterSpacing: '.09em', textTransform: 'uppercase', color: live.length ? theme.accent : theme.muted, marginBottom: 6 }}>
+      {live.length ? 'In your life now' : 'Running quietly'}</div>
     <div style={{ display: 'grid', gap: 6 }}>
-      {list.map((x) => (<div key={x.id}>
+      {live.map((x) => (<div key={x.id}>
         <div style={{ fontSize: 12.5, fontWeight: 800 }}>{x.title}</div>
         {x.line && <div style={{ fontSize: 11.5, color: theme.muted, lineHeight: 1.45 }}>{x.line}</div>}
+        {storyWhen(g, x.next) && <div style={{ fontSize: 10.5, color: theme.accent, opacity: .8, marginTop: 1 }}>{storyWhen(g, x.next)}</div>}
+      </div>))}
+      {quiet.length > 0 && live.length > 0 && <div style={{ fontSize: 9.5, fontWeight: 900, letterSpacing: '.09em', textTransform: 'uppercase', color: theme.muted, marginTop: 2 }}>Running quietly</div>}
+      {quiet.map((x) => (<div key={x.id} style={{ fontSize: 11, color: theme.muted, lineHeight: 1.45 }}>
+        <span style={{ fontWeight: 800, color: theme.text, opacity: .75 }}>{x.title}</span>{x.line ? ` — ${x.line}` : ''} <span style={{ opacity: .8 }}>{storyWhen(g, x.next)}</span>
       </div>))}
     </div>
   </Card>);

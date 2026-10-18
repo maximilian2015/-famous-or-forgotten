@@ -72,6 +72,19 @@ const pick = (s, label) => { const i = s.pendingArc.choices.findIndex((c) => new
   t.offers = [{ id: 'ren1', kind: 'renewal', season: 3, seriesTitle: 'Careless Border', projectTitle: 'Careless Border · season 3', role: 'Lead', type: 'Drama Series', genre: 'Drama', salary: 800000, episodeFee: 80000, episodes: 10, months: 5, tier: 'lead', scale: 'recurring', deadline: 3 }];
   declineOffer(t, 'ren1');
   ok('a season of your own show, same road', storyOf(t, 'recast') && storyOf(t, 'recast').data.kind === 'renewal' && t.timeline.some((x) => /not coming back for season 3/.test(x.text)));
+  // Maxi: "Small Wedding · season 5 goes on without you" sat on Home for a year — "it never
+  // changes?" The line says what happened and when the next news is; a long wait folds away.
+  {
+    const tr = storyOf(t, 'recast');
+    const line0 = activeStories(t).find((x) => x.id === 'recast');
+    ok('the line names the show and the season, not a title with "· season 3" in it', /^Season 3 of "Careless Border"/.test(line0.line), line0.line);
+    ok('and says when the next thing happens', line0.next === tr.due && !line0.quiet);
+    Object.assign(tr, { beat: 'again', due: stamp(t) + 12 });
+    Object.assign(tr.data, { other: 'Ruby Quist', hit: true });
+    const a = activeStories(t).find((x) => x.id === 'recast');
+    ok('the postscript wait says what happened: who has the part, and that it held', a.line === 'Season 3 of "Careless Border" went out without you. Ruby Quist has your part, and the numbers held.', a.line);
+    ok('a year with nothing coming folds into the quiet line', a.quiet && a.next === stamp(t) + 12);
+  }
   // a supporting part is nobody's story
   const u = st(); u.offers = [{ id: 'x', kind: 'sequel', part: 2, projectTitle: 'Small II', role: 'Supporting', tier: 'supporting', scale: 'indie', salary: 20000, months: 2, deadline: 2 }];
   declineOffer(u, 'x');

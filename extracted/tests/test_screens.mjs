@@ -426,6 +426,12 @@ await inState('A shooting day · take after take, said plainly', {
       await tapIn(W2, (d) => { const all = [...d.querySelectorAll('div,span')].filter((e) => (e.textContent || '').includes('Ivo Moon')); return all.filter((e) => ![...e.children].some((k) => (k.textContent || '').includes('Ivo Moon'))).pop(); });
     });
 }
+// A story thread with nothing coming for a year folds into one quiet line, with the month the next
+// news is due; one with something coming stays on top and says when. Maxi: "it never changes?"
+await inState('Home · a story running quietly', { stories: [
+  { id: 'recast', beat: 'again', due: NOW + 12, since: NOW - 10, data: { title: 'Small Wedding · season 5', root: 'Small Wedding', kind: 'renewal', season: 5, director: 'Mara Whitlock', other: 'Ruby Quist', hit: true } },
+  { id: 'agent', beat: 'tip', due: NOW + 1, since: NOW - 1, data: { name: 'Lena Brandt', path: 'tip' } }] },
+  /^(?=[\s\S]*In your life now)(?=[\s\S]*Lena Brandt: a casting director told you something)(?=[\s\S]*Next: any day now)(?=[\s\S]*Running quietly)(?=[\s\S]*Season 5 of "Small Wedding" went out without you)(?=[\s\S]*Next: around Apr 2067)/);
 // Opening night is the film: the poster, what kind of picture, who you played, who made it, what
 // is known tonight — and no money. And a premiere saved before the card existed still opens.
 await inState('Opening night · the film, not a cinema', { bigMoment: { id: 'premiere', kind: 'good', title: 'My Crazy Family', verdict: 'opening night', genre: 'Comedy', scale: 'feature',
