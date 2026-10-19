@@ -250,6 +250,36 @@ s.value = { theatrical, tv, streaming }    0–100, lazily made
   Budget V2 baselines.
 - Shown on the Passport as three bars with words, not raw numbers.
 
+### 4b. Fame is not movie-star status (Maxi, 19 Oct)
+
+A player can become very famous through a soap, network television or streaming and stay weak
+theatrically — "Fame 82 · TV 91 · Streaming 74 · Theatrical 38" is a normal career: a huge television
+star a studio will not yet trust with a €200m picture. TV stars are not banned from becoming movie
+stars; the move is possible and **earned**. Cross-market transfer is asymmetric:
+
+| success in | moves theatrical value |
+|---|---|
+| daytime / soap | a little |
+| network television | modestly |
+| prestige television | more |
+| a global streaming breakout | more strongly |
+| **theatrical** success | moves television and streaming access **substantially** |
+
+- **A new blockbuster lead depends primarily on theatrical bankability**, not on fame. The way in is
+  the real one: a supporting part in a big film → a theatrical release that works → bankability grows →
+  the lead in a medium feature → a tentpole lead.
+- A theatrical A-lister can go to prestige television or streaming without losing movie status.
+- **Continuations follow their own rules**: a soap star who became famous on the show stays on it.
+  New A-list-level actors rarely get a fresh daytime-soap offer (already true: the soap listing stops at
+  fame 74, and daytime has no band for an A-lister).
+- Careers this must make possible, and the probe should find: soap legend · network TV star · prestige
+  TV actor · streaming phenomenon · theatrical movie star · crossover superstar.
+
+**What it replaces today** (`career/access.js`, `offers.js`, `castings.js`): the tentpole board (AAA)
+opens on `hasHit` — any credit rated 85+ or with a "Hit" status, which a soap season or an advert can
+be — or on a powerful contact; the agent then offers tentpole leads at fame 60 (`generateOffer`), and the
+board lists 'Studio Blockbuster · Lead' from fame 70. In stage 4 these read theatrical bankability.
+
 ---
 
 ## 5. One outcome interface for the rest of the career
