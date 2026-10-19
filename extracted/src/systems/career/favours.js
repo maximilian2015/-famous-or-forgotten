@@ -16,6 +16,7 @@ import { rint, chance } from '../../engine/rng.js';
 import { applyBond } from '../life/bonds.js';
 import { maybeContinue } from './franchise.js';
 import { comboOf } from '../../engine/combo.js';
+import { projectOutcome, isBomb, isBrokeEven } from './outcome.js';
 
 const clamp = (v) => Math.max(0, Math.min(100, v));
 
@@ -100,7 +101,8 @@ export function pushSequel(s, creditId) {
   spend(s, 'sequel', `Pushed the studio for a sequel to ${c.title}`);
   c.pushed = true;
   // Close numbers can be pushed over the line. A bomb cannot.
-  const odds = c.verdict === 'bomb' ? 8 : c.verdict === 'broke even' ? 45 : 70;
+  const o = projectOutcome(s, c);   // career/outcome.js
+  const odds = isBomb(o) ? 8 : isBrokeEven(o) ? 45 : 70;
   if (!chance(odds)) { s.lastEvent = `You pushed. The studio was kind about it, and the answer was still no.`; return s; }
   const next = maybeContinue(s, c, c.job, true);
   if (next) (s.offers = s.offers || []).push(next);

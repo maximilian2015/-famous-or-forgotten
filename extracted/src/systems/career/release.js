@@ -32,6 +32,7 @@ import { typecastAfterCredit, typeFit, castingExpectation, roleAcceptance, accep
 import { storyAfterCredit } from '../meta/stories.js';
 import { addHype, flopHype, hype, hypeSource } from '../meta/hype.js';
 import { ensureBudget } from './budget.js';
+import { projectOutcome, isSmash, isProfitable, isBomb, isWatched, isSeen } from './outcome.js';
 
 const clamp = (v, a = 0, b = 100) => Math.max(a, Math.min(b, v));
 
@@ -1264,18 +1265,20 @@ function closeRun(s, credit, r) {
   let fame = bySkill + (r.rating >= 85 ? 4 : 0) + (r.worldHit ? 25 : 0);
   // Hype: where the talk comes from this year. A hit replaces whatever was there; a flop
   // takes it off the lead, and only a little off a supporting part. See meta/hype.js.
+  // How it turned out, asked through the one place that knows the words (career/outcome.js).
+  const o = projectOutcome(s, credit);
   if (r.worldHit) addHype(s, 85, 'hit');
-  else if (verdict === 'smash') addHype(s, 70, 'hit');
-  else if (verdict === 'profitable' || r.rating >= 80) addHype(s, r.tier === 'supporting' ? 30 : 50, 'hit');
-  else if (!film && (verdict === 'watched' || credit.renewal === 'renewed')) addHype(s, r.tier === 'supporting' ? 26 : (credit.renewal === 'renewed' ? 48 : 40), 'hit');
-  else if (!film && verdict === 'seen' && r.tier !== 'supporting') addHype(s, 22, 'hit');
-  else if (verdict === 'bomb') flopHype(s, r.tier);
-  if (verdict === 'smash') fame += 8;
-  else if (verdict === 'profitable') fame += 3;
+  else if (isSmash(o)) addHype(s, 70, 'hit');
+  else if (isProfitable(o) || r.rating >= 80) addHype(s, r.tier === 'supporting' ? 30 : 50, 'hit');
+  else if (!film && (isWatched(o) || credit.renewal === 'renewed')) addHype(s, r.tier === 'supporting' ? 26 : (credit.renewal === 'renewed' ? 48 : 40), 'hit');
+  else if (!film && isSeen(o) && r.tier !== 'supporting') addHype(s, 22, 'hit');
+  else if (isBomb(o)) flopHype(s, r.tier);
+  if (isSmash(o)) fame += 8;
+  else if (isProfitable(o)) fame += 3;
   // A flop cuts what the film does for your name — and at the top it takes some of the
   // name with it. Maxi: "at the top there is nothing to lose." A supporting part is not
   // blamed for a picture; the lead is, and the bigger the name the louder the blame.
-  else if (verdict === 'bomb') fame = r.tier !== 'supporting' && r.scale !== 'episode' && (s.fame || 0) >= 45 ? -(2 + ((s.fame || 0) - 45) / 14) : Math.max(1, fame - 3);
+  else if (isBomb(o)) fame = r.tier !== 'supporting' && r.scale !== 'episode' && (s.fame || 0) >= 45 ? -(2 + ((s.fame || 0) - 45) / 14) : Math.max(1, fame - 3);
   // The last stretch is the whole point of the ladder and it was the cheapest part of it.
   // A limit of 118 with a floor of 0.16 meant an A-lister still banked a sixth of every
   // credit forever: measured across 25 careers, A-list arrived at a median age of 33 and

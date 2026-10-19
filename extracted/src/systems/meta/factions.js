@@ -6,6 +6,7 @@
 import { insurability } from '../life/strain.js';
 import { hype, hypeSource } from './hype.js';
 import { grudgeEnds, monthName } from './yourDirectors.js';
+import { projectOutcome, isSmash, isProfitable, isBrokeEven, isBomb } from '../career/outcome.js';
 
 const clamp = (v) => Math.max(0, Math.min(100, Math.round(v)));
 // Who holds a grudge, said as it is. This printed "will not call you again" for a grudge with
@@ -39,7 +40,7 @@ export const FACTIONS = {
   } },
   audience: { label: 'The audience', read: (s) => {
     const r = recent(s); if (!r.length) return { score: 50, line: 'Nobody has paid to see you yet.' };
-    const v = r.map((c) => (c.verdict === 'smash' ? 95 : c.verdict === 'profitable' ? 72 : c.verdict === 'broke even' ? 50 : c.verdict === 'bomb' ? 22 : c.reviews && c.reviews.audience != null ? c.reviews.audience * 10 : 50));
+    const v = r.map((c) => { const o = projectOutcome(s, c); return isSmash(o) ? 95 : isProfitable(o) ? 72 : isBrokeEven(o) ? 50 : isBomb(o) ? 22 : c.reviews && c.reviews.audience != null ? c.reviews.audience * 10 : 50; });
     const score = clamp(v.reduce((n, x) => n + x, 0) / v.length);
     return { score, line: score >= 80 ? 'They turn up for your name. That is the whole business.' : score >= 60 ? 'They turn up when the film is good. Which is fair.' : score >= 40 ? 'They are not sure yet. Neither is the studio.' : 'The last few did not open. The audience has a memory the critics do not.' };
   } },
@@ -69,7 +70,7 @@ export const FACTIONS = {
     return { score, line: grudges ? grudgeLine(live, now) : score >= 75 ? 'They come back for you. A director in your phone is a set that starts warm.' : score >= 50 ? 'Some of them would work with you again. Some of them would need asking.' : 'The word between them is not a kind one. Sets start cold.' };
   } },
   fans: { label: 'The fans', read: (s) => {
-    const hit = (s.filmography || []).find((c) => !c.minor && (c.verdict === 'smash' || (c.rating || 0) >= 85) && (c.year || 0) >= (s.year || 0) - 3);
+    const hit = (s.filmography || []).find((c) => !c.minor && (isSmash(projectOutcome(s, c)) || (c.rating || 0) >= 85) && (c.year || 0) >= (s.year || 0) - 3);
     const furious = (s.timeline || []).slice(0, 60).some((x) => /Fans are furious/.test(x.text));
     const forgotten = (s.peakFame || 0) >= 35 && (s.fame || 0) < 15;
     let score = 35 + (s.fame || 0) * 0.4 + (hit ? 20 : 0) + (hypeSource(s) === 'hit' ? 10 : 0) - (furious ? 25 : 0) - (forgotten ? 20 : 0);

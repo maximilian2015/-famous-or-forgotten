@@ -22,6 +22,7 @@ const OF = await import(P + 'systems/career/offers.js');
 for (let k = 0; k < CAREERS; k++) {
   seed = 1000 + k * 7919;
   let s = createInitialState({ name: 'Vera Sol', dream: 'actor', created: true });
+  const years = [];
   beginLife(s);
   Object.assign(s, { stage: 'career', ageY: 24, year: 2050, month: 0, hasApartment: true, housing: 'flat', cash: 20000, alive: true, ap: 100, apMax: 100, apMaxEff: 100,
     acting: 40, fame: 0, peakFame: 0, respect: 20, offers: [], castingPool: [], submissions: [], running: [], releases: [], laterOffers: [], frozen: [] });
@@ -42,10 +43,13 @@ for (let k = 0; k < CAREERS; k++) {
     let g = 0; while ((s.ap || 0) > 0 && g++ < 5) { if (s.production) PR.rehearse(s); else break; }
     s = advanceMonth(s);
     if (!s.alive) break;
+    // Fame, the month's hype and Standing, every year, to the second decimal (stage 2's proof).
+    if (s.month === 0) years.push(`${s.year} fame ${(s.fame || 0).toFixed(2)} hype ${(s.media || 0).toFixed(2)} standing ${(s.respect || 0).toFixed(2)} cash ${Math.round(s.cash || 0)}`);
   }
   console.log(`== career ${k} · ${s.year} · age ${s.ageY} · fame ${Math.round(s.fame || 0)} · cash ${Math.round(s.cash || 0)} · credits ${(s.filmography || []).length}`);
   for (const c of [...(s.filmography || [])].reverse()) {
     console.log([c.year, c.title, c.type, c.scale || '', c.role, Math.round(c.rating || 0), c.verdict || '', Math.round(c.boxOffice || 0), c.viewers || 0, c.endViewers || 0,
-      c.season || 0, c.part || 0, Math.round(c.salary || 0), c.minor ? 'minor' : '', c.renewal || ''].join(' | '));
+      c.season || 0, c.part || 0, Math.round(c.salary || 0), c.minor ? 'minor' : '', c.renewal || '', c.status || ''].join(' | '));
   }
+  for (const y of years) console.log('  ' + y);
 }

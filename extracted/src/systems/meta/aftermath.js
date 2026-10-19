@@ -20,6 +20,7 @@
 // business does.
 import { chance, pick } from '../../engine/rng.js';
 import { slotNorm } from '../career/franchise.js';
+import { projectOutcome, isBomb } from '../career/outcome.js';
 
 const stamp = (s) => (s.year || 0) * 12 + (s.month || 0);
 const last = (n) => String(n || '').split(' ').pop();
@@ -55,7 +56,7 @@ function postMortem(s, out) {
     const age = now - c.closedAt;
     if (age < 1 || age > 4) continue;
     c._after = c._after || {};
-    const bad = c.verdict === 'bomb' || (c.rating || 0) < 42;
+    const bad = isBomb(projectOutcome(s, c)) || (c.rating || 0) < 42;
     const big = c.scale === 'blockbuster' || c.scale === 'feature' || c.tier === 'tentpole';
     // the autopsy, once, on anything that failed and was big enough to be worth one
     if (bad && big && !c._after.post && (s.fame || 0) >= 20 && chance(70)) {

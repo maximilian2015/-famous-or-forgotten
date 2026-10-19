@@ -38,6 +38,7 @@ import { priceFactor } from '../life/face.js';
 import { HOUSING } from '../../engine/economy.js';
 import { COST, canAfford, spend, tooTired } from '../../engine/energy.js';
 import { holdsAGrudge } from '../meta/stories.js';
+import { projectOutcome, isSmash, isProfitable, isBomb } from '../career/outcome.js';
 const clamp = (v) => Math.max(0, Math.min(100, v));
 const first = (n) => String(n || '').split(' ')[0];
 const stamp = (s) => (s.year || 0) * 12 + (s.month || 0);
@@ -678,7 +679,8 @@ export function revivable(s) {
 }
 export function reviveOdds(s, weight, r) {
   let o = 25 + (weight || 60) * 0.3 + ((r.rating || 0) - 60) * 0.8;
-  o += r.verdict === 'smash' ? 25 : r.verdict === 'profitable' ? 12 : r.verdict === 'bomb' ? -35 : 0;
+  const how = projectOutcome(s, r);   // career/outcome.js
+  o += isSmash(how) ? 25 : isProfitable(how) ? 12 : isBomb(how) ? -35 : 0;
   if (r.isSeries) o += 8;
   o -= (s.scandal || 0) * 0.25;
   return Math.max(4, Math.min(85, Math.round(o)));
@@ -694,7 +696,7 @@ export function sendPitch(s, form) {
     const odds = Math.max(3, Math.round(reviveOdds(s, q.weight, r) * Math.pow(0.66, before)));
     (s._pitched = s._pitched || []).push({ who: q.who, at: stamp(s) });
     (s.pitches = s.pitches || []).push({ due: stamp(s) + rint(1, 2), from: q.who, weight: q.weight, reviveId: r.id, title: r.isSeries ? `${r.root} · season ${r.season + 1}` : `${r.root} ${['II', 'III', 'IV', 'V', 'VI'][r.part - 1] || r.part + 1}`, genre: r.genre, scale: r.scale, odds, revive: true });
-    say(s, `You showed ${first(q.who)} "${r.title}" — ${r.isSeries ? 'they remember the show' : r.verdict === 'smash' ? 'they remember the money' : 'they remember it'}. "${r.isSeries ? 'Another season? Send me the numbers.' : 'A sequel? Send me the numbers.'}" They will text.`, 'good');
+    say(s, `You showed ${first(q.who)} "${r.title}" — ${r.isSeries ? 'they remember the show' : isSmash(projectOutcome(s, r)) ? 'they remember the money' : 'they remember it'}. "${r.isSeries ? 'Another season? Send me the numbers.' : 'A sequel? Send me the numbers.'}" They will text.`, 'good');
     addTimeline(s, `Pitched ${r.isSeries ? 'a new season of' : 'a sequel to'} "${r.title}" to ${q.who}.`);
     if (n.hour >= HOURS.length && !n.talk) endNight(s);
     return s;

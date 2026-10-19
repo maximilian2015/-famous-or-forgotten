@@ -16,6 +16,7 @@ import { slotNorm } from '../career/franchise.js';
 import { budgetFor } from '../career/release.js';
 import { continues, gapOf, GAP_YEARS } from '../career/chapter.js';
 import { aftermathPieces } from './aftermath.js';
+import { projectOutcome, isSmash, isBomb } from '../career/outcome.js';
 
 const MON = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
 const clamp = (v) => Math.max(0, Math.min(100, v));
@@ -37,11 +38,12 @@ export function piecesFor(s, lines) {
     if ((m = t.match(/^"(.+)" finished its run\. ([\d.]+)\/10 ·/))) {
       const title = m[1], score = parseFloat(m[2]);
       const c = (s.filmography || []).find((x) => x.title === title) || {};
-      const v = c.verdict || '';
+      const v = c.verdict || '';         // the word, for the line in the trades
+      const o = projectOutcome(s, c);   // and how it turned out (career/outcome.js)
       if (c.worldHit) add('praise', `"${title}" is the film of the year. ${name} is the reason.`, `Nobody expected this. It has stopped being a film and become the thing people talk about at dinner — and the name they say is yours.`, { about: title });
       else if (score >= 8.5) add('praise', `${name}: the performance that changes the conversation`, `"${title}" is the kind of work that gets quoted back at you for a decade. The reviews are the kind people screenshot, and every one of them stops on your name.`, { about: title });
-      else if (score >= 7.5 || v === 'smash') add('praise', v === 'smash' ? `"${title}" prints money — and ${fn} sells it` : `"${title}" lands, and ${name} is why`, v === 'smash' ? `The numbers are the story: a picture that has made its money back four times over, and a name on the poster the studio will want again.` : `A good run, well received. Not the one they will remember you for, but the one that gets your name into the next meeting.`, { about: title });
-      else if (v === 'bomb' && (s.fame || 0) >= 25) add('pan', `What happened to "${title}"?`, `The reviews are bad and the numbers are worse, and the piece spends two paragraphs on ${name} before it gets to the director. Somebody will be blamed. This is the paper deciding who.`, { about: title, react: true });
+      else if (score >= 7.5 || isSmash(o)) add('praise', isSmash(o) ? `"${title}" prints money — and ${fn} sells it` : `"${title}" lands, and ${name} is why`, isSmash(o) ? `The numbers are the story: a picture that has made its money back four times over, and a name on the poster the studio will want again.` : `A good run, well received. Not the one they will remember you for, but the one that gets your name into the next meeting.`, { about: title });
+      else if (isBomb(o) && (s.fame || 0) >= 25) add('pan', `What happened to "${title}"?`, `The reviews are bad and the numbers are worse, and the piece spends two paragraphs on ${name} before it gets to the director. Somebody will be blamed. This is the paper deciding who.`, { about: title, react: true });
       else if (score < 4.5 && (s.fame || 0) >= 15) add('pan', `${name}, in a film nobody asked for`, `"${title}" came and went in a fortnight. The trade's critic saw it on a Tuesday afternoon with eleven other people and says so.`, { about: title, react: true });
       else if ((s.fame || 0) >= 20) add('news', `"${title}" closes its run`, `${score}/10, ${v}. A film that came and went. Some people liked it.`, { about: title });
     } else if ((m = t.match(/^"(.+)" (opened|went out)\.$/))) {

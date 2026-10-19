@@ -1,6 +1,7 @@
 // The film next to your name. Maxi: "the hits should be framed so we can tell, and the last
 // hit should sit next to your name — and change when there is a new one."
 import { isBillion } from '../career/billion.js';
+import { projectOutcome, madeMoney as moneyMade, isSmash, isBomb, wentBadly } from '../career/outcome.js';
 const MINOR = /^(Brand Campaign|Commercial|Jingle|Brand Song|TV Extra|Voice Session|Open Mic|Festival Slot|Session Work|Music Video)$/;
 const minor = (c) => c.minor === true || (c.minor === undefined && MINOR.test(c.type || ''));
 const scoreOf = (c) => (c.score != null ? c.score : (c.rating || 0) / 10);
@@ -21,7 +22,9 @@ function rankOf(s, c) {
 // did 23 of 25 blockbusters that bombed, because a €577m tentpole that takes €300m has lost a
 // fortune and is still three hundred million (docs/handoffs/2026-10-13-hit-boxoffice-budget-
 // audit.md). The verdict is already that sum, so it is the only thing asked now.
-const madeMoney = (c) => c.verdict === 'smash' || c.verdict === 'profitable';
+// Asked through career/outcome.js, the one place that knows the words for how a thing turned out.
+const outcomeOf = (c) => projectOutcome(null, c);
+const madeMoney = (c) => moneyMade(outcomeOf(c));
 export function hitWeight(c, s) {
   if (!c || minor(c) || c.running) return 0;
   const score = scoreOf(c), bo = c.boxOffice || 0;
@@ -31,10 +34,10 @@ export function hitWeight(c, s) {
   // now, and so is being up for one. A nomination sits above a smash and below a win,
   // which is where the business puts it.
   if ((c.nominated || 0) > 0) return 3.5;
-  if (c.verdict === 'smash') return 3;
+  if (isSmash(outcomeOf(c))) return 3;
   // The year's chart is a list of grosses, so a bomb can sit on it — the expensive flop every
   // year has. It is still named on the credit (hitTags) and does not make the film a hit.
-  if (score >= 8.5 || (rankOf(s, c) <= 10 && c.verdict !== 'bomb') || (madeMoney(c) && bo >= 200e6)) return 2;
+  if (score >= 8.5 || (rankOf(s, c) <= 10 && !isBomb(outcomeOf(c))) || (madeMoney(c) && bo >= 200e6)) return 2;
   if (score >= 7.5 || madeMoney(c)) return 1;
   return 0;
 }
@@ -53,7 +56,7 @@ export function isHit(c, s) { return hitWeight(c, s) > 0; }
 export function isFlop(c) {
   if (!c || minor(c) || c.running) return false;
   if (c.scale === 'episode' || (c.episodes && c.episodes <= 4 && !c.season)) return false;   // a guest spot is somebody else's show
-  return c.verdict === 'bomb' || c.verdict === 'ignored' || scoreOf(c) < 4.5;
+  return wentBadly(outcomeOf(c)) || scoreOf(c) < 4.5;
 }
 function whyOf(s, c) {
   // A billion first: it is the rarer of the two and the louder. A picture can be a world hit
@@ -62,9 +65,9 @@ function whyOf(s, c) {
   if (c.worldHit || c.status === 'World Hit') return 'world hit';
   if ((c.asker || 0) > 0) return (c.asker || 0) > 1 ? `${c.asker} Askers` : 'Asker';
   if ((c.nominated || 0) > 0) return 'Asker nominee';
-  if (c.verdict === 'smash') return 'smash';
+  if (isSmash(outcomeOf(c))) return 'smash';
   if (madeMoney(c) && (c.boxOffice || 0) >= 200e6) return '€' + Math.round((c.boxOffice || 0) / 1e6) + 'm';
-  if (rankOf(s, c) <= 10 && c.verdict !== 'bomb') return '#' + rankOf(s, c) + ' of ' + c.year;
+  if (rankOf(s, c) <= 10 && !isBomb(outcomeOf(c))) return '#' + rankOf(s, c) + ' of ' + c.year;
   return scoreOf(c).toFixed(1) + '/10';
 }
 // Everything the business would call a hit, biggest first. Maxi: "make Known for tappable
@@ -102,7 +105,7 @@ function bandsFor(s, c, ctx) {
   if ((c.nominated || 0) > 0) out.push('The performance they nominated');
   if (c.worldHit || c.status === 'World Hit') out.push('The one the whole world saw');
   if (sc >= 8 && sc === ctx.topScore) out.push('The best thing you have done');
-  if (c.verdict === 'smash') out.push('A smash', 'Another smash');
+  if (isSmash(outcomeOf(c))) out.push('A smash', 'Another smash');
   if (bo >= 300e6 && madeMoney(c)) out.push('The one that printed money');
   const r = rankOf(s, c);
   if (r <= 10) out.push(`Number ${r} of ${c.year}`);
@@ -184,13 +187,12 @@ export function knownFor(s) {
 // is twice it); the critical one is the column. When they point opposite ways, this says the
 // two numbers the save has for each — what it made against what it needed, and what the
 // critics and the audience gave it — and does not invent a reason it does not have.
-const GOOD_MONEY = new Set(['smash', 'profitable']), BAD_MONEY = new Set(['bomb']);
 const GOOD_PRESS = new Set(['acclaimed', 'well received']), BAD_PRESS = new Set(['poorly reviewed', 'panned']);
 const eur = (n) => (n >= 1e9 ? '€' + (n / 1e9).toFixed(2) + 'bn' : n >= 1e6 ? '€' + (n / 1e6).toFixed(1) + 'm' : '€' + Math.round(n / 1000) + 'k');
 export function moneyVsReviews(c) {
   if (!c) return null;
-  const up = GOOD_MONEY.has(c.verdict) && BAD_PRESS.has(c.critical);
-  const down = BAD_MONEY.has(c.verdict) && GOOD_PRESS.has(c.critical);
+  const up = madeMoney(c) && BAD_PRESS.has(c.critical);
+  const down = isBomb(outcomeOf(c)) && GOOD_PRESS.has(c.critical);
   if (!up && !down) return null;
   const parts = [up ? 'Bad reviews, good business.' : 'Good reviews, bad business.'];
   if ((c.boxOffice || 0) > 0 && (c.needed || 0) > 0) {
