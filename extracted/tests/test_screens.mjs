@@ -330,7 +330,7 @@ await inState('Home · where you stand', {}, /Where you stand/);
 await inState('Home · for your consideration', { filmography: [...save.filmography,
   { title: 'The Long Quiet', role: 'Lead', type: 'Feature Film', genre: 'Drama', year: 2066, scale: 'feature',
     rating: 82, score: 8.2, status: 'Well-received', verdict: 'profitable', critical: 'acclaimed', tier: 'lead',
-    director: 'Vera Salazar', running: false }] }, /For your consideration/);
+    director: 'Vera Salazar', running: false }] }, /^(?![\s\S]*Do the season)(?=[\s\S]*For your consideration · the Askers)(?=[\s\S]*Asker nominations in September)(?=[\s\S]*Run the awards campaign)/);
 {
   const s = JSON.parse(JSON.stringify(save));
   signEndorsement(s, { projectTitle: 'Brand Campaign — the face of Maison Lune', from: 'Maison Lune', salary: 1500000, brandFor: 12 });
