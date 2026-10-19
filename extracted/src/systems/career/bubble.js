@@ -46,7 +46,7 @@ const seasonCap = (t) => CAP[t] || 5;
 const monthsFor = (type, episodes) => Math.max(2, Math.min(10, Math.round(1 + episodes * (PACE[type] || 0.38))));
 import { addHype } from '../meta/hype.js';
 import { socialShopLift } from '../social/posting.js';
-import { payMarketOf } from './project.js';
+import { payMarketOf, getProject } from './project.js';
 
 const stamp = (s) => (s.year || 0) * 12 + (s.month || 0);
 const clamp = (v, a = 0, b = 100) => Math.max(a, Math.min(b, v));
@@ -212,7 +212,7 @@ function rescue(s, b, credit) {
     id: uid(s, 'resc'), kind: 'rescue', via: 'rescue', seriesTitle: b.root, season: nextSeason,
     parentProjectId: p.projectId || null,   // the same show, somewhere else (career/project.js)
     projectTitle: `${b.root} · season ${nextSeason}`, role: p.role, type: b.type, genre: p.genre,
-    scale: p.scale, tier: p.tier || 'lead', perEpisode: true, payMarket: payMarketOf(p),
+    scale: p.scale, tier: p.tier || 'lead', perEpisode: true, payMarket: payMarketOf(p) || (getProject(s, p.projectId) || {}).payMarket || null,
     episodes, episodeFee, salary: episodeFee * episodes, baseSalary: p.baseSalary || p.salary,
     // A smaller budget shows. It is the same show, a little poorer, and the arc it was
     // building is still the arc it was building.

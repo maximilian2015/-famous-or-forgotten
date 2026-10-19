@@ -5,7 +5,8 @@ import { uid } from '../../engine/id.js';
 // Nothing here existed: a series wrapped and vanished, a film never had a sequel.
 import { rint, chance } from '../../engine/rng.js';
 import { addTimeline } from '../../engine/timeline.js';
-import { quoteBand } from '../meta/status.js';
+import { quoteBand, QUOTE } from '../meta/status.js';
+import { getProject } from './project.js';
 import { priceYoungReturn } from './youngblood.js';
 import { onTheBubble, hangIt, takeDecided } from './bubble.js';
 import { carriedToNextSeason } from './terms.js';
@@ -364,10 +365,20 @@ export function laterOffersTick(s) {
 // nine figures a picture.
 const FRANCHISE_PREMIUM = 1.5;
 function ceilingFor(s, medium, share = 1) {
-  const band = quoteBand(s, medium);
+  // A continuation stays in its own market. Daytime has no band for an A-lister — nobody OFFERS one
+  // a soap — but a soap you are already on can still renew you (Maxi: the access rules govern new
+  // work; a show you are on follows its own renewal rules), and it pays the top of what daytime
+  // pays anybody, with the premium every returning lead gets.
+  const band = quoteBand(s, medium) || topBand(medium);
   if (!band) return Infinity;
   return Math.round(band[1] * share * FRANCHISE_PREMIUM);
 }
+function topBand(medium) { const open = Object.values(QUOTE[medium] || {}).filter(Boolean); return open.length ? open[open.length - 1] : null; }
+// The fee table a continuation is paid from: its project's, which knows a soap is daytime television.
+// mediumOf guessed it from the scale and knew no daytime, so a soap's next season was priced as a
+// network drama — up to €900k an episode for a star (Media Ecosystem stage 1, its one intended
+// change). The guess stays for a job from before projects existed.
+function payOf(s, p) { const pr = getProject(s, p.projectId); return (pr && pr.payMarket) || mediumOf(p); }
 function mediumOf(p) {
   if (p.episodes || p.season) return p.scale === 'prestige' ? 'tv_prestige' : 'tv_network';
   return p.tier === 'tentpole' ? 'film_tentpole' : p.scale === 'blockbuster' ? 'film_studio'
@@ -426,8 +437,8 @@ export function maybeContinue(s, credit, p, force = false) {
     // Television does compound season on season, and it still cannot outrun what somebody
     // of your standing is paid — twelve renewals used to reach numbers with no meaning.
     const wasFee = p.episodeFee || Math.round(p.salary / Math.max(1, p.episodes || 1));
-    const episodeFee = Math.min(Math.round(wasFee * raise), ceilingFor(s, mediumOf(p)));
-    const marketFee = Math.min(Math.round(wasFee * raiseMarket), ceilingFor(s, mediumOf(p)));
+    const episodeFee = Math.min(Math.round(wasFee * raise), ceilingFor(s, payOf(s, p)));
+    const marketFee = Math.min(Math.round(wasFee * raiseMarket), ceilingFor(s, payOf(s, p)));
     const episodes = Math.max(4, Math.round((p.episodes || 8) * (0.9 + Math.random() * 0.3)));
     // Old release jobs did not keep the crew. Their credit may still name the
     // director; use that existing identity, never roll a replacement person.
@@ -448,7 +459,7 @@ export function maybeContinue(s, credit, p, force = false) {
       sourceCreditId: credit.id || null,
       // Television is priced by the episode on the paper too — the renewal used to read
       // 'for the picture' in the contract room.
-      perEpisode: true, payMarket: mediumOf(p),
+      perEpisode: true, payMarket: payOf(s, p),
       optioned: underOption, marketFee: underOption ? marketFee : 0,
       optionSeasons: p.optionSeasons || 0, optionFrom: p.optionFrom || 1, exitAfter: p.exitAfter || 0,
       stability: Math.max(82, p.stability || 82),
@@ -484,7 +495,7 @@ export function maybeContinue(s, credit, p, force = false) {
   // Against the first part, never against the last one. See ceilingFor above.
   const first = p.baseSalary || p.salary;
   const raw = obliged ? p.salary : Math.round(first * sequelRaise(nextPart));
-  const salary = Math.min(raw, ceilingFor(s, mediumOf(p)));
+  const salary = Math.min(raw, ceilingFor(s, payOf(s, p)));
   // Nobody shoots them back to back. It is announced, and then it is years.
   const gap = sequelGap(nextPart, credit.verdict);
   const years = Math.round(gap / 12);
