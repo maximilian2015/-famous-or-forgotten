@@ -439,6 +439,7 @@ export function maybeContinue(s, credit, p, force = false) {
       id: uid(s, 'ren'),
       // A show that got renewed is a show that works. The money is not the question here.
       kind: 'renewal', seriesTitle: root, season: nextSeason, scale: p.scale,
+      parentProjectId: p.projectId || null,   // the same show (career/project.js)
       ...carriedToNextSeason(p),
       // Who runs the show. A renewal carried no person at all, so walking out of one recorded
       // a grudge against the literal string 'The showrunner' — and meta/stories.js then looked
@@ -496,6 +497,7 @@ export function maybeContinue(s, credit, p, force = false) {
     offer: {
     id: uid(s, 'seq'),
     kind: 'sequel', part: nextPart, optioned: p.optioned, optionParts: p.optionParts, scale: p.scale,
+    parentProjectId: p.projectId || null,   // the same franchise (career/project.js)
     // Bigger than the last one, with the same needs (career/budget.js).
     budget: Number.isFinite(p.budget) ? sequelBudget(p.budget, p.scale, nextPart) : null, needs: p.needs ?? null,
     stability: Math.max(85, p.stability || 85),   // nobody defunds a sequel to something that made money

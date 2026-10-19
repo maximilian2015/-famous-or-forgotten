@@ -160,6 +160,7 @@ export function freezeProject(s, p) {
     monthsLeft: Math.max(1, p.monthsLeft || 1), episodes: p.episodes || 0, episodeFee: p.episodeFee || 0,
     season: p.season || 0, part: p.part || 1, optioned: !!p.optioned, optionParts: p.optionParts || 0,
     stability: p.stability, since: (s.year || 0) * 12 + (s.month || 0),
+    projectId: p.projectId || null,   // the same project when it thaws (career/project.js)
     // How long they will hold it for you, decided by who you were when it stopped.
     patience: patienceFor(s.fame || 0),
     // Whatever is left of the fee, which is what you would be paid if it ever restarts.
@@ -239,7 +240,7 @@ export function frozenTick(s) {
       const years = Math.round(waited / 12);
       (s.offers = s.offers || []).push({
         id: uid(s, 'thaw'),
-        kind: 'thaw', projectTitle: f.title, role: f.role, type: f.type, genre: f.genre,
+        kind: 'thaw', projectTitle: f.title, role: f.role, type: f.type, genre: f.genre, projectId: f.projectId || null,
         character: f.character || null, premise: f.premise || null,
         seriesTitle: f.seriesTitle || '', potential: f.potential || null,
         ...tvTermsOf(f),

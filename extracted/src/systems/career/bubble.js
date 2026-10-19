@@ -209,6 +209,7 @@ function rescue(s, b, credit) {
   if (credit) credit.renewal = 'moved';
   (s.offers = s.offers || []).push({
     id: uid(s, 'resc'), kind: 'rescue', via: 'rescue', seriesTitle: b.root, season: nextSeason,
+    parentProjectId: p.projectId || null,   // the same show, somewhere else (career/project.js)
     projectTitle: `${b.root} · season ${nextSeason}`, role: p.role, type: b.type, genre: p.genre,
     scale: p.scale, tier: p.tier || 'lead', perEpisode: true, medium: p.medium,
     episodes, episodeFee, salary: episodeFee * episodes, baseSalary: p.baseSalary || p.salary,
@@ -235,6 +236,7 @@ function finale(s, b, credit) {
   if (credit) credit.renewal = 'finale';
   (s.offers = s.offers || []).push({
     id: uid(s, 'fin'), kind: 'finale', via: 'rescue', seriesTitle: b.root,
+    parentProjectId: ((b.job || {}).projectId) || null,
     projectTitle: `${b.root} — the last one`, role: p.role, type: b.type, genre: p.genre,
     scale: 'oneoff', tier: p.tier || 'lead', episodes: 1, perEpisode: false,
     salary: fee, baseSalary: p.baseSalary || p.salary,
@@ -256,7 +258,7 @@ function laterFilm(s, b) {
     line: `Somebody wants to make a film of "${b.root}".`,
     event: `A call about "${b.root}". It has been years. The people who would not stop asking about it never stopped asking about it, and somewhere a person whose job is to find an audience that already exists has finally opened the file.`,
     offer: {
-      id: uid(s, 'cult'), kind: 'cultfilm', via: 'rescue', projectTitle: `${b.root} — the film`,
+      id: uid(s, 'cult'), kind: 'cultfilm', via: 'rescue', projectTitle: `${b.root} — the film`, parentProjectId: ((b.job || {}).projectId) || null,
       role: p.role || 'Lead', type: 'Feature Film', genre: p.genre || 'Drama', scale: 'feature',
       tier: p.tier || 'lead', months: rint(3, 5),
       salary: Math.max(1, Math.round((p.salary || 0) * rint(6, 11) / 10)),

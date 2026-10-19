@@ -28,6 +28,7 @@ import { hypeReach, hypeBrands } from '../meta/hype.js';
 import { socialReach } from '../social/posting.js';
 import { heirReach } from '../life/origin.js';
 import { ensureBudget } from './budget.js';
+import { adoptProject } from './project.js';
 export { tvMonths, TV_PACE } from './franchise.js';
 // What a casting office will see you for. Usually that is fame — but an Asker counts,
 // and it is the one route into work above your level that does not run through
@@ -688,7 +689,9 @@ export function auditionFor(s, id, quality = 50) {
     // paid, so it is kept — but under Other work, without a score. Nobody rates a
     // shampoo advert out of ten, and letting them do so dragged the whole filmography.
     (s[bucket] = s[bucket] || []).unshift({ title: c.title, role: c.role, type: c.type, genre: c.genre,
-      salary: c.salary, rating, status, year: s.year, minor: true });
+      salary: c.salary, rating, status, year: s.year, minor: true,
+      // The third road a project is born on: a day's work booked and done at the audition.
+      projectId: adoptProject(s, { ...c, via: 'casting' }, c.id).id });
     addGenreXP(s, c.genre, rating);
     paid(s, c.salary, `"${c.title}" paid`); markReleased(s); setFame(s, s.fame + rint(1, 3)); s.confidence = clamp(s.confidence + 2);
     typecastAfterDayWork(s, c);

@@ -26,6 +26,7 @@ import { dirBump, dirSwing, pitchAftermath } from './chapter.js';
 import { youngAfterCredit } from './youngblood.js';
 import { sets, addSet, removeSet, setById, canTakeSet, slotsFree, isShort, MAX_SETS, SET_RESPECT } from '../../engine/sets.js';
 import { ensureBudget } from './budget.js';
+import { adoptProject } from './project.js';
 export { sets, canTakeSet, slotsFree, MAX_SETS, SET_RESPECT };
 const clamp = (v) => Math.max(0, Math.min(100, v));
 // A shoot opens on 20 and 20 used to be labelled "Disaster", so the very first thing the
@@ -174,6 +175,8 @@ export function startProduction(s, offer) {
     budget: offer.budget ?? null, needs: offer.needs ?? null,
   };
   ensureBudget(p, offer.id || p.id);
+  // The work has a name of its own now, and every stage after this carries it (career/project.js).
+  p.projectId = adoptProject(s, offer, p.id).id;
   // One more set. Three at most, and the second and third only for somebody they trust
   // to turn up — see engine/sets.js. The callers check first; this is the last door.
   // The director who sent it, if it came from one you know; the rival, if the picture is
@@ -668,6 +671,7 @@ function wrapProduction(s, p) {
   if (exceptional) rating = Math.max(rating, 96);
   const status = rating >= 85 ? 'Hit' : rating >= 70 ? 'Well-received' : rating >= 50 ? 'Released' : 'Flop';
   const credit = { title: p.title, role: p.role, type: p.type, genre: p.genre, salary: p.salary, rating, status, year: s.year, exceptional,
+    projectId: p.projectId || null,
     season: p.season || 0, part: p.part > 1 ? p.part : 0, episodes: p.episodes || 0,
     // Who directed it, and how long it ran. The crew is thrown away at wrap, and the
     // filmography had no director on it — every real one lists them under the title.
