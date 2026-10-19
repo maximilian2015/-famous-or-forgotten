@@ -142,16 +142,21 @@ is skipped on renewal.
 
 ```
 project = {
-  medium:   'theatrical' | 'television' | 'streaming'      where the audience meets it
-  format:   'movie' | 'series' | 'limited' | 'soap'          what it is
+  id, seriesId                                               one identity for its whole life (see stage 1)
+  medium:   'theatrical' | 'television' | 'streaming' | 'other'   where the audience meets it ('other': ads, stage, voice)
+  format:   'movie' | 'series' | 'limited_series' | 'soap'        what it is
   scale:    movies: small | festival | indie | feature | blockbuster   (names kept: calibrated, saved)
-            series: standard | premium                         (today's recurring/episode vs prestige)
+  style:    'standard' | 'prestige'                          NOT a medium: prestige exists on television AND streaming,
+                                                             and for films ('Prestige Drama')
   outlet:   television: daytime | network · streaming: the platform's tier (later)
-  release:  movies: wide | platform | festival | streaming_original   (a theatrical window later)
-  genre, needs, budget                                           (as now)
-  payMarket: today's `medium` value (tv_daytime … gig)            (renamed, see decisions)
+  distribution: movies: wide | festival | streaming_original (a theatrical window later) · series: broadcast | platform
+  awardsTrack: 'film' | 'television' | 'festival'            its own field — never derived from the medium alone
+  route:    how it reached you (§2b)
+  genre, needs, budget                                       (as now)
+  payMarket: today's `medium` value (tv_daytime … gig)       (renamed — decision 1)
 }
-the part stays on the offer/credit: role, tier, share
+the part stays on the offer/credit: role, tier, share — and for television the part is NOT the size of
+the show: today's scale 'episode' means a guest part in a network series, not a small series.
 ```
 
 Examples: Theatrical + movie · Streaming + movie · Streaming + limited · Television + series ·
@@ -161,6 +166,39 @@ Television + soap. Medium and format are never one field.
 credit, copied whole at every boundary — so a field added to it later survives without six edits.
 Old objects get one lazily, built from type/scale/medium/episodes (`projectOf(x)`, the
 `marketOf(s)` pattern). One function answers "which medium", replacing the three scale tests.
+
+---
+
+## 2b. How the player finds work — routes into each market
+
+A market is not enough; the player has to physically reach it. Today the doors are unequal: television
+comes only through the casting board, the agent brings only films (§1.2). Every project records the
+route it came by, reusing the offer's existing `via` field:
+
+| route | today's `via` | where the player meets it |
+|---|---|---|
+| `open_call` — you search and self-submit | casting | OpenCall |
+| `agent_submission` — your agent brings or submits | agent | AAA (the agency's board) + Messages |
+| `direct_offer` — a studio, network, platform or showrunner approaches | studio, festival, brand | Email |
+| `relationship_offer` — a director, producer or co-star | director, partner, letter | People |
+| `continuation` — next season, sequel, a rescued show | rescue, franchise renewals | Messages |
+| `self_created` — later | pitch | NightRoom pitch |
+
+- **OpenCall** becomes the central self-service market with tabs: For you · Film · TV · Streaming ·
+  Commercial; listings marked Open submission / Self-tape · Agent only · Invite only.
+- **The agent brings work from the markets where you have value** — not films only. Later, career
+  direction: "push me for films / I want prestige TV / get me into streaming / I need work".
+- **The route changes with the career, the markets do not disappear**: early mostly OpenCall; rising
+  a mix with the agent; a star mostly agent and direct offers; A-list mostly direct, agent and
+  relationship offers — with OpenCall still open for a deliberate small or prestige choice (a layer of
+  "projects looking for names", not "Waiter #2").
+- **Television stays a high-level path** (premium series, limited, event miniseries); a daytime soap
+  or a guest episode fades for an A-lister. **Streaming has its own ladder**: recurring role → platform
+  series → limited series and original movies → event projects built around you.
+- **Access = market value + Fame/Standing + route.** Streaming value 20: open streaming castings;
+  50: the agent can submit you for good parts; 75: platforms call; 90: projects are built around you.
+- No new phone apps: OpenCall for searching, AAA/agency for private submissions, Email for direct
+  offers, People for relationships.
 
 ---
 
@@ -221,7 +259,9 @@ projectOutcome(credit) → { medium, label, grade, reach, money?, renewed? }
   grade: −2 flop · −1 under · 0 par · +1 good · +2 great · +3 phenomenon
 ```
 Fame, Standing, Hype, typecast, Known For, awards, sequels and renewals read `grade` and `reach`;
-each medium keeps its own `label`. Old credits keep their verdict strings and an adapter maps them
+each medium keeps its own `label`. **The grade is an adapter, never a replacement**: every project
+keeps its native result beside it — theatrical gross, profit and verdict; television viewers,
+retention, renewal and outcome; streaming opening views, completion, total reach and outcome. Old credits keep their verdict strings and an adapter maps them
 (bomb −2, broke even 0, profitable +1, smash +2, World Hit +3; ignored −1, seen 0, watched +1).
 The 20+ string switches move behind the adapter one at a time.
 
@@ -235,7 +275,8 @@ The 20+ string switches move behind the adapter one at a time.
 - **market.js** (judged against its own kind, two tracks) → an appetite per medium.
 - **Typecast labels** ('tv', 'commercial', 'serious') → seeds of the market values.
 - **`QUOTE` bands** → pay by market value.
-- **awards.js `branchOf`** → streaming joins the television branch (as the industry does).
+- **awards.js `branchOf`** → becomes `awardsTrack` (film / television / festival): streaming series
+  join the television track, streaming movies the film or festival track.
 - **Posters** (film/series/soap/ad/festival formats) → a streaming mark.
 - **Budget V2** → streaming budgets; theatrical untouched.
 
@@ -258,30 +299,40 @@ The 20+ string switches move behind the adapter one at a time.
 
 ## 8. Staged V1 plan — each step its own branch, measured, reported before merge
 
-1. **Plumbing, no behaviour change.** `projectOf`, `project` carried through every boundary, one
-   medium test, the pay key renamed, the soap pay bug fixed, the boundary test. Done when the suite
-   is green and career probes match the Budget V2 baselines.
-2. **The outcome interface.** `projectOutcome`; fame, hype and Known For read it; no number moves.
-3. **Market values.** `s.value`, moved by outcomes, read by pay and access only, shown on the
-   Passport. Careers measured.
-4. **Streaming series first**, on the television machinery that already has audience, retention,
-   renewal and the bubble: 28-day views, completion, reach, their own outcome words; the bubble's
-   streamer becomes a real streaming medium. **Then streaming movies**: a festival sold to a
-   streamer, and streaming originals through the agent.
-5. **Per-medium appetite**, world streaming releases for the lists, the awards branch.
-6. **Values read by theatrical demand** (bankability), re-measured against the Budget V2
-   baselines; the Billion Club question reopens here.
+Order as decided (Maxi, 19 Oct): market values come AFTER streaming exists, so a streaming value is
+learned from real streaming credits instead of being invented.
+
+1. **Project foundation, no behaviour change** (the soap pay bug is the one intended fix). One
+   persistent project identity through offer → contract → production → release → credit → next
+   season; `medium` → `payMarket`. Plan and save compatibility: `2026-10-19-media-ecosystem-stage1-plan.md`.
+2. **The outcome adapter.** `projectOutcome`; fame, hype and Known For read it; no number moves.
+3. **Streaming series**, on the television machinery that already has audience, retention, renewal
+   and the bubble — with streaming's own audience model (28-day views, completion, reach, long tail)
+   and outcome words; the bubble's streamer becomes a real streaming medium. **Then streaming
+   movies**: a festival sold to a streamer, and streaming originals.
+4. **Market values**, learned from real credits in each market; read by pay and access; shown as
+   words and bars. The routes of §2b.
+5. **Per-medium appetite**, world streaming releases for the lists, the awards tracks.
+6. **Theatrical bankability read by demand**, re-measured against the Budget V2 baselines; the
+   Billion Club question reopens here.
 
 The theatrical verdict names (BOMB → LOSS → …) slot in after step 2, on the adapter.
 
 ---
 
-## Decisions for Maxi
+## Decisions (Maxi, 19 Oct 2026)
 
-1. Rename today's `medium` (the pay key) to `payMarket`, and use `medium` for theatrical /
-   television / streaming? Recommended: yes — the old name says something it is not.
-2. Is 'Prestige Series' television or streaming? Recommended: streaming (it is written to end and
-   priced as premium); networks keep the soaps and the network dramas.
-3. Streaming series before streaming movies? Recommended: yes — they reuse the TV machinery.
-4. Streaming in the awards: with television? Recommended: yes.
-5. Market values on screen as words and bars, not numbers? Recommended: yes.
+1. **Yes** — today's `medium` (the pay key) becomes `payMarket`; `medium` means theatrical /
+   television / streaming. (`payMarket` may later be derived from medium + format + scale + style.)
+2. **No** — prestige is not a medium. It is a `style` of a project, possible on television and on
+   streaming (and for films). The rule "prestige series ⇒ streaming" is forbidden.
+3. **Yes** — streaming series before streaming movies, reusing the TV machinery where it fits, with
+   streaming's own audience and outcome model.
+4. **Partly** — streaming series and limited series may share the television awards track; streaming
+   movies take the film or festival eligibility path. `awardsTrack` is its own field
+   (film / television / festival), never `if streaming => television`.
+5. **Yes** — market values numeric inside, words and bars on screen.
+- The common grade (−2…+3) is an adapter for cross-market systems only (§5).
+- Order: foundation → outcome adapter → streaming series → market values → markets/awards →
+  theatrical bankability (§8).
+- Before coding stage 1: the work-discovery layer (§2b) and the stage 1 migration plan.
