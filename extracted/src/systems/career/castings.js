@@ -28,6 +28,7 @@ import { hypeReach, hypeBrands } from '../meta/hype.js';
 import { socialReach } from '../social/posting.js';
 import { heirReach } from '../life/origin.js';
 import { ensureBudget } from './budget.js';
+import { adoptProject, payMarketOf } from './project.js';
 export { tvMonths, TV_PACE } from './franchise.js';
 // What a casting office will see you for. Usually that is fame — but an Asker counts,
 // and it is the one route into work above your level that does not run through
@@ -406,7 +407,7 @@ export function refreshCastingPool(s, force, extra = 0) {
     // is the kind of material a name works for nothing on, which is the same exception.
     if (picky >= 0.6 && helmer && (bandOf(helmer) === 'new' || bandOf(helmer) === 'working') && !material && /^(feature|blockbuster)$/.test(scale)) continue;
     s.castingPool.push({
-      id: uid(s, 'cast'), title: title, type, role, shelf, scale, medium,
+      id: uid(s, 'cast'), title: title, type, role, shelf, scale, payMarket: medium,   // the fee table (career/project.js)
       share: cut,   // negotiation needs it to know the top of YOUR band for this part
       stability, feeFactor: fee,   // negotiation argues inside the band this job actually pays in
       months, episodes, perEpisode, episodeFee: perEpisode ? rate : 0,
@@ -602,7 +603,7 @@ function answerSubmission(s, sub) {
     budget: c.budget ?? null, needs: c.needs ?? null,   // the picture's, from the listing (career/budget.js)
     episodes: c.episodes, episodeFee: c.episodeFee, season, seriesTitle: c.perEpisode ? c.title : undefined,
     joined: season > 1, audience: c.audience || 0,
-    stability: c.stability, perEpisode: c.perEpisode, medium: c.medium,
+    stability: c.stability, perEpisode: c.perEpisode, payMarket: payMarketOf(c),
     prestigeScore: rint(sc.prestige[0], sc.prestige[1]) + Math.round((sub.quality - 50) * 0.12) + riskPrestige(c.stability),
     // Counted down by offersTick like every other offer. This used to be an absolute month
     // under a different name that nothing read: a part you won and never answered sat in
@@ -688,11 +689,13 @@ export function auditionFor(s, id, quality = 50) {
     // paid, so it is kept — but under Other work, without a score. Nobody rates a
     // shampoo advert out of ten, and letting them do so dragged the whole filmography.
     (s[bucket] = s[bucket] || []).unshift({ title: c.title, role: c.role, type: c.type, genre: c.genre,
-      salary: c.salary, rating, status, year: s.year, minor: true });
+      salary: c.salary, rating, status, year: s.year, minor: true,
+      // The third road a project is born on: a day's work booked and done at the audition.
+      projectId: adoptProject(s, { ...c, via: 'casting' }, c.id).id });
     addGenreXP(s, c.genre, rating);
     paid(s, c.salary, `"${c.title}" paid`); markReleased(s); setFame(s, s.fame + rint(1, 3)); s.confidence = clamp(s.confidence + 2);
     typecastAfterDayWork(s, c);
-    if (c.medium === 'ad' || /Brand|Cover|Fashion|Commercial|Awards Show/.test(c.type || '')) s._brandUntil = (s.year || 0) * 12 + (s.month || 0) + rint(4, 8);   // overexposure: the brands wait
+    if (payMarketOf(c) === 'ad' || /Brand|Cover|Fashion|Commercial|Awards Show/.test(c.type || '')) s._brandUntil = (s.year || 0) * 12 + (s.month || 0) + rint(4, 8);   // overexposure: the brands wait
     // The shampoo. A serious actor selling shampoo is a sentence the serious rooms repeat.
     const shampoo = isStrong(s, 'serious') && /Brand|Commercial/.test(c.type || '');
     if (shampoo) setRespect(s, (s.respect || 0) - 2);

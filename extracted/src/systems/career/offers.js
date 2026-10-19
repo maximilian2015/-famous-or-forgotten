@@ -21,6 +21,7 @@ import { signEndorsement, clauseTaken } from './endorsement.js';
 import { laterOutcome } from './decline.js';
 import { isStrong } from '../meta/typecast.js';
 import { canTakeSet } from '../../engine/sets.js';
+import { adoptProject } from './project.js';
 const clamp = (v) => Math.max(0, Math.min(100, v));
 // Titles come from the same generator as everything else the world makes, so an agent's
 // offer cannot be called what a rival's film was called last year. See world/titles.js.
@@ -279,7 +280,8 @@ export function acceptOffer(s, id) {
   const rating = clamp(35 + skill * 0.4 + o.prestigeScore * 0.2 + (s.looks - 40) * 0.12 + rint(-8, 15));
   const status = rating >= 85 ? 'Hit' : rating >= 70 ? 'Well-received' : rating >= 50 ? 'Released' : 'Flop';
   const credit = { title: o.projectTitle.replace('⭐ ', ''), role: o.role, type: o.type, genre: o.genre,
-    salary: o.salary, rating, status, year: s.year, minor: true };   // a day's work — Other work, not a film credit
+    salary: o.salary, rating, status, year: s.year, minor: true,   // a day's work — Other work, not a film credit
+    projectId: adoptProject(s, o, id).id };   // the second road a project is born on (career/project.js)
   const bucket = s.dream === 'singer' ? 'discography' : 'filmography';
   (s[bucket] = s[bucket] || []).unshift(credit);
   paid(s, o.salary, `"${credit.title}" paid`);

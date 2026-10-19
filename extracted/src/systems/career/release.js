@@ -774,6 +774,7 @@ export function scheduleRelease(s, credit, p) {
   const rel = {
     id: uid(s, 'rel'),
     ...tvTermsOf(p),
+    projectId: p.projectId ?? null,   // career/project.js
     title: credit.title, role: credit.role, type: credit.type, genre: credit.genre,
     scale: p.scale || 'feature', tier: p.tier || 'lead', season: p.season || 0,
     // What it cost and what it needed (career/budget.js), carried to the night it closes.
@@ -821,6 +822,7 @@ export function scheduleRelease(s, credit, p) {
     job: {
       title: p.title, seriesTitle: p.seriesTitle, role: p.role, type: p.type, genre: p.genre, salary: p.salary,
       ...tvTermsOf(p),
+      projectId: p.projectId ?? null,   // the next season or part is born from THIS project
       // maybeContinue receives this job, not the original crew. Preserve the
       // person the player will negotiate with, including their contact ID.
       showrunner: ((p.crew || [])[0] || {}).name || null,
@@ -1033,6 +1035,7 @@ function open(s, rel) {
   const credit = {
     title: rel.title, role: rel.role, type: rel.type, genre: rel.genre, salary: rel.salary,
     ...tvTermsOf(rel),
+    projectId: rel.projectId ?? null,
     rating: rel.rating, status: rel.status, year: s.year, season: rel.season,
     part: rel.part > 1 ? rel.part : 0, episodes: rel.episodes,
     // In cinemas. Everything below is provisional until runTick closes it.
@@ -1099,7 +1102,7 @@ function open(s, rel) {
   setFame(s, (s.fame || 0) + opening * headroom(118, s.fame));
   if (fest && fest.result === 'prize') setRespect(s, (s.respect || 0) + 4 * Math.max(0.16, 1 - (s.respect || 0) / 112));
   // The finished thing is kept ON the release so runTick can close it out properly.
-  credit._rel = { rating: rel.rating, worldHit: rel.worldHit, tier: rel.tier, scale: rel.scale, budget: rel.budget ?? null,
+  credit._rel = { rating: rel.rating, worldHit: rel.worldHit, tier: rel.tier, scale: rel.scale, budget: rel.budget ?? null, projectId: rel.projectId ?? null,
     salary: rel.salary, finalGross: rel.finalGross || 0, job: rel.job, film,
     // The campaign has to survive to closeRun. The verdict is measured against what the thing
     // cost to make AND to sell, and without this line every picture would be judged at the end
