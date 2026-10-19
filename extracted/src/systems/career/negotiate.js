@@ -6,6 +6,7 @@
 // in it you land, and how far past it you dare to reach.
 import { chance } from '../../engine/rng.js';
 import { fameTier, quoteBand, setQuote } from '../meta/status.js';
+import { payMarketOf } from './project.js';
 
 const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
 
@@ -25,7 +26,7 @@ export function reachOf(s) { return AGENT_REACH[s.agent?.tier] ?? AGENT_REACH.no
 // resolve it. `quoted` is what they opened with; `ceiling` is the most you could ever
 // get out of them; `walkAway` is where they stop taking you seriously.
 export function negotiationFor(s, job) {
-  const band = quoteBand(s, job.medium);
+  const band = quoteBand(s, payMarketOf(job));
   if (!band || !canNegotiate(s)) return null;
   const unit = job.perEpisode ? (job.episodeFee || 0) : (job.salary || 0);
   if (unit <= 0) return null;

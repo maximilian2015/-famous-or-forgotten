@@ -448,7 +448,7 @@ export function maybeContinue(s, credit, p, force = false) {
       sourceCreditId: credit.id || null,
       // Television is priced by the episode on the paper too — the renewal used to read
       // 'for the picture' in the contract room.
-      perEpisode: true, medium: mediumOf(p),
+      perEpisode: true, payMarket: mediumOf(p),
       optioned: underOption, marketFee: underOption ? marketFee : 0,
       optionSeasons: p.optionSeasons || 0, optionFrom: p.optionFrom || 1, exitAfter: p.exitAfter || 0,
       stability: Math.max(82, p.stability || 82),

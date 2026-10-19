@@ -15,6 +15,7 @@ import { canTakeSet } from '../../engine/sets.js';
 import { askForLead, canUse, costOf, FAVOURS } from '../../systems/career/favours.js';
 import { COST, canAfford } from '../../engine/energy.js';
 import { hotGenre } from '../../systems/meta/news.js';
+import { payMarketOf } from '../../systems/career/project.js';
 
 // Only appears once you are somebody. Below Star you are told the number.
 function Haggle({ g, c }) {
@@ -155,7 +156,7 @@ export function OpenCall({ g, ocTab, setOcTab, teenMode }) {
   const shelves = teenMode ? SHELVES.filter(([id]) => id === 'day') : SHELVES;
   const cur = teenMode ? 'day' : (ocTab || (shelves.find(([id]) => pool.some((c) => c.shelf === id)) || ['tv'])[0]);
   // A teenager sees the small paid work only — a student film, a day as an extra — not the campaigns.
-  const list = pool.filter((c) => c.shelf === cur && (!teenMode || c.medium === 'gig'));
+  const list = pool.filter((c) => c.shelf === cur && (!teenMode || payMarketOf(c) === 'gig'));
   return (<div>
     <Waiting g={g} />
     {!teenMode && <div style={{ display: 'flex', gap: 6, marginBottom: 6 }}>{shelves.map(([id, label]) => { const n = pool.filter((c) => c.shelf === id).length;

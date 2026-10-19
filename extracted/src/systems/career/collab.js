@@ -148,7 +148,7 @@ export function collabTick(s) {
       id: uid(s, 'off'), via: 'director', kind: 'collab', from: c.name,
       projectTitle: c.title, role: k.role, type: k.scale === 'festival' ? 'Festival Film' : k.scale === 'indie' ? 'Indie Film' : 'Feature Film',
       genre: c.genre, salary: fee, months: rint(3, 6), fame: k.scale === 'feature' ? 5 : 2,
-      prestigeScore: rint(k.prestige[0], k.prestige[1]), tier: 'lead', scale: k.scale,
+      prestigeScore: rint(k.prestige[0], k.prestige[1]), tier: 'lead', scale: k.scale, payMarket: medium,
       stability: Math.max(62, rollStability(k.scale)), deadline: rint(3, 4),
       potential: rollPotential(k.scale, c.genre),
       backend: k.points || 0, points: !!k.points,

@@ -22,6 +22,7 @@ import { recordPassed } from '../meta/passed.js';
 import { paid } from './agent.js';
 import { sendMail } from '../meta/email.js';
 import { STUDIOS } from '../world/names.js';
+import { payMarketOf } from './project.js';
 // The studio on the letterhead — the same hash ContractRoom draws the stamp from.
 function studioOf(o) { let h = 0; for (const ch of String(o.id || o.projectTitle || '')) h = (h * 31 + ch.charCodeAt(0)) >>> 0; return STUDIOS[h % STUDIOS.length]; }
 // How long a production will hold a part for somebody who is on another set. A month or
@@ -205,7 +206,7 @@ export function draftContract(s, o) {
   }
   const big = o.tier !== 'supporting' || (o.months || 0) >= 2;
   const clauses = [];
-  const neg = negotiationFor(s, { medium: o.medium || (o.scale === 'blockbuster' ? 'film_tentpole' : o.scale === 'feature' ? 'film_studio' : o.scale === 'prestige' ? 'tv_prestige' : o.episodes ? 'tv_network' : 'film_indie'),
+  const neg = negotiationFor(s, { payMarket: payMarketOf(o) || (o.scale === 'blockbuster' ? 'film_tentpole' : o.scale === 'feature' ? 'film_studio' : o.scale === 'prestige' ? 'tv_prestige' : o.episodes ? 'tv_network' : 'film_indie'),
     salary: o.salary, perEpisode: !!o.perEpisode, episodeFee: o.episodeFee, share: o.share || 1, feeFactor: o.feeFactor || 1 });
   const unit = o.perEpisode ? o.episodeFee : o.salary;
   // The fee. Below Star you are told the number; you can still ask, and mostly be told again.

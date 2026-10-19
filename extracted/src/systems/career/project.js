@@ -215,6 +215,11 @@ export function settleProjects(s) {
     const p = parentFor(o);
     if (p) o.parentProjectId = p.id;
   }
+  // What offers and listings called `medium` is the fee table; it is called payMarket now. Copied,
+  // not moved: payMarketOf reads both, and an older build still finds the field it wrote.
+  for (const x of [...(s.castingPool || []), ...(s.submissions || []), ...(s.offers || []), ...(s.laterOffers || []).map((l) => l.offer).filter(Boolean)]) {
+    if (!x.payMarket && x.medium && PAY.has(x.medium)) x.payMarket = x.medium;
+  }
   s._prjSeq = n;
   s.projectsVersion = 1;
   return s;

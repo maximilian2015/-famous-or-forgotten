@@ -189,7 +189,7 @@ export function answerBillionMail(s, mailId, i) {
     (s.castingPool = s.castingPool || []).push({
       id: uid(s, 'cast'), title: SHOWS[Math.floor(Math.random() * SHOWS.length)],
       type: 'Talk Show', role: 'The guest',
-      shelf: 'day', scale: 'oneoff', medium: 'ad', share: 1, stability: 100, feeFactor: 1,
+      shelf: 'day', scale: 'oneoff', payMarket: 'ad', share: 1, stability: 100, feeFactor: 1,
       months: 1, episodes: 0, perEpisode: false, episodeFee: 0, salary: 40000, season: 0,
       audience: 0, director: null, directorId: null, directorBand: null, directorTop: false,
       genre: null, minFame: 0, openedByName: true,
