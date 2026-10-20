@@ -2,6 +2,7 @@
 // hit should sit next to your name — and change when there is a new one."
 import { isBillion } from '../career/billion.js';
 import { projectOutcome, madeMoney as moneyMade, isSmash, isBomb, wentBadly } from '../career/outcome.js';
+import { SERIES } from '../career/awards.js';
 const MINOR = /^(Brand Campaign|Commercial|Jingle|Brand Song|TV Extra|Voice Session|Open Mic|Festival Slot|Session Work|Music Video)$/;
 const minor = (c) => c.minor === true || (c.minor === undefined && MINOR.test(c.type || ''));
 const scoreOf = (c) => (c.score != null ? c.score : (c.rating || 0) / 10);
@@ -34,6 +35,9 @@ export function hitWeight(c, s) {
   // now, and so is being up for one. A nomination sits above a smash and below a win,
   // which is where the business puts it.
   if ((c.nominated || 0) > 0) return 3.5;
+  // The series award (career/awards.js), a step below the Asker's.
+  if ((c.seriesAward || 0) > 0) return 3.4;
+  if ((c.seriesNominated || 0) > 0) return 3.2;
   if (isSmash(outcomeOf(c))) return 3;
   // The year's chart is a list of grosses, so a bomb can sit on it — the expensive flop every
   // year has. It is still named on the credit (hitTags) and does not make the film a hit.
@@ -65,6 +69,8 @@ function whyOf(s, c) {
   if (c.worldHit || c.status === 'World Hit') return 'world hit';
   if ((c.asker || 0) > 0) return (c.asker || 0) > 1 ? `${c.asker} Askers` : 'Asker';
   if ((c.nominated || 0) > 0) return 'Asker nominee';
+  if ((c.seriesAward || 0) > 0) return (c.seriesAward || 0) > 1 ? `${c.seriesAward} ${SERIES.plural}` : SERIES.name;
+  if ((c.seriesNominated || 0) > 0) return `${SERIES.name} nominee`;
   if (isSmash(outcomeOf(c))) return 'smash';
   if (madeMoney(c) && (c.boxOffice || 0) >= 200e6) return '€' + Math.round((c.boxOffice || 0) / 1e6) + 'm';
   if (rankOf(s, c) <= 10 && !isBomb(outcomeOf(c))) return '#' + rankOf(s, c) + ' of ' + c.year;
@@ -103,6 +109,8 @@ function bandsFor(s, c, ctx) {
   }
   if ((c.asker || 0) > 0) out.push((c.asker || 0) > 1 ? 'The night it swept' : 'The one that won');
   if ((c.nominated || 0) > 0) out.push('The performance they nominated');
+  if ((c.seriesAward || 0) > 0) out.push((c.seriesAward || 0) > 1 ? 'The show that swept' : 'The show that won');
+  if ((c.seriesNominated || 0) > 0) out.push('The season they nominated');
   if (c.worldHit || c.status === 'World Hit') out.push('The one the whole world saw');
   if (sc >= 8 && sc === ctx.topScore) out.push('The best thing you have done');
   if (isSmash(outcomeOf(c))) out.push('A smash', 'Another smash');

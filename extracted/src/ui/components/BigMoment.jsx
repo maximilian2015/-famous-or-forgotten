@@ -354,10 +354,11 @@ function headFor(m) {
   if (m.id === 'sets') return 'They trust you to turn up';
   if (m.id === 'shutdown') return m.frozen ? 'The shoot has stopped' : 'The project is dead';
   if (m.id === 'billion') return m.letter ? 'The studio has written' : m.first ? 'A thousand million euros' : `Billion number ${m.nth}`;
-  if (m.id === 'nomination') return 'The Askers';
+  // Which award: the moment says (career/awards.js tracks) — the Askers, or the series award.
+  if (m.id === 'nomination') return `The ${m.award || 'Askers'}`;
   if (m.id === 'yearbook') return 'The year in film';
   if (m.id === 'contract') return m.walked ? 'They walked' : 'The paper came back';
-  if (m.id === 'ceremony') return m.quiet ? 'The Askers went to' : 'And the Asker goes to';
+  if (m.id === 'ceremony') return m.quiet ? `The ${m.award || 'Askers'} went to` : `And the ${(m.award || 'Askers').replace(/s$/, '')} goes to`;
   return m.kind === 'good' ? 'Something came to you' : 'This is happening';
 }
 

@@ -14,6 +14,7 @@ import { ambitionProgress } from '../../systems/meta/ambition.js';
 import { factions } from '../../systems/meta/factions.js';
 import { useState } from 'react';
 import { DirectorsScreen } from './DirectorsScreen.jsx';
+import { SERIES } from '../../systems/career/awards.js';
 
 // Who you are, on one card. Maxi: "when you press your little person — when you were
 // born, how old you are and how old you look, height, weight, where you live, status,
@@ -39,6 +40,8 @@ export function Passport({ g, onClose, onRoom, onPerson }) {
   const earnedFilms = (g.filmography || []).reduce((n, c) => n + (c.salary || 0), 0);
   const earned = Math.max(g.earnedLife || 0, earnedFilms);
   const wins = ((g.awards || {}).wins || []).length, noms = ((g.awards || {}).nominations || []).length;
+  // And the series award (career/awards.js SERIES), its own row.
+  const sWins = ((g.seriesAwards || {}).wins || []).length, sNoms = ((g.seriesAwards || {}).nominations || []).length;
   const hits = (g.filmography || []).filter((c) => (c.rating || 0) >= 85).length;
   const ill = g.illness ? `${g.illness.name}${g.illness.serious ? ' (serious)' : ''}` : null;
   const drink = drinkBand(g);
@@ -113,6 +116,7 @@ export function Passport({ g, onClose, onRoom, onPerson }) {
       {head('The work')}
       {row('Credits', `${(g.filmography || []).length}${hits ? ` · ${hits} hit${hits === 1 ? '' : 's'}` : ''}`)}
       {(wins || noms) ? row('The Askers', `${wins} won · ${noms} nominated`) : null}
+      {(sWins || sNoms) ? row(`The ${SERIES.plural}`, `${sWins} won · ${sNoms} nominated`) : null}
       {head('Family')}
       {row('Status', mate ? (mate.married ? `Married to ${mate.person.name}` : `With ${mate.person.name}${mate.person.livingTogether ? ' · living together' : ''}`) : 'Single')}
       {row('Children', kids.length ? kids.map((k) => `${k.name.split(' ')[0]} (${Math.floor(k.age || 0)})`).join(', ') : 'None')}

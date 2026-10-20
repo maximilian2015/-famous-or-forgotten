@@ -10,6 +10,7 @@
 //   · a distributor pays for its own campaign; what it wants from you is three months
 //   · you only pay cash for a picture nobody else is spending on, and it does less
 //   · it moves the NOMINATION, because that is the part a campaign is for
+import { campaignTrackOf, SERIES, ASKER } from '../src/systems/career/awards.js';
 import { nominationOdds, campaignFactor, campaignStrength, campaignable, canCampaign,
   startCampaign, campaignTick, campaignKind, ownCampaignCost, liveCampaign,
   CAMPAIGN_ENERGY, CAMPAIGN_MONTHS, CAMPAIGN_FLOOR } from '../src/systems/career/awards.js';
@@ -76,7 +77,8 @@ const month = (s) => { s.month++; if (s.month > 11) { s.month = 0; s.year++; } }
 // ── you have to turn up ───────────────────────────────────────────────────────
 {
   const s = st();
-  s.filmography = [credit({ scale: 'prestige' })];
+  // A studio picture: a prestige series campaigns for the series award, whose list is in May.
+  s.filmography = [credit({ scale: 'feature' })];
   startCampaign(s, 'The Picture');
   for (let i = 0; i < CAMPAIGN_MONTHS; i++) { s.ap = 100; campaignTick(s); month(s); }
   ok(campaignStrength(s.filmography[0]) === 1, 'turning up every month is a full season: ' + campaignStrength(s.filmography[0]));
@@ -96,8 +98,13 @@ const month = (s) => { s.month++; if (s.month > 11) { s.month = 0; s.year++; } }
   const bad = st(); bad.filmography = [credit({ rating: CAMPAIGN_FLOOR - 10, score: 5.2 })];
   ok(campaignable(bad).length === 0, 'nobody runs a season for a picture that is not good');
 
-  const tv = st(); tv.filmography = [credit({ scale: 'recurring' })];
-  ok(campaignable(tv).length === 0, 'and this is the film season, not television');
+  // A series is campaigned for the series award, not the Asker, and before ITS list in May.
+  const tv = st(); tv.filmography = [credit({ scale: 'recurring', type: 'Network Drama' })];
+  ok(campaignable(tv).length === 1 && campaignTrackOf(tv, tv.filmography[0]) === SERIES, 'a series campaigns for the series award, not the Asker');
+  const afterMay = st({ month: 5 }); afterMay.filmography = [credit({ scale: 'recurring', type: 'Network Drama' })];
+  ok(campaignable(afterMay).length === 0, 'and not after the series list is out in May');
+  const film = st(); film.filmography = [credit({ scale: 'feature' })];
+  ok(campaignTrackOf(film, film.filmography[0]) === ASKER, 'a picture campaigns for the Asker');
 
   const late = st({ month: 9 }); late.filmography = [credit()];
   ok(campaignable(late).length === 0, 'and once the list has been read out it is too late');

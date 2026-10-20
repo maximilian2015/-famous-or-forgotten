@@ -16,7 +16,7 @@
 //   style         standard · prestige — not a medium: prestige is possible on television and on streaming
 //   outlet        television: daytime · network · premium
 //   distribution  wide · platform · festival · broadcast
-//   awardsTrack   film · television · festival — its own field, never derived from the medium alone
+//   awardsTrack   film · festival · series · none — by format, never derived from the medium
 //   route         how it reached you: open_call · agent_submission · direct_offer · relationship_offer · continuation · self_created
 //   payMarket     the fee table it is paid from (status.js QUOTE) — what offers called `medium`
 //
@@ -70,10 +70,13 @@ function distributionFor(x, medium) {
   if (x.scale === 'festival') return 'festival';
   return x.scale === 'feature' || x.scale === 'blockbuster' ? 'wide' : 'platform';
 }
-function awardsTrackFor(x, medium) {
-  if (medium === 'television') return 'television';
-  if (medium === 'theatrical') return x.scale === 'festival' ? 'festival' : 'film';
-  return null;
+// Which award a piece of work can be up for, by FORMAT, never by medium (Maxi, 20 Oct): a movie is
+// up for the Asker (a festival picture too), every series — network, prestige, streaming, limited —
+// for the series award, and a day's work for nothing.
+function awardsTrackFor(x, medium, format) {
+  if (format === 'series' || format === 'soap' || format === 'limited_series') return 'series';
+  if (format === 'movie') return x.scale === 'festival' ? 'festival' : 'film';
+  return 'none';
 }
 const ROUTE = {
   casting: 'open_call', agent: 'agent_submission',
@@ -109,7 +112,7 @@ export function describeProject(x) {
     style: /Prestige/.test(x.type || '') || x.scale === 'prestige' ? 'prestige' : 'standard',
     outlet,
     distribution: distributionFor(x, medium),
-    awardsTrack: awardsTrackFor(x, medium),
+    awardsTrack: awardsTrackFor(x, medium, format),
     route: routeFor(x),
     payMarket: pay || payFor(x, medium, format, outlet),
     title: String(x.projectTitle || x.title || '').replace('⭐ ', '') || null,
@@ -168,7 +171,13 @@ export function projectOf(s, x) {
 const seasonRoot = (t) => String(t || '').replace(/(\s*·\s*season\s+\d+)+\s*$/i, '').trim();
 const partRoot = (t) => String(t || '').replace(/⭐\s*/, '').replace(/\s+(II|III|IV|V|VI|\d+)$/, '').trim();
 export function settleProjects(s) {
-  if (!s || (s.projectsVersion || 0) >= 1) return s;
+  if (!s) return s;
+  // v2: awardsTrack by format — film / festival / series / none — where v1 wrote 'television' and null.
+  if ((s.projectsVersion || 0) === 1) {
+    for (const p of Object.values(s.projects || {})) p.awardsTrack = awardsTrackFor(p, p.medium, p.format);
+    s.projectsVersion = 2;
+  }
+  if ((s.projectsVersion || 0) >= 2) return s;
   const all = projectsOf(s);
   let n = s._prjSeq || 0;
   const give = (x) => {
@@ -221,6 +230,6 @@ export function settleProjects(s) {
     if (!x.payMarket && x.medium && PAY.has(x.medium)) x.payMarket = x.medium;
   }
   s._prjSeq = n;
-  s.projectsVersion = 1;
+  s.projectsVersion = 2;
   return s;
 }

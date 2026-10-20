@@ -12,6 +12,7 @@ import { addTimeline, showMoment } from '../../engine/timeline.js';
 import { actorById, maybeIcon } from '../world/world.js';
 import { addHype } from '../meta/hype.js';
 import { canAfford, spend, tooTired } from '../../engine/energy.js';
+import { projectOf } from './project.js';
 
 const clamp = (v, a = 0, b = 100) => Math.max(a, Math.min(b, v));
 // The same diminishing curve the premieres use. Five nominations at a flat +6 each put a
@@ -97,7 +98,8 @@ export const CAMPAIGN_NOM = 0.7;
 // themselves. It costs actual money, and it does less, because you are one person and a
 // studio awards department is forty.
 export const CAMPAIGN_ENERGY = 15, CAMPAIGN_MONTHS = 3, CAMPAIGN_FLOOR = 62;
-const BACKED = { feature: 1, prestige: 1, blockbuster: 1 };
+// A network or a platform pays for its own show's campaign as a studio pays for its picture's.
+const BACKED = { feature: 1, prestige: 1, blockbuster: 1, recurring: 1 };
 export function studioBacks(scale) { return !!BACKED[scale]; }
 // What a campaign you fund yourself costs. Priced off what a small picture is worth, not off
 // a blockbuster fee: nobody spends a tentpole salary on a festival film.
@@ -105,11 +107,15 @@ export function ownCampaignCost(s) { return Math.max(20000, Math.round((s.quote 
 
 // Which of your credits could still be campaigned this season: out this year, good enough
 // that somebody would bother, and the list has not been read out yet.
-function isTVScale(scale) { return scale === 'recurring' || scale === 'episode' || scale === 'oneoff'; }
+// Each before its own award's list: a picture before the Asker's September, a series before the
+// series award's May. Which award is the work's format's (trackOfWork).
+export function campaignTrackOf(s, c) { return TRACKS.find((T) => T.eligible(s, c)) || null; }
 export function campaignable(s) {
-  if ((s.month || 0) >= NOMS_MONTH) return [];
-  return (s.filmography || []).filter((c) => (c.year || 0) === (s.year || 0)
-    && !c.running && (c.rating || 0) >= CAMPAIGN_FLOOR && !c.campaign && !isTVScale(c.scale));
+  return (s.filmography || []).filter((c) => {
+    if ((c.year || 0) !== (s.year || 0) || c.running || (c.rating || 0) < CAMPAIGN_FLOOR || c.campaign) return false;
+    const T = campaignTrackOf(s, c);
+    return !!T && (s.month || 0) < T.nomsMonth;
+  });
 }
 export function campaignKind(c) { return studioBacks(c.scale) ? 'studio' : 'own'; }
 export function canCampaign(s, c) {
@@ -125,12 +131,14 @@ export function startCampaign(s, title) {
   if (!fit.ok) { if (fit.why) s.lastEvent = fit.why; return s; }
   const kind = campaignKind(c);
   if (kind === 'own') s.cash = (s.cash || 0) - ownCampaignCost(s);
-  s._campaign = { title, kind, months: 0, started: (s.year || 0) * 12 + (s.month || 0) };
+  s._campaign = { title, kind, months: 0, started: (s.year || 0) * 12 + (s.month || 0), track: (campaignTrackOf(s, c) || ASKER).id };
   c.campaign = kind;
+  // A series is a network's campaign, not a studio's.
+  const backer = s._campaign.track === SERIES.id ? 'network' : 'studio';
   addTimeline(s, 'Started the season for "' + String(title).replace('⭐ ', '') + '".');
   s.lastEvent = kind === 'studio'
-    ? 'The awards people have a plan for you and it runs until the nominations: lunches, panels, a moderated Q&A after every screening, and the same four questions from people who have not seen it. The studio is paying for all of it. What it costs you is the months.'
-    : 'Nobody is spending a penny on this picture, so you are. It buys screeners, an advertisement in the trades that everybody claims not to read, and somebody who knows which forty people matter. Less than a studio would spend, and more than you would like.';
+    ? `The awards people have a plan for you and it runs until the nominations: lunches, panels, a moderated Q&A after every screening, and the same four questions from people who have not seen it. The ${backer} is paying for all of it. What it costs you is the months.`
+    : `Nobody is spending a penny on this ${backer === 'network' ? 'show' : 'picture'}, so you are. It buys screeners, an advertisement in the trades that everybody claims not to read, and somebody who knows which forty people matter. Less than a ${backer} would spend, and more than you would like.`;
   return s;
 }
 // Monthly. Every month you actually turn up is a month of it; miss it twice and it stops
@@ -138,7 +146,7 @@ export function startCampaign(s, title) {
 export function campaignTick(s) {
   const k = s._campaign;
   if (!k) return s;
-  if ((s.month || 0) >= NOMS_MONTH || k.months >= CAMPAIGN_MONTHS) { s._campaign = null; return s; }
+  if ((s.month || 0) >= trackById(k.track).nomsMonth || k.months >= CAMPAIGN_MONTHS) { s._campaign = null; return s; }
   if (!canAfford(s, CAMPAIGN_ENERGY)) {
     k.missed = (k.missed || 0) + 1;
     if (k.missed >= 2) { addTimeline(s, 'You stopped turning up for "' + String(k.title).replace('⭐ ', '') + '". It is a poster now.', true); s._campaign = null; }
@@ -160,9 +168,10 @@ export function campaignStrength(c) {
 export function liveCampaign(s) {
   const k = s._campaign;
   if (!k) return null;
-  return { ...k, left: Math.max(0, CAMPAIGN_MONTHS - k.months), cost: CAMPAIGN_ENERGY,
+  const award = trackById(k.track);
+  return { ...k, left: Math.max(0, CAMPAIGN_MONTHS - k.months), cost: CAMPAIGN_ENERGY, award,
     line: k.kind === 'studio'
-      ? 'The studio is paying for it. What it wants is your calendar.'
+      ? `The ${award.id === SERIES.id ? 'network' : 'studio'} is paying for it. What it wants is your calendar.`
       : 'You are funding this one yourself, which everybody in the room will know.' };
 }
 
@@ -261,8 +270,8 @@ export function weightOf(n) {
 // Which is the opposite of how it works. From the morning the nominations are read out you
 // are an Asker nominee, it goes in front of your name in every introduction, and if you win
 // it stays there for the rest of your life. That is most of what the award IS.
-export function openSeason(s) {
-  const list = ((s.awards || {}).pending || []).filter((p) => !p.theirs);
+export function openSeason(s, T = ASKER) {
+  const list = ((s[T.key] || {}).pending || []).filter((p) => !p.theirs);
   if (!list.length) return null;
   const now = (s.year || 0) * 12 + (s.month || 0);
   const mine = list.filter((p) => p.title);              // your performance, your picture
@@ -271,7 +280,7 @@ export function openSeason(s) {
     monthsLeft: Math.max(0, (list[0].due || now) - now),
     nominations: mine.map((p) => ({
       title: p.title, category: p.category,
-      label: (CATEGORIES.find((c) => c.id === p.category) || {}).label || p.category,
+      label: T.label(p.category),
       odds: p.yourOdds || 0, buzz: buzzOf(p.yourOdds || 0),
     })),
   };
@@ -350,13 +359,14 @@ export function isSeasonYear(year) { return year % EVERY === 0; }
 // then everybody waits until March with it hanging over them. NOMS_MONTH is September,
 // SEASON_LENGTH the six months to the night.
 export const NOMS_MONTH = 8, SEASON_LENGTH = 6;
+export const MONTH_NAMES = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
 
 // ── a track: one award, its calendar, its words and what it does to you ──────
 // The Asker is the first. The engine below — the lists, the field, the record, the room's
 // reasons, the night — reads everything that is the Asker's own from here, so a second award
 // (the series award) is a second track on the same engine, not a copy of it.
 export const ASKER = {
-  id: 'asker', key: 'awards', name: 'Asker', plural: 'Askers', yearKey: 'askers',
+  id: 'asker', key: 'awards', name: 'Asker', plural: 'Askers', yearKey: 'askers', hypeSource: 'award',
   nomsMonth: NOMS_MONTH, seasonLength: SEASON_LENGTH, world: true,
   eligible: () => true,
   label: (cat) => (CATEGORIES.find((c) => c.id === cat) || {}).label || cat,
@@ -365,6 +375,31 @@ export const ASKER = {
   picture: { respect: 6, fame: 4 },
   mark: { win: 'asker', nominated: 'nominated', picture: 'askerPicture', best: 'bestPicture' },
 };
+// Which award a piece of work can be up for, by format (career/project.js): movies the Asker,
+// every series the series award, a day's work nothing. The Asker is the Oscar; a series was never
+// meant to be in it (Maxi, 20 Oct) — it was, in the same three categories as films, until this.
+export function trackOfWork(s, c) { const p = projectOf(s, c); return p ? p.awardsTrack : 'none'; }
+ASKER.eligible = (s, c) => { const t = trackOfWork(s, c); return t === 'film' || t === 'festival'; };
+
+// ── the series award ──────────────────────────────────────────────────────────
+// The series counterpart of the Asker: network, prestige, streaming and limited series compete
+// together, because a series is a series wherever it is shown. Its own calendar — the list in May,
+// the night in August — so it never lands on the Asker's September or March. The world makes no
+// series yet, so its field is the rivals; the room's reasons, the record and the campaign are the
+// Asker's, on the same engine. Smaller than an Asker in what it does to your name.
+export const SERIES_CATEGORIES = { lead: 'Leading Performance in a Series', supporting: 'Supporting Performance in a Series', picture: 'Best Series' };
+export const SERIES = {
+  id: 'series', key: 'seriesAwards', name: 'Emmet', plural: 'Emmets', yearKey: 'series', hypeSource: 'seriesAward',
+  nomsMonth: 4, seasonLength: 3, world: false,
+  eligible: (s, c) => trackOfWork(s, c) === 'series',
+  label: (cat) => SERIES_CATEGORIES[cat] || cat,
+  nom: { hype: 35, quote: 1.15, respect: 5, fame: 2 },
+  win: { hype: 60, quote: 1.4, respect: 10, fame: (f) => Math.min(100, f + 10) },
+  picture: { respect: 4, fame: 3 },
+  mark: { win: 'seriesAward', nominated: 'seriesNominated', picture: 'seriesBest', best: 'bestSeries' },
+};
+export const TRACKS = [ASKER, SERIES];
+export function trackById(id) { return TRACKS.find((T) => T.id === id) || ASKER; }
 export function trackState(s, T = ASKER) {
   if (!s[T.key]) s[T.key] = { losses: 0, wins: [], nominations: [], pending: null, history: [] };
   return s[T.key];
@@ -505,7 +540,7 @@ export function runNominations(s, T = ASKER) {
   A.pending = pending;
   A.nominations = (A.nominations || []).concat(
     pending.filter((p) => !p.theirs && p.title).map((p) => ({ title: p.title, category: p.category, year })));
-  addHype(s, T.nom.hype, 'award');   // the season: your name on the lists (meta/hype.js)
+  addHype(s, T.nom.hype, T.hypeSource);   // the season: your name on the lists (meta/hype.js)
   // A nomination is a title you keep. It moves what you can ask for, immediately.
   setQuote(s, (s.quote || 0) * T.nom.quote || s.quote);
   setRespect(s, (s.respect || 0) + T.nom.respect * headroom(112, s.respect));
@@ -547,11 +582,13 @@ function showLists(s, pending, T = ASKER) {
     return { label, names, youIn: names.some((n) => n.you) };
   }).filter(Boolean);
   const mine = rows.filter((r) => r.youIn).length;
+  // Each award its own calendar: the Askers September → March, the series award May → August.
+  const lists = MONTH_NAMES[T.nomsMonth], night = MONTH_NAMES[(T.nomsMonth + T.seasonLength) % 12];
   showMoment(s, {
-    id: 'nominations', kind: mine ? 'good' : 'plain', title: 'The nominations', award: T.plural,
+    id: 'nominations', kind: mine ? 'good' : 'plain', title: T === ASKER ? 'The nominations' : `The ${T.name} nominations`, award: T.plural,
     lists: rows, count: mine,
-    body: mine ? `${mine === 1 ? 'One' : String(mine)} of them has your name in it. The night is in March.`
-      : 'Not this year. The lists are read in September and the night is in March, and between the two everybody pretends not to be counting.',
+    body: mine ? `${mine === 1 ? 'One' : String(mine)} of them has your name in it. The night is in ${night}.`
+      : `Not this year. The lists are read in ${lists} and the night is in ${night}, and between the two everybody pretends not to be counting.`,
   });
 }
 function theirNight(s, year, T = ASKER) {
@@ -580,16 +617,17 @@ function recordTheirWin(s, p, winner, T = ASKER) {
 // Runs monthly. The ceremony lands a couple of months after the nominations.
 // The season as it stands, for the main screen: what you are up for, against whom, and
 // how long until the night. Null when there is no season running.
-export function theSeason(s) {
-  const p = ((s.awards || {}).pending) || [];
+export function theSeason(s, T = ASKER) {
+  const p = ((s[T.key] || {}).pending) || [];
   const yours = p.filter((x) => !x.theirs && x.title);
   if (!yours.length) return null;
   const now = (s.year || 0) * 12 + (s.month || 0);
   const due = yours[0].due;
   return {
+    award: T.plural, year: yours[0].year,
     monthsToNight: Math.max(0, due - now),
     rows: yours.map((x) => ({
-      category: (CATEGORIES.find((c) => c.id === x.category) || {}).label || x.category,
+      category: T.label(x.category),
       title: x.title, odds: Math.round(x.yourOdds || 0), buzz: buzzOf(x.yourOdds || 0),
       against: (x.field || []).filter((n) => n.them).slice(0, 3).map((n) => n.name),
     })),
@@ -647,7 +685,7 @@ export function ceremonyTick(s, T = ASKER) {
     addTimeline(s, `"${r.title}" won ${T.label('picture')}. You were in it, and everybody knows.`);
   }
   if (won.length) {
-    addHype(s, T.win.hype, 'award');
+    addHype(s, T.win.hype, T.hypeSource);
     a.wins = (a.wins || []).concat(won.map((r) => ({ title: r.title, category: r.category, year: s.year })));
     a.losses = 0;
     // Marked in the filmography for good.
@@ -703,4 +741,66 @@ export function askerStanding(s) {
   // A Best Picture winner on your shelf is worth something to a casting office — less
   // than one you carried home, more than nothing.
   return wins * 22 + pictureAskers(s).length * 7 + Math.min(18, noms * 5);
+}
+
+// The line that goes next to your name for the series award — the same as the Asker's, its own words.
+export function seriesLine(s) {
+  const wins = winsOf(s, SERIES).length;
+  const pics = ((s[SERIES.key] || {}).wins || []).filter((w) => w.category === 'picture').length;
+  const season = theSeason(s, SERIES);
+  if (season) return { text: wins ? `${SERIES.name} winner · nominated again` : `${SERIES.name} nominee`, hot: true };
+  if (wins) return { text: wins > 1 ? `${wins}-time ${SERIES.name} winner` : `${SERIES.name} winner`, hot: false };
+  if (pics) return { text: pics > 1 ? `${pics} Best Series winners` : 'In a Best Series winner', hot: false };
+  return null;
+}
+
+// ── an old save: the series that were up for Askers ───────────────────────────
+// Until the series award existed, a series competed for the Asker in the same three categories as
+// a film. A save from then may hold nominations and wins for a series under the Asker's name. Each
+// is moved to the series award only when it can be tied to the exact credit it was for — by the
+// credit's id, or by its title and a year the season could have judged — and that credit is a
+// series. Anything that cannot be tied safely stays where it is: nothing is guessed. Runs at every
+// load and finds nothing to do once it is done; a season still in flight finishes under the rules it
+// started with and is moved the next time.
+export function settleSeriesAwards(s) {
+  const A = s && s.awards;
+  if (!A) return s;
+  const shelf = [...(s.filmography || []), ...(s.discography || [])];
+  const isSeries = (c) => !!c && trackOfWork(s, c) === 'series';
+  const creditOf = (e) => {
+    if (!e || !e.title) return null;
+    if (e.creditId) return shelf.find((c) => c.id === e.creditId) || null;
+    const y = e.creditYear || e.year;
+    const same = shelf.filter((c) => c.title === e.title && (!y || ((c.year || 0) <= y && (c.year || 0) >= y - 2)));
+    return same.length === 1 ? same[0] : null;
+  };
+  const S = trackState(s, SERIES);
+  let moved = 0;
+  const sort = (list, into) => {
+    const keep = [];
+    for (const e of list || []) { if (!e.theirs && isSeries(creditOf(e))) { into.push(e); moved++; } else keep.push(e); }
+    return keep;
+  };
+  A.nominations = sort(A.nominations, S.nominations);
+  A.wins = sort(A.wins, S.wins);
+  A.history = sort(A.history, S.history);
+  // The marks on the credits, for every series that still wears the Asker's.
+  for (const c of shelf) {
+    if (!isSeries(c)) continue;
+    if (c.asker) { c.seriesAward = (c.seriesAward || 0) + c.asker; delete c.asker; moved++; }
+    if (c.askerPicture) { c.seriesBest = (c.seriesBest || 0) + c.askerPicture; delete c.askerPicture; }
+    if (c.nominated) { c.seriesNominated = (c.seriesNominated || 0) + c.nominated; delete c.nominated; }
+    if (c.bestPicture) { c.bestSeries = true; delete c.bestPicture; }
+  }
+  // And the year's lists: your win at the Askers for a series becomes your win at the series award.
+  for (const entry of Object.values((s.world && s.world.years) || {})) {
+    const keep = [];
+    for (const w of entry.askers || []) {
+      const c = w.you ? shelf.find((x) => x.title === w.work && isSeries(x)) : null;
+      if (c) (entry.series = entry.series || []).push(w); else keep.push(w);
+    }
+    if (entry.askers) entry.askers = keep;
+  }
+  if (!moved && !S.nominations.length && !S.wins.length && !S.history.length) delete s[SERIES.key];
+  return s;
 }

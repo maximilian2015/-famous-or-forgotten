@@ -18,6 +18,7 @@ const stamp = (s) => (s.year || 0) * 12 + (s.month || 0);
 export const SOURCES = {
   hit: { label: 'a hit', line: 'The film is what people are talking about, and you are in the sentence.' },
   award: { label: 'the Askers', line: 'The season. Your name is on the lists, and the lists are what the rooms read.' },
+  seriesAward: { label: 'the Emmets', line: 'The series season. Your name is on the lists, and the networks read them.' },
   viral: { label: 'a night that went everywhere', line: 'Forty seconds of you, and everybody has seen it. It will not last; use it.' },
   scandal: { label: 'the tabloids', line: 'The wrong kind. The brands do not mind; the serious rooms do.' },
 };

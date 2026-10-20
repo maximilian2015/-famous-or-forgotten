@@ -7,6 +7,7 @@ import { dressOffers } from '../systems/career/script.js';
 import { settleBillions } from '../systems/career/billion.js';
 import { settleCritical } from '../systems/career/release.js';
 import { settleProjects } from '../systems/career/project.js';
+import { settleSeriesAwards } from '../systems/career/awards.js';
 import { settlePress } from '../systems/meta/press.js';
 const KEY = 'fof_react_save';
 const CURRENT_VERSION = 'r0.8b';
@@ -68,6 +69,7 @@ function normalize(saved) {
   settleBillions(merged);   // billions made before the billion club existed are in it — silently. career/billion.js
   settleCritical(merged);   // and the column's verdict on films closed before it was kept. career/release.js
   settleProjects(merged);   // and every piece of work gets the project it would have had. career/project.js
+  settleSeriesAwards(merged);   // and a series that was up for an Asker is up for the series award. career/awards.js
   settlePress(merged);      // and what the papers said about each film, while the feed still has it. meta/press.js
   return merged;
 }

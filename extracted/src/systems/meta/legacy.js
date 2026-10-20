@@ -19,15 +19,19 @@ export function computeLegacy(s) {
   // because it is the industry itself saying so.
   const askerWins = (s.awards?.wins || []).length;
   const askerNoms = (s.awards?.nominations || []).length;
+  // The series award (career/awards.js) is a career of its own and counts as one — a step below the
+  // Asker, as it is in the room. Best Series is the producers', like Best Picture.
+  const seriesWins = (s.seriesAwards?.wins || []).filter((w) => w.category !== 'picture').length;
+  const seriesNoms = (s.seriesAwards?.nominations || []).length;
   // And whether you got what you wanted at ten (meta/ambition.js): a triumph in one life is
   // a consolation in another, and the stone says which.
   const amb = ambitionVerdict(s);
   const points = Math.round(peakFame * 2.5 + hits * 25 + worldHits * 400 + credits * 1
-    + askerWins * 600 + askerNoms * 150
+    + askerWins * 600 + askerNoms * 150 + seriesWins * 350 + seriesNoms * 90
     + (s.respect || 0) * 1.5 + Math.max(0, (s.cash || 0) / 150000) + (amb ? amb.points : 0));
   let tier = 'Forgotten';
   if (points >= 2300) tier = 'Legend'; else if (points >= 1500) tier = 'A-list Icon'; else if (points >= 800) tier = 'Established Star'; else if (points >= 350) tier = 'Working Actor'; else if (points >= 120) tier = 'Had a Moment';
-  return { points, tier, credits, hits, worldHits, peakFame, askerWins, askerNoms, ambition: amb };
+  return { points, tier, credits, hits, worldHits, peakFame, askerWins, askerNoms, seriesWins, seriesNoms, ambition: amb };
 }
 export function enshrine(s) {
   const L = computeLegacy(s); let hall = [];

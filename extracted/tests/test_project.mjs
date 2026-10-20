@@ -33,7 +33,7 @@ test('a project is born when the work is taken, and says what it is', () => {
   const p = s.productions[0], pr = getProject(s, p.projectId);
   assert.ok(pr, 'no project on the set');
   assert.equal(pr.medium, 'television'); assert.equal(pr.format, 'soap'); assert.equal(pr.outlet, 'daytime');
-  assert.equal(pr.payMarket, 'tv_daytime'); assert.equal(pr.route, 'open_call'); assert.equal(pr.awardsTrack, 'television');
+  assert.equal(pr.payMarket, 'tv_daytime'); assert.equal(pr.route, 'open_call'); assert.equal(pr.awardsTrack, 'series');
   assert.equal(pr.seriesId, pr.id, 'a show is a series from its first season');
 });
 
@@ -89,7 +89,7 @@ test('a day of work done in one click has a project too, outside the three marke
   const c = s.filmography[0];
   assert.ok(c.minor, 'fixture: not a day of work');
   const pr = getProject(s, c.projectId);
-  assert.ok(pr); assert.equal(pr.medium, 'other'); assert.equal(pr.format, 'commercial'); assert.equal(pr.awardsTrack, null);
+  assert.ok(pr); assert.equal(pr.medium, 'other'); assert.equal(pr.format, 'commercial'); assert.equal(pr.awardsTrack, 'none');
 });
 
 test('prestige is a style, never a medium', () => {

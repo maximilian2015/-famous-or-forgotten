@@ -30,7 +30,7 @@ import { frozenTick } from '../systems/career/stability.js';
 import { laterOffersTick, resolveBubbles } from '../systems/career/franchise.js';
 import { bubbleTick } from '../systems/career/bubble.js';
 import { submissionsTick, refreshCastingPool } from '../systems/career/castings.js';
-import { runNominations, ceremonyTick } from '../systems/career/awards.js';
+import { runNominations, ceremonyTick, SERIES } from '../systems/career/awards.js';
 import { closeYear } from '../systems/world/yearbook.js';
 import { contractsTick, startSigned } from '../systems/career/contract.js';
 import { tentpolesTick } from '../systems/career/tentpoles.js';
@@ -182,6 +182,8 @@ export function advanceMonth(state) {
   laterOffersTick(s); // and a sequel announced years ago finally has a script
   if (inCareer(s)) runNominations(s);   // the lists come out in September, and judge the year behind them
   ceremonyTick(s);   // and the night itself is the following March
+  if (inCareer(s)) runNominations(s, SERIES);   // the series award: its list in May
+  ceremonyTick(s, SERIES);   // and its night in August
   eventsTick(s);
   maybeGenerateEvent(s);
   contractsTick(s);   // the papers you sent back come back with an answer

@@ -19,7 +19,7 @@ import { FAVOURS, canUse, costOf, vouchFor } from './systems/career/favours.js';
 import { knownFor, theHits, theFlops } from './systems/meta/knownFor.js';
 import { heirLine } from './systems/life/origin.js';
 import { liveStandoff, roomDue } from './systems/career/standoff.js';
-import { openSeason, askerLine } from './systems/career/awards.js';
+import { openSeason, askerLine, seriesLine, TRACKS } from './systems/career/awards.js';
 import { townOpen, townFor, goOut } from './systems/life/town.js';
 import { labelInfo, activeLabels, isStrong } from './systems/meta/typecast.js';
 import { activeStories } from './systems/meta/stories.js';
@@ -177,6 +177,8 @@ export default function App() {
               return <div style={{ fontSize: 10, marginTop: 2, fontWeight: 700, color: hl.own ? theme.accent : theme.muted, opacity: hl.own ? 1 : .8 }}>{hl.text}</div>; })()}
             {(() => { const al = inCareer(g) ? askerLine(g) : null; if (!al) return null;
               return <div style={{ fontSize: 10, marginTop: 2, fontWeight: 800, color: theme.gold, opacity: al.hot ? 1 : .8 }}>🏆 {al.text}</div>; })()}
+            {(() => { const sl = inCareer(g) ? seriesLine(g) : null; if (!sl) return null;
+              return <div style={{ fontSize: 10, marginTop: 2, fontWeight: 800, color: theme.gold, opacity: sl.hot ? 1 : .8 }}>📺 {sl.text}</div>; })()}
             {hype(g) >= 20 && <div style={{ fontSize: 10, marginTop: 2, fontWeight: 700, color: hypeSource(g) === 'scandal' ? '#ff8d9e' : theme.accent }}>
               hype {Math.round(hype(g))}{hypeSource(g) ? ' · ' + SOURCES[hypeSource(g)].label : ''}
             </div>}
@@ -233,7 +235,7 @@ export default function App() {
         {inCareer(g) && <StandoffCard g={g} />}
         {inCareer(g) && <EndorsementCard g={g} />}
         {inCareer(g) && <CampaignCard g={g} />}
-        {inCareer(g) && <SeasonCard g={g} />}
+        {inCareer(g) && TRACKS.map((T) => <SeasonCard key={T.id} g={g} T={T} />)}
         {inCareer(g) && <BubbleCard g={g} />}
         {inCareer(g) && <CollabCard g={g} />}
         {/* Somebody close needs something (life/needs.js). A card, not a pop-up: it waits for
@@ -721,12 +723,12 @@ function StandoffCard({ g }) {
 }
 
 // The six months between the nominations and the night. They used to be silent.
-function SeasonCard({ g }) {
-  const season = openSeason(g);
+function SeasonCard({ g, T }) {
+  const season = openSeason(g, T);
   if (!season || !season.nominations.length) return null;
   return (<Card style={{ marginBottom: 14, borderColor: 'rgba(255,209,102,.38)' }}>
     <div style={{ fontSize: 11, fontWeight: 900, letterSpacing: '.09em', textTransform: 'uppercase', color: theme.gold, marginBottom: 4 }}>
-      🏆 The Askers · {season.year}
+      🏆 The {T.plural} · {season.year}
     </div>
     {season.nominations.map((n, i) => (<div key={i} style={{ padding: '6px 0', borderTop: i ? `1px solid ${theme.line}` : 'none' }}>
       <div style={{ fontSize: 12.5, fontWeight: 800 }}>{n.label}</div>
