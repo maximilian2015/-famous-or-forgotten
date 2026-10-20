@@ -27,7 +27,8 @@ import { ambitionLean } from '../meta/ambition.js';
 import { hypeReach, hypeBrands } from '../meta/hype.js';
 import { socialReach } from '../social/posting.js';
 import { heirReach } from '../life/origin.js';
-import { ensureBudget } from './budget.js';
+import { ensureBudget, planEpisodeCost } from './budget.js';
+import { STREAMING, streamingOf, platformOfKind, platformById, platformWord, numbersOf } from './streaming.js';
 import { adoptProject, payMarketOf } from './project.js';
 export { tvMonths, TV_PACE } from './franchise.js';
 // What a casting office will see you for. Usually that is fame — but an Asker counts,
@@ -254,7 +255,9 @@ export function refreshCastingPool(s, force, extra = 0) {
   // Out of sight for a month (stories.js): nothing reaches you, which is the point.
   if (hiding(s)) { s.castingPool = []; return; }
   const want = boardSize(s) + extra;
-  if (!force && s.castingPool.length >= want) return;
+  // The streaming shelf is on top of the board, never counted against it (plan §8).
+  const boardLen = () => s.castingPool.filter((c) => c.shelf !== 'stream').length;
+  if (!force && boardLen() >= want) { fillStreamShelf(s); return; }
   const career = s.dream === 'singer' ? 'singer' : 'actor';
   const shelves = POOLS[career];
   // No two things on the board share a name, and nothing is named after something you
@@ -279,7 +282,7 @@ export function refreshCastingPool(s, force, extra = 0) {
   const floorOf = (id) => (id === 'film' && reach(s) < 18 ? 0 : SHELF_FLOOR);
   const countOn = (id) => s.castingPool.filter((x) => x.shelf === id).length;
   let guard = 0;
-  while (s.castingPool.length < want && guard++ < 400) {
+  while (boardLen() < want && guard++ < 400) {
     const short = shelfNames.filter((id) => countOn(id) < floorOf(id));
     // What is left after the floors leans a little toward the television the ten-year-old wanted:
     // the TV shelf weighs ambitionLean (1.4) against 1 for each of the others.
@@ -423,6 +426,88 @@ export function refreshCastingPool(s, force, extra = 0) {
     if (s._openShelfOnce) { s.castingPool[s.castingPool.length - 1].openedByName = true; delete s._openShelfOnce; }
   }
   delete s._openShelfOnce;
+  fillStreamShelf(s);
+}
+
+// ── the streaming shelf (Streaming V1) ────────────────────────────────────────
+// A separate pool on top of the board (plan §8): the television, film, indie and day shelves are
+// drawn exactly as they were and nothing here is counted against them. Two listings while you are
+// coming up, three from Known Face. Every part is the part it says: a supporting one pays a
+// supporting fee and its card says so (career/script.js sizeLine reads the tier) — the first honest
+// supporting parts in a series, which is where the series award's Supporting race gets the player
+// (Maxi, 20 Oct). Who sees what follows the plan's ladder: library and genre services for a newcomer,
+// a platform lead from Known Face, a premium lead for a star, an event series built around an A-lister.
+//   [type, role, [episodes], fee table, scale, tier, fame, share, platforms, nobody above]
+const STREAM_ROWS = [
+  ['Streaming Series', 'Recurring', [6, 10], 'stream_series', 'recurring', 'supporting', 0, 0.45, ['library', 'niche'], 45],
+  ['Streaming Series', 'Ensemble', [8, 10], 'stream_series', 'recurring', 'supporting', 15, 0.6, ['library', 'niche', 'global']],
+  ['Limited Series', 'Supporting', [6, 8], 'stream_premium', 'prestige', 'supporting', 15, 0.5, ['prestige', 'global']],
+  ['Streaming Series', 'Series lead', [8, 10], 'stream_series', 'recurring', 'lead', 35, 1, ['library', 'niche', 'global']],
+  ['Limited Series', 'Lead', [6, 8], 'stream_premium', 'prestige', 'lead', 45, 1, ['prestige', 'global']],
+  ['Streaming Series', 'Season lead', [8, 10], 'stream_premium', 'prestige', 'lead', 55, 1, ['prestige']],
+  ['Streaming Series', 'Event series lead', [6, 8], 'stream_series', 'recurring', 'lead', 75, 1.3, ['global']],
+];
+function fillStreamShelf(s) {
+  if (!STREAMING.pool || hiding(s)) return;
+  const want = reach(s) >= 35 ? 3 : 2;
+  let have = s.castingPool.filter((c) => c.shelf === 'stream').length;
+  if (have >= want) return;
+  streamingOf(s);
+  const now = (s.year || 0) * 12 + (s.month || 0);
+  const taken = new Set([
+    ...s.castingPool.map((c) => c.title), ...(s.filmography || []).map((c) => c.title), ...(s.releases || []).map((r) => r.title),
+    ...(s.offers || []).map((o) => String(o.projectTitle || '').replace('⭐ ', '')), s.production ? s.production.title : '',
+  ]);
+  let guard = 0;
+  while (have < want && guard++ < 60) {
+    const [type, role, eps, medium, scale, tier, minFame, share, kinds, maxFame] = pick(STREAM_ROWS);
+    if (!seenForIt(s, role)) continue;
+    if (maxFame != null && reach(s) > maxFame) continue;
+    if ((minFame || 0) > reach(s) + 12) continue;
+    const premium = medium === 'stream_premium';
+    if (premium && prestigeShut(s)) continue;
+    const quoted = Math.round(quoteFor(s, medium) * share);
+    if (quoted <= 0) continue;
+    const episodes = rint(eps[0], eps[1]);
+    const stability = rollStability(scale);
+    const fee = feeFactor(stability);
+    const rate = Math.round(episodeRate(quoted, (eps[0] + eps[1]) / 2, episodes) * fee);
+    if (rate <= 0) continue;
+    // The same pickiness as the board: a name is not sent small money, unless it is the material.
+    const worth = quoteFor(s, 'film_studio') || quoteFor(s, 'film_indie') || 0;
+    const picky = Math.max(0, Math.min(1, (reach(s) - 35) / 65));
+    if (worth > 0 && picky > 0 && rate * episodes < worth * 0.25 * picky && !premium) continue;
+    const platform = platformOfKind(s, pick(kinds));
+    // A cheap service does not ring a name it cannot pay (streaming.js ARCHETYPES maxFee).
+    const most = numbersOf(platform).maxFee;
+    if (most && rate * episodes > most * 1e6) continue;
+    const box = boxedInto(s);
+    const genre = box && chance(44) ? box : pick(GENRES);
+    const title = titleFor(s, genre, taken);
+    taken.add(title);
+    const drawn = directorFor(s, scale, genre);
+    const helmer = drawn && holdsAGrudge(s, drawn.name) ? null : drawn;
+    const id = uid(s, 'cast');
+    s.castingPool.push({
+      id, title, type, role, shelf: 'stream', scale, tier, payMarket: medium,
+      platformId: platform.id, episodeCost: planEpisodeCost({ seed: id, genre, archetype: platform.archetype }),
+      share, stability, feeFactor: fee,
+      months: tvMonths(type, scale, episodes), episodes, perEpisode: true, episodeFee: rate, salary: rate * episodes,
+      season: 1, audience: 0,
+      director: helmer ? helmer.name : null, directorId: helmer ? helmer.id : null,
+      directorBand: helmer ? helmer.band : null, directorTop: !!(helmer && isOneOfTheFive(s, helmer)),
+      genre, minFame: minFame || 0,
+      _expires: now + rint(2, 4),
+    });
+    roomFor(s, s.castingPool[s.castingPool.length - 1]);
+    have++;
+  }
+}
+// What the card says about where it would go out (phone/apps/OpenCall.jsx).
+export function platformLineFor(s, c) {
+  const p = c && c.platformId ? platformById(s, c.platformId) : null;
+  if (!p) return null;
+  return 'A new series on ' + platformWord(p) + ' — every episode at once. The platform judges it on how many people finish it in the first four weeks, against what the season cost, and renews it on what the next one would cost.';
 }
 // One prestige listing on the board because you asked for it. See favours.js openShelf.
 // A casting director who liked you sends you a read for something good. On the board next
@@ -599,8 +684,11 @@ function answerSubmission(s, sub) {
     director: c.director || null, directorId: c.directorId || null,
     directorBand: c.directorBand || null, directorTop: !!c.directorTop,
     projectTitle: season > 1 ? `${c.title} · season ${season}` : c.title, role: c.role, type: c.type, genre: c.genre,
-    salary: c.salary, months: c.months, tier: sc.tier, scale: c.scale,
+    // A listing that names its own size (the streaming shelf's supporting parts) keeps it.
+    salary: c.salary, months: c.months, tier: c.tier || sc.tier, scale: c.scale,
     budget: c.budget ?? null, needs: c.needs ?? null,   // the picture's, from the listing (career/budget.js)
+    // On a platform: which one, and what an episode costs it (career/streaming.js).
+    ...(c.platformId ? { platformId: c.platformId, episodeCost: c.episodeCost ?? null } : {}),
     episodes: c.episodes, episodeFee: c.episodeFee, season, seriesTitle: c.perEpisode ? c.title : undefined,
     joined: season > 1, audience: c.audience || 0,
     stability: c.stability, perEpisode: c.perEpisode, payMarket: payMarketOf(c),
@@ -717,15 +805,17 @@ export function auditionFor(s, id, quality = 50) {
   s.castingPool = (s.castingPool || []).filter((x) => x.id !== id);
   return s;
 }
-export const SHELVES = [['tv', 'TV'], ['film', 'Film'], ['indie', 'Indie'], ['day', 'Day work']];
+export const SHELVES = [['tv', 'TV'], ['stream', 'Streaming'], ['film', 'Film'], ['indie', 'Indie'], ['day', 'Day work']];
 export const SHELF_BLURB = {
   tv: 'Soaps, series, the prestige seasons. Paid by the episode, renewed by the network, your face every week.',
+  stream: 'Series for the four platforms. Paid by the episode, every episode out at once, renewed on how many finish it against what it cost.',
   film: 'The studio pictures. One shot, one release, the credits that define you — and the studios do not send scripts to strangers.',
   indie: 'Small pictures, horror, the festival films. Where a career starts, where it goes to be taken seriously — and the one door a nobody can walk through, if a jury opens it.',
   day: 'A day\'s work — adverts, covers, a voice session, a run on stage. Fits around any set that is not exclusive.',
 };
 export const SHELF_EMPTY = {
   tv: 'Nothing on television this month. Live a month and look again.',
+  stream: 'Nothing from the platforms this month.',
   film: 'Nothing from the studios. They send scripts to names — get one, or get an agent who has one.',
   hiding: 'Phone off. Nothing reaches you this month, which was the idea.',
   poison: 'Nothing from the studios this year. Two leads that bombed, and nobody will insure you on a picture until the phrase wears off.',

@@ -347,9 +347,9 @@ function headFor(m) {
   if (m.id === 'depression') return 'Four times';
   if (m.id === 'lifted') return 'After a long time';
   if (m.id === 'burnout') return 'You could not get up';
-  if (m.id === 'premiere') return m.festival ? `In competition · ${m.festival}` : m.tv ? (m.tv === 'soap' ? 'Seven o\'clock' : m.tv === 'prestige' ? 'Midnight' : 'On air') : 'Opening night';
+  if (m.id === 'premiere') return m.festival ? `In competition · ${m.festival}` : m.tv ? (m.tv === 'streaming' ? 'The drop' : m.tv === 'soap' ? 'Seven o\'clock' : m.tv === 'prestige' ? 'Midnight' : 'On air') : 'Opening night';
   // The night it opens and the night everybody has decided are two different moments now.
-  if (m.id === 'verdict') return m.tv ? 'The season is over' : 'The run is over';
+  if (m.id === 'verdict') return m.tv === 'streaming' ? 'Four weeks in' : m.tv ? 'The season is over' : 'The run is over';
   if (m.id === 'booked') return 'They rang back';
   if (m.id === 'sets') return 'They trust you to turn up';
   if (m.id === 'shutdown') return m.frozen ? 'The shoot has stopped' : 'The project is dead';
@@ -415,9 +415,18 @@ export function BigMoment({ moment, look, onClose }) {
       {/* The first night and the last one. A season is two numbers, and the gap between
           them is the season itself. career/chapter.js retentionLine */}
       {moment.id === 'verdict' && moment.retention && (<div style={{ fontSize: 12, lineHeight: 1.5, margin: '0 0 8px', padding: '8px 11px', borderRadius: 9, background: theme.panel2, border: `1px solid ${theme.line}`, color: theme.text }}>📈 {moment.retention}</div>)}
-      {moment.id === 'verdict' && moment.network && (<div style={{ fontSize: 12, lineHeight: 1.5, margin: '0 0 12px', padding: '8px 11px', borderRadius: 9, background: theme.panel2, border: `1px solid ${moment.renewal === 'renewed' ? theme.good : moment.renewal === 'capped' ? theme.line : theme.bad}55`, color: moment.renewal === 'renewed' ? theme.good : moment.renewal === 'capped' ? theme.muted : theme.bad }}>📺 {moment.network}</div>)}
+      {moment.id === 'verdict' && moment.network && (<div style={{ fontSize: 12, lineHeight: 1.5, margin: '0 0 12px', padding: '8px 11px', borderRadius: 9, background: theme.panel2, border: `1px solid ${moment.renewal === 'renewed' ? theme.good : moment.renewal === 'capped' || moment.renewal === 'ended' || !moment.renewal ? theme.line : theme.bad}55`, color: moment.renewal === 'renewed' ? theme.good : moment.renewal === 'capped' || moment.renewal === 'ended' || !moment.renewal ? theme.muted : theme.bad }}>{moment.streaming ? '📱' : '📺'} {moment.network}</div>)}
       {moment.id === 'premiere' && moment.tv && moment.episodes > 0 && (<div style={{ fontSize: 11.5, color: theme.muted, marginBottom: 10 }}>{moment.episodes} episodes · {moment.verdict}</div>)}
-      {(moment.id === 'premiere' || moment.id === 'verdict') && moment.score != null && moment.money && (
+      {/* A platform's verdict is its own three numbers, not a box office (career/streaming.js). */}
+      {moment.id === 'verdict' && moment.streaming && (
+        <div style={{ display: 'flex', gap: 8, margin: '0 0 12px' }}>
+          <Figure label="Score" value={`${moment.score}/10`} accent={accent} />
+          <Figure label="Views, 28 days" value={moment.streaming.views} accent={accent} />
+          <Figure label="Finished it" value={moment.streaming.completion} accent={accent} />
+          <Figure label="For the platform" value={moment.streaming.outcome} accent={accent} />
+        </div>
+      )}
+      {(moment.id === 'premiere' || moment.id === 'verdict') && moment.score != null && moment.money && !moment.streaming && (
         <div style={{ display: 'flex', gap: 8, margin: '0 0 12px' }}>
           <Figure label="Score" value={`${moment.score}/10`} accent={accent} />
           <Figure label={String(moment.money).includes('watching') ? 'Audience' : 'Box office'}

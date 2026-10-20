@@ -18,7 +18,9 @@ import { markReleased } from '../../engine/economy.js';
 import { canAfford, spend, tooTired } from '../../engine/energy.js';
 import { GENRES } from '../meta/news.js';
 import { appetiteFor, marketAfterRelease } from '../meta/market.js';
-import { maybeContinue } from './franchise.js';
+import { maybeContinue, streamingRenewal } from './franchise.js';
+import { getProject } from './project.js';
+import { platformById, platformOfKind, dropSeason, fameFromViews, hypeFor, OUTCOME_WORD } from './streaming.js';
 import { tvTermsOf } from './terms.js';
 import { appealShift } from './story.js';
 import { dirAppeal, remindLift, reminderOf, holdFactor, retentionLine } from './chapter.js';
@@ -31,7 +33,7 @@ import { networkLine, slotNorm } from './franchise.js';
 import { typecastAfterCredit, typeFit, castingExpectation, roleAcceptance, acceptanceWord } from '../meta/typecast.js';
 import { storyAfterCredit } from '../meta/stories.js';
 import { addHype, flopHype, hype, hypeSource } from '../meta/hype.js';
-import { ensureBudget } from './budget.js';
+import { ensureBudget, planEpisodeCost } from './budget.js';
 import { projectOutcome, isSmash, isProfitable, isBomb, isWatched, isSeen } from './outcome.js';
 
 const clamp = (v, a = 0, b = 100) => Math.max(a, Math.min(b, v));
@@ -771,9 +773,14 @@ export function verdictOf(rel) {
 
 // Booked at wrap, opens months later. Nothing about fame moves until it does.
 export function scheduleRelease(s, credit, p) {
-  const wait = postProduction(p.scale || 'feature');
+  // A platform's season goes out every episode at once, four to seven months after the last day
+  // (Streaming V1, plan §5). Which market it is in is its project's (career/project.js).
+  const proj = getProject(s, p.projectId);
+  const streaming = !!(proj && proj.medium === 'streaming');
+  const wait = streaming ? rint(4, 7) : postProduction(p.scale || 'feature');
   const rel = {
     id: uid(s, 'rel'),
+    ...(streaming ? { streaming: true } : {}),
     ...tvTermsOf(p),
     projectId: p.projectId ?? null,   // career/project.js
     title: credit.title, role: credit.role, type: credit.type, genre: credit.genre,
@@ -1010,11 +1017,14 @@ function open(s, rel) {
   // overwrote the millions with the score, and viewersFor() then read the score as millions.
   // audienceFor starts at 46, which is exactly the number on his screen.
   rel.reception = audienceFor(s, rel);
+  let stream = null;
   if (fest && fest.result === 'unsold') rel.finalGross = 0;
   // The tour, the reminder campaign and a known name are all AWARENESS, so they are inside
   // demandFor now rather than multiplied onto the finished total. Multiplying the total said
   // that a trailer campaign makes a film play longer, which is the opposite of what it does.
   else if (film) rel.finalGross = boxOfficeFor(s, rel);
+  // A platform's season: its own audience, judged on its own terms (career/streaming.js).
+  else if (rel.streaming) { stream = dropStreaming(s, rel, talk); rel.viewers = stream.views28; }
   else {
     // Maxi: "how are seasons measured — how many watched at the start and how many at the
     // end, and then they decide whether to renew?" Two numbers, not one. The first night
@@ -1029,7 +1039,7 @@ function open(s, rel) {
     rel.viewers = Math.max(0.1, Math.round(((open + end) / 2) * 10) / 10);   // millions, one decimal — rounding to a whole made a bad soap draw nobody
   }
   rel.boxOffice = 0;
-  const verdict = verdictOf({ ...rel, boxOffice: rel.finalGross || 0 });
+  const verdict = stream ? stream.outcome : verdictOf({ ...rel, boxOffice: rel.finalGross || 0 });
 
   // The credit exists the night it opens. What it WAS does not — the score and the money
   // land when the run ends, which is the difference between a premiere and a verdict.
@@ -1040,7 +1050,7 @@ function open(s, rel) {
     rating: rel.rating, status: rel.status, year: s.year, season: rel.season,
     part: rel.part > 1 ? rel.part : 0, episodes: rel.episodes,
     // In cinemas. Everything below is provisional until runTick closes it.
-    running: true, weeks: 0, weeksTotal: runWeeks(rel, verdict), openedAt: (s.year || 0) * 12 + (s.month || 0),
+    running: true, weeks: 0, weeksTotal: stream ? STREAM_WEEKS : runWeeks(rel, verdict), openedAt: (s.year || 0) * 12 + (s.month || 0),
     budget: rel.budget ?? null, needs: rel.needs ?? null,   // what it cost, for the filmography and the press (budget.js)
     boxOffice: 0, viewers: rel.viewers || 0, openViewers: rel.openViewers || 0, endViewers: rel.endViewers || 0,
     // What the room thought, which is not what the column thought. See audienceFor above.
@@ -1057,6 +1067,10 @@ function open(s, rel) {
     exceptional: !!rel.exceptional,
     with: rel.with || null, withId: rel.withId || null, withIcon: !!rel.withIcon, withFame: rel.withFame || 0,
     festival: fest,
+    // A platform's three numbers, and the ones under them (career/streaming.js). The score stays off
+    // every screen; the cost is said only when it is the reason a show ends.
+    ...(stream ? { streaming: true, platformId: stream.platform.id, views7: stream.opening7, views28: stream.views28, completion: stream.completion,
+      finished28: stream.finished28, reach: stream.reach, seasonCost: stream.cost, push: stream.push, platformScore: stream.score } : {}),
   };
   const bucket = s.dream === 'singer' ? 'discography' : 'filmography';
   // Two years without anything coming out and the trades will call the next one a
@@ -1100,7 +1114,8 @@ function open(s, rel) {
   const headroom = (limit, cur) => Math.max(0.16, 1 - (cur || 0) / limit);
   // A prize is a photograph in the trades with your name under it, tonight.
   const opening = ({ tentpole: 3, lead: 2, supporting: 1 }[rel.tier] || 1) + tourFame(rel) + (fest && fest.result === 'prize' ? 4 : 0);
-  setFame(s, (s.fame || 0) + opening * headroom(118, s.fame));
+  // A drop has no carpet: a platform's season makes a name only from how many saw it (plan §3).
+  if (!stream) setFame(s, (s.fame || 0) + opening * headroom(118, s.fame));
   if (fest && fest.result === 'prize') setRespect(s, (s.respect || 0) + 4 * Math.max(0.16, 1 - (s.respect || 0) / 112));
   // The finished thing is kept ON the release so runTick can close it out properly.
   credit._rel = { rating: rel.rating, worldHit: rel.worldHit, tier: rel.tier, scale: rel.scale, budget: rel.budget ?? null, projectId: rel.projectId ?? null,
@@ -1113,7 +1128,8 @@ function open(s, rel) {
     // so a carried set and a part got over dinner were both invisible once the run closed.
     meter: rel.meter || 0, viaPartner: rel.viaPartner || null, fellApart: !!rel.fellApart, backend: rel.backend || 0, merch: rel.merch || 0, potential: rel.potential || null,
     moments: rel.moments || [], crewKnown: rel.crewKnown || [],
-    with: rel.with || null, withIcon: !!rel.withIcon };
+    with: rel.with || null, withIcon: !!rel.withIcon,
+    stream: stream ? { outcome: stream.outcome, views28: stream.views28, completion: stream.completion, finished28: stream.finished28, platformId: stream.platform.id } : null };
   // BY ID, never by reference. A save is JSON, and JSON.parse hands back a fresh object for
   // every entry — so a list holding the credit itself pointed at a copy the moment anybody
   // reloaded, and the run finished on the copy while the credit in the filmography sat at
@@ -1124,7 +1140,8 @@ function open(s, rel) {
   // Television does not open, it goes out. A soap starts on a Tuesday at seven; a pilot
   // airs; a prestige season drops at midnight. Maxi: "for a soap there is no premiere — a
   // TV set, the sound of the show, a new soap starting season one on television."
-  credit.tv = !film;
+  // A platform's season does not make you a television face (plan §12: cross-market typecasting is stage 4).
+  credit.tv = !film && !stream;
   // Opening night is the month everybody is talking about it. What it turns out to be worth
   // is settled later, at the close (closeRun); this is the noise, not the verdict.
   {
@@ -1137,12 +1154,13 @@ function open(s, rel) {
   const tvKind = rel.scale === 'recurring' ? 'soap' : rel.scale === 'prestige' ? 'prestige' : 'episode';
   s.lastEvent = fest
     ? (fest.result === 'prize' ? `"${rel.title}" took the prize at ${fest.name}. Your phone has not stopped.` : `"${rel.title}" was bought at ${fest.name}. A small release, but a release.`)
+    : stream ? `"${rel.title}" dropped on ${stream.platform.name} — all ${rel.episodes || 8} episodes at once. The platform will not say a number for four weeks.`
     : film
     ? `"${rel.title}" opened tonight. Now everybody finds out what it is.`
     : tvKind === 'soap' ? `"${rel.title}" went out at seven. Your mother rang before the credits.`
     : tvKind === 'prestige' ? `"${rel.title}" dropped at midnight. Everybody you know is on episode three by morning.`
     : `"${rel.title}" aired tonight.`;
-  addTimeline(s, fest ? (fest.result === 'prize' ? `"${rel.title}" won at ${fest.name}.` : `"${rel.title}" sold at ${fest.name}.`) : film ? `"${rel.title}" opened.` : `"${rel.title}" went out.`);
+  addTimeline(s, fest ? (fest.result === 'prize' ? `"${rel.title}" won at ${fest.name}.` : `"${rel.title}" sold at ${fest.name}.`) : film ? `"${rel.title}" opened.` : stream ? `"${rel.title}" dropped on ${stream.platform.name}.` : `"${rel.title}" went out.`);
   showMoment(s, fest ? {
     id: 'premiere', kind: 'good', festival: fest.name, result: fest.result, genre: rel.genre, scale: rel.scale, title: rel.title,
     card: premiereCard(s, rel, talk),
@@ -1154,9 +1172,11 @@ function open(s, rel) {
     id: 'premiere', kind: 'good', title: rel.title, verdict: 'opening night', genre: rel.genre, scale: rel.scale,
     card: premiereCard(s, rel, talk), body: premiereBody(rel),
   } : {
-    id: 'premiere', kind: 'good', tv: tvKind, genre: rel.genre, scale: rel.scale, title: rel.title, verdict: (rel.season || 0) > 1 ? `season ${rel.season}` : 'season one',
+    id: 'premiere', kind: 'good', tv: stream ? 'streaming' : tvKind, genre: rel.genre, scale: rel.scale, title: rel.title, verdict: (rel.season || 0) > 1 ? `season ${rel.season}` : 'season one',
     episodes: rel.episodes || 0, card: premiereCard(s, rel, null),
-    body: tvKind === 'soap'
+    body: stream
+      ? `Every episode at once, on ${stream.platform.name}. No carpet and no first night — a title on a home screen, between two others, and four weeks before the platform says how many got to the end.`
+      : tvKind === 'soap'
       ? `Seven o'clock, a Tuesday. The theme, the titles, your face for the first time in ${(rel.episodes || 25)} episodes of it. Nobody watches a soap for the reviews — they watch it every week, or they do not, and you find out over the run.`
       : tvKind === 'prestige'
       ? `Every episode at once, at midnight. No carpet, no room — a screen in a kitchen somewhere, and a number the network will not say out loud for a few weeks yet.`
@@ -1164,6 +1184,29 @@ function open(s, rel) {
   });
 
   return s;
+}
+
+// ── a platform's season (Streaming V1) ────────────────────────────────────────
+// Four weeks to the number the platform judges, and a month of the tail after it.
+const STREAM_WEEKS = 8;
+// On a supporting part the name above yours is the platform's own lead, a known face.
+const HOUSE_LEAD = 45;
+function dropStreaming(s, rel, talk) {
+  const pr = getProject(s, rel.projectId) || {};
+  const platform = platformById(s, pr.platformId) || platformOfKind(s, 'library');
+  const rootOf = (t) => String(t || '').replace(/(\s*·\s*season\s+\d+)+\s*$/i, '').trim();
+  const root = rootOf(rel.title);
+  // Last season on a platform: its finishers are this season's first week, and a Hit is pushed hard.
+  const prev = (rel.season || 1) > 1 ? (s.filmography || []).find((c) => c.streaming && c.season === rel.season - 1 && rootOf(c.title) === root) : null;
+  const names = rel.tier === 'supporting' ? [HOUSE_LEAD, s.fame || 0] : [s.fame || 0, rel.withFame || 0];
+  const drop = dropSeason({ platform, genre: rel.genre, episodes: rel.episodes || 8, season: rel.season || 1,
+    rating: rel.rating || 0, word: wordFor(rel), hype: (talk && talk.hype) || 0, draw: castDraw(names),
+    salaryM: (rel.salary || 0) / 1e6,
+    episodeCost: pr.episodeCost ?? planEpisodeCost({ seed: pr.seriesId || rel.projectId || root, genre: rel.genre, archetype: platform.archetype }),
+    legacy: pr.legacy || 0,
+    prev: prev ? { finished28: prev.finished28 || 0, views28: prev.views28 || 0, outcome: prev.verdict } : null,
+    dice: 0.8 + Math.random() * 0.45 });
+  return { platform, ...drop };
 }
 
 // ── the run ───────────────────────────────────────────────────────────────────
@@ -1212,7 +1255,7 @@ function closeRun(s, credit, r) {
   const rating = Number.isFinite(r.rating) ? r.rating : (Number.isFinite(credit.rating) ? credit.rating : 50);
   credit.score = Number((rating / 10).toFixed(1));
   r = { ...r, rating };
-  const verdict = verdictOf({ scale: r.scale, budget: r.budget ?? credit.budget ?? null, rating: r.rating, boxOffice: credit.boxOffice,
+  const verdict = r.stream ? r.stream.outcome : verdictOf({ scale: r.scale, budget: r.budget ?? credit.budget ?? null, rating: r.rating, boxOffice: credit.boxOffice,
     // What it cost to sell, so the bar is the one this picture actually had to clear.
     campaignTier: r.campaignTier,
     // Television needs to know who turned up; without these it fell back to the column.
@@ -1263,11 +1306,14 @@ function closeRun(s, credit, r) {
   const _fameBefore = s.fame || 0, _respBefore = s.respect || 0;
   const bySkill = { tentpole: 9, lead: 5, supporting: 2 }[r.tier] || 2;
   let fame = bySkill + (r.rating >= 85 ? 4 : 0) + (r.worldHit ? 25 : 0);
+  // A platform's season makes a name from how many pressed play, not from the band it landed in.
+  if (r.stream) fame = fameFromViews(r.stream.views28, r.tier);
   // Hype: where the talk comes from this year. A hit replaces whatever was there; a flop
   // takes it off the lead, and only a little off a supporting part. See meta/hype.js.
   // How it turned out, asked through the one place that knows the words (career/outcome.js).
   const o = projectOutcome(s, credit);
-  if (r.worldHit) addHype(s, 85, 'hit');
+  if (r.stream) { const h = hypeFor(r.stream.outcome, r.tier); if (h) addHype(s, h, 'hit'); }
+  else if (r.worldHit) addHype(s, 85, 'hit');
   else if (isSmash(o)) addHype(s, 70, 'hit');
   else if (isProfitable(o) || r.rating >= 80) addHype(s, r.tier === 'supporting' ? 30 : 50, 'hit');
   else if (!film && (isWatched(o) || credit.renewal === 'renewed')) addHype(s, r.tier === 'supporting' ? 26 : (credit.renewal === 'renewed' ? 48 : 40), 'hit');
@@ -1383,7 +1429,8 @@ function closeRun(s, credit, r) {
   // the digits of, which is the opposite of what that line is for. This half came in with an
   // uncommitted cut to the opening constant that was reverted — the cut made a billion
   // impossible and broke three tests; saying the number properly was right and stayed.
-  const money = film
+  const money = r.stream ? `${r.stream.views28}m in 28 days · ${Math.round((r.stream.completion || 0) * 100)}% finished`
+    : film
     ? `${credit.boxOffice >= 1e9 ? `€${(credit.boxOffice / 1e9).toFixed(2)}bn` : `€${(credit.boxOffice / 1000000).toFixed(credit.boxOffice >= 100000000 ? 0 : 1)}m`} on a €${(bud / 1000000).toFixed(0)}m film, ${credit.weeksTotal} weeks`
     : (credit.openViewers && credit.endViewers)
       ? `${credit.openViewers}m for the first, ${credit.endViewers}m for the last`
@@ -1391,7 +1438,7 @@ function closeRun(s, credit, r) {
   const score = credit.score.toFixed(1);
   const line = r.worldHit
     ? `🌍 "${credit.title}" is a phenomenon. ${score}/10 · ${money}.`
-    : `"${credit.title}" finished its run. ${score}/10 · ${money} · ${verdict}.`
+    : `"${credit.title}" finished its run. ${score}/10 · ${money} · ${r.stream ? OUTCOME_WORD[verdict] : verdict}.`
       + (carried && r.rating < 45 ? ' The reviews agree on one thing: you were the only good thing in it.'
         : carried && r.rating < 70 ? ' The film is nothing much. Your performance is what the reviews are about.' : '');
   s.lastEvent = line;
@@ -1410,8 +1457,14 @@ function closeRun(s, credit, r) {
   // The job stays on the credit whatever happens next: a show that was not renewed, or a
   // renewal you let go, can still be pitched back from your own sofa. See night.js revivable.
   if (r.job) credit.job = r.job;
-  // Only now does anyone know whether there is a second one.
-  if (r.job) {
+  // Only now does anyone know whether there is a second one. A platform decides on what the next
+  // season would cost (franchise.js streamingRenewal); everything else as it always did.
+  let streamLine = null;
+  if (r.job && r.stream) {
+    const sr = streamingRenewal(s, credit, r.job);
+    if (sr.offer) (s.offers = s.offers || []).push(sr.offer);
+    streamLine = sr.line;
+  } else if (r.job) {
     const next = maybeContinue(s, credit, r.job);
     if (next) (s.offers = s.offers || []).push(next);
     // The studio said no. A name in the room can push for it later — favours.js pushSequel —
@@ -1443,13 +1496,15 @@ function closeRun(s, credit, r) {
   typecastAfterCredit(s, credit);
   storyAfterCredit(s, credit);
   showMoment(s, {
-    id: 'verdict', tv: film ? null : (r.scale === 'recurring' ? 'soap' : r.scale === 'prestige' ? 'prestige' : 'episode'), kind: r.rating >= 70 || verdict === 'smash' ? 'good' : 'bad',
+    id: 'verdict', tv: film ? null : r.stream ? 'streaming' : (r.scale === 'recurring' ? 'soap' : r.scale === 'prestige' ? 'prestige' : 'episode'), kind: r.rating >= 70 || verdict === 'smash' || verdict === 'hit' || verdict === 'breakout' ? 'good' : 'bad',
     title: credit.title, score, money, verdict, reviews: credit.reviews, genre: credit.genre, scale: r.scale,
     // Television: the network's number against yours, and what it decided.
-    network: !film && r.scale !== 'episode' && credit.renewal ? networkLine(credit.type, credit.endViewers || credit.viewers, null, r.rating, credit.renewal) : null,
+    network: r.stream ? streamLine : !film && r.scale !== 'episode' && credit.renewal ? networkLine(credit.type, credit.endViewers || credit.viewers, null, r.rating, credit.renewal) : null,
+    // A platform's three numbers (BigMoment draws them in place of the box office).
+    streaming: r.stream ? { views: `${r.stream.views28}m`, completion: `${Math.round((r.stream.completion || 0) * 100)}%`, outcome: OUTCOME_WORD[verdict] } : null,
     // How many were there on the first night and how many on the last. Maxi asked how a
     // season is measured; this is the answer, on the night it is answered.
-    retention: !film && r.scale !== 'episode' ? retentionLine(credit.openViewers, credit.endViewers) : null,
+    retention: !film && !r.stream && r.scale !== 'episode' ? retentionLine(credit.openViewers, credit.endViewers) : null,
     // When the column and the room have seen different films. career/release.js splitLine
     split: splitLine(r.rating, credit.audience),
     // What the run cost and took, kept for the money card the verdict will get (gross, total

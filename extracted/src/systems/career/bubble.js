@@ -35,18 +35,20 @@ import { canAfford, spend, tooTired } from '../../engine/energy.js';
 // imported back — the same rule trouble.js and risk.js already follow. If SLOT_NORM,
 // SEASON_CAP or tvMonths move over there, they move here too.
 const SLOT = { 'Soap Opera': 4, 'Network Drama': 2.6, 'Crime Series': 2.6, 'Drama Series': 2.6, 'Talent Series': 3, 'Music Show': 2, 'Prestige Series': 6 };
-const CAP = { 'Soap Opera': 20, 'Talent Series': 10, 'Crime Series': 8, 'Drama Series': 7, 'Network Drama': 6, 'Music Show': 6, 'Prestige Series': 5 };
+const CAP = { 'Soap Opera': 20, 'Talent Series': 10, 'Crime Series': 8, 'Drama Series': 7, 'Network Drama': 6, 'Music Show': 6, 'Prestige Series': 5, 'Streaming Series': 6 };
 // Copied from franchise.js TV_PACE, and it has to be copied EXACTLY — this was written
 // from memory instead and got the soap wrong by a factor of two and left two types out, so
 // a rescued soap shot a fourteen-episode season in four months where the same show at the
 // original network took two. If TV_PACE changes, this changes with it.
-const PACE = { 'Soap Opera': 0.09, 'Network Drama': 0.38, 'Prestige Series': 0.5, 'Talent Series': 0.3, 'Music Show': 0.3 };
+const PACE = { 'Soap Opera': 0.09, 'Network Drama': 0.38, 'Prestige Series': 0.5, 'Talent Series': 0.3, 'Music Show': 0.3, 'Streaming Series': 0.45 };
 const slotNorm = (t) => SLOT[t] || 2.6;
 const seasonCap = (t) => CAP[t] || 5;
 const monthsFor = (type, episodes) => Math.max(2, Math.min(10, Math.round(1 + episodes * (PACE[type] || 0.38))));
 import { addHype } from '../meta/hype.js';
 import { socialShopLift } from '../social/posting.js';
 import { payMarketOf, getProject } from './project.js';
+import { platformById, platformOfKind, numbersOf, legacyIndex, STREAMING } from './streaming.js';
+import { planEpisodeCost } from './budget.js';
 
 const stamp = (s) => (s.year || 0) * 12 + (s.month || 0);
 const clamp = (v, a = 0, b = 100) => Math.max(a, Math.min(b, v));
@@ -60,7 +62,16 @@ export function onTheBubble(odds) { return odds < SURE_YES && odds > SURE_NO; }
 
 // How hard the people who watched it will fight. A show pulling well above its slot has an
 // audience that notices it is gone; one nobody watched has nobody to notice.
-export function fanHeat(credit) {
+export function fanHeat(credit, s = null) {
+  // A platform's show is read against its platform's bar, not a network slot (Streaming V1): how many
+  // pressed play, and whether they finished it.
+  if (credit.streaming) {
+    const bar = numbersOf(s ? platformById(s, credit.platformId) : null).breakout;
+    const views = credit.views28 || 0, done = credit.completion || 0;
+    if (views >= bar * 0.5 && done >= 0.65) return 'loud';
+    if (views >= bar * 0.25 || done >= 0.6) return 'some';
+    return 'none';
+  }
   const drew = credit.endViewers || credit.viewers || 0;
   const norm = slotNorm(credit.type) || 2.6;
   const pull = drew / norm;
@@ -73,7 +84,8 @@ export function fanHeat(credit) {
 // Put it on the bubble instead of deciding. Called by franchise.js maybeContinue.
 export function hangIt(s, credit, p, odds) {
   const months = rint(2, 5);
-  const heat = fanHeat(credit);
+  const heat = fanHeat(credit, s);
+  const who = credit.streaming ? ((platformById(s, credit.platformId) || {}).name || 'The platform') : 'The network';
   s.bubbles = s.bubbles || [];
   s.bubbles.push({
     id: 'bub' + Math.random().toString(36).slice(2, 7),
@@ -88,7 +100,7 @@ export function hangIt(s, credit, p, odds) {
     job: p, rating: credit.rating || 0,
     viewers: credit.endViewers || credit.viewers || 0,
   });
-  addTimeline(s, `No word on "${root(credit.title)}". The network has not said yes and has not said no.`);
+  addTimeline(s, `No word on "${root(credit.title)}". ${who} has not said yes and has not said no.`);
   s.lastEvent = `The season is over and nobody has decided anything. ${credit.season > 1 ? 'You have been here before: ' : ''}the cast were asked to hold dates in the spring, which is not the same as being told there is a spring.`;
   return s;
 }
@@ -201,18 +213,37 @@ export function bubbleTick(s) {
 // Somebody else takes it. Fewer episodes, less money, and it is still your show.
 function rescue(s, b, credit) {
   const p = b.job || {};
-  const buyer = pick(BUYERS);
+  // A platform's show is only ever picked up by another platform; a network show may be picked up by
+  // one (Streaming V1, plan §9) — and then it is a streaming series from the season it pays for, on
+  // the platform that suits it (the giant for a loud fanbase, the library for a cheap procedural),
+  // and the fans it brings are worth a little awareness on its first week (streaming.js legacyIndex).
+  const was = getProject(s, p.projectId) || {};
+  const fromStream = was.medium === 'streaming';
+  const buyer = fromStream ? pick(BUYERS.slice(0, 2)) : pick(BUYERS);
+  const toStream = fromStream || (STREAMING.pool && (buyer.who === 'a streamer' || buyer.who === 'a service with a library to fill'));
+  let platform = null;
+  if (toStream) {
+    const want = b.heat === 'loud' ? 'global' : 'library';
+    platform = platformOfKind(s, want);
+    if (platform && fromStream && platform.id === was.platformId) platform = platformOfKind(s, want === 'global' ? 'library' : 'global');
+  }
   const wasFee = p.episodeFee || Math.round((p.salary || 0) / Math.max(1, p.episodes || 1));
   const wasEpisodes = p.episodes || 8;
   const episodes = Math.max(4, Math.round(wasEpisodes * buyer.order));
   const episodeFee = Math.max(1, Math.round(wasFee * buyer.pay));
   const nextSeason = (b.season || 1) + 1;
   if (credit) credit.renewal = 'moved';
+  const streamTerms = platform ? {
+    type: fromStream ? b.type : 'Streaming Series', payMarket: was.payMarket === 'stream_premium' ? 'stream_premium' : 'stream_series', platformId: platform.id,
+    episodeCost: planEpisodeCost({ seed: was.seriesId || p.projectId || b.root, genre: p.genre, archetype: platform.archetype }),
+    legacy: fromStream ? 0 : legacyIndex((b.viewers || 0) / slotNorm(b.type), b.heat),
+  } : {};
   (s.offers = s.offers || []).push({
     id: uid(s, 'resc'), kind: 'rescue', via: 'rescue', seriesTitle: b.root, season: nextSeason,
     parentProjectId: p.projectId || null,   // the same show, somewhere else (career/project.js)
     projectTitle: `${b.root} · season ${nextSeason}`, role: p.role, type: b.type, genre: p.genre,
     scale: p.scale, tier: p.tier || 'lead', perEpisode: true, payMarket: payMarketOf(p) || (getProject(s, p.projectId) || {}).payMarket || null,
+    ...streamTerms,
     episodes, episodeFee, salary: episodeFee * episodes, baseSalary: p.baseSalary || p.salary,
     // A smaller budget shows. It is the same show, a little poorer, and the arc it was
     // building is still the arc it was building.
@@ -220,11 +251,12 @@ function rescue(s, b, credit) {
     stability: Math.max(55, Math.min(80, (p.stability || 78) - rint(4, 12))),
     character: p.character || null, premise: p.premise || null,
     months: monthsFor(b.type, episodes), fame: p.tier === 'tentpole' ? 9 : 5,
-    deadline: rint(2, 3), waitsForWrap: true, savedBy: buyer.who,
-    note: `${cap1(buyer.who)} is taking "${b.root}". ${episodes} episodes instead of ${wasEpisodes}, and ${Math.round((1 - buyer.pay) * 100)}% less an episode. ${buyer.line}`,
+    deadline: rint(2, 3), waitsForWrap: true, savedBy: platform ? platform.name : buyer.who,
+    note: `${platform ? platform.name : cap1(buyer.who)} is taking "${b.root}". ${episodes} episodes instead of ${wasEpisodes}, and ${Math.round((1 - buyer.pay) * 100)}% less an episode. ${buyer.line}`,
   });
-  addTimeline(s, `"${b.root}" was saved — ${buyer.who} picked it up for season ${nextSeason}.`);
-  s.lastEvent = `The network is not bringing "${b.root}" back. ${cap1(buyer.who)} is. ${buyer.line}${b.backed ? ' Somebody on their side of it has said, off the record, that the noise is what put the show on their desk.' : ''} Fewer episodes, less money, and the show is still going — which is the whole argument.`;
+  const by = platform ? `${platform.name}, a streamer,` : buyer.who;
+  addTimeline(s, `"${b.root}" was saved — ${by} picked it up for season ${nextSeason}.`);
+  s.lastEvent = `${fromStream ? (platformById(s, was.platformId) || {}).name || 'The platform' : 'The network'} is not bringing "${b.root}" back. ${platform ? platform.name : cap1(buyer.who)} is. ${buyer.line}${b.backed ? ' Somebody on their side of it has said, off the record, that the noise is what put the show on their desk.' : ''} Fewer episodes, less money, and the show is still going — which is the whole argument.`;
 }
 
 // Nobody wants the show. Somebody will pay for an ending — and an ending is not nothing. A

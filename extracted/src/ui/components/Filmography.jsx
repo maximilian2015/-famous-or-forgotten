@@ -9,6 +9,7 @@ import { monthLabel } from '../../systems/meta/press.js';
 import { pushState, askToPush } from '../../systems/career/contract.js';
 import { isMinor } from '../../systems/meta/legacy.js';
 import { criticStars } from '../../systems/world/critics.js';
+import { platformById } from '../../systems/career/streaming.js';
 import { theme } from '../theme.js';
 import { money, allSets } from '../helpers.js';
 import { Poster } from './Poster.jsx';
@@ -94,7 +95,8 @@ function CreditRow({ group, g }) {
   const flop = !hit && isFlop(c);
   const starCol = group.worldHit ? theme.gold : r >= 85 ? theme.good : r >= 60 ? theme.gold : theme.muted;
   const tv = !!(c.season || group.series);
-  const kind = tv ? 'TV Series' : c.type || 'Feature Film';
+  // A platform's show says so — and which kind (career/streaming.js).
+  const kind = c.streaming ? (/Limited/.test(c.type || '') ? 'Limited Series' : 'Streaming Series') : tv ? 'TV Series' : c.type || 'Feature Film';
   const years = group.from === group.to ? String(group.to) : `${group.from}–${group.to}`;
   const eps = tv ? (group.episodes || c.episodes || 0) : 0;
   return (<div onClick={() => setOpen(!open)} style={{ display: 'flex', gap: 10, padding: '6px 8px', borderRadius: 11, marginBottom: 4, cursor: 'pointer',
@@ -112,7 +114,7 @@ function CreditRow({ group, g }) {
       <div style={{ display: 'flex', alignItems: 'center', gap: 7, marginTop: 3, flexWrap: 'wrap', fontSize: 11.5 }}>
         {c.running
           ? <span style={{ fontSize: 10.5, fontWeight: 900, letterSpacing: '.06em', textTransform: 'uppercase', color: theme.gold }}>
-              {(c.tv || !['small', 'indie', 'festival', 'feature', 'blockbuster'].includes(c.scale)) ? `On air · episode ${Math.max(1, Math.round(((c.weeks || 0) / Math.max(1, c.weeksTotal || 1)) * (c.episodes || 1)))} of ${c.episodes || '?'}` : `In cinemas · week ${Math.max(1, c.weeks || 0)} of ${c.weeksTotal}`}</span>
+              {c.streaming ? `Streaming · all ${c.episodes || '?'} episodes out` : (c.tv || !['small', 'indie', 'festival', 'feature', 'blockbuster'].includes(c.scale)) ? `On air · episode ${Math.max(1, Math.round(((c.weeks || 0) / Math.max(1, c.weeksTotal || 1)) * (c.episodes || 1)))} of ${c.episodes || '?'}` : `In cinemas · week ${Math.max(1, c.weeks || 0)} of ${c.weeksTotal}`}</span>
           : <span style={{ fontWeight: 900, color: starCol }}>★ {stars}</span>}
         <span style={{ color: theme.muted }}>{group.to}</span>
         {eps > 0 && <span style={{ color: theme.muted }}>{eps}eps</span>}
@@ -139,9 +141,18 @@ function CreditRow({ group, g }) {
           the run closes (60 of 60 seasons in a probe, about seven months after the wrap)
           and the filmography never said a word about it. A show's fate lives on the credit
           now, where you go looking for it. See career/franchise.js maybeContinue. */}
-      {c.renewal && (<div style={{ fontSize: 11, fontWeight: 700, margin: '4px 0 2px',
+      {/* A platform's three numbers: who pressed play in four weeks, how many finished, what it was. */}
+      {c.streaming && !c.running && (<div style={{ fontSize: 11, color: theme.muted, margin: '4px 0 2px' }}>
+        📱 {(platformById(g, c.platformId) || {}).name || 'A platform'} · {c.views28}m in 28 days · {Math.round((c.completion || 0) * 100)}% finished
+      </div>)}
+      {c.streaming && c.renewal && c.renewal !== 'renewed' && c.renewal !== 'moved' && (<div style={{ fontSize: 11, fontWeight: 700, margin: '2px 0', color: c.renewal === 'ended' || c.renewal === 'capped' ? theme.muted : theme.bad }}>
+        {c.renewal === 'ended' ? '📱 A limited series — it ended as it was written.'
+          : c.renewal === 'capped' ? `📱 It ended here: the platform's last season.`
+          : `📱 Not renewed.${c.nextCost ? ` Another season would have cost €${Math.round(c.nextCost)}m.` : ''}`}
+      </div>)}
+      {c.renewal && !(c.streaming && c.renewal !== 'renewed' && c.renewal !== 'moved') && (<div style={{ fontSize: 11, fontWeight: 700, margin: '4px 0 2px',
         color: c.renewal === 'renewed' || c.renewal === 'moved' ? theme.good : c.renewal === 'capped' || c.renewal === 'finale' ? theme.muted : theme.bad }}>
-        {c.renewal === 'renewed' ? `📺 Renewed for season ${(c.season || 1) + 1}`
+        {c.renewal === 'renewed' ? `${c.streaming ? '📱' : '📺'} Renewed for season ${(c.season || 1) + 1}`
           : c.renewal === 'moved' ? `📺 Cancelled, and then saved. Somebody else bought it for season ${(c.season || 1) + 1} — a shorter order and less money, and it is still on.`
           : c.renewal === 'finale' ? `📺 Cancelled, and then given an ending: one special, two hours, and everybody came back for it.`
           : c.renewal === 'writtenOut' ? `📺 Renewed for season ${(c.season || 1) + 1} — without you. Your character was written out.`
@@ -249,7 +260,8 @@ function CreditRow({ group, g }) {
     </div>
   </div>);
 }
-const VERDICT_COL = { smash: theme.gold, profitable: theme.good, 'broke even': theme.muted, bomb: theme.bad, watched: theme.good, seen: theme.muted, ignored: theme.bad, unsold: theme.muted };
+const VERDICT_COL = { smash: theme.gold, profitable: theme.good, 'broke even': theme.muted, bomb: theme.bad, watched: theme.good, seen: theme.muted, ignored: theme.bad, unsold: theme.muted,
+  breakout: theme.gold, hit: theme.good, solid: theme.muted, miss: theme.bad };
 // The critics' verdict is its OWN column and gets its own colours, because the whole point of
 // showing it next to the money is that the two of them disagree.
 const CRIT_COL = { acclaimed: theme.gold, 'well received': theme.good, mixed: theme.muted,

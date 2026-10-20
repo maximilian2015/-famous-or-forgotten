@@ -10,7 +10,8 @@ import { getProject } from './project.js';
 import { priceYoungReturn } from './youngblood.js';
 import { onTheBubble, hangIt, takeDecided } from './bubble.js';
 import { carriedToNextSeason } from './terms.js';
-import { sequelBudget } from './budget.js';
+import { sequelBudget, planEpisodeCost } from './budget.js';
+import { platformById, platformOfKind, numbersOf, seasonCost, renewalFor, platformLine } from './streaming.js';
 
 // How long a format can plausibly run. Daytime soaps run for decades; prestige
 // streaming shows are written to end. This is the ceiling, not the expectation —
@@ -26,6 +27,10 @@ export const SEASON_CAP = {
   'Network Drama': 6,
   'Music Show': 6,
   'Prestige Series': 5,
+  // A platform ends a show at its own cap (career/streaming.js ARCHETYPES); this is the most any of
+  // them runs, so the bubble never calls a season "the last" that its platform would still make.
+  // A limited series has no next season at all (streaming.js renewalFor) and is in neither table.
+  'Streaming Series': 6,
 };
 export function seasonCap(type) { return SEASON_CAP[type] || 5; }
 // Months of shooting per episode ordered, by format, and the least a season takes. Television
@@ -33,7 +38,7 @@ export function seasonCap(type) { return SEASON_CAP[type] || 5; }
 // prestige is slower and dearer. Maxi: "do they really shoot a series that long?" Read by the
 // board (castings.js) and by every renewal, so season two is not eight months for twelve
 // episodes because season one happened to be.
-export const TV_PACE = { 'Soap Opera': 0.09, 'Network Drama': 0.38, 'Prestige Series': 0.5, 'Talent Series': 0.3, 'Music Show': 0.3 };
+export const TV_PACE = { 'Soap Opera': 0.09, 'Network Drama': 0.38, 'Prestige Series': 0.5, 'Talent Series': 0.3, 'Music Show': 0.3, 'Streaming Series': 0.45 };
 export function tvMonths(type, scale, episodes) {
   const pace = TV_PACE[type] || (scale === 'prestige' ? 0.5 : 0.38);
   return Math.max(2, Math.min(10, Math.round(1 + episodes * pace)));
@@ -383,6 +388,40 @@ function mediumOf(p) {
   if (p.episodes || p.season) return p.scale === 'prestige' ? 'tv_prestige' : 'tv_network';
   return p.tier === 'tentpole' ? 'film_tentpole' : p.scale === 'blockbuster' ? 'film_studio'
     : p.scale === 'feature' ? 'film_studio' : 'film_indie';
+}
+
+// ── a streaming season's renewal (Streaming V1, plan §4) ──────────────────────
+// The platform decides on what the NEXT season would really cost — the episodes, and the cast at the
+// raise this game really pays them (seasonRaise, or five per cent under an option, capped the same
+// way maybeContinue caps it) — against how many finished this one. So a dear show can be watched by
+// fifty million and still be cancelled, and a star's raise can be what cancels it. On the bubble it
+// goes to bubble.js like a network season; renewed, the offer is built by maybeContinue, exactly as a
+// network renewal is. Returns { offer, decision, line }.
+export function streamingRenewal(s, credit, p) {
+  const pr = getProject(s, p.projectId) || {};
+  const platform = platformById(s, pr.platformId) || platformOfKind(s, 'library');
+  const season = p.season || 1, nextSeason = season + 1;
+  const root = seriesRoot(p.seriesTitle || p.title);
+  const raiseMarket = seasonRaise(nextSeason, credit.rating, previousRating(s, root, season));
+  const underOption = (p.optionSeasons || 0) >= nextSeason - (p.optionFrom || 1);
+  const wasFee = p.episodeFee || Math.round((p.salary || 0) / Math.max(1, p.episodes || 1));
+  const nextFee = Math.min(Math.round(wasFee * (underOption ? 1.05 : raiseMarket)), ceilingFor(s, payOf(s, p)));
+  const episodeCost = pr.episodeCost ?? planEpisodeCost({ seed: pr.seriesId || p.projectId || root, genre: p.genre, archetype: platform.archetype });
+  const nextCost = seasonCost({ episodes: p.episodes || 8, episodeCost, salaryM: nextFee * (p.episodes || 8) / 1e6 });
+  const prev = (s.filmography || []).find((c) => c.streaming && c.season === season - 1 && seriesRoot((c.job && c.job.seriesTitle) || c.title) === root);
+  const r = renewalFor({ platform, season, limited: pr.format === 'limited_series', rating: credit.rating,
+    finished28: credit.finished28 || 0, views28: credit.views28 || 0, prevViews28: prev ? prev.views28 : null, nextCost });
+  credit.nextCost = nextCost; credit.projected = r.projected;
+  const line = platformLine({ platform, views28: credit.views28, completion: credit.completion, decision: r.decision, why: r.why, nextCost, cap: numbersOf(platform).cap });
+  if (r.decision === 'bubble') { hangIt(s, credit, p, r.odds); return { offer: null, decision: 'bubble', line }; }
+  if (r.decision !== 'renewed') {
+    credit.renewal = r.decision === 'ended' ? 'ended' : r.decision === 'capped' ? 'capped' : 'cancelled';
+    if (r.decision === 'cancelled') addTimeline(s, `${platform.name} cancelled "${root}" after ${season} season${season === 1 ? '' : 's'}.`, true);
+    return { offer: null, decision: r.decision, line };
+  }
+  const offer = maybeContinue(s, credit, p, true);
+  if (offer) offer.note = String(offer.note || '').replace(/The network/g, platform.name).replace(/the network/g, platform.name);
+  return { offer, decision: 'renewed', line };
 }
 
 // Called at the end of every production. Returns an offer to push, or null.

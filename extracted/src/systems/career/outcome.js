@@ -21,6 +21,8 @@
 //   festival     prize or sold → the run is judged like any picture · unsold → not judged: nobody
 //                saw it, so nobody holds it against you (release.js)
 //   television   ignored −1 · seen 0 · watched +1 · the renewal is its own field, not a grade
+//   streaming    miss −1 · solid 0 · hit +1 · breakout +2 (career/streaming.js, judged on who finished it
+//                in 28 days against what it cost) · the renewal is its own field, not a grade
 //   other work   a day's work (an advert, a cover, a voice session, a day as an extra) is `career:
 //                false` with no grade: never a career hit, whatever it was rated
 //   in progress  `pending`, no grade
@@ -36,6 +38,7 @@ import { projectOf } from './project.js';
 const FILM = new Set(['small', 'indie', 'festival', 'feature', 'blockbuster']);
 const MONEY = { bomb: -2, 'broke even': 0, profitable: 1, smash: 2, seen: 0 };
 const AUDIENCE = { ignored: -1, seen: 0, watched: 1 };
+const STREAM = { miss: -1, solid: 0, hit: 1, breakout: 2 };
 
 export function projectOutcome(s, c) {
   if (!c) return null;
@@ -43,14 +46,17 @@ export function projectOutcome(s, c) {
   // The word itself first — only a picture is a smash, only a season is watched — and the scale only
   // for 'seen', which both use. A very old credit without a scale is still read by its verdict.
   const v = c.verdict;
-  const judged = v === 'smash' || v === 'profitable' || v === 'broke even' || v === 'bomb' || v === 'unsold' ? 'theatrical'
+  const judged = STREAM[v] != null || c.streaming ? 'streaming' : v === 'smash' || v === 'profitable' || v === 'broke even' || v === 'bomb' || v === 'unsold' ? 'theatrical'
     : v === 'watched' || v === 'ignored' ? 'television'
     : FILM.has(c.scale) ? 'theatrical' : 'television';
   const out = { judged, medium: p ? p.medium : null, career: !c.minor, pending: !!c.running,
     grade: null, verdictGrade: null, worldHit: !!(c.worldHit || c.status === 'World Hit'), label: c.verdict || null,
     money: null, audience: null, festival: c.festival ? (c.festival.result || null) : null };
   if (!out.career || out.pending) return out;
-  if (judged === 'television') {
+  if (judged === 'streaming') {
+    out.verdictGrade = STREAM[c.verdict] ?? null;
+    out.audience = { views28: c.views28 || 0, completion: c.completion || 0, finished28: c.finished28 || 0, renewal: c.renewal || null };
+  } else if (judged === 'television') {
     out.verdictGrade = AUDIENCE[c.verdict] ?? null;
     out.audience = { viewers: c.viewers || 0, open: c.openViewers || 0, end: c.endViewers || 0, renewal: c.renewal || null };
   } else if (c.verdict !== 'unsold') {
@@ -69,7 +75,9 @@ export const isBrokeEven = (o) => money(o) && o.money.verdict === 'broke even';
 export const isBomb = (o) => money(o) && o.money.verdict === 'bomb';
 // The money counts only when the film MADE money: the verdict, never the gross (knownFor.js).
 export const madeMoney = (o) => isSmash(o) || isProfitable(o);
-export const isWatched = (o) => !!o && o.audience != null && o.verdictGrade === 1;
+// Watched: a season people came for — on a platform, a Hit or a Breakout.
+export const isWatched = (o) => !!o && o.audience != null && o.verdictGrade >= 1;
+export const isBreakout = (o) => !!o && o.judged === 'streaming' && o.verdictGrade === 2;
 export const isSeen = (o) => !!o && o.audience != null && o.verdictGrade === 0;
 export const isIgnored = (o) => !!o && o.audience != null && o.verdictGrade === -1;
 // The audience stayed away — a bomb in cinemas, an ignored season on television.

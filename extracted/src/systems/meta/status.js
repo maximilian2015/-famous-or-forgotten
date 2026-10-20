@@ -103,6 +103,10 @@ export const QUOTE = {
   tv_daytime:   { unknown: [900, 2500],    rising: [2500, 7000],      known: [7000, 16000],       star: [16000, 30000],       alist: null,                  icon: null },
   tv_network:   { unknown: [1500, 4500],   rising: [4500, 25000],     known: [25000, 130000],     star: [130000, 600000],     alist: [600000, 1800000],     icon: [1800000, 3500000] },
   tv_prestige:  { unknown: null,           rising: [25000, 60000],    known: [60000, 320000],     star: [320000, 1500000],    alist: [1500000, 4000000],    icon: [4000000, 8000000] },
+  // Streaming, per episode (Streaming V1): a platform series pays network rates and a third more, a
+  // premium or limited series the premium rates and a sixth more (plan §6).
+  stream_series:  { unknown: [1950, 5850], rising: [5850, 32500],    known: [32500, 169000],     star: [169000, 780000],     alist: [780000, 2340000],     icon: [2340000, 4550000] },
+  stream_premium: { unknown: null,         rising: [28750, 69000],   known: [69000, 368000],     star: [368000, 1725000],    alist: [1725000, 4600000],    icon: [4600000, 9200000] },
   film_indie:   { unknown: [25000, 60000], rising: [120000, 300000],  known: [300000, 800000],    star: [800000, 2500000],    alist: [2500000, 6000000],    icon: [6000000, 12000000] },
   film_studio:  { unknown: null,           rising: [500000, 1200000], known: [1500000, 4000000],  star: [5000000, 10000000],  alist: [12000000, 20000000],  icon: [20000000, 35000000] },
   film_tentpole:{ unknown: null,           rising: null,              known: [4000000, 8000000],  star: [12000000, 20000000], alist: [25000000, 40000000],  icon: [40000000, 80000000] },

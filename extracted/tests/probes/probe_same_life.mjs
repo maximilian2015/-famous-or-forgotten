@@ -4,6 +4,7 @@
 // lives to the last digit. Anything that draws one extra random number shifts everything after it,
 // which is the point — that is how an "invisible" change is caught.
 //   node tests/probes/probe_same_life.mjs <path to extracted/src/> [careers] [years] > lives.txt
+//   STREAMING=off node tests/probes/probe_same_life.mjs …   (Streaming V1 switched off)
 import { pathToFileURL } from 'node:url';
 let seed = 0x9e3779b9;
 const mulberry = () => { seed |= 0; seed = (seed + 0x6d2b79f5) | 0; let t = Math.imul(seed ^ (seed >>> 15), 1 | seed); t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t; return ((t ^ (t >>> 14)) >>> 0) / 4294967296; };
@@ -18,6 +19,9 @@ const K = await import(P + 'systems/career/castings.js');
 const T = await import(P + 'systems/career/training.js');
 const W = await import(P + 'systems/life/work.js');
 const OF = await import(P + 'systems/career/offers.js');
+// STREAMING=off: the streaming shelf and the platform rescue switched off, so a tree with Streaming V1 can be
+// held to the last digit against one without it (career/streaming.js setStreamingPool).
+if (process.env.STREAMING === 'off') { try { (await import(P + 'systems/career/streaming.js')).setStreamingPool(false); } catch { /* a tree from before streaming */ } }
 
 for (let k = 0; k < CAREERS; k++) {
   seed = 1000 + k * 7919;

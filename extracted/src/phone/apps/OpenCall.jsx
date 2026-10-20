@@ -1,7 +1,8 @@
 import { useEffect, useState } from 'react';
 import { theme } from '../../ui/theme.js';
 import { dispatch, getState } from '../../state/store.js';
-import { refreshCastingPool, auditionFor, castingChance, reach, SHELVES, SHELF_BLURB, SHELF_EMPTY, rerollBoard, canReroll, prepareFor, nextPrep, prepBonus, dayWork, fieldFactor, poisoned, hiding } from '../../systems/career/castings.js';
+import { refreshCastingPool, auditionFor, castingChance, reach, SHELVES, SHELF_BLURB, SHELF_EMPTY, rerollBoard, canReroll, prepareFor, nextPrep, prepBonus, dayWork, fieldFactor, poisoned, hiding, platformLineFor } from '../../systems/career/castings.js';
+import { platformById } from '../../systems/career/streaming.js';
 import { slotNorm } from '../../systems/career/franchise.js';
 import { typeWord } from '../../systems/meta/typecast.js';
 import { TimingBar } from '../../ui/components/TimingBar.jsx';
@@ -198,7 +199,7 @@ export function OpenCall({ g, ocTab, setOcTab, teenMode }) {
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 8, marginTop: 4 }}>
             <div style={{ fontSize: 11, color: theme.muted, minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
               {c.invited ? <span style={{ color: theme.gold, fontWeight: 800 }}>SPECIAL INVITATION</span> : null}{c.invited ? ' · ' : ''}
-              {c.role} · {c.type}{c.invited ? '' : ' · '}{c.invited ? null : <span style={{ color: onTrend ? theme.good : theme.muted }}>{c.genre}{onTrend ? ' ↑' : ''}</span>} · {c.months > 1 ? `${c.months} mo` : c.perEpisode ? 'a few days' : 'one day'}
+              {c.role} · {c.type}{c.platformId ? ` · ${(platformById(g, c.platformId) || {}).name || ''}` : ''}{c.invited ? '' : ' · '}{c.invited ? null : <span style={{ color: onTrend ? theme.good : theme.muted }}>{c.genre}{onTrend ? ' ↑' : ''}</span>} · {c.months > 1 ? `${c.months} mo` : c.perEpisode ? 'a few days' : 'one day'}
               </div>
               {/* Who is directing it. Maxi: "the agent only brings the top directors." A part is
                   half a decision without the person behind the camera. systems/world/directors.js */}
@@ -227,7 +228,11 @@ export function OpenCall({ g, ocTab, setOcTab, teenMode }) {
         {isOpen && !locked && <div style={{ padding: '0 12px 11px' }}>
           {c.perEpisode && <div style={{ fontSize: 10.5, color: theme.muted, marginBottom: 6 }}>€{c.salary.toLocaleString()} for {c.episodes} episode{c.episodes === 1 ? '' : 's'}</div>}
           {/* Which season — and, for a show that is already on, the number the network renews on. */}
-          {c.perEpisode && <div style={{ fontSize: 10.5, lineHeight: 1.45, marginBottom: 6, padding: '6px 9px', borderRadius: 9,
+          {/* A platform's series: where it goes out, and how a platform decides. career/castings.js */}
+          {c.platformId && <div style={{ fontSize: 10.5, lineHeight: 1.45, marginBottom: 6, padding: '6px 9px', borderRadius: 9, background: 'rgba(127,179,255,.08)', border: '1px solid rgba(127,179,255,.3)', color: '#c4dbff' }}>
+            {platformLineFor(g, c)}
+          </div>}
+          {c.perEpisode && !c.platformId && <div style={{ fontSize: 10.5, lineHeight: 1.45, marginBottom: 6, padding: '6px 9px', borderRadius: 9,
             background: (c.season || 1) > 1 ? 'rgba(127,179,255,.08)' : 'rgba(255,209,102,.08)', border: `1px solid ${(c.season || 1) > 1 ? 'rgba(127,179,255,.3)' : 'rgba(255,209,102,.3)'}`, color: (c.season || 1) > 1 ? '#c4dbff' : theme.gold }}>
             {(c.season || 1) > 1
               ? (c.scale === 'episode'

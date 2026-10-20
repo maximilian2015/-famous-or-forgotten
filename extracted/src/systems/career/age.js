@@ -34,6 +34,10 @@ const BANDS = {
   'Recurring': [20, 54, 70],
   'Season lead': [26, 52, 68],
   'Supporting': [21, 60, 78],
+  // a platform's parts (career/castings.js STREAM_ROWS)
+  'Ensemble': [20, 58, 74],
+  'Series lead': [22, 50, 66],
+  'Event series lead': [26, 58, 72],
   // and the parts that only exist later
   'Character lead': [44, 78, 95],
   'The matriarch': [48, 82, 96],
@@ -47,7 +51,7 @@ export function bandFor(role) { return BANDS[role] || DEFAULT_BAND; }
 // ugly fact about this industry, and a game about fame that smooths it away is telling a
 // comfortable lie. It is modelled here, it is modest, and the game says out loud when it
 // starts happening to you rather than quietly lowering your odds.
-const LEADING = new Set(['Lead', 'Star', 'Face', 'Headliner', 'Series regular', 'Season lead', 'Artist']);
+const LEADING = new Set(['Lead', 'Star', 'Face', 'Headliner', 'Series regular', 'Season lead', 'Artist', 'Series lead', 'Event series lead']);
 export function womensPenalty(s, role) {
   return (s.gender === 'female' && LEADING.has(role)) ? 6 : 0;
 }

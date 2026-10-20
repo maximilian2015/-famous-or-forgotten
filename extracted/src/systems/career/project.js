@@ -42,6 +42,9 @@ export function payMarketOf(x) {
 
 function mediumFor(x, pay) {
   if (pay === 'ad' || pay === 'gig') return 'other';
+  // Streaming is a platform's fee table and nothing else (Streaming V1): a rescued network show keeps
+  // its type and its scale, and is streaming from the season a platform pays for.
+  if (pay === 'stream_series' || pay === 'stream_premium') return 'streaming';
   if (TV_SCALES.has(x.scale) || TV_TYPES.test(x.type || '') || pay === 'tv_daytime' || pay === 'tv_network' || pay === 'tv_prestige') return 'television';
   if (x.episodes > 0 || x.perEpisode) return 'television';
   if (FILM_SCALES.has(x.scale)) return 'theatrical';
@@ -50,7 +53,8 @@ function mediumFor(x, pay) {
 function formatFor(x, medium) {
   const type = x.type || '';
   if (medium === 'television') return /Soap Opera/.test(type) ? 'soap' : 'series';
-  if (medium === 'theatrical' || medium === 'streaming') return 'movie';
+  if (medium === 'streaming') return /Limited/.test(type) ? 'limited_series' : 'series';
+  if (medium === 'theatrical') return 'movie';
   if (/Commercial|Brand|Fashion|Jingle|Music Video/.test(type)) return 'commercial';
   if (/Magazine|Cover/.test(type)) return 'editorial';
   if (/Voice/.test(type)) return 'voiceover';
@@ -66,6 +70,7 @@ function outletFor(x, medium, pay) {
 }
 function distributionFor(x, medium) {
   if (medium === 'television') return 'broadcast';
+  if (medium === 'streaming') return 'drop';   // every episode at once (plan §5)
   if (medium !== 'theatrical') return null;
   if (x.scale === 'festival') return 'festival';
   return x.scale === 'feature' || x.scale === 'blockbuster' ? 'wide' : 'platform';
@@ -118,6 +123,9 @@ export function describeProject(x) {
     title: String(x.projectTitle || x.title || '').replace('⭐ ', '') || null,
     type: x.type || null, genre: x.genre || null,
     budget: Number.isFinite(x.budget) ? x.budget : null, needs: x.needs ?? null,
+    // Streaming: which platform, what an episode costs it (career/budget.js planEpisodeCost), and the
+    // loyalty a rescued show brings with it (career/streaming.js legacyIndex).
+    ...(medium === 'streaming' ? { platformId: x.platformId || null, episodeCost: Number.isFinite(x.episodeCost) ? x.episodeCost : null, legacy: x.legacy || 0 } : {}),
   };
 }
 
@@ -137,19 +145,26 @@ export function adoptProject(s, offer, fallbackId) {
   const parent = getProject(s, offer.parentProjectId);
   const p = { id, parentId: parent ? parent.id : null, ...describeProject(offer) };
   p.seriesId = null; p.franchiseId = null;
+  const serial = (x) => x.medium === 'television' || x.medium === 'streaming';
   if (parent && parent.medium === p.medium) {
     // The same show is the same show: its format, its outlet, its fee table; a sequel is the same
     // franchise.
-    if (p.medium === 'television') p.seriesId = parent.seriesId || parent.id;
+    if (serial(p)) p.seriesId = parent.seriesId || parent.id;
     else p.franchiseId = parent.franchiseId || parent.id;
     for (const k of ['format', 'style', 'outlet', 'awardsTrack']) if (parent[k]) p[k] = parent[k];
     if (!p.payMarket && parent.payMarket) p.payMarket = parent.payMarket;
+    // And on a platform, the same platform at the same cost an episode, unless the offer says.
+    if (p.medium === 'streaming') for (const k of ['platformId', 'episodeCost']) if (p[k] == null && parent[k] != null) p[k] = parent[k];
+  } else if (parent && serial(parent) && serial(p)) {
+    // A network show a platform picked up (bubble.js rescue) is still the same show — another
+    // medium, the same series.
+    p.seriesId = parent.seriesId || parent.id;
   } else if (parent) {
     // The film of a show is a film; it belongs to the show's world, not to its schedule.
     p.franchiseId = parent.franchiseId || parent.seriesId || parent.id;
   }
   // A show is a series from its first season in your life — even one you joined in its fourteenth.
-  if (p.medium === 'television' && !p.seriesId && (p.format === 'series' || p.format === 'soap')) p.seriesId = id;
+  if (serial(p) && !p.seriesId && (p.format === 'series' || p.format === 'soap' || p.format === 'limited_series')) p.seriesId = id;
   all[id] = p;
   return p;
 }

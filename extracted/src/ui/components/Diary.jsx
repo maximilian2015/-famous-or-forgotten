@@ -71,11 +71,16 @@ function itemsFor(g, i, abs) {
     // The month before: the studio's two weeks of you, if it is that kind of picture.
     if (r.due === abs + 1 && toursFor(r)) it('tour', '🎤', 'Press tour', r.title, r.tour ? `Done · buzz ${r.tour.buzz}` : r.tourSkipped ? 'Skipped' : r.tourAsked ? 'The letter is in Email' : 'Next month');
     if (r.due === abs) { const tv = !['small', 'indie', 'festival', 'feature', 'blockbuster'].includes(r.scale); const fest = r.scale === 'festival';
-      it('premiere', fest ? '🎞️' : tv ? '📺' : '🎬', fest ? 'The festival' : tv ? (r.scale === 'recurring' ? 'On air' : (r.season || 0) > 1 && r.joined ? 'Your first episode' : 'First episode') : 'Premiere', r.title, fest ? `In competition · ${MON[abs % 12]} ${Math.floor(r.due / 12)}` : `${dayOf(r.title)} ${MON[abs % 12]} ${Math.floor(r.due / 12)}`, { big: true, ref: { kind: 'release', id: r.id } }); }
+      it('premiere', fest ? '🎞️' : r.streaming ? '📱' : tv ? '📺' : '🎬', fest ? 'The festival' : r.streaming ? 'The drop' : tv ? (r.scale === 'recurring' ? 'On air' : (r.season || 0) > 1 && r.joined ? 'Your first episode' : 'First episode') : 'Premiere', r.title, fest ? `In competition · ${MON[abs % 12]} ${Math.floor(r.due / 12)}` : `${dayOf(r.title)} ${MON[abs % 12]} ${Math.floor(r.due / 12)}`, { big: true, ref: { kind: 'release', id: r.id } }); }
   }
   for (const c of (g.filmography || [])) {
     if (!c.running) continue;
     const weeksLeft = Math.max(0, (c.weeksTotal || 0) - (c.weeks || 0)), left = Math.ceil(weeksLeft / 4);
+    // A platform's season is out all at once: what is left is the four weeks to its number.
+    if (c.streaming) {
+      if (i < left) it('onair', '📱', 'Streaming', c.title, i === left - 1 ? 'The platform\'s number' : 'Every episode is out; the platform is counting', { card: i === 0 });
+      continue;
+    }
     const tv = !!c.tv || !['small', 'indie', 'festival', 'feature', 'blockbuster'].includes(c.scale);
     const epLeft = tv && c.episodes ? Math.max(1, Math.round((weeksLeft - i * 4) / Math.max(1, c.weeksTotal || 1) * c.episodes)) : 0;
     if (i < left) it(tv ? 'onair' : 'cinemas', tv ? '📺' : '🎟️', tv ? 'On air' : 'In cinemas', c.title, tv ? (i === left - 1 ? 'The last episodes' : `${epLeft} episode${epLeft === 1 ? '' : 's'} still to go out`) : (i === left - 1 ? 'Last weeks of the run' : `${weeksLeft - i * 4} weeks of the run left`), { card: i === 0 });

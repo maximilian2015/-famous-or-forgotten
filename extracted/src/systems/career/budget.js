@@ -68,3 +68,16 @@ export function sequelBudget(prev, scale, part = 2) {
   return Math.round(Math.max(lo, Math.min(hi * 1.1, grown)));
 }
 export function needsWords(needs) { return (needs || []).map((k) => (NEEDS[k] ? NEEDS[k].label : k)); }
+
+// ── a streaming season ────────────────────────────────────────────────────────
+// What an episode costs to make on each kind of platform, €m, before anybody's fee (Streaming V1,
+// docs/handoffs/2026-10-20-streaming-series-v1-plan.md §3). The genre places it the same way it
+// places a picture; the show itself moves it from there. Seeded, so a show costs the same every
+// season it runs on the same platform — kept on its project (career/project.js episodeCost).
+export const EPISODE_RANGE = { global: [5, 26], prestige: [6, 16], library: [1.2, 4.5], niche: [0.6, 2.8] };
+export function planEpisodeCost({ seed, genre, archetype }) {
+  const [lo, hi] = EPISODE_RANGE[archetype] || EPISODE_RANGE.library;
+  const r = rng(hash('episode:' + String(seed) + '|' + (genre || '') + '|' + archetype));
+  const t = Math.max(0, Math.min(1, (GENRE_AT[genre] ?? 0.4) + (r() - 0.5) * 0.6));
+  return Math.round(lo * Math.pow(hi / lo, t) * 10) / 10;
+}

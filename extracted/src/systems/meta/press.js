@@ -142,6 +142,9 @@ function runPieces(s) {
   const now = stamp(s);
   for (const c of s.filmography || []) {
     if (!c.running) continue;
+    // A platform's season is not on against a slot and does not take money in cinemas: neither of
+    // these columns is about it (Streaming V1). Its number is the verdict four weeks in.
+    if (c.streaming) continue;
     c._press = c._press || {};
     const weeks = c.weeks || 0, r = c.rating || 0, film = !c.tv;
     // the month it opened: the first reviews, and what the crowd is in the mood for
