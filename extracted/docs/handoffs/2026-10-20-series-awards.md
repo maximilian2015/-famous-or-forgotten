@@ -56,8 +56,30 @@ for a series, hype says "the Emmets", 📺 line under the name, passport row, Kn
   Asker cannot reach Icon today. Something like: an Asker winner, or several Emmets, or a world / streaming
   phenomenon, with longevity.
 - **Market-specific casting doors** with TV / Streaming Value (stage 4).
-- **A supporting part in a series.** Every television part in the game counts as a lead — the soap's
-  Recurring, the network drama's Series regular, the prestige Season lead and The matriarch — and guest spots
-  in the probe never reached the 70 floor (24 of them, the best rated 69). So the Supporting race is always
-  somebody else's. Which television parts are supporting is a design decision for later.
+- **Series Roles V2 — after Streaming V1** (Maxi). Real ensemble and supporting parts for existing
+  television, each with its own offer card, fee, screen time, award category and fame — never a label made
+  for the award alone. Network Drama: Lead / Ensemble regular / Recurring / Guest · Prestige Series: Lead /
+  Supporting / Guest · Soap: Lead / Recurring supporting · Limited Series: Lead / Supporting. Includes a
+  supporting part "stealing the show".
+
+## Award roles — the audit (20 Oct) and the decision
+
+Every television part an actor gets, 40 television careers (`awardRoleOf` in `career/awards.js`):
+
+| part | credits | rated 70+ | what the offer card says | award role |
+|---|---|---|---|---|
+| Network Drama · Series regular | 643 | 323 | Lead | leading |
+| Prestige Series · Season lead | 271 | 241 | Lead | leading |
+| Crime Series · Episode | 206 | 0 (best 63) | a day or two | **ineligible** |
+| Drama Series · Guest role | 192 | 0 (best 66) | a day or two | **ineligible** |
+| Soap Opera · Recurring | 170 | 49 | Lead | leading |
+| Prestige Series · The matriarch | 105 | 92 | Lead (fee ×0.8) | leading |
+| a singer's Talent Series · Judge, Music Show · Guest | — | — | — | **ineligible** (not acting) |
+
+The card, the fee and the A-list door (`carried`) all call the first four leads, so the award does too —
+relabelling one for the award alone would contradict the card the player signed. The ineligible parts are
+out explicitly, not by the rating ceiling (a guest spot's job prestige, 30–45, holds its rating near 66; a
+later formula could lift it). Supporting in a Series stays nearly empty for the player until parts that are
+honestly supporting exist: Streaming V1 brings the first ones (a supporting part with a lower fee and a card
+that says so), Series Roles V2 the rest. Same seed, six careers: identical lives before and after.
 - Diary night entry, Walk of Fame, the Standing screen's own wording: later.

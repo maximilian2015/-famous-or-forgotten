@@ -391,7 +391,7 @@ export const SERIES_CATEGORIES = { lead: 'Leading Performance in a Series', supp
 export const SERIES = {
   id: 'series', key: 'seriesAwards', name: 'Emmet', plural: 'Emmets', yearKey: 'series', hypeSource: 'seriesAward',
   nomsMonth: 4, seasonLength: 3, world: false,
-  eligible: (s, c) => trackOfWork(s, c) === 'series',
+  eligible: (s, c) => trackOfWork(s, c) === 'series' && awardRoleOf(c) !== 'ineligible',
   label: (cat) => SERIES_CATEGORIES[cat] || cat,
   // ASKER_SCALE marked television down against film — a series ×0.85, a guest spot ×0.70 — for the
   // shared pool. Here a series only meets other series, so those penalties are gone (Maxi, 20 Oct).
@@ -428,6 +428,19 @@ export function eligibleWork(s, year, T = ASKER) {
 function categoryFor(c) {
   return (c.tier === 'supporting' || c.role === 'Supporting' || /Guest|Episode|Background/.test(c.role || ''))
     ? 'supporting' : 'lead';
+}
+// Which race a series part is in, as the voters see it — read off what the game already calls
+// the part (the offer card, the fee, the career systems), never relabelled for the award alone
+// (Maxi, 20 Oct): every television part the card calls a lead is a lead, the matriarch too, and
+// a part the card calls supporting is supporting. Some parts are not a performance this award
+// judges, and say so here rather than trusting a rating ceiling a later formula could lift: a
+// guest spot or a single episode of somebody else's show, and work that is not acting — a
+// talent show's judge, a music show's guest.
+export function awardRoleOf(c) {
+  if (!c) return 'ineligible';
+  if (/Talent Series|Music Show/.test(c.type || '')) return 'ineligible';
+  if (c.scale === 'episode') return 'ineligible';
+  return categoryFor(c) === 'supporting' ? 'supporting' : 'leading';
 }
 
 // The best work anybody else made that year, as nominees. yearbook.js keeps the year's

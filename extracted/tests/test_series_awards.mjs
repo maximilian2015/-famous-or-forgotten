@@ -3,7 +3,7 @@
 // engine, with its own calendar (the list in May, the night in August). An old save's series that
 // were up for Askers move across when they can be tied to the exact credit, and nothing else does.
 import { createInitialState } from '../src/state/initialState.js';
-import { runNominations, ceremonyTick, ASKER, SERIES, trackOfWork, settleSeriesAwards, seriesLine, askerLine, awardStrength, askerStanding } from '../src/systems/career/awards.js';
+import { runNominations, ceremonyTick, ASKER, SERIES, trackOfWork, settleSeriesAwards, seriesLine, askerLine, awardStrength, askerStanding, awardRoleOf } from '../src/systems/career/awards.js';
 import { alistKey, iconKey } from '../src/systems/meta/status.js';
 import { hitWeight } from '../src/systems/meta/knownFor.js';
 import { computeLegacy } from '../src/systems/meta/legacy.js';
@@ -102,6 +102,26 @@ const show = (o = {}) => ({ id: 's1', title: 'Harbour Lights · season 2', type:
     awardStrength(net, SERIES) === awardStrength(guest, SERIES) && awardStrength(net, SERIES) > awardStrength(net, ASKER));
   ok('the prestige season keeps the voters\' ×1.30', Math.abs(awardStrength(pre, SERIES) / awardStrength(net, SERIES) - 1.30) < 1e-9);
   ok('the Asker\'s own table is untouched', awardStrength(net) < awardStrength(pre) && awardStrength(net) === awardStrength(net, ASKER));
+}
+
+// ── which race a part is in (Maxi, 20 Oct) ───────────────────────────────────
+{
+  const s = st();
+  const lead = (o) => awardRoleOf(show(o)) === 'leading';
+  ok('every part the offer card calls a lead is a lead',
+    lead({ role: 'Season lead' }) && lead({ type: 'Network Drama', scale: 'recurring', role: 'Series regular' })
+    && lead({ type: 'Soap Opera', scale: 'recurring', role: 'Recurring' }) && lead({ role: 'The matriarch' }));
+  ok('a part the card calls supporting is supporting', awardRoleOf(show({ tier: 'supporting', role: 'Supporting' })) === 'supporting');
+  // Rated 95 on purpose: out because of what the part is, not because guest spots never rate that high.
+  const guest = show({ type: 'Drama Series', scale: 'episode', role: 'Guest role', tier: 'supporting', rating: 95, closedAt: 2071 * 12 + 2 });
+  const episode = show({ type: 'Crime Series', scale: 'episode', role: 'Episode', tier: 'supporting', rating: 95 });
+  const judge = show({ type: 'Talent Series', scale: 'recurring', role: 'Judge', rating: 95 });
+  const musicGuest = show({ type: 'Music Show', scale: 'episode', role: 'Guest', rating: 95 });
+  ok('a guest spot, an episode, a judge and a music-show guest are not up for it, however well rated',
+    [guest, episode, judge, musicGuest].every((c) => awardRoleOf(c) === 'ineligible' && !SERIES.eligible(s, c)));
+  const t = st({ year: 2071, filmography: [guest] });
+  fixed(() => runNominations(at(t, SERIES.nomsMonth), SERIES));
+  ok('and the May lists leave it out', !((t.seriesAwards || {}).nominations || []).length);
 }
 
 // ── the doors ────────────────────────────────────────────────────────────────
