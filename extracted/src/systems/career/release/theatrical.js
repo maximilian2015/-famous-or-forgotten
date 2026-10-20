@@ -555,3 +555,20 @@ export function studioCall(s, credit, festival) {
     },
   });
 }
+
+// How a picture did, in the words the trades use (release.js verdictOf).
+export function moneyVerdict(rel) {
+  // Against what it cost to make AND to sell, which is the only sum anybody in the trades
+  // means by asking whether it worked. It used to be measured against the bare budget, which
+  // quietly gave every picture a marketing campaign that was free.
+  const need = breakEvenFor(rel);
+  if (!need) return 'seen';
+  const ratio = (rel.boxOffice || 0) / need;
+  // Four names and not five. A fifth tier would read better on a chart and would break twenty
+  // call sites that switch on these exact strings — franchise.js prices a sequel from a table
+  // keyed by them, and a missing key there is not a worse colour, it is NaN in somebody’s money.
+  if (ratio >= 2.0) return 'smash';
+  if (ratio >= 1.25) return 'profitable';
+  if (ratio >= 0.7) return 'broke even';
+  return 'bomb';
+}
