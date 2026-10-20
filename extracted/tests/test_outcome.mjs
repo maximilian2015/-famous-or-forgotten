@@ -24,8 +24,12 @@ test('the mapping', () => {
   const g = (c) => projectOutcome(null, c).grade;
   for (const [v, want] of [['bomb', -2], ['broke even', 0], ['profitable', 1], ['smash', 2], ['seen', 0]]) assert.equal(g({ scale: 'feature', verdict: v }), want, 'film ' + v);
   for (const [v, want] of [['ignored', -1], ['seen', 0], ['watched', 1]]) assert.equal(g({ scale: 'recurring', verdict: v }), want, 'tv ' + v);
-  assert.equal(g({ scale: 'blockbuster', verdict: 'broke even', status: 'World Hit' }), 3, 'a world hit is a phenomenon');
-  assert.equal(projectOutcome(null, { scale: 'blockbuster', verdict: 'broke even', status: 'World Hit' }).verdictGrade, 0, 'and its money verdict is still its own');
+  // A world hit is a flag beside the grade, never a +3 of its own (Maxi, 20 Oct).
+  const wh = projectOutcome(null, { scale: 'blockbuster', verdict: 'broke even', status: 'World Hit' });
+  assert.equal(wh.grade, 0, 'a world hit that only covered its cost graded ' + wh.grade);
+  assert.equal(wh.worldHit, true, 'and it is still a world hit');
+  assert.equal(projectOutcome(null, { scale: 'blockbuster', verdict: 'smash', status: 'World Hit' }).grade, 2, 'a smash world hit is a smash');
+  for (let v of ['bomb', 'broke even', 'profitable', 'smash']) assert.ok(projectOutcome(null, { scale: 'feature', verdict: v, worldHit: true }).grade < 3, 'nothing reaches +3 yet');
   assert.equal(g({ scale: 'festival', verdict: 'unsold' }), null, 'a festival picture nobody bought is not judged');
   assert.equal(g({ scale: 'feature', verdict: 'in cinemas', running: true }), null, 'a run in progress is not judged');
 });

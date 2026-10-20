@@ -8,11 +8,16 @@
 // names) change one file, not twelve.
 //
 // The grade is an ADAPTER beside the native result, never instead of it:
-//   −2 disaster · −1 weak · 0 okay · +1 success · +2 hit · +3 phenomenon
+//   −2 disaster · −1 weak · 0 okay · +1 success · +2 hit · +3 phenomenon (not given yet, see below)
 //
 //   theatrical   bomb −2 · broke even 0 · profitable +1 · smash +2 · (no break-even: 'seen') 0
-//                a World Hit is +3, and is kept apart as `phenomenon`: the money verdict under it
-//                can be anything (a €700m tentpole that only covered its cost is still a world hit)
+//                a World Hit is NOT a grade. It is its own flag, `worldHit`, beside the grade: a
+//                €700m tentpole that only covered its cost is a world hit and grades 0. The game's
+//                World Hit is huge and not hated (release.js isWorldHit: €700m with word of mouth
+//                58+, or twelve times its costs and loved) — reach, mostly; and the grade is how the
+//                work did on its own terms. Mixing them would count a world hit twice, once here and
+//                once in the fame it already earns as a flag. +3 is left for a real Global Phenomenon,
+//                defined later from reach together with a crowd that loved it (Maxi, 20 Oct).
 //   festival     prize or sold → the run is judged like any picture · unsold → not judged: nobody
 //                saw it, so nobody holds it against you (release.js)
 //   television   ignored −1 · seen 0 · watched +1 · the renewal is its own field, not a grade
@@ -42,7 +47,7 @@ export function projectOutcome(s, c) {
     : v === 'watched' || v === 'ignored' ? 'television'
     : FILM.has(c.scale) ? 'theatrical' : 'television';
   const out = { judged, medium: p ? p.medium : null, career: !c.minor, pending: !!c.running,
-    grade: null, verdictGrade: null, phenomenon: !!(c.worldHit || c.status === 'World Hit'), label: c.verdict || null,
+    grade: null, verdictGrade: null, worldHit: !!(c.worldHit || c.status === 'World Hit'), label: c.verdict || null,
     money: null, audience: null, festival: c.festival ? (c.festival.result || null) : null };
   if (!out.career || out.pending) return out;
   if (judged === 'television') {
@@ -52,7 +57,7 @@ export function projectOutcome(s, c) {
     out.verdictGrade = MONEY[c.verdict] ?? null;
     out.money = { verdict: c.verdict || null, gross: c.boxOffice || 0, needed: c.needed || 0 };
   }
-  out.grade = out.phenomenon ? 3 : out.verdictGrade;
+  out.grade = out.verdictGrade;   // never overridden by the world-hit flag
   return out;
 }
 
