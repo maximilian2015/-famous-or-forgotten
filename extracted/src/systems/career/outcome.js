@@ -33,9 +33,7 @@
 // project but goes through the television path, as it always did — whether that counts as career
 // work is the market values' question (stage 4).
 import { projectOf } from './project.js';
-
-// release.js isFilm, repeated: release.js reads this file, so it cannot be imported back.
-const FILM = new Set(['small', 'indie', 'festival', 'feature', 'blockbuster']);
+import { isFilmScale } from './scale.js';
 const MONEY = { bomb: -2, 'broke even': 0, profitable: 1, smash: 2, seen: 0 };
 const AUDIENCE = { ignored: -1, seen: 0, watched: 1 };
 const STREAM = { miss: -1, solid: 0, hit: 1, breakout: 2 };
@@ -48,7 +46,7 @@ export function projectOutcome(s, c) {
   const v = c.verdict;
   const judged = STREAM[v] != null || c.streaming ? 'streaming' : v === 'smash' || v === 'profitable' || v === 'broke even' || v === 'bomb' || v === 'unsold' ? 'theatrical'
     : v === 'watched' || v === 'ignored' ? 'television'
-    : FILM.has(c.scale) ? 'theatrical' : 'television';
+    : isFilmScale(c.scale) ? 'theatrical' : 'television';
   const out = { judged, medium: p ? p.medium : null, career: !c.minor, pending: !!c.running,
     grade: null, verdictGrade: null, worldHit: !!(c.worldHit || c.status === 'World Hit'), label: c.verdict || null,
     money: null, audience: null, festival: c.festival ? (c.festival.result || null) : null };

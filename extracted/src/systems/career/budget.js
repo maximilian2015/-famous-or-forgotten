@@ -14,6 +14,7 @@
 // when what it has to put on screen costs that. Deterministic: the same project always costs the
 // same, seeded by its id (stable through a rename), and kept on it once given.
 import { hash, rng } from '../../engine/hash.js';
+import { isFilmScale } from './scale.js';
 
 // €m, low and high. The blockbuster range is set so its middle stays where the single number was
 // (€220m): the box office for tentpoles — and the Billion Club — was calibrated there.
@@ -28,8 +29,7 @@ export const NEEDS = {
   ensemble: { label: 'a big cast', push: 0.08, odds: { Comedy: 22, Musical: 40, Drama: 12, Crime: 12, Thriller: 6 } },
   spectacle: { label: 'set pieces', push: 0.28, odds: { Comedy: 5, Drama: 3, Romance: 3, Crime: 6, Thriller: 8, Horror: 5, Musical: 8, 'Sci-Fi': 12 } },
 };
-const FILM = new Set(['small', 'festival', 'indie', 'feature', 'blockbuster']);
-export const hasBudget = (scale) => FILM.has(scale);
+export const hasBudget = (scale) => isFilmScale(scale);
 
 // The budget a project of this scale and genre costs, from its seed. { budget: €m, needs: [...] }
 export function planBudget({ seed, genre, scale }) {

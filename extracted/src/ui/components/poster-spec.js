@@ -7,6 +7,7 @@
 // a probe.
 export { hash, rng } from '../../engine/hash.js';
 import { hash, rng } from '../../engine/hash.js';
+import { isTvScale } from '../../systems/career/scale.js';
 export const one = (arr, r) => arr[Math.floor(r() * arr.length) % arr.length];
 
 // ── colour ────────────────────────────────────────────────────────────────────
@@ -182,7 +183,7 @@ export function formatOf(type, scale) {
   const ty = String(type || '');
   if (/Brand|Commercial|Jingle|Campaign|Music Video|Session|Voice/.test(ty)) return 'ad';
   if (/Soap/.test(ty)) return 'soap';
-  if (/Series|Show|Network Drama|Drama Series|Talent/.test(ty) || ['episode', 'recurring', 'prestige'].includes(scale)) return 'series';
+  if (/Series|Show|Network Drama|Drama Series|Talent/.test(ty) || isTvScale(scale)) return 'series';
   if (scale === 'festival' || /Festival/.test(ty)) return 'festival';
   return 'film';
 }

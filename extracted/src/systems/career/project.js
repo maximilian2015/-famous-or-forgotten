@@ -26,8 +26,7 @@
 import { MEDIA } from '../meta/status.js';
 
 const PAY = new Set(MEDIA);
-const FILM_SCALES = new Set(['small', 'festival', 'indie', 'feature', 'blockbuster']);
-const TV_SCALES = new Set(['episode', 'recurring', 'prestige']);
+import { FILM_SCALES, TV_SCALES } from './scale.js';
 const TV_TYPES = /Soap Opera|Series|Network Drama|Talent Series|Music Show/;
 
 // The fee table a thing is paid from, if it says. Offers and listings wrote it as `medium` before

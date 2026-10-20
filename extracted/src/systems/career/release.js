@@ -20,6 +20,7 @@ import { GENRES } from '../meta/news.js';
 import { appetiteFor, marketAfterRelease } from '../meta/market.js';
 import { maybeContinue, streamingRenewal } from './franchise.js';
 import { getProject } from './project.js';
+import { isFilmScale as isFilm } from './scale.js';
 import { platformById, platformOfKind, dropSeason, fameFromViews, hypeFor, OUTCOME_WORD } from './streaming.js';
 import { tvTermsOf } from './terms.js';
 import { appealShift } from './story.js';
@@ -128,7 +129,7 @@ export function cultTick(s) {
   s.lastEvent = `"${c.title}" — the one that sank — is a cult classic now. Somebody screens it at midnight, somebody made a t-shirt, and a line of yours is a thing people say. Nobody saw it coming, least of all the people who made it.`;
   return s;
 }
-export function isFilm(scale) { return ['small', 'indie', 'festival', 'feature', 'blockbuster'].includes(scale); }
+export { isFilmScale as isFilm } from './scale.js';
 
 // ── what a picture takes, in four stages ──────────────────────────────────────
 //

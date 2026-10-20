@@ -10,6 +10,7 @@ import { pushState, askToPush } from '../../systems/career/contract.js';
 import { isMinor } from '../../systems/meta/legacy.js';
 import { criticStars } from '../../systems/world/critics.js';
 import { platformById } from '../../systems/career/streaming.js';
+import { isFilmScale } from '../../systems/career/scale.js';
 import { theme } from '../theme.js';
 import { money, allSets } from '../helpers.js';
 import { Poster } from './Poster.jsx';
@@ -114,7 +115,7 @@ function CreditRow({ group, g }) {
       <div style={{ display: 'flex', alignItems: 'center', gap: 7, marginTop: 3, flexWrap: 'wrap', fontSize: 11.5 }}>
         {c.running
           ? <span style={{ fontSize: 10.5, fontWeight: 900, letterSpacing: '.06em', textTransform: 'uppercase', color: theme.gold }}>
-              {c.streaming ? `Streaming · all ${c.episodes || '?'} episodes out` : (c.tv || !['small', 'indie', 'festival', 'feature', 'blockbuster'].includes(c.scale)) ? `On air · episode ${Math.max(1, Math.round(((c.weeks || 0) / Math.max(1, c.weeksTotal || 1)) * (c.episodes || 1)))} of ${c.episodes || '?'}` : `In cinemas · week ${Math.max(1, c.weeks || 0)} of ${c.weeksTotal}`}</span>
+              {c.streaming ? `Streaming · all ${c.episodes || '?'} episodes out` : (c.tv || !isFilmScale(c.scale)) ? `On air · episode ${Math.max(1, Math.round(((c.weeks || 0) / Math.max(1, c.weeksTotal || 1)) * (c.episodes || 1)))} of ${c.episodes || '?'}` : `In cinemas · week ${Math.max(1, c.weeks || 0)} of ${c.weeksTotal}`}</span>
           : <span style={{ fontWeight: 900, color: starCol }}>★ {stars}</span>}
         <span style={{ color: theme.muted }}>{group.to}</span>
         {eps > 0 && <span style={{ color: theme.muted }}>{eps}eps</span>}

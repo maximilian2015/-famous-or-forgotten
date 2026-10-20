@@ -13,6 +13,7 @@ import { actorById, maybeIcon } from '../world/world.js';
 import { addHype } from '../meta/hype.js';
 import { canAfford, spend, tooTired } from '../../engine/energy.js';
 import { projectOf } from './project.js';
+import { isTvScale } from './scale.js';
 
 const clamp = (v, a = 0, b = 100) => Math.max(a, Math.min(b, v));
 // The same diminishing curve the premieres use. Five nominations at a flat +6 each put a
@@ -37,7 +38,7 @@ export const ASKER_SCALE = {
 // lifetime, and this is the number that decides it.
 export const FLOOR = 70;
 
-export function isTelevision(scale) { return ['prestige', 'recurring', 'episode'].includes(scale); }
+export function isTelevision(scale) { return isTvScale(scale); }
 export function branchOf(scale) { return isTelevision(scale) ? 'television' : 'film'; }
 
 // How strongly a piece of work argues for itself. Everything downstream — whether it is
