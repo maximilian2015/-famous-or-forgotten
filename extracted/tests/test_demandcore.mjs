@@ -81,7 +81,7 @@ function demandBefore({ fame, withFame, buzz, scale, genre, appetite, campaignTi
 
 // ── 2. world films go through the same model ─────────────────────────────────
 {
-  const src = fs.readFileSync(new URL('../src/systems/career/release.js', import.meta.url), 'utf8');
+  const src = fs.readFileSync(new URL('../src/systems/career/release/theatrical.js', import.meta.url), 'utf8')   // the box-office model's home since the media release cleanup;
   const g = src.slice(src.indexOf('export function grossFor({'), src.indexOf('export function grossFor({') + 1200);
   ok('grossFor no longer carries its own copy of the demand', !/let d = 6;/.test(g));
   ok('and calls the shared core instead', /demandCore\(/.test(g));
@@ -94,7 +94,7 @@ function demandBefore({ fame, withFame, buzz, scale, genre, appetite, campaignTi
 
 // ── 4. world films may use world data, and nothing invented ──────────────────
 {
-  const src = fs.readFileSync(new URL('../src/systems/career/release.js', import.meta.url), 'utf8');
+  const src = fs.readFileSync(new URL('../src/systems/career/release/theatrical.js', import.meta.url), 'utf8')   // the box-office model's home since the media release cleanup;
   const g = src.slice(src.indexOf('export function grossFor({'), src.indexOf('export function grossFor({') + 900);
   ok('a world film can carry a second name on the poster', /withFame/.test(g));
   ok('and which part of a series it is', /part/.test(g) && /lastRating/.test(g));

@@ -5,6 +5,12 @@
 //   node tools/move-out.mjs ui/components/Name.jsx Name,Helper,Helper --dry   # what it would do
 //   node tools/move-out.mjs ui/components/Name.jsx Name,Helper,Helper         # do it
 //
+// Any other module too (the media release split, 20 Oct 2026):
+//   node tools/move-out.mjs systems/career/release/television.js viewersFor,VIEWERS --from=systems/career/release.js
+// A module is not App: whatever it exported and gave away it still exports, re-exported from the new
+// file, so nobody that imports it has to change. --copy=clamp copies a small private helper into the
+// new file and leaves it where it was (every file here keeps its own one-line clamp).
+//
 // It copies each declaration with the comment block above it, byte for byte; writes the imports
 // the moved code reads (paths rewritten), exports what App still uses and imports it back, and
 // drops App imports nothing reads any more. It refuses when a moved piece uses something that
@@ -20,8 +26,13 @@ import fs from 'fs';
 import path from 'path';
 
 const SRC = path.resolve('src');
-const APP = path.join(SRC, 'App.jsx');
 const [outRel, namesArg, ...flags] = process.argv.slice(2);
+const flag = (k) => { const x = flags.find((f) => f.startsWith(k + '=')); return x ? x.slice(k.length + 1) : null; };
+const fromRel = flag('--from') || 'App.jsx';
+const APP = path.join(SRC, fromRel);
+const FROM_NAME = path.basename(APP);
+const isApp = fromRel === 'App.jsx';
+const copies = (flag('--copy') || '').split(',').map((x) => x.trim()).filter(Boolean);
 const dry = flags.includes('--dry');
 const names = namesArg.split(',').map((x) => x.trim()).filter(Boolean);
 const OUT = path.join(SRC, outRel);
@@ -34,7 +45,7 @@ const SHARED = {
 };
 
 const src = fs.readFileSync(APP, 'utf8');
-const ast = parseAst(src, { lang: 'jsx' }, 'App.jsx');
+const ast = parseAst(src, { lang: 'jsx' }, FROM_NAME);
 
 function declOf(n) { return (n.type === 'ExportNamedDeclaration' || n.type === 'ExportDefaultDeclaration') ? n.declaration : n; }
 function declNames(n) {
@@ -90,12 +101,15 @@ function region(n) {
 const moving = new Set();
 for (const nm of names) {
   const n = local.get(nm);
-  if (!n) throw new Error(`no top-level ${nm} in App.jsx`);
+  if (!n) throw new Error(`no top-level ${nm} in ${FROM_NAME}`);
   for (const other of declNames(n)) if (!names.includes(other)) throw new Error(`${nm} is declared together with ${other}`);
   moving.add(n);
 }
 const movingNodes = [...moving].sort((x, y) => x.start - y.start);
 const movingNames = new Set(movingNodes.flatMap(declNames));
+// Copied, not moved: written into the new file, left where they are.
+const copyNodes = copies.map((nm) => { const n = local.get(nm); if (!n) throw new Error(`no top-level ${nm} to copy`); return n; });
+const copyNames = new Set(copyNodes.flatMap(declNames));
 
 // What the moved code needs.
 const needImports = new Map();   // source -> Map(imported -> local)
@@ -104,11 +118,11 @@ const addImport = (source, imported, localName) => {
   if (!needImports.has(source)) needImports.set(source, new Map());
   needImports.get(source).set(imported, localName);
 };
-for (const n of movingNodes) for (const r of refs(n)) {
-  if (movingNames.has(r)) continue;
+for (const n of [...movingNodes, ...copyNodes]) for (const r of refs(n)) {
+  if (movingNames.has(r) || copyNames.has(r)) continue;
   if (SHARED[r] && !movingNames.has(r)) { addImport('@/' + SHARED[r], r, r); continue; }
   if (imports.has(r)) { const im = imports.get(r); addImport(im.source, im.imported, r); continue; }
-  if (local.has(r)) problems.push(`${declNames(n)} uses App-local ${r}`);
+  if (local.has(r)) problems.push(`${declNames(n)} uses ${FROM_NAME}-local ${r}`);
 }
 if (problems.length) { console.log('BLOCKED\n  ' + [...new Set(problems)].join('\n  ')); process.exit(1); }
 
@@ -117,12 +131,12 @@ const staying = ast.body.filter((n) => !moving.has(n) && n.type !== 'ImportDecla
 const usedByApp = new Set();
 for (const n of staying) for (const r of refs(n)) if (movingNames.has(r)) usedByApp.add(r);
 
-// Rewrite an import source (relative to src/App.jsx, or '@/x' meaning src/x) for the new file.
+// Rewrite an import source (relative to the source file, or '@/x' meaning src/x) for the new file.
 const outDir = path.dirname(OUT);
 function rel(source) {
   let abs;
   if (source.startsWith('@/')) abs = path.join(SRC, source.slice(2));
-  else if (source.startsWith('.')) abs = path.resolve(SRC, source);
+  else if (source.startsWith('.')) abs = path.resolve(path.dirname(APP), source);
   else return source;
   let r = path.relative(outDir, abs).split(path.sep).join('/');
   if (!r.startsWith('.')) r = './' + r;
@@ -160,6 +174,7 @@ const rank = (s) => s === 'react' ? 0 : !s.startsWith('.') ? 1 : /\/state\//.tes
 const order = [...needImports.keys()].map((s) => [s, rel(s)]).sort((a, b) => rank(a[1]) - rank(b[1]));
 const header = order.map(([s, r]) => importLine(r, [...needImports.get(s)])).join('\n');
 let body = '';
+for (const n of copyNodes) { const [a, b] = region(n); body += src.slice(a, b); }
 for (const n of movingNodes) {
   const [a, b] = region(n);
   let text = src.slice(a, b);
@@ -178,18 +193,22 @@ let app = src;
 for (const [a, b] of cuts) app = app.slice(0, a) + app.slice(b);
 
 // Import the moved names App still uses, after the last import declaration.
-const appRel = (() => { let r = path.relative(SRC, OUT).split(path.sep).join('/'); return r.startsWith('.') ? r : './' + r; })();
+const appRel = (() => { let r = path.relative(path.dirname(APP), OUT).split(path.sep).join('/'); return r.startsWith('.') ? r : './' + r; })();
 const exportedList = [...usedByApp].sort((a, b) => a.localeCompare(b));
-if (exportedList.length) {
-  const a2 = parseAst(app, { lang: 'jsx' }, 'App.jsx');
+// A module keeps exporting what it exported: everybody who imports it from here still finds it.
+const publicMoved = isApp ? [] : movingNodes.filter((n) => n.type === 'ExportNamedDeclaration').flatMap(declNames).sort((a, b) => a.localeCompare(b));
+if (exportedList.length || publicMoved.length) {
+  const a2 = parseAst(app, { lang: 'jsx' }, FROM_NAME);
   const lastImp = [...a2.body].reverse().find((n) => n.type === 'ImportDeclaration');
-  const at = app.indexOf('\n', lastImp.end) + 1;
-  app = app.slice(0, at) + importLine(appRel, exportedList.map((x) => [x, x])) + '\n' + app.slice(at);
+  const at = lastImp ? app.indexOf('\n', lastImp.end) + 1 : 0;
+  const lines = (exportedList.length ? importLine(appRel, exportedList.map((x) => [x, x])) + '\n' : '')
+    + (publicMoved.length ? importLine(appRel, publicMoved.map((x) => [x, x])).replace(/^import /, 'export ') + '\n' : '');
+  app = app.slice(0, at) + lines + app.slice(at);
 }
 
 // Drop App imports nothing in App reads any more.
 {
-  const a3 = parseAst(app, { lang: 'jsx' }, 'App.jsx');
+  const a3 = parseAst(app, { lang: 'jsx' }, FROM_NAME);
   const used = new Set();
   for (const n of a3.body) if (n.type !== 'ImportDeclaration') for (const r of refs(n)) used.add(r);
   const edits = [];
@@ -208,8 +227,10 @@ if (exportedList.length) {
 // that is reported, not acted on.
 
 console.log(`moving ${[...movingNames].join(', ')}  (${body.split('\n').length - 1} lines)`);
-console.log(`exported back to App: ${exportedList.join(', ') || '(none)'}`);
-console.log(`App.jsx ${src.split('\n').length} -> ${app.split('\n').length} lines`);
+console.log(`imported back into ${FROM_NAME}: ${exportedList.join(', ') || '(none)'}`);
+if (publicMoved.length) console.log(`re-exported from ${FROM_NAME}: ${publicMoved.join(', ')}`);
+if (copyNames.size) console.log(`copied, not moved: ${[...copyNames].join(', ')}`);
+console.log(`${FROM_NAME} ${src.split('\n').length} -> ${app.split('\n').length} lines`);
 if (dry) { console.log('\n' + header); process.exit(0); }
 if (fs.existsSync(OUT)) throw new Error(`${outRel} exists already`);
 fs.mkdirSync(outDir, { recursive: true });
