@@ -52,4 +52,9 @@ for (let k = 0; k < CAREERS; k++) {
       c.season || 0, c.part || 0, Math.round(c.salary || 0), c.minor ? 'minor' : '', c.renewal || '', c.status || ''].join(' | '));
   }
   for (const y of years) console.log('  ' + y);
+  // And the awards, both tracks, so a change to them is caught too.
+  for (const key of ['awards', 'seriesAwards']) {
+    const a = s[key];
+    if (a) console.log(`  ${key}: nominations ${JSON.stringify((a.nominations || []).map((n) => [n.year, n.category, n.title]))} wins ${JSON.stringify((a.wins || []).map((w) => [w.year, w.category, w.title]))} losses ${a.losses || 0} history ${(a.history || []).length}`);
+  }
 }

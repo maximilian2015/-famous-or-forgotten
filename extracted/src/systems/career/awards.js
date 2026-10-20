@@ -350,7 +350,27 @@ export function isSeasonYear(year) { return year % EVERY === 0; }
 // then everybody waits until March with it hanging over them. NOMS_MONTH is September,
 // SEASON_LENGTH the six months to the night.
 export const NOMS_MONTH = 8, SEASON_LENGTH = 6;
-export function eligibleWork(s, year) {
+
+// ── a track: one award, its calendar, its words and what it does to you ──────
+// The Asker is the first. The engine below — the lists, the field, the record, the room's
+// reasons, the night — reads everything that is the Asker's own from here, so a second award
+// (the series award) is a second track on the same engine, not a copy of it.
+export const ASKER = {
+  id: 'asker', key: 'awards', name: 'Asker', plural: 'Askers', yearKey: 'askers',
+  nomsMonth: NOMS_MONTH, seasonLength: SEASON_LENGTH, world: true,
+  eligible: () => true,
+  label: (cat) => (CATEGORIES.find((c) => c.id === cat) || {}).label || cat,
+  nom: { hype: 45, quote: 1.25, respect: 6, fame: 3 },
+  win: { hype: 75, quote: 1.85, respect: 15, fame: (f) => Math.max(f + 18, Math.min(70, f + 34)) },
+  picture: { respect: 6, fame: 4 },
+  mark: { win: 'asker', nominated: 'nominated', picture: 'askerPicture', best: 'bestPicture' },
+};
+export function trackState(s, T = ASKER) {
+  if (!s[T.key]) s[T.key] = { losses: 0, wins: [], nominations: [], pending: null, history: [] };
+  return s[T.key];
+}
+export function winsOf(s, T = ASKER) { return ((s[T.key] || {}).wins || []).filter((w) => w.category !== 'picture'); }
+export function eligibleWork(s, year, T = ASKER) {
   // The twelve months ending with the announcement — a film that opened last October is in
   // this season, and one that opened last August was in the last one.
   const now = (s.year || 0) * 12 + (s.month || 0);
@@ -360,7 +380,7 @@ export function eligibleWork(s, year) {
   const inWindow = (c) => (c.closedAt != null ? c.closedAt > from && c.closedAt <= now : (c.year || 0) >= (s.year || 0) - 1);
   return [...(s.filmography || []), ...(s.discography || [])]
     // A film still in cinemas is in the season — the lists and the run overlap, as they do.
-    .filter((c) => !c.minor && (c.rating || 0) >= FLOOR && inWindow(c));
+    .filter((c) => !c.minor && (c.rating || 0) >= FLOOR && inWindow(c) && T.eligible(s, c));
 }
 
 function categoryFor(c) {
@@ -388,9 +408,11 @@ function worldField(s, year, category) {
     .filter((n) => n.strength > 0)
     .sort((a, b) => b.strength - a.strength);
 }
-function fieldFor(s, year, category, you, taken) {
+function fieldFor(s, year, category, you, taken, T = ASKER) {
   const field = you ? [you] : [];
-  const theirs = worldField(s, year, category).filter((n) => !taken.has(n.work));
+  // The world's year lists are pictures; a track the world does not make (series) draws its
+  // field from the rivals alone.
+  const theirs = (T.world ? worldField(s, year, category) : []).filter((n) => !taken.has(n.work));
   // Never the same actor twice in one race.
   const seen = new Set();
   for (const n of theirs) { if (field.length >= 5) break; if (seen.has(n.id)) continue; seen.add(n.id); taken.add(n.work); field.push(n); }
@@ -400,20 +422,21 @@ function fieldFor(s, year, category, you, taken) {
 
 // Called once a year. Decides what, if anything, you are up for — and what everybody
 // else is, because the night happens whether or not your name is read out.
-export function runNominations(s) {
-  if ((s.month || 0) !== NOMS_MONTH) return null;
+export function runNominations(s, T = ASKER) {
+  if ((s.month || 0) !== T.nomsMonth) return null;
   // One season at a time — but a season whose night has already been and gone is not a
   // season, it is a leftover, and it used to block every list after it for the rest of the
   // life. Maxi: "September, and no nominations window, why?"
-  if (s.awards && s.awards.pending && s.awards.pending.length) {
+  const before = s[T.key];
+  if (before && before.pending && before.pending.length) {
     const now0 = (s.year || 0) * 12 + (s.month || 0);
-    if ((s.awards.pending[0].due || 0) > now0) return null;
-    s.awards.pending = null;
+    if ((before.pending[0].due || 0) > now0) return null;
+    before.pending = null;
   }
   const year = (s.year || 0);             // the season is named for the year the lists come out
-  const work = eligibleWork(s, year);
-  s.awards = s.awards || { losses: 0, wins: [], nominations: [], pending: null, history: [] };
-  if (!work.length) return theirNight(s, year);
+  const work = eligibleWork(s, year, T);
+  const A = trackState(s, T);
+  if (!work.length) return theirNight(s, year, T);
 
   const noms = [];
   for (const c of work) {
@@ -441,7 +464,7 @@ export function runNominations(s) {
   const kept = []; let acting = 0, picture = 0;
   for (const n of noms) { if (n.category === 'picture') { if (picture++ < 1) kept.push(n); } else if (acting++ < 1) kept.push(n); }
   noms.splice(0, noms.length, ...kept);
-  if (!noms.length) return theirNight(s, year);
+  if (!noms.length) return theirNight(s, year, T);
 
   // Two of your own in one category split the room. The classic good-year trap.
   const perCat = {};
@@ -450,59 +473,59 @@ export function runNominations(s) {
 
   const pending = noms.map((n) => {
     const you = { id: 'you', name: s.name || 'You', work: n.credit.title, strength: n.strength,
-      respect: s.respect || 50, losses: s.awards.losses || 0, campaign: n.credit.campaignShare || 0,
-      askers: yourAskers(s).length, them: false };
+      respect: s.respect || 50, losses: A.losses || 0, campaign: n.credit.campaignShare || 0,
+      askers: winsOf(s, T).length, them: false };
     const taken = new Set([n.credit.title, ...work.map((c) => c.title)]);
-    const field = fieldFor(s, year, n.category, you, taken);
+    const field = fieldFor(s, year, n.category, you, taken, T);
     const odds = oddsFor(field);
     // The id as well as the title. Six months pass between the list and the night, and the
     // credit was found again by NAME — so anything that moved the name in between lost the
     // award off the film. Maxi: "there is nothing saying this film won." career/naming.js
     // lets a picture be renamed, which is exactly the gap.
     return { category: n.category, branch: n.branch, title: n.credit.title, creditId: n.credit.id, creditYear: n.credit.year, year,
-      field, odds, yourOdds: odds[0], due: (s.year || 0) * 12 + (s.month || 0) + SEASON_LENGTH };
+      field, odds, yourOdds: odds[0], due: (s.year || 0) * 12 + (s.month || 0) + T.seasonLength };
   });
   // The races you are not in still happen that night.
   const due = pending[0].due;
   for (const cat of ['lead', 'supporting', 'picture']) {
     if (pending.some((p) => p.category === cat)) continue;
     const taken = new Set(pending.map((p) => p.title));
-    const field = fieldFor(s, year, cat, null, taken);
+    const field = fieldFor(s, year, cat, null, taken, T);
     pending.push({ category: cat, branch: 'film', title: null, year, field, odds: oddsFor(field), yourOdds: 0, due, theirs: true });
   }
-  for (const p of pending) for (const n of p.field) { if (n.them && n.id) { const a = actorById(s, n.id); if (a) a.noms = (a.noms || 0) + 1; } }
+  if (T.world) for (const p of pending) for (const n of p.field) { if (n.them && n.id) { const a = actorById(s, n.id); if (a) a.noms = (a.noms || 0) + 1; } }
 
   // The credit wears the nomination from the day the lists come out. Maxi wanted to SEE it.
   for (const p of pending) {
     if (p.theirs || !p.title) continue;
     const shelf = [...(s.filmography || []), ...(s.discography || [])];
     const c = shelf.find((x) => p.creditId && x.id === p.creditId) || shelf.find((x) => x.title === p.title);
-    if (c) c.nominated = (c.nominated || 0) + 1;
+    if (c) c[T.mark.nominated] = (c[T.mark.nominated] || 0) + 1;
   }
-  s.awards.pending = pending;
-  s.awards.nominations = (s.awards.nominations || []).concat(
+  A.pending = pending;
+  A.nominations = (A.nominations || []).concat(
     pending.filter((p) => !p.theirs && p.title).map((p) => ({ title: p.title, category: p.category, year })));
-  addHype(s, 45, 'award');   // the season: your name on the lists (meta/hype.js)
+  addHype(s, T.nom.hype, 'award');   // the season: your name on the lists (meta/hype.js)
   // A nomination is a title you keep. It moves what you can ask for, immediately.
-  setQuote(s, (s.quote || 0) * 1.25 || s.quote);
-  setRespect(s, (s.respect || 0) + 6 * headroom(112, s.respect));
-  setFame(s, (s.fame || 0) + 3 * headroom(118, s.fame));
+  setQuote(s, (s.quote || 0) * T.nom.quote || s.quote);
+  setRespect(s, (s.respect || 0) + T.nom.respect * headroom(112, s.respect));
+  setFame(s, (s.fame || 0) + T.nom.fame * headroom(118, s.fame));
   // Only the races you are actually in. `pending` carries the other two so the night can
   // be held around you (theirs: true, title: null) — and the morning screen was counting
   // them: "3 NOMINATIONS", then two rows reading Leading Performance — "null".
   const mine = pending.filter((p) => !p.theirs && p.title);
-  const labels = mine.map((p) => CATEGORIES.find((c) => c.id === p.category)?.label || p.category);
-  addTimeline(s, `Asker nominations: ${labels.join(', ')} for "${mine[0].title}".`);
+  const labels = mine.map((p) => T.label(p.category));
+  addTimeline(s, `${T.name} nominations: ${labels.join(', ')} for "${mine[0].title}".`);
   showMoment(s, {
-    id: 'nomination', kind: 'good', title: 'Asker nominations',
+    id: 'nomination', kind: 'good', title: `${T.name} nominations`, award: T.plural,
     work: mine[0].title, count: mine.length,
-    lines: mine.map((p) => `${CATEGORIES.find((c) => c.id === p.category)?.label} — "${p.title}"\n${buzzOf(p.yourOdds)}`),
+    lines: mine.map((p) => `${T.label(p.category)} — "${p.title}"\n${buzzOf(p.yourOdds)}`),
     body: mine.length > 1
       ? `${mine.length} nominations. The phone has not stopped since six this morning.`
       : `Nominated for ${labels[0]}. Whatever else happens now, that stays after your name.`,
   });
   // …and then the lists themselves, behind your own news.
-  showLists(s, pending);
+  showLists(s, pending, T);
   return pending;
 }
 
@@ -511,11 +534,11 @@ export function runNominations(s) {
 // The September lists, as the player sees them: five names a category, yours marked.
 // Maxi asked to SEE whether his film and his name were in them, and a year he was not in
 // showed him nothing at all — which is not how a nomination morning works.
-function showLists(s, pending) {
+function showLists(s, pending, T = ASKER) {
   const rows = ['lead', 'supporting', 'picture'].map((cat) => {
     const p = (pending || []).find((x) => x.category === cat);
     if (!p) return null;
-    const label = (CATEGORIES.find((c) => c.id === cat) || {}).label || cat;
+    const label = T.label(cat);
     const names = (p.field || []).slice(0, 5).map((n) => ({
       name: cat === 'picture' ? (n.work || n.name) : n.name,
       work: cat === 'picture' ? null : n.work,
@@ -525,33 +548,33 @@ function showLists(s, pending) {
   }).filter(Boolean);
   const mine = rows.filter((r) => r.youIn).length;
   showMoment(s, {
-    id: 'nominations', kind: mine ? 'good' : 'plain', title: 'The nominations',
+    id: 'nominations', kind: mine ? 'good' : 'plain', title: 'The nominations', award: T.plural,
     lists: rows, count: mine,
     body: mine ? `${mine === 1 ? 'One' : String(mine)} of them has your name in it. The night is in March.`
       : 'Not this year. The lists are read in September and the night is in March, and between the two everybody pretends not to be counting.',
   });
 }
-function theirNight(s, year) {
+function theirNight(s, year, T = ASKER) {
   const pending = [];
-  const due = (s.year || 0) * 12 + (s.month || 0) + SEASON_LENGTH;
+  const due = (s.year || 0) * 12 + (s.month || 0) + T.seasonLength;
   for (const cat of ['lead', 'supporting', 'picture']) {
     const taken = new Set(pending.map((p) => p.field.map((n) => n.work)).flat());
-    const field = fieldFor(s, year, cat, null, taken);
+    const field = fieldFor(s, year, cat, null, taken, T);
     pending.push({ category: cat, branch: 'film', title: null, year, field, odds: oddsFor(field), yourOdds: 0, due, theirs: true });
   }
-  for (const p of pending) for (const n of p.field) { if (n.them && n.id) { const a = actorById(s, n.id); if (a) a.noms = (a.noms || 0) + 1; } }
-  s.awards.pending = pending;
-  showLists(s, pending);
+  if (T.world) for (const p of pending) for (const n of p.field) { if (n.them && n.id) { const a = actorById(s, n.id); if (a) a.noms = (a.noms || 0) + 1; } }
+  trackState(s, T).pending = pending;
+  showLists(s, pending, T);
   return null;
 }
 // A rival who wins is a rival who is more famous tomorrow. Written on the year's entry so
 // the wall in Legacy can show who took what.
-function recordTheirWin(s, p, winner) {
+function recordTheirWin(s, p, winner, T = ASKER) {
   if (!winner.them) return;
-  const a = winner.id ? actorById(s, winner.id) : null;
+  const a = T.world && winner.id ? actorById(s, winner.id) : null;
   if (a) { a.askers = (a.askers || 0) + 1; a.fame = Math.min(100, (a.fame || 0) + 10); a.respect = Math.min(100, (a.respect || 50) + 10); maybeIcon(a, s.year); }
   const entry = s.world && s.world.years && s.world.years[p.year];
-  if (entry) (entry.askers = entry.askers || []).push({ category: p.category, name: winner.name, work: winner.work });
+  if (entry) (entry[T.yearKey] = entry[T.yearKey] || []).push({ category: p.category, name: winner.name, work: winner.work });
 }
 
 // Runs monthly. The ceremony lands a couple of months after the nominations.
@@ -572,8 +595,8 @@ export function theSeason(s) {
     })),
   };
 }
-export function ceremonyTick(s) {
-  const a = s.awards;
+export function ceremonyTick(s, T = ASKER) {
+  const a = s[T.key];
   if (!a || !a.pending || !a.pending.length) return s;
   const now = (s.year || 0) * 12 + (s.month || 0);
   if (a.pending[0].due > now) return s;
@@ -581,8 +604,8 @@ export function ceremonyTick(s) {
   const results = [];
   for (const p of a.pending) {
     const winner = pickWinner(p.field);
-    if (!winner.them) { const entry = s.world && s.world.years && s.world.years[p.year]; if (entry) (entry.askers = entry.askers || []).push({ category: p.category, name: s.name, work: p.title, you: true }); }
-    recordTheirWin(s, p, winner);
+    if (!winner.them) { const entry = s.world && s.world.years && s.world.years[p.year]; if (entry) (entry[T.yearKey] = entry[T.yearKey] || []).push({ category: p.category, name: s.name, work: p.title, you: true }); }
+    recordTheirWin(s, p, winner, T);
     results.push({ category: p.category, title: p.title, creditId: p.creditId, won: !winner.them, winner: winner.name, work: winner.work, odds: p.yourOdds, theirs: !!p.theirs });
   }
   const yours = results.filter((r) => !r.theirs);
@@ -590,15 +613,15 @@ export function ceremonyTick(s) {
   // Nothing of yours was up. The night still happened, and you know who won.
   if (!yours.length) {
     const lead = results.find((r) => r.category === 'lead') || results[0];
-    addTimeline(s, `The Askers: ${results.map((r) => `${CATEGORIES.find((c) => c.id === r.category)?.label} — ${r.winner}`).join(' · ')}.`);
+    addTimeline(s, `The ${T.plural}: ${results.map((r) => `${T.label(r.category)} — ${r.winner}`).join(' · ')}.`);
     a.history = (a.history || []).concat(results.map((r) => ({ ...r, year: s.year })));
     // Queued behind anything louder this month, and it does not touch lastEvent: a night
     // you were not part of must not overwrite the line about your own life.
     if (s.stage === 'career') {
       (s.moments = s.moments || []).push({
-        id: 'ceremony', kind: 'good', quiet: true, title: lead.winner, work: lead.work,
-        category: CATEGORIES.find((c) => c.id === lead.category)?.label || '', odds: 0, losses: a.losses || 0,
-        lines: results.map((r) => `${CATEGORIES.find((c) => c.id === r.category)?.label} — ${r.winner}${r.work ? ` for "${r.work}"` : ''}`),
+        id: 'ceremony', kind: 'good', quiet: true, award: T.plural, title: lead.winner, work: lead.work,
+        category: T.label(lead.category), odds: 0, losses: a.losses || 0,
+        lines: results.map((r) => `${T.label(r.category)} — ${r.winner}${r.work ? ` for "${r.work}"` : ''}`),
         body: (s.filmography || []).length
           ? 'You watched it from the sofa. Next year, the idea is, you watch it from the room.'
           : 'You watched it on television, like everybody else in the country.',
@@ -618,13 +641,13 @@ export function ceremonyTick(s) {
   const won = acting;
   for (const r of picture) {
     const c = [...(s.filmography || []), ...(s.discography || [])].find((x) => x.title === r.title);
-    if (c) c.bestPicture = true;
-    setRespect(s, (s.respect || 0) + 6 * headroom(112, s.respect));
-    setFame(s, (s.fame || 0) + 4 * headroom(118, s.fame));
-    addTimeline(s, `"${r.title}" won Best Picture. You were in it, and everybody knows.`);
+    if (c) c[T.mark.best] = true;
+    setRespect(s, (s.respect || 0) + T.picture.respect * headroom(112, s.respect));
+    setFame(s, (s.fame || 0) + T.picture.fame * headroom(118, s.fame));
+    addTimeline(s, `"${r.title}" won ${T.label('picture')}. You were in it, and everybody knows.`);
   }
   if (won.length) {
-    addHype(s, 75, 'award');
+    addHype(s, T.win.hype, 'award');
     a.wins = (a.wins || []).concat(won.map((r) => ({ title: r.title, category: r.category, year: s.year })));
     a.losses = 0;
     // Marked in the filmography for good.
@@ -632,43 +655,43 @@ export function ceremonyTick(s) {
       const shelf = [...(s.filmography || []), ...(s.discography || [])];
       // By id first; by title only for a season that started before ids were carried.
       const c = shelf.find((x) => r.creditId && x.id === r.creditId) || shelf.find((x) => x.title === r.title);
-      if (c) { c.asker = (c.asker || 0) + 1; if (r.category === "picture") c.askerPicture = (c.askerPicture || 0) + 1; }
+      if (c) { c[T.mark.win] = (c[T.mark.win] || 0) + 1; if (r.category === "picture") c[T.mark.picture] = (c[T.mark.picture] || 0) + 1; }
     }
     // An Asker really does make you famous overnight — that is most of what it is for.
     // The first version of this gave +8 and called it "not about tickets", which was
     // wrong: winning one moves you into the room where the A-list is, whatever your
     // box office says. So it lifts you toward the top of Star even from nowhere.
-    setQuote(s, (s.quote || 0) * 1.85 || s.quote);
-    setRespect(s, (s.respect || 0) + 15);
-    setFame(s, Math.max((s.fame || 0) + 18, Math.min(70, (s.fame || 0) + 34)));
+    setQuote(s, (s.quote || 0) * T.win.quote || s.quote);
+    setRespect(s, (s.respect || 0) + T.win.respect);
+    setFame(s, T.win.fame(s.fame || 0));
     s.peakFame = Math.max(s.peakFame || 0, s.fame);
-    addTimeline(s, `🏆 Won the Asker for ${won.map((r) => CATEGORIES.find((c) => c.id === r.category)?.label).join(' and ')}.`);
+    addTimeline(s, `🏆 Won the ${T.name} for ${won.map((r) => T.label(r.category)).join(' and ')}.`);
   } else if (!picture.length) {
     a.losses = (a.losses || 0) + 1;
-    addTimeline(s, `Went to the Askers and came home empty-handed. ${yours[0].winner} took it.`, true);
+    addTimeline(s, `Went to the ${T.plural} and came home empty-handed. ${yours[0].winner} took it.`, true);
   }
   a.history = (a.history || []).concat(results.map((r) => ({ ...r, year: s.year })));
 
   const first = yours[0];
   const anyGood = won.length || picture.length;
   showMoment(s, {
-    id: 'ceremony', kind: anyGood ? 'good' : 'bad',
-    title: won.length ? 'You won' : picture.length ? 'Best Picture' : first.winner,
+    id: 'ceremony', kind: anyGood ? 'good' : 'bad', award: T.plural,
+    title: won.length ? 'You won' : picture.length ? T.label('picture') : first.winner,
     work: won.length ? won[0].title : picture.length ? picture[0].title : first.work,
-    category: CATEGORIES.find((c) => c.id === first.category)?.label || '',
+    category: T.label(first.category),
     odds: first.odds, losses: a.losses,
-    lines: results.map((r) => `${CATEGORIES.find((c) => c.id === r.category)?.label} — ${r.won ? 'YOU' : r.winner}${r.theirs && r.work ? ` for "${r.work}"` : ''}`),
+    lines: results.map((r) => `${T.label(r.category)} — ${r.won ? 'YOU' : r.winner}${r.theirs && r.work ? ` for "${r.work}"` : ''}`),
     body: won.length
       ? (won.length > 1
         ? `Twice in one night. You are going to be introduced differently for the rest of your life.`
         : `They read your name. The walk to the stage is longer than it looks on television.`)
       : picture.length
-      ? `"${picture[0].title}" took Best Picture. The producers went up; you stood and clapped from the second row, and every photograph of that stage has you in it.`
+      ? `"${picture[0].title}" took ${T.label('picture')}. The producers went up; you stood and clapped from the second row, and every photograph of that stage has you in it.`
       : a.losses >= 4
         ? `Again. ${first.winner} for "${first.work}". You have now sat through this ${a.losses} times, and people have started counting out loud.`
         : `${first.winner} for "${first.work}". You clapped. The camera was on you the whole time.`,
   });
-  s.lastEvent = won.length ? `You won the Asker for "${won[0].title}".` : `${first.winner} won. You did not.`;
+  s.lastEvent = won.length ? `You won the ${T.name} for "${won[0].title}".` : `${first.winner} won. You did not.`;
   return s;
 }
 
