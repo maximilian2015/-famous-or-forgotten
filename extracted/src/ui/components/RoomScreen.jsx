@@ -6,6 +6,7 @@ import { HOUSING } from '../../engine/economy.js';
 import { canThrowParty, PARTY_ORDER, PARTIES, partyRisk, throwParty } from '../../systems/life/party.js';
 import { lookOf, wearOutfit, OUTFITS } from '../../systems/life/appearance.js';
 import { PILLS } from '../../systems/life/health.js';
+import { ASKER, SERIES } from '../../systems/career/awards.js';
 import { theme } from '../theme.js';
 import { Card } from './Card.jsx';
 import { Button } from './Button.jsx';
@@ -51,9 +52,28 @@ function PartySection({ g }) {
 }
 // One statuette per win, standing on a real shelf. Winning something and only ever
 // seeing it as a number on a results screen is not the same as owning it.
+// Both awards stand on it: the Asker gold, the series award silver with its globe.
+const EMMET_SILVER = '#cdd5e6';
+function Statuette({ kind }) {
+  if (kind === 'series') return (<svg viewBox="0 0 40 64" style={{ width: 34, height: 54 }}>
+    <circle cx="20" cy="9" r="6" fill="none" stroke={EMMET_SILVER} strokeWidth="2" />
+    <path d="M14 9 L26 9" stroke={EMMET_SILVER} strokeWidth="1.2" />
+    <path d="M20 16 L20 22 M12 24 L20 20 L28 24" stroke={EMMET_SILVER} strokeWidth="2.6" strokeLinecap="round" fill="none" />
+    <path d="M16 22 L24 22 L22 46 L18 46 Z" fill={EMMET_SILVER} />
+    <path d="M11 46 L29 46 L31 58 L9 58 Z" fill="#3a3068" stroke={EMMET_SILVER} strokeWidth="1.4" />
+  </svg>);
+  return (<svg viewBox="0 0 40 64" style={{ width: 34, height: 54 }}>
+    <circle cx="20" cy="12" r="7" fill={theme.gold} />
+    <path d="M14 19 L26 19 L24 46 L16 46 Z" fill={theme.gold} />
+    <path d="M14 20 L7 34 M26 20 L33 34" stroke={theme.gold} strokeWidth="3" strokeLinecap="round" />
+    <path d="M11 46 L29 46 L31 58 L9 58 Z" fill="#3a3068" stroke={theme.gold} strokeWidth="1.4" />
+  </svg>);
+}
 function AskerShelf({ g }) {
-  const wins = g.awards?.wins || [];
-  const noms = (g.awards?.nominations || []).length;
+  const wins = [...(g.awards?.wins || []).map((w) => ({ ...w, kind: 'asker' })),
+    ...(g[SERIES.key]?.wins || []).filter((w) => w.category !== 'picture').map((w) => ({ ...w, kind: 'series' }))]
+    .sort((a, b) => (a.year || 0) - (b.year || 0));
+  const noms = (g.awards?.nominations || []).length + (g[SERIES.key]?.nominations || []).length;
   if (!wins.length && !noms) return null;
   return (<div style={{ marginTop: 16 }}>
     <div style={{ fontSize: 11, fontWeight: 900, letterSpacing: '.09em', textTransform: 'uppercase', color: theme.gold, marginBottom: 6 }}>
@@ -62,19 +82,12 @@ function AskerShelf({ g }) {
     <Card>
       {wins.length > 0 ? (<>
         <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap', justifyContent: 'center', padding: '4px 0 10px' }}>
-          {wins.slice(0, 8).map((w, i) => (
-            <svg key={i} viewBox="0 0 40 64" style={{ width: 34, height: 54 }}>
-              <circle cx="20" cy="12" r="7" fill={theme.gold} />
-              <path d="M14 19 L26 19 L24 46 L16 46 Z" fill={theme.gold} />
-              <path d="M14 20 L7 34 M26 20 L33 34" stroke={theme.gold} strokeWidth="3" strokeLinecap="round" />
-              <path d="M11 46 L29 46 L31 58 L9 58 Z" fill="#3a3068" stroke={theme.gold} strokeWidth="1.4" />
-            </svg>
-          ))}
+          {wins.slice(0, 8).map((w, i) => <Statuette key={i} kind={w.kind} />)}
         </div>
         {wins.slice(0, 8).map((w, i) => (
           <div key={i} style={{ display: 'flex', justifyContent: 'space-between', fontSize: 12, padding: '5px 0', borderTop: `1px solid ${theme.line}` }}>
             <span style={{ fontWeight: 700 }}>{w.title}</span>
-            <span style={{ color: theme.muted }}>{w.year}</span>
+            <span style={{ color: theme.muted }}>{w.kind === 'series' ? SERIES.name : ASKER.name} · {w.year}</span>
           </div>
         ))}
       </>) : (

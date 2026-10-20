@@ -3,7 +3,8 @@
 // engine, with its own calendar (the list in May, the night in August). An old save's series that
 // were up for Askers move across when they can be tied to the exact credit, and nothing else does.
 import { createInitialState } from '../src/state/initialState.js';
-import { runNominations, ceremonyTick, ASKER, SERIES, trackOfWork, settleSeriesAwards, seriesLine, askerLine } from '../src/systems/career/awards.js';
+import { runNominations, ceremonyTick, ASKER, SERIES, trackOfWork, settleSeriesAwards, seriesLine, askerLine, awardStrength, askerStanding } from '../src/systems/career/awards.js';
+import { alistKey, iconKey } from '../src/systems/meta/status.js';
 import { hitWeight } from '../src/systems/meta/knownFor.js';
 import { computeLegacy } from '../src/systems/meta/legacy.js';
 
@@ -92,6 +93,37 @@ const show = (o = {}) => ({ id: 's1', title: 'Harbour Lights · season 2', type:
   ok('the year list moves your series win', s.world.years[2067].series.length === 1 && s.world.years[2067].askers.length === 1);
   const once = JSON.stringify(s); settleSeriesAwards(s);
   ok('and doing it again changes nothing', JSON.stringify(s) === once);
+}
+
+// ── inside the series award a series is a series ─────────────────────────────
+{
+  const net = show({ type: 'Network Drama', scale: 'recurring' }), guest = show({ scale: 'episode', role: 'Guest' }), pre = show();
+  ok('no television-against-film penalty: a network series and a guest spot weigh as a whole series',
+    awardStrength(net, SERIES) === awardStrength(guest, SERIES) && awardStrength(net, SERIES) > awardStrength(net, ASKER));
+  ok('the prestige season keeps the voters\' ×1.30', Math.abs(awardStrength(pre, SERIES) / awardStrength(net, SERIES) - 1.30) < 1e-9);
+  ok('the Asker\'s own table is untouched', awardStrength(net) < awardStrength(pre) && awardStrength(net) === awardStrength(net, ASKER));
+}
+
+// ── the doors ────────────────────────────────────────────────────────────────
+{
+  const s = st({ filmography: [show({ rating: 80, tier: 'supporting', role: 'Supporting' })] });
+  ok('no key without a nomination', alistKey(s) === null);
+  s.seriesAwards = { losses: 0, wins: [], nominations: [{ title: 'Harbour Lights · season 2', category: 'supporting', year: 2070 }], history: [], pending: null };
+  ok('an Emmet nomination opens the A-list door, as a series nomination always did', alistKey(s) === 'nominated');
+  s.seriesAwards.wins = [{ title: 'Harbour Lights · season 2', category: 'supporting', year: 2070 }];
+  ok('an Emmet is not the Icon key (stage 4)', iconKey(s) === null);
+  ok('nor the Asker\'s casting doors', askerStanding(s) === 0);
+}
+{
+  // A save from before, whose only Asker was won by a series.
+  const s = st({ filmography: [show({ year: 2065, asker: 1, nominated: 1 })] });
+  s.awards = { losses: 0, nominations: [{ title: 'Harbour Lights · season 2', category: 'lead', year: 2066 }],
+    wins: [{ title: 'Harbour Lights · season 2', category: 'lead', year: 2066 }], history: [], pending: null };
+  const doors = askerStanding(s);
+  settleSeriesAwards(s);
+  ok('it moves to the series award', !s.awards.wins.length && s.seriesAwards.wins.length === 1);
+  ok('and keeps the Icon key it had', iconKey(s) === 'asker');
+  ok('and the casting doors', askerStanding(s) === doors, `${askerStanding(s)} vs ${doors}`);
 }
 
 console.log(fails ? `\n${fails} failed` : '\nall passed');

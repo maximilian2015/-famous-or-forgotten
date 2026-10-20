@@ -42,7 +42,7 @@ export function branchOf(scale) { return isTelevision(scale) ? 'television' : 'f
 
 // How strongly a piece of work argues for itself. Everything downstream — whether it is
 // nominated, and whether it wins — is this number pushed around by people.
-export function awardStrength(c) {
+export function awardStrength(c, T = null) {
   const rating = c.rating || 0;
   if (rating < FLOOR) return 0;
   // Steep: the difference between 78 and 92 has to be enormous, or every competent film
@@ -54,7 +54,7 @@ export function awardStrength(c) {
   // every contender and a master's lifetime went from about three Askers to 1.1.
   const base = Math.pow((rating - FLOOR) / 26, 1.8) * 100;
   const genre = ASKER_GENRE[c.genre] ?? 1;
-  const scale = ASKER_SCALE[c.scale] ?? 1;
+  const scale = ((T && T.scale) || ASKER_SCALE)[c.scale] ?? 1;
   const prestige = 0.7 + (c.prestigeScore || 50) / 160;
   return base * genre * scale * prestige;
 }
@@ -393,6 +393,13 @@ export const SERIES = {
   nomsMonth: 4, seasonLength: 3, world: false,
   eligible: (s, c) => trackOfWork(s, c) === 'series',
   label: (cat) => SERIES_CATEGORIES[cat] || cat,
+  // ASKER_SCALE marked television down against film — a series ×0.85, a guest spot ×0.70 — for the
+  // shared pool. Here a series only meets other series, so those penalties are gone (Maxi, 20 Oct).
+  // The prestige season keeps its ×1.30: that is the voters' taste, as festival and indie are the
+  // Asker's. Measured on 40 television careers (tests/probes/probe_awards.mjs tv): without it the
+  // award got harder (8 wins in 40 careers, not 14) and prestige still took 94% of the wins — its
+  // lead comes from its ratings, not from this number.
+  scale: { prestige: 1.30, recurring: 1, episode: 1 },
   nom: { hype: 35, quote: 1.15, respect: 5, fame: 2 },
   win: { hype: 60, quote: 1.4, respect: 10, fame: (f) => Math.min(100, f + 10) },
   picture: { respect: 4, fame: 3 },
@@ -475,7 +482,7 @@ export function runNominations(s, T = ASKER) {
 
   const noms = [];
   for (const c of work) {
-    const strength = awardStrength(c);
+    const strength = awardStrength(c, T);
     if (strength <= 0) continue;
     // Getting into the five is a place in a field of five, and four of them are somebody
     // else's year. It is not proportional to how good you were — it is how far above
@@ -736,8 +743,11 @@ export function ceremonyTick(s, T = ASKER) {
 // The doors an Asker opens. Read by the casting board — standing can substitute for fame,
 // which is the only route into prestige work that does not run through blockbusters.
 export function askerStanding(s) {
-  const wins = yourAskers(s).length;
-  const noms = (s.awards?.nominations || []).length;
+  // An Emmet does not open these doors (Maxi, 20 Oct: they become market-specific with TV and
+  // Streaming Value) — but a series that won an Asker in a save from before keeps what it gave.
+  const old = (list) => (list || []).filter((e) => e.fromAsker);
+  const wins = yourAskers(s).length + old((s[SERIES.key] || {}).wins).filter((w) => w.category !== 'picture').length;
+  const noms = (s.awards?.nominations || []).length + old((s[SERIES.key] || {}).nominations).length;
   // A Best Picture winner on your shelf is worth something to a casting office — less
   // than one you carried home, more than nothing.
   return wins * 22 + pictureAskers(s).length * 7 + Math.min(18, noms * 5);
@@ -778,7 +788,7 @@ export function settleSeriesAwards(s) {
   let moved = 0;
   const sort = (list, into) => {
     const keep = [];
-    for (const e of list || []) { if (!e.theirs && isSeries(creditOf(e))) { into.push(e); moved++; } else keep.push(e); }
+    for (const e of list || []) { if (!e.theirs && isSeries(creditOf(e))) { into.push({ ...e, fromAsker: true }); moved++; } else keep.push(e); }
     return keep;
   };
   A.nominations = sort(A.nominations, S.nominations);

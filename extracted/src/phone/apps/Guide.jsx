@@ -137,11 +137,11 @@ function DoorsGuide() {
     <P>Getting known is ordinary work — anybody who turns up for twenty years becomes a face people recognise. Above Star it stops being about how much you did and starts being about what you did. Two doors, and points alone will not open either.</P>
     <Rung label={`A-lister · ${ALIST_WALL + 1}`} min="the first door" lines={[
       'A hit you carried — a lead or tentpole credit rated 85 or over. A supporting part in a wonderful film does not count; carrying one does',
-      'Or a nomination. The season noticing you is its own way in',
+      'Or a nomination — for an Asker, or for an Emmet. The season noticing you is its own way in',
       `Without one, fame stops at ${ALIST_WALL} however much you work`]} />
     <Rung label={`Icon · ${ICON_WALL + 1}`} min="the last door" lines={[
       'A world hit — the whole world saw one of yours',
-      'Or an Asker. They read your name out',
+      'Or an Asker for a performance. They read your name out. An Emmet does not open this door',
       `Without one, fame stops at ${ICON_WALL}. Nobody becomes an icon by working a lot; they become one by being in something enormous`]} />
   </div>);
 }

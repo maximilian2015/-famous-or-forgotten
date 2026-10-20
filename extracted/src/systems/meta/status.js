@@ -245,7 +245,10 @@ export function carried(c) {
 export function alistKey(s) {
   const shelf = [...(s.filmography || []), ...(s.discography || [])];
   if (shelf.some((c) => carried(c) && (c.rating || 0) >= 85)) return 'led';
+  // Either season: a series nomination opened this door when series were up for Askers, and the
+  // series award keeps it open (career/awards.js SERIES).
   if (((s.awards && s.awards.nominations) || []).length > 0) return 'nominated';
+  if (((s.seriesAwards && s.seriesAwards.nominations) || []).length > 0) return 'nominated';
   return null;
 }
 export function iconKey(s) {
@@ -253,6 +256,9 @@ export function iconKey(s) {
   // Performance wins only: a Best Picture the producers collected is not your key to this
   // room. career/awards.js yourAskers
   if (((s.awards && s.awards.wins) || []).some((w) => w.category !== 'picture')) return 'asker';
+  // An Emmet is not this key yet (Maxi, 20 Oct: a television legend's road to Icon is a stage 4
+  // decision). A series that won an Asker in a save from before keeps the key it had.
+  if (((s.seriesAwards && s.seriesAwards.wins) || []).some((w) => w.fromAsker && w.category !== 'picture')) return 'asker';
   return null;
 }
 // And the room has to have a chair. Fame is comparative now that there is a world: the
@@ -426,8 +432,9 @@ export const RESPECT_OPENS = {
 export const RESPECT_MOVES = {
   up: [
     { by: '+5', what: 'A film that reviews well', note: 'at 85 and over. +2 from 70.' },
-    { by: '+6', what: 'Being nominated', note: 'and +6 again if you win it.' },
+    { by: '+6', what: 'Being nominated for an Asker', note: 'and +6 again if you win it.' },
     { by: '+15', what: 'Winning an Asker', note: 'on top of the nomination.' },
+    { by: '+5', what: 'An Emmet nomination', note: '+10 more if you win it. The series award: every series — network, prestige, a soap — and never a film; the Asker is films only.' },
     { by: '+3', what: 'The director on your last shoot', note: 'if they liked you enough to say so — or watched you carry a set that went that well. Turning up every month on a set that is going well is what warms them.' },
     { by: '+1', what: 'Being the only good thing in a middling film', note: 'a set you carried (85+) gets your name mentioned even when the film is nothing.' },
     { by: '+1', what: 'Arguing for a better version and winning', note: 'every time you talk them round.' },
