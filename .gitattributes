@@ -1,0 +1,13 @@
+# Line endings: LF in the repository and in the working tree, on every machine (20 Oct 2026). The working
+# copy had drifted to a mix — 140 files with CRLF, 9 with both in one file — and every patch made by exact
+# match missed when a line ended differently from the one it was written against.
+* text=auto eol=lf
+*.png binary
+*.jpg binary
+*.ico binary
+*.webp binary
+*.mp3 binary
+*.ogg binary
+*.wav binary
+*.woff binary
+*.woff2 binary
