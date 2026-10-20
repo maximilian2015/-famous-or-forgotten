@@ -22,6 +22,10 @@ import { laterOutcome } from './decline.js';
 import { isStrong } from '../meta/typecast.js';
 import { canTakeSet } from '../../engine/sets.js';
 import { adoptProject } from './project.js';
+import { streamingOfferFor, reach } from './castings.js';
+import { STREAMING } from './streaming.js';
+import { hasAgent } from './agent.js';
+import { sendMail } from '../meta/email.js';
 const clamp = (v) => Math.max(0, Math.min(100, v));
 // Titles come from the same generator as everything else the world makes, so an agent's
 // offer cannot be called what a rival's film was called last year. See world/titles.js.
@@ -225,7 +229,28 @@ export function maybeGenerateOffer(s) {
   if ((s.overtakenUntil || 0) > (s.year || 0) * 12 + (s.month || 0)) p *= 0.7;  // somebody younger has your chair
   p *= storyOfferFactor(s);   // out of sight, or an agent who is working for you again, or not
   p *= hypeDemand(s);         // the phone rings more while they are asking about you (meta/hype.js)
-  if (chance(p * 100)) (s.offers = s.offers || []).push(generateOffer(s));
+  // An agent with a client from Known Face up sends a platform's series about one call in six
+  // (Streaming V1, plan §8; one in four put 38% of an unsteered career on platforms). Asked only while
+  // streaming is on, so a seeded life without it is the same.
+  if (chance(p * 100)) (s.offers = s.offers || []).push((STREAMING.pool && hasAgent(s) && reach(s) >= 35 && chance(STREAM_AGENT_SHARE) && streamingOfferFor(s, 'agent')) || generateOffer(s));
+}
+// A star and an A-lister are rung by the platform itself (plan §8): a season lead on the premium
+// service from 55, an event series built around you on the giant from 75. One platform's paper at a
+// time; the phone rings more while they are talking about you.
+export const STREAM_AGENT_SHARE = 16, PLATFORM_CALL = { star: 0.022, alist: 0.035 };
+export function maybePlatformOffer(s) {
+  if (!STREAMING.pool || !inCareer(s) || reach(s) < 55) return;
+  if ((s.offers || []).length >= 3 || (s.offers || []).some((o) => o.platformId && !o.parentProjectId)) return;
+  const p = (reach(s) >= 75 ? PLATFORM_CALL.alist : PLATFORM_CALL.star) * storyOfferFactor(s) * hypeDemand(s);
+  if (!chance(p * 100)) return;
+  const o = streamingOfferFor(s, 'direct');
+  if (!o) return;
+  (s.offers = s.offers || []).push(o);
+  addTimeline(s, `${o.from} want you for "${o.projectTitle}".`);
+  s.lastEvent = `${o.from} rang — not your agent, them. "${o.projectTitle}", ${o.role.toLowerCase()}, €${(o.salary || 0).toLocaleString()} for ${o.episodes} episodes. The paper is in Messages.`;
+  sendMail(s, { from: o.from, subj: `${o.projectTitle} — an offer`, tag: 'reply', kind: 'reply', offerId: o.id,
+    body: `We would like you for ${o.role.toLowerCase()} on "${o.projectTitle}" — €${(o.salary || 0).toLocaleString()} for ${o.episodes} episodes, every one of them out on the same day. No read; we have seen enough of your work. The full card is in Messages.`,
+    cta: [{ label: 'Open the contract', offer: 'open', reply: 'The paper.' }, { label: 'Pass', offer: 'pass', reply: 'You write back politely. They will ask somebody on the list below you.' }] });
 }
 export function acceptOffer(s, id) {
   const o = (s.offers || []).find((x) => x.id === id); if (!o) return s;

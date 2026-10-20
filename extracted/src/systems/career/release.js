@@ -1481,7 +1481,8 @@ function closeRun(s, credit, r) {
     actorName: s.name, meter: r.meter, fellApart: r.fellApart, viaPartner: r.viaPartner, worldHit: r.worldHit, take: credit.take, audience: credit.audience,
     moment: (r.moments || [])[Math.floor(Math.random() * Math.max(1, (r.moments || []).length))] || null,
     costar: r.with, costarIcon: r.withIcon, comeback: !!credit.comeback, sequel: (credit.part || 0) > 1,
-    lateShelf: /Character lead|matriarch|Elder|Grandparent/.test(credit.role || '') });
+    lateShelf: /Character lead|matriarch|Elder|Grandparent/.test(credit.role || ''),
+    series: !film });   // a season is reviewed as a series, not a film (world/critics.js asSeries)
   // Standing next to an icon is worth something on its own: the photographs, the poster,
   // the fact that they said yes to a film you were in.
   if (r.withIcon) { setFame(s, (s.fame || 0) + 3 * headroom(s.fame)); setRespect(s, (s.respect || 0) + 2 * soft(112, s.respect)); addTimeline(s, `Your name is on a poster next to ${r.with}'s. People noticed.`); }

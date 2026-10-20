@@ -35,14 +35,15 @@ import { hash, rng } from '../../engine/hash.js';
 // service, 2.1 on the premium one and 1.7 on the genre one; the giant's came out right at first and
 // rose to 1.4 once fame per view was doubled (fameFromViews), so its target followed. Breakout bars sit
 // near the top tenth of what a star's first season draws; the renewal bars give a first season about
-// an even chance. Result, 40 careers that take streaming work, two runs: first seasons Miss 28–29% ·
-// Solid 42–43% · Hit 26–29% · Breakout 1–2%, renewed 58%; later seasons Hit 56–61%, Breakout 6–10%; no
-// cliff between Solid and Hit.
+// an even chance (the cheap services' were raised to 0.8 when they renewed 80% of everything). Since
+// a Breakout needs virality too (outcomeFor), it is rare. Result, 40 careers that take streaming work:
+// first seasons Miss 29% · Solid 40% · Hit 30% · Breakout 0–1%, renewed 48%; later seasons Hit ~69%; an
+// unsteered career: first seasons Miss 17–19% · Solid 43–45% · Hit 32–33% · Breakout 5–6%.
 export const ARCHETYPES = {
   global: { subscribers: 260, target: 0.21, breakout: 75, renew: 0.85, cap: 5, big: 120, low: 30, word: 'the giant' },              // [0.15 · 60 · 1.0]
   prestige: { subscribers: 90, target: 0.135, breakout: 35, renew: 0.65, cap: 4, big: 80, low: 25, word: 'the premium service' },   // [0.07 · 25 · 0.8]
-  library: { subscribers: 150, target: 0.31, breakout: 40, renew: 0.65, cap: 6, big: 40, low: 22, maxSeason: 40, maxFee: 8, word: 'the ad-supported service' },   // [0.10 · 30 · 0.7]
-  niche: { subscribers: 25, target: 0.073, breakout: 9, renew: 0.7, cap: 4, big: 30, low: 12, maxFee: 4, word: 'the genre service' },          // [0.045 · 8 · 0.8]
+  library: { subscribers: 150, target: 0.31, breakout: 40, renew: 0.8, cap: 6, big: 40, low: 22, maxSeason: 40, maxFee: 8, word: 'the ad-supported service' },   // [0.10 · 30 · 0.7]
+  niche: { subscribers: 25, target: 0.073, breakout: 9, renew: 0.8, cap: 4, big: 30, low: 12, maxFee: 4, word: 'the genre service' },          // [0.045 · 8 · 0.8]
 };
 // What each platform's audience likes — the only place genre enters a streaming audience (the
 // theatrical APPEAL table is never read for streaming).
@@ -113,10 +114,14 @@ export function viralityFor(completion, word) {
 export function acclaimFor(platform, rating) {
   return platform && platform.archetype === 'prestige' ? 1 + Math.max(0, (rating || 0) - 70) / 50 : 1;
 }
-export function outcomeFor(platform, score, views28) {
+// A Breakout is three things at once (Maxi, 20 Oct): a Hit, past the platform's bar for how many pressed
+// play, AND passed around — the word that makes virality (viralityFor). The last one is a condition for
+// the word, never another multiplier on the score: a star and a hard push can make an enormous Hit, and
+// that is all they make. Measured before this, 42–55% of a star's later seasons were Breakouts.
+export function outcomeFor(platform, score, views28, viral = false) {
   if (score < MISS_BELOW) return 'miss';
   if (score < HIT_FROM) return 'solid';
-  return views28 >= numbersOf(platform).breakout ? 'breakout' : 'hit';
+  return views28 >= numbersOf(platform).breakout && viral ? 'breakout' : 'hit';
 }
 export function dropSeason({ platform, genre, episodes, season = 1, rating = 50, word = 50, hype = 0, draw = 0,
   salaryM = 0, episodeCost = 0, legacy = 0, prev = null, dice = 1 }) {
@@ -141,7 +146,7 @@ export function dropSeason({ platform, genre, episodes, season = 1, rating = 50,
   return {
     push, cost, awareness: Math.round(awareness * 100) / 100, opening7: r1(opening7), completion: Math.round(completion * 100) / 100,
     virality: Math.round(virality * 100) / 100, views28: r1(views28), finished28: r1(finished28), reach: r1(reach),
-    score: Math.round(score * 100) / 100, outcome: outcomeFor(platform, score, views28),
+    score: Math.round(score * 100) / 100, outcome: outcomeFor(platform, score, views28, virality > 1), viral: virality > 1,
   };
 }
 

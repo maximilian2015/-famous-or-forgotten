@@ -437,16 +437,66 @@ export function refreshCastingPool(s, force, extra = 0) {
 // supporting parts in a series, which is where the series award's Supporting race gets the player
 // (Maxi, 20 Oct). Who sees what follows the plan's ladder: library and genre services for a newcomer,
 // a platform lead from Known Face, a premium lead for a star, an event series built around an A-lister.
-//   [type, role, [episodes], fee table, scale, tier, fame, share, platforms, nobody above]
+// The ladder is also the ROUTE (plan §8, Maxi 20 Oct): the shelf is for a career that is starting —
+// open calls and self-tapes, the supporting parts; a platform lead comes through your agent; a star
+// and an A-lister are rung by the platform or the showrunner themselves (an offer in Email). Fame
+// gates all three until stage 4 puts a Streaming Value in its place.
+//   [type, role, [episodes], fee table, scale, tier, fame, share, platforms, nobody above, route]
 const STREAM_ROWS = [
-  ['Streaming Series', 'Recurring', [6, 10], 'stream_series', 'recurring', 'supporting', 0, 0.45, ['library', 'niche'], 45],
-  ['Streaming Series', 'Ensemble', [8, 10], 'stream_series', 'recurring', 'supporting', 15, 0.6, ['library', 'niche', 'global']],
-  ['Limited Series', 'Supporting', [6, 8], 'stream_premium', 'prestige', 'supporting', 15, 0.5, ['prestige', 'global']],
-  ['Streaming Series', 'Series lead', [8, 10], 'stream_series', 'recurring', 'lead', 35, 1, ['library', 'niche', 'global']],
-  ['Limited Series', 'Lead', [6, 8], 'stream_premium', 'prestige', 'lead', 45, 1, ['prestige', 'global']],
-  ['Streaming Series', 'Season lead', [8, 10], 'stream_premium', 'prestige', 'lead', 55, 1, ['prestige']],
-  ['Streaming Series', 'Event series lead', [6, 8], 'stream_series', 'recurring', 'lead', 75, 1.3, ['global']],
+  ['Streaming Series', 'Recurring', [6, 10], 'stream_series', 'recurring', 'supporting', 0, 0.45, ['library', 'niche'], 45, 'shelf'],
+  ['Streaming Series', 'Ensemble', [8, 10], 'stream_series', 'recurring', 'supporting', 15, 0.6, ['library', 'niche', 'global'], null, 'shelf'],
+  ['Limited Series', 'Supporting', [6, 8], 'stream_premium', 'prestige', 'supporting', 15, 0.5, ['prestige', 'global'], null, 'shelf'],
+  ['Streaming Series', 'Series lead', [8, 10], 'stream_series', 'recurring', 'lead', 35, 1, ['library', 'niche', 'global'], null, 'agent'],
+  ['Limited Series', 'Lead', [6, 8], 'stream_premium', 'prestige', 'lead', 45, 1, ['prestige', 'global'], null, 'agent'],
+  ['Streaming Series', 'Season lead', [8, 10], 'stream_premium', 'prestige', 'lead', 55, 1, ['prestige'], null, 'direct'],
+  ['Streaming Series', 'Event series lead', [6, 8], 'stream_series', 'recurring', 'lead', 75, 1.3, ['global'], null, 'direct'],
 ];
+const takenTitles = (s) => new Set([
+  ...(s.castingPool || []).map((c) => c.title), ...(s.filmography || []).map((c) => c.title), ...(s.releases || []).map((r) => r.title),
+  ...(s.offers || []).map((o) => String(o.projectTitle || '').replace('⭐ ', '')), s.production ? s.production.title : '',
+]);
+// One part from one row, priced and placed, or null when this name would not be sent it. The same
+// tests for every route: the age of the part, the premium shelf's standing, a fee table that has you,
+// the pickiness a name earns, and what the platform can pay.
+function makeStreamPart(s, row, taken) {
+  const [type, role, eps, medium, scale, tier, minFame, share, kinds, maxFame] = row;
+  if (!seenForIt(s, role)) return null;
+  if (maxFame != null && reach(s) > maxFame) return null;
+  const premium = medium === 'stream_premium';
+  if (premium && prestigeShut(s)) return null;
+  const quoted = Math.round(quoteFor(s, medium) * share);
+  if (quoted <= 0) return null;
+  const episodes = rint(eps[0], eps[1]);
+  const stability = rollStability(scale);
+  const fee = feeFactor(stability);
+  const rate = Math.round(episodeRate(quoted, (eps[0] + eps[1]) / 2, episodes) * fee);
+  if (rate <= 0) return null;
+  // The same pickiness as the board: a name is not sent small money, unless it is the material.
+  const worth = quoteFor(s, 'film_studio') || quoteFor(s, 'film_indie') || 0;
+  const picky = Math.max(0, Math.min(1, (reach(s) - 35) / 65));
+  if (worth > 0 && picky > 0 && rate * episodes < worth * 0.25 * picky && !premium) return null;
+  const platform = platformOfKind(s, pick(kinds));
+  // A cheap service does not ring a name it cannot pay (streaming.js ARCHETYPES maxFee).
+  const most = numbersOf(platform).maxFee;
+  if (most && rate * episodes > most * 1e6) return null;
+  const box = boxedInto(s);
+  const genre = box && chance(44) ? box : pick(GENRES);
+  const title = titleFor(s, genre, taken);
+  taken.add(title);
+  const drawn = directorFor(s, scale, genre);
+  const helmer = drawn && holdsAGrudge(s, drawn.name) ? null : drawn;
+  const id = uid(s, 'cast');
+  return {
+    id, title, type, role, shelf: 'stream', scale, tier, payMarket: medium,
+    platformId: platform.id, episodeCost: planEpisodeCost({ seed: id, genre, archetype: platform.archetype }),
+    share, stability, feeFactor: fee,
+    months: tvMonths(type, scale, episodes), episodes, perEpisode: true, episodeFee: rate, salary: rate * episodes,
+    season: 1, audience: 0,
+    director: helmer ? helmer.name : null, directorId: helmer ? helmer.id : null,
+    directorBand: helmer ? helmer.band : null, directorTop: !!(helmer && isOneOfTheFive(s, helmer)),
+    genre, minFame: minFame || 0,
+  };
+}
 function fillStreamShelf(s) {
   if (!STREAMING.pool || hiding(s)) return;
   const want = reach(s) >= 35 ? 3 : 2;
@@ -454,54 +504,47 @@ function fillStreamShelf(s) {
   if (have >= want) return;
   streamingOf(s);
   const now = (s.year || 0) * 12 + (s.month || 0);
-  const taken = new Set([
-    ...s.castingPool.map((c) => c.title), ...(s.filmography || []).map((c) => c.title), ...(s.releases || []).map((r) => r.title),
-    ...(s.offers || []).map((o) => String(o.projectTitle || '').replace('⭐ ', '')), s.production ? s.production.title : '',
-  ]);
+  const rows = STREAM_ROWS.filter((r) => r[10] === 'shelf');
+  const taken = takenTitles(s);
   let guard = 0;
   while (have < want && guard++ < 60) {
-    const [type, role, eps, medium, scale, tier, minFame, share, kinds, maxFame] = pick(STREAM_ROWS);
-    if (!seenForIt(s, role)) continue;
-    if (maxFame != null && reach(s) > maxFame) continue;
-    if ((minFame || 0) > reach(s) + 12) continue;
-    const premium = medium === 'stream_premium';
-    if (premium && prestigeShut(s)) continue;
-    const quoted = Math.round(quoteFor(s, medium) * share);
-    if (quoted <= 0) continue;
-    const episodes = rint(eps[0], eps[1]);
-    const stability = rollStability(scale);
-    const fee = feeFactor(stability);
-    const rate = Math.round(episodeRate(quoted, (eps[0] + eps[1]) / 2, episodes) * fee);
-    if (rate <= 0) continue;
-    // The same pickiness as the board: a name is not sent small money, unless it is the material.
-    const worth = quoteFor(s, 'film_studio') || quoteFor(s, 'film_indie') || 0;
-    const picky = Math.max(0, Math.min(1, (reach(s) - 35) / 65));
-    if (worth > 0 && picky > 0 && rate * episodes < worth * 0.25 * picky && !premium) continue;
-    const platform = platformOfKind(s, pick(kinds));
-    // A cheap service does not ring a name it cannot pay (streaming.js ARCHETYPES maxFee).
-    const most = numbersOf(platform).maxFee;
-    if (most && rate * episodes > most * 1e6) continue;
-    const box = boxedInto(s);
-    const genre = box && chance(44) ? box : pick(GENRES);
-    const title = titleFor(s, genre, taken);
-    taken.add(title);
-    const drawn = directorFor(s, scale, genre);
-    const helmer = drawn && holdsAGrudge(s, drawn.name) ? null : drawn;
-    const id = uid(s, 'cast');
-    s.castingPool.push({
-      id, title, type, role, shelf: 'stream', scale, tier, payMarket: medium,
-      platformId: platform.id, episodeCost: planEpisodeCost({ seed: id, genre, archetype: platform.archetype }),
-      share, stability, feeFactor: fee,
-      months: tvMonths(type, scale, episodes), episodes, perEpisode: true, episodeFee: rate, salary: rate * episodes,
-      season: 1, audience: 0,
-      director: helmer ? helmer.name : null, directorId: helmer ? helmer.id : null,
-      directorBand: helmer ? helmer.band : null, directorTop: !!(helmer && isOneOfTheFive(s, helmer)),
-      genre, minFame: minFame || 0,
-      _expires: now + rint(2, 4),
-    });
+    const row = pick(rows);
+    if ((row[6] || 0) > reach(s) + 12) continue;   // one rung up can show; further up does not exist yet
+    const c = makeStreamPart(s, row, taken);
+    if (!c) continue;
+    s.castingPool.push({ ...c, _expires: now + rint(2, 4) });
     roomFor(s, s.castingPool[s.castingPool.length - 1]);
     have++;
   }
+}
+// The other two routes: an offer your agent brings ('agent'), or the platform's own call ('direct').
+// No audition — they want you — so it is an offer straight away, built the way a booked listing's is
+// (answerSubmission). Null when nothing on that rung of the ladder would be sent to this name.
+export function streamingOfferFor(s, route) {
+  if (!STREAMING.pool) return null;
+  streamingOf(s);
+  const rows = STREAM_ROWS.filter((r) => r[10] === route && reach(s) >= (r[6] || 0));
+  if (!rows.length) return null;
+  const taken = takenTitles(s);
+  for (let i = 0; i < 6; i++) {
+    const c = makeStreamPart(s, pick(rows), taken);
+    if (!c) continue;
+    const sc = scaleOf(c), platform = platformById(s, c.platformId);
+    return {
+      id: uid(s, 'off'), via: route === 'agent' ? 'agent' : 'platform', from: route === 'agent' ? null : platform.name,
+      director: c.director, directorId: c.directorId, directorBand: c.directorBand, directorTop: c.directorTop,
+      projectTitle: c.title, seriesTitle: c.title, role: c.role, type: c.type, genre: c.genre,
+      salary: c.salary, months: c.months, tier: c.tier, scale: c.scale,
+      episodes: c.episodes, episodeFee: c.episodeFee, season: 1, perEpisode: true,
+      stability: c.stability, payMarket: c.payMarket, platformId: c.platformId, episodeCost: c.episodeCost,
+      prestigeScore: rint(sc.prestige[0], sc.prestige[1]) + riskPrestige(c.stability),
+      fame: c.tier === 'lead' ? 5 : 2, deadline: rint(2, 4) + 1, waitsForWrap: false,
+      note: route === 'agent'
+        ? `Your agent put you up for "${c.title}" on ${platformWord(platform)}, and they want you: ${c.role.toLowerCase()}, ${c.episodes} episodes, every one of them out on the same day.`
+        : `${platform.name} want you for "${c.title}" — ${c.role.toLowerCase()}, ${c.episodes} episodes${c.director ? `, ${c.director} running it` : ''}. They asked for you by name; there is no read.`,
+    };
+  }
+  return null;
 }
 // What the card says about where it would go out (phone/apps/OpenCall.jsx).
 export function platformLineFor(s, c) {

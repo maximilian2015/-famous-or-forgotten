@@ -54,6 +54,9 @@ const stamp = (s) => (s.year || 0) * 12 + (s.month || 0);
 const clamp = (v, a = 0, b = 100) => Math.max(a, Math.min(b, v));
 const root = (t) => String(t || '').replace(/(\s*·\s*season\s+\d+)+\s*$/i, '').trim();
 const cap1 = (t) => String(t || '').charAt(0).toUpperCase() + String(t || '').slice(1);
+// A platform's show is decided by the platform, and every line that says "the network" says its name
+// instead (Streaming V1). b.who is set when the show goes on the bubble; a network show has none.
+const said = (b, text) => (b && b.who ? String(text).replace(/The network/g, b.who).replace(/the network/g, b.who) : text);
 
 // Decisive either way and the network says so the same week. Everything between is the
 // bubble, which is most of television.
@@ -97,7 +100,7 @@ export function hangIt(s, credit, p, odds) {
     // it. This is the one a campaign is really playing with, and the one nobody signing a
     // petition thinks they are playing with.
     shopped: heat === 'loud' ? rint(16, 28) : heat === 'some' ? rint(7, 15) : rint(0, 5),
-    job: p, rating: credit.rating || 0,
+    job: p, rating: credit.rating || 0, who: credit.streaming ? who : null,
     viewers: credit.endViewers || credit.viewers || 0,
   });
   addTimeline(s, `No word on "${root(credit.title)}". ${who} has not said yes and has not said no.`);
@@ -132,9 +135,9 @@ export function backTheCampaign(s, id) {
   if (!b.campaign) b.campaign = 'starting';
   addHype(s, 18, 'hit');
   addTimeline(s, `Posted about "${b.root}". The people who watched it needed about four minutes to make it a thing.`);
-  s.lastEvent = b.heat === 'none'
+  s.lastEvent = said(b, b.heat === 'none'
     ? `You asked people to say something about "${b.root}". A few hundred did. That is not a number anybody buys a show on, and everybody you were hoping would see it has now seen it.`
-    : `You put your name on it and the thing that was already happening got a great deal louder. The network will say something warm about the passion of the fans and will not change its mind, because they never do. What you have actually done is put the number in front of every buyer who did not cancel it — and that is the move that has ever saved a show.`;
+    : `You put your name on it and the thing that was already happening got a great deal louder. The network will say something warm about the passion of the fans and will not change its mind, because they never do. What you have actually done is put the number in front of every buyer who did not cancel it — and that is the move that has ever saved a show.`);
   return s;
 }
 
@@ -181,8 +184,8 @@ export function bubbleTick(s) {
       b.decided = 'renewed';
       if (credit) credit.renewal = 'renewed';
       (s._bubbleDone = s._bubbleDone || []).push(b);
-      addTimeline(s, `"${b.root}" is coming back. ${b.campaign ? 'The network says the decision had nothing to do with the campaign.' : ''}`);
-      s.lastEvent = `${b.campaign === 'running' ? 'Four months of people shouting about it, and ' : ''}"${b.root}" got its season. Nobody will ever be able to tell you whether the shouting did it, and the network has already said it did not.`;
+      addTimeline(s, said(b, `"${b.root}" is coming back. ${b.campaign ? 'The network says the decision had nothing to do with the campaign.' : ''}`));
+      s.lastEvent = said(b, `${b.campaign === 'running' ? 'Four months of people shouting about it, and ' : ''}"${b.root}" got its season. Nobody will ever be able to tell you whether the shouting did it, and the network has already said it did not.`);
       continue;
     }
     // No. And now the part nobody expects: the audience is still there, still counted, and
@@ -316,18 +319,18 @@ export function liveBubbles(s) {
   return bubbles(s).map((b) => ({
     ...b,
     monthsLeft: Math.max(0, b.due - now),
-    line: b.campaign === 'running'
+    line: said(b, b.campaign === 'running'
       ? `There is a petition, and it is not small. The trades have started quoting the number.`
       : b.campaign === 'starting'
       ? `People who watched it have started saying something. It is not a campaign yet.`
       : b.heat === 'none'
       ? `Nobody is fighting for it. That is its own answer, and the network can read it too.`
-      : `No word either way. The cast are holding dates nobody has confirmed.`,
-    mood: b.odds >= 70 ? 'The network is going to keep it. Probably.' : b.odds >= 45 ? 'It could go either way, and everybody involved knows it.' : 'The network is not going to keep it.',
+      : `No word either way. The cast are holding dates nobody has confirmed.`),
+    mood: said(b, b.odds >= 70 ? 'The network is going to keep it. Probably.' : b.odds >= 45 ? 'It could go either way, and everybody involved knows it.' : 'The network is not going to keep it.'),
     // The honest second line, and the one that actually matters.
-    elsewhere: (b.shopped || 0) >= 55 ? 'If the network says no, somebody else takes it. There are two of them looking.'
+    elsewhere: said(b, (b.shopped || 0) >= 55 ? 'If the network says no, somebody else takes it. There are two of them looking.'
       : (b.shopped || 0) >= 30 ? 'If the network says no, there is a real chance somebody else picks it up — or pays for an ending.'
       : (b.shopped || 0) >= 14 ? 'Somebody outside has asked what a season would cost. That is as far as it has gone.'
-      : 'Nobody outside the network has asked about it.',
+      : 'Nobody outside the network has asked about it.'),
   }));
 }

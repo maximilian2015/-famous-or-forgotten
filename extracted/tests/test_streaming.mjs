@@ -9,7 +9,9 @@ import { scheduleRelease, releaseTick, runTick } from '../src/systems/career/rel
 import { streamingRenewal } from '../src/systems/career/franchise.js';
 import { getProject, adoptProject, projectOf } from '../src/systems/career/project.js';
 import { refreshCastingPool, boardSize, submissionsTick } from '../src/systems/career/castings.js';
-import { bubbleTick } from '../src/systems/career/bubble.js';
+import { bubbleTick, hangIt, liveBubbles } from '../src/systems/career/bubble.js';
+import { maybeGenerateOffer, maybePlatformOffer } from '../src/systems/career/offers.js';
+import { reviewsFor } from '../src/systems/world/critics.js';
 import { projectOutcome, isWatched, isBreakout, wentBadly } from '../src/systems/career/outcome.js';
 import { trackOfWork, awardRoleOf, ASKER, SERIES } from '../src/systems/career/awards.js';
 import * as ST from '../src/systems/career/streaming.js';
@@ -57,6 +59,14 @@ test('completion enters the 28-day verdict once: views28 does not move with it',
   const lo = ST.dropSeason({ ...base, word: 60 }), hi = ST.dropSeason({ ...base, word: 80 });   // both below the virality line
   assert.equal(lo.views28, hi.views28, 'views28 moved with the word');
   near(hi.finished28 / lo.finished28, hi.completion / lo.completion, 0.05, 'finished28 is views28 × completion (both rounded)');
+});
+test('a Breakout is a Hit past the bar that people passed around — a star and a push alone make a big Hit', () => {
+  const star = { platform: plat('global'), genre: 'Horror', episodes: 8, rating: 80, hype: 60, draw: 45, salaryM: 40, episodeCost: 0, dice: 1.25 };
+  const pushed = ST.dropSeason({ ...star, word: 80 }), passed = ST.dropSeason({ ...star, word: 90 });
+  assert.ok(pushed.views28 >= ST.ARCHETYPES.global.breakout, 'fixture: the star show does not clear the bar: ' + pushed.views28);
+  assert.equal(pushed.viral, false); assert.equal(pushed.outcome, 'hit', 'no virality, no Breakout');
+  assert.equal(passed.viral, true); assert.equal(passed.outcome, 'breakout');
+  assert.equal(ST.outcomeFor(plat('global'), 3, 99, false), 'hit'); assert.equal(ST.outcomeFor(plat('global'), 3, 99, true), 'breakout');
 });
 test('genre enters once, through the platform', () => {
   const at = (genre) => ST.dropSeason({ platform: plat('niche'), genre, episodes: 8, word: 60, rating: 60, draw: 5, salaryM: 5, dice: 1 }).views28;
@@ -202,6 +212,50 @@ test('a supporting part on a platform is a supporting part — in the offer, the
   const credit = { title: 'Glass Harbour', type: 'Streaming Series', role: 'Ensemble', tier: 'supporting', scale: 'recurring', payMarket: 'stream_series' };
   assert.equal(trackOfWork(s, credit), 'series'); assert.ok(SERIES.eligible(s, credit) && !ASKER.eligible(s, credit), 'the wrong award');
   assert.equal(awardRoleOf(credit), 'supporting');
+});
+
+// ── the routes (plan §8) ─────────────────────────────────────────────────────
+const fixedDice = (fn, v = 0) => { const r = Math.random; Math.random = () => v; try { return fn(); } finally { Math.random = r; } };
+test('the shelf is for a career that is starting: supporting parts only', () => {
+  for (const fame of [0, 20, 40, 80]) {
+    const s = career({ fame, peakFame: fame, castingPool: [] }); refreshCastingPool(s, true);
+    for (const c of s.castingPool.filter((x) => x.shelf === 'stream')) assert.equal(c.tier, 'supporting', `fame ${fame}: ${c.role} on the shelf`);
+  }
+});
+test('from Known Face an agent brings a platform\'s lead', () => {
+  const s = career({ fame: 45, peakFame: 45, offers: [], agent: { name: 'Ada Vance', tier: 'novice', level: 1 } });
+  let o = null;
+  for (let i = 0; i < 400 && !o; i++) { s.offers = []; maybeGenerateOffer(s); o = (s.offers || []).find((x) => x.platformId); }
+  assert.ok(o, 'no agent ever brought a streaming part');
+  assert.equal(o.via, 'agent'); assert.equal(o.tier, 'lead'); assert.ok(/^stream_/.test(o.payMarket) && o.episodeCost > 0);
+  const none = career({ fame: 45, peakFame: 45, offers: [], agent: null });
+  for (let i = 0; i < 200; i++) { none.offers = []; maybeGenerateOffer(none); assert.ok(!(none.offers || []).some((x) => x.platformId), 'no agent, and yet'); }
+});
+test('a star is rung by the platform itself, in Email', () => {
+  const s = career({ fame: 80, peakFame: 80, offers: [], inbox: [] });
+  fixedDice(() => maybePlatformOffer(s));
+  const o = (s.offers || []).find((x) => x.platformId);
+  assert.ok(o, 'no call'); assert.equal(o.via, 'platform'); assert.ok(o.from); assert.equal(o.tier, 'lead');
+  assert.ok((s.inbox || []).some((m) => m.offerId === o.id), 'no letter');
+  const low = career({ fame: 40, peakFame: 40, offers: [], inbox: [] });
+  fixedDice(() => maybePlatformOffer(low)); assert.ok(!(low.offers || []).length, 'a known face was rung directly');
+});
+test('a platform\'s show on the bubble is decided by the platform, by name', () => {
+  const s = career({ fame: 40 }); startProduction(s, listing());
+  const p = s.productions[0];
+  const credit = { title: 'Glass Harbour', rating: 70, streaming: true, platformId: 'plt-library', views28: 12, completion: 0.6, type: 'Streaming Series', season: 1 };
+  hangIt(s, credit, { ...p, seriesTitle: 'Glass Harbour' }, 80);   // 'going to keep it' — the line that names who decides
+  const b = liveBubbles(s)[0], name = ST.platformById(s, 'plt-library').name;
+  for (const k of ['line', 'mood', 'elsewhere']) assert.doesNotMatch(b[k], /network/i, k + ': ' + b[k]);
+  assert.match(b.elsewhere + ' ' + b.mood, new RegExp(name.replace(/[+]/g, '\\+')), 'the platform is not named');
+  assert.doesNotMatch(s.timeline ? JSON.stringify(s.timeline.slice(-1)) : '', /network/i);
+});
+test('the critics review a series as a series', () => {
+  const s = career();
+  for (let i = 0; i < 40; i++) {
+    const r = reviewsFor(s, { title: 'Glass Harbour', rating: 40 + i, genre: ['Crime', 'Thriller', 'Drama', 'Comedy'][i % 4], verdict: 'hit', actorName: 'Audit Actor', series: true });
+    for (const x of r.reviews) assert.doesNotMatch(x.text, /\b(film|films|movie|movies|picture|pictures|cinema)\b/i, x.text);
+  }
 });
 
 console.log(failed ? `\n${failed} failed` : '\nall passed');

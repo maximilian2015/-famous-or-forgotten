@@ -4,7 +4,7 @@ import { sets, setLoad } from './sets.js';
 import { energyWhy } from './energy-month.js';
 import { advanceStage } from '../systems/life/stages.js';
 import { applyMonthly, applyYearly, relevanceDrift, homeEnergy } from './economy.js';
-import { maybeGenerateOffer, maybeBrandOffer, offersTick } from '../systems/career/offers.js';
+import { maybeGenerateOffer, maybeBrandOffer, maybePlatformOffer, offersTick } from '../systems/career/offers.js';
 import { emailTick } from '../systems/meta/email.js';
 import { agentTick } from '../systems/career/agent.js';
 import { smsTick } from '../systems/social/sms.js';
@@ -191,6 +191,7 @@ export function advanceMonth(state) {
   offersTick(s);      // and a part you never answered goes to somebody else
   maybeGenerateOffer(s);
   maybeBrandOffer(s);   // and the brands, once you are a name worth putting on something
+  maybePlatformOffer(s);   // and a platform, once you are a star (career/castings.js streamingOfferFor)
   tentpolesTick(s);     // the pictures in development, and what became of the names put in
   collabTick(s);        // and the thing you and somebody you know decided to make: financed, or dead
   maybeYoungOffer(s);  // and once in a long while, somebody nobody has heard of asks for you

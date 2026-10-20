@@ -320,6 +320,8 @@ export function resolveBubbles(s) {
     const credit = (s.filmography || []).find((c) => c.title === b.title);
     if (!credit || !b.job) continue;
     const next = maybeContinue(s, credit, b.job, true);
+    // A platform's show came off the bubble: the paper is the platform's, not a network's.
+    if (next && b.who) next.note = String(next.note || '').replace(/The network/g, b.who).replace(/the network/g, b.who);
     if (next) (s.offers = s.offers || []).push(next);
   }
   return s;

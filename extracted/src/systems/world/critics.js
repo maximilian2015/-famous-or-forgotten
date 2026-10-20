@@ -225,6 +225,22 @@ export function criticStars(critics) {
 
 // ctx: { title, rating, genre, verdict, director, actorName, meter, fellApart, viaPartner, worldHit,
 //        take, costar, costarIcon, comeback, sequel, lateShelf, month }
+// A series is not a film, and the reviews of every season said it was (Maxi, 20 Oct). The few lines
+// that do not survive a word swap are rewritten whole; everything else has its words swapped.
+const SERIES_LINE = {
+  'See it in a cinema, with people.': 'Watch it in one sitting, with people.',
+  'A film for the people who still go to the pictures.': 'A series for the people who still watch with the phone in another room.',
+  'Tight as a drum for ninety minutes.': 'Tight as a drum, episode after episode.',
+};
+const SERIES_WORD = { films: 'series', film: 'series', movies: 'series', movie: 'series', pictures: 'shows', picture: 'show' };
+export function asSeries(text) {
+  let t = String(text || '');
+  for (const [a, b] of Object.entries(SERIES_LINE)) t = t.split(a).join(b);
+  return t.replace(/\b(films|film|movies|movie|pictures|picture)\b/gi, (w) => {
+    const r = SERIES_WORD[w.toLowerCase()];
+    return w[0] === w[0].toUpperCase() ? r[0].toUpperCase() + r.slice(1) : r;
+  });
+}
 export function reviewsFor(s, ctx) {
   const roster = rosterOf(s);
   const n = ctx.rating >= 80 || ctx.verdict === 'smash' ? 5 : ctx.rating >= 55 ? 4 : 3;
@@ -233,6 +249,7 @@ export function reviewsFor(s, ctx) {
   const actor = parts[parts.length - 1] || ctx.actorName;
   const full = { ...ctx, actor, you: ctx.actorName || s.name, month: MONTHS[s.month || 0] };
   const carried = (ctx.meter || 0) >= 85;
+  const say = (t) => (ctx.series ? asSeries(t) : t);
   const reviews = who.map((c) => {
     const stars = starsFor(c, { ...ctx, carried });
     const band = BAND[stars];
@@ -253,11 +270,11 @@ export function reviewsFor(s, ctx) {
     // The moment beats everything else on the list: it is the concrete thing in the film.
     if (ctx.moment && chance(62)) {
       bits[1] = fill(draw(s, 'mom:' + (stars >= 3 ? 'g' : 'b'), MOMENT_LINE[stars >= 3 ? 'good' : 'bad']), { ...full, moment: ctx.moment });
-      return { critic: c.name, outlet: c.outlet, stars, text: bits.map((b) => fill(b, full)).join(' ') };
+      return { critic: c.name, outlet: c.outlet, stars, text: say(bits.map((b) => fill(b, full)).join(' ')) };
     }
     if (specials.length && chance(55)) { const k = pick(specials); bits[1] = draw(s, 'sp:' + k, SPECIAL[k]); }
     else if (chance(45)) bits.push(draw(s, 'close:' + (CLOSE[ctx.genre] ? ctx.genre : 'any'), CLOSE[ctx.genre] || CLOSE.any));
-    return { critic: c.name, outlet: c.outlet, stars, text: bits.map((b) => fill(b, full)).join(' ') };
+    return { critic: c.name, outlet: c.outlet, stars, text: say(bits.map((b) => fill(b, full)).join(' ')) };
   });
   const criticScore = Math.round((reviews.reduce((a, r) => a + r.stars, 0) / reviews.length) * 2 * 10) / 10;
   return { grade: gradeOf(ctx.rating), audience: audienceScore(ctx.rating, ctx.verdict, ctx.genre, ctx.audience), critics: criticScore, reviews };

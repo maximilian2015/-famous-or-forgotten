@@ -38,16 +38,20 @@ same to the last digit as main (`STREAMING=off node tests/probes/probe_same_life
    (genre) is not offered. Without it an A-lister was offered a library lead at €20m, on a platform whose whole
    season ceiling is €40m.
 
+5. **A Breakout needs virality** (Maxi, 20 Oct): a Hit, past the platform's views bar, AND passed around (word
+   82+, 70% finishing). A condition for the word, never a multiplier on the score. Before it, 42–55% of a star's
+   later seasons were Breakouts; now 4–6%.
+6. **The routes** (plan §8): the shelf carries the supporting parts (open call, self-tape); a platform lead
+   (fame 35+, 45+ for a limited series) comes through your agent — one agent call in six; a premium season
+   lead (55+) and an event series (75+) are the platform's own call, in Email (2.2% a month for a star, 3.5% for
+   an A-lister). Fame gates all of it until stage 4. Without an agent, no agent route.
+7. **The words**: a platform's show on the bubble is decided by the platform, by name, on every line; critics
+   review any series — television or streaming — as a series (critics.js asSeries).
+8. The cheap services' renewal bars went to 0.8 (they renewed 80% of everything at 0.65–0.7).
+
 ## Not built, or open
 
-- **Breakout for stars.** On ordinary careers, where streaming comes mostly to established names, later seasons
-  are Breakouts 43–55% of the time: a pushed star draws past any views bar. The plan defines a Breakout by views
-  alone; making it also need virality (people passing it around) is a decision for Maxi.
-- Routes: only the board (open call) and the rescue. The agent's submissions and the platforms' direct offers
-  by email (plan §8) are not built.
 - The board's typecast turn-away is not applied to the streaming shelf; the genre box still leans it.
-- Bubble month-by-month lines still say "the network" for a platform's show (the first line is fixed).
-- The critics' reviews call a series "a film" — as they always did for television.
 - Known For does not count a Breakout as a hit unless it is rated 7.5+ — as for television's "watched".
 - A streaming show cannot be pushed back with a favour (`pushable`) yet.
 - Pay cut to save a show (backlog, Maxi: right after V1) — renewal already reads the real fees, so it slots in.
@@ -55,23 +59,24 @@ same to the last digit as main (`STREAMING=off node tests/probes/probe_same_life
 ## Measured
 
 `tests/probes/probe_streaming.mjs`, 40 careers × 34 years, the shipped values. "Streaming bot" reads for the
-streaming shelf first (two runs); "ordinary" takes the best-paid offer, as a player who is not steering does.
+streaming shelf first and takes a platform's work first; "ordinary" takes the best-paid offer, as a player who
+is not steering does. Both sign an agent when one offers.
 
-| | streaming bot | ordinary |
+| | streaming bot | ordinary (two runs) |
 |---|---|---|
-| careers with streaming work | 40 of 40, ~33 seasons each, 60% of all work | 40 of 40, ~9 seasons each, 16% of all work |
-| first seasons: miss · solid · hit · breakout | 28–29% · 42–43% · 26–29% · 1–2% | 10% · 47% · 33% · 9% |
-| first seasons renewed | 58% | 71% |
-| later seasons: miss · solid · hit · breakout | 6–7% · 26–28% · 56–61% · 6–10% | 2% · 33% · 23% · 42% |
-| shows that ran 4+ seasons | 8–10% | 11% |
-| cancelled for what the next season would cost | 96–103 of ~320 cancellations | 61 of 78 |
-| score around the Solid/Hit line (0.7–1.05 · 1.05–1.4 · 1.4–2.1) | 280 · 204 · 256 | 80 · 84 · 101 |
-| series award: nominations · supporting (wins) | 75–89 · 22–25 (1–3) | 62 · 4 (0) |
+| streaming in a career | 36 seasons, 60% of all work | 20–21 seasons, 29–30% of all work |
+| how it arrived | open call 746 · continuation 426 · agent 146 · platform's call 117 | platform's call 274–295 · continuation 225–235 · agent 163–199 · open call 113–118 |
+| first seasons: miss · solid · hit · breakout | 29% · 40% · 30% · 0% | 17–19% · 43–45% · 32–33% · 5–6% |
+| later seasons: breakout | 1% | 4–6% |
+| renewed, all seasons: giant · premium · ad-supported · genre | 50% · 72% · 68% · 67% | 67–70% · 78–84% · 80% · 80–90% |
+| first seasons renewed | 48% | 54–56% |
+| cancelled for what the next season would cost | 144 of 419 | 122–127 of ~170 |
+| fame from a season: lead · supporting | +0.68 · +0.65 | +0.43–0.47 · +0.30–0.37 |
+| series award: nominations · supporting (wins) | 107 · 30 (3) | 155–169 · 5–6 (1) |
 
-By platform, first seasons, streaming bot: the giant miss 33–38% (stars do better: 11%), the premium
-service 25–39% miss and 25–36% renewed (it is dear), the ad-supported and genre services about 25% miss and
-70% renewed (cheap). Fame from a season: +0.6 to +0.9 on average (it is awareness, and most streaming work is
-done by people already known). The supporting race at the series award has the player in it now — 22–25
-supporting nominations in 40 careers, where every run before this had none.
+Fame by part: a supporting part gets half of what its views would give a lead (`fameFromViews`). In the
+streaming bot the averages come out close because supporting parts are taken early, when a point of fame is
+cheap, and leads late, when it is dear; in ordinary careers, where both come late, the half shows (0.30–0.37
+against 0.43–0.47, though the supporting parts there were on bigger shows).
 
-Same seed, six careers, streaming off: identical to main to the last digit. `tests/test_streaming.mjs`: 23 checks.
+Same seed, six careers, streaming off: identical to main to the last digit. `tests/test_streaming.mjs`: 29 checks.

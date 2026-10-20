@@ -15,6 +15,8 @@ const K = await import(P + 'systems/career/castings.js');
 const T = await import(P + 'systems/career/training.js');
 const W = await import(P + 'systems/life/work.js');
 const ST = await import(P + 'systems/career/streaming.js');
+const A = await import(P + 'systems/career/agent.js');
+const PJ = await import(P + 'systems/career/project.js');
 // STREAM_TRY='{"global":{"target":0.3}}' tries other starting values without editing the table.
 if (process.env.STREAM_TRY) for (const [k, v] of Object.entries(JSON.parse(process.env.STREAM_TRY))) Object.assign(ST.ARCHETYPES[k], v);
 const isStream = (x) => !!x.platformId || /^stream_/.test(x.payMarket || '');
@@ -28,6 +30,8 @@ for (let k = 0; k < CAREERS; k++) {
     s.bigMoment = null; s.pendingArc = null;
     if (!s.job && (s.fame || 0) < 22) { const j = W.availableJobs(s).filter((x) => x.slots === 1).slice(-1)[0]; if (j) W.takeJob(s, j.id); }
     if (s.job && (s.fame || 0) > 35) W.quitJob(s);
+    // An agent who offers is signed, as a player would (the agent's route needs one).
+    if (A.agentWantsYou && A.agentWantsYou(s)) A.signAgent(s, A.offerAgent(s));
     const best = [...T.SCHOOLS].reverse().find((sc) => (s.cash || 0) > sc.cost * 4);
     if (best && (s.ap || 0) > 1) T.train(s, best.id);
     K.refreshCastingPool(s);
@@ -44,7 +48,7 @@ for (let k = 0; k < CAREERS; k++) {
     if (!s.alive) break;
   }
   const mine = (s.filmography || []).filter((c) => c.streaming && !c.running);
-  for (const c of mine) credits.push({ ...c, platform: (ST.platformById(s, c.platformId) || {}).archetype || '?' });
+  for (const c of mine) credits.push({ ...c, platform: (ST.platformById(s, c.platformId) || {}).archetype || '?', route: (PJ.projectOf(s, c) || {}).route || '?' });
   const z = s.seriesAwards || {};
   careers.push({ streams: mine.length, work: (s.filmography || []).filter((c) => !c.minor).length,
     network: (s.filmography || []).filter((c) => !c.minor && !c.streaming && c.scale === 'recurring' && c.type !== 'Soap Opera'),
@@ -82,6 +86,17 @@ for (const kind of ['global', 'prestige', 'library', 'niche']) {
   if (!l.length) continue;
   const n = (v) => l.filter((c) => c.verdict === v).length;
   console.log(`  s1 ${kind.padEnd(8)} ${String(l.length).padStart(4)} · miss ${pct(n('miss'), l.length)} solid ${pct(n('solid'), l.length)} hit ${pct(n('hit'), l.length)} breakout ${pct(n('breakout'), l.length)} · score p25 ${q(l.map((c) => c.platformScore), 0.25).toFixed(2)} p50 ${q(l.map((c) => c.platformScore), 0.5).toFixed(2)} p75 ${q(l.map((c) => c.platformScore), 0.75).toFixed(2)} · views28 p50 ${q(l.map((c) => c.views28), 0.5).toFixed(1)} p90 ${q(l.map((c) => c.views28), 0.9).toFixed(1)} · renewed ${pct(l.filter((c) => c.renewal === 'renewed').length, l.length)}`);
+}
+// How the work arrived (plan §8), and what each part did for the name.
+const routes = {}; for (const c of credits) routes[c.route] = (routes[c.route] || 0) + 1;
+console.log('  how it arrived: ' + Object.entries(routes).sort((a, b) => b[1] - a[1]).map(([k, v]) => `${k} ${v}`).join(' · '));
+for (const tier of ['lead', 'supporting']) {
+  const l = credits.filter((c) => c.tier === tier);
+  if (l.length) console.log(`  ${tier.padEnd(10)} ${String(l.length).padStart(4)} seasons · fame from it avg ${avg(l, (c) => c.careerFame || 0).toFixed(2)} · views28 median ${med(l.map((c) => c.views28)).toFixed(1)}m`);
+}
+for (const kind of ['global', 'prestige', 'library', 'niche']) {
+  const l = credits.filter((c) => c.platform === kind && c.renewal !== 'ended');
+  if (l.length) console.log(`  renewals ${kind.padEnd(8)} renewed ${pct(l.filter((c) => c.renewal === 'renewed').length, l.length)} · cancelled ${pct(l.filter((c) => c.renewal === 'cancelled').length, l.length)} · capped ${pct(l.filter((c) => c.renewal === 'capped').length, l.length)}`);
 }
 // First seasons against the ones after: a hit is pushed hard next time and its finishers come back.
 for (const [name, l] of [['season 1', credits.filter((c) => (c.season || 1) === 1)], ['season 2+', credits.filter((c) => (c.season || 1) > 1)]]) {
