@@ -210,7 +210,8 @@ if (exportedList.length || publicMoved.length) {
 {
   const a3 = parseAst(app, { lang: 'jsx' }, FROM_NAME);
   const used = new Set();
-  for (const n of a3.body) if (n.type !== 'ImportDeclaration') for (const r of refs(n)) used.add(r);
+  // A re-export (export { x } from './y.js') is not a use of an import of the same name.
+  for (const n of a3.body) if (n.type !== 'ImportDeclaration' && !(n.type === 'ExportNamedDeclaration' && n.source)) for (const r of refs(n)) used.add(r);
   const edits = [];
   for (const n of a3.body) {
     if (n.type !== 'ImportDeclaration' || !n.specifiers.length) continue;
