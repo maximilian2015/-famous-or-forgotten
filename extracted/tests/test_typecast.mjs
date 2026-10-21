@@ -73,5 +73,12 @@ const st = (over) => ({ version: 'x', name: 'Mira Vale', ageY: 30, stage: 'caree
   ok('famous before eighteen: the former child star', activeLabels(s).includes('child'));
   ok('every label has a name and a line', Object.values(LABELS).every((l) => l.label && l.blurb));
 }
+// The board turns a part against type away ONCE (52%). The block was in refreshCastingPool twice,
+// back to back, so such a part survived 0.48 × 0.48 = 23% (fixed 21 Oct 2026, probe_typecast.mjs).
+{
+  const src = (await import('node:fs')).readFileSync(new URL('../src/systems/career/castings.js', import.meta.url), 'utf8');
+  const rolls = src.split('if (tf <= -0.5 && !seesOther && chance(52)) continue;').length - 1;
+  ok('the board rolls once against type, not twice', rolls === 1, `${rolls} rolls`);
+}
 console.log(fails ? `\n${fails} FAILED` : '\nall passed');
 process.exit(fails ? 1 : 0);
