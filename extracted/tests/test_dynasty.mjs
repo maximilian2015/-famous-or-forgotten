@@ -1,3 +1,4 @@
+import './helpers/seeded.mjs';   // one fixed sequence of dice: the rates below are measured on the same lives every run
 // Money on the other side of the table, a child with a life of their own, and the game
 // carrying on after you are dead.
 const P = new URL('../src/', import.meta.url).href;

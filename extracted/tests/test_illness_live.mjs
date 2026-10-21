@@ -1,3 +1,4 @@
+import './helpers/seeded.mjs';   // one fixed sequence of dice: the rates below are measured on the same lives every run
 // The depression and the drinking, driven through the REAL monthly loop rather than by
 // calling their functions in an order I chose. Every ordering bug lives in the gap between
 // those two things.
