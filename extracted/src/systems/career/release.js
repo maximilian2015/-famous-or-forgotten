@@ -10,32 +10,29 @@ import { uid } from '../../engine/id.js';
 // A film can be adored and lose money, or panned and take a billion. They pull your
 // career in different directions, and that is the whole point of having both.
 import { rint, chance, pick } from '../../engine/rng.js';
-import { setQuote, setFame, setRespect } from '../meta/status.js';
+import { setFame, setRespect } from '../meta/status.js';
 import { addTimeline, showMoment } from '../../engine/timeline.js';
 import { regardAfterWorking } from '../life/regard.js';
 import { markReleased } from '../../engine/economy.js';
-import { appetiteFor, marketAfterRelease } from '../meta/market.js';
 import { maybeContinue, streamingRenewal } from './franchise.js';
 import { getProject } from './project.js';
 import { isFilmScale as isFilm } from './scale.js';
 import { fameFromViews, hypeFor, OUTCOME_WORD } from './streaming.js';
 import { tvTermsOf } from './terms.js';
 import { appealShift } from './story.js';
-import { dirAppeal, remindLift, reminderOf, holdFactor, retentionLine } from './chapter.js';
+import { dirAppeal, reminderOf, retentionLine } from './chapter.js';
 import { comebackFloor } from '../meta/standing.js';
-import { paid } from './agent.js';
 import { reviewsFor } from '../world/critics.js';
 import { actorById, applyFilmToActor } from '../world/world.js';
-import { tourMultiplier, tourFame } from './tour.js';
+import { tourFame } from './tour.js';
 import { networkLine } from './franchise.js';
 import { typecastAfterCredit, typeFit, roleAcceptance, acceptanceWord } from '../meta/typecast.js';
 import { storyAfterCredit } from '../meta/stories.js';
 import { addHype, flopHype, hype, hypeSource } from '../meta/hype.js';
 import { ensureBudget } from './budget.js';
 import { projectOutcome, isSmash, isProfitable, isBomb, isWatched, isSeen } from './outcome.js';
-import { asOldTrackSawIt, boxOfficeFor, breakEvenFor, budgetFor, campaignOf, campaignSpend, festivalResult, FESTIVALS,
-  genreResidual, isWorldHit, PAR, previousPart, reachOf, studioCall, studioCampaign, windowWord } from './release/theatrical.js';
-import { viewersFor } from './release/television.js';
+import { boxOfficeFor, breakEvenFor, budgetFor, campaignOf, campaignSpend, previousPart, studioCampaign,
+  windowWord } from './release/theatrical.js';
 export { viewersFor } from './release/television.js';
 export { againstYou, agentCost, answerFestival, answerFestMail, APPEAL, asOldTrackSawIt, boxOfficeFor,
   breakEvenFor, budgetFor, budgetM, CAMPAIGN, campaignOf, campaignSpend, castDraw, demandCore,
@@ -93,6 +90,8 @@ export { isFilmScale as isFilm } from './scale.js';
 import { tvVerdict } from './release/television.js';
 import { moneyVerdict } from './release/theatrical.js';
 import { dropStreaming, STREAM_WEEKS } from './release/streaming.js';
+import { festivalAt, feedTheMarket, settleWorldHit, boxOfficePoison, pictureMoney, festivalAfterRun } from './release/theatrical.js';
+import { seasonAudience } from './release/television.js';
 // ── what the room thought ─────────────────────────────────────────────────────
 // Maxi: "not every film should be a success — it depends on you, the script, the shoot,
 // and how the audience takes it, like life. We can bring that in too."
@@ -385,14 +384,8 @@ function open(s, rel) {
   // What was being said about you as it opened — the number demandFor reads, taken before the
   // opening's own noise lands on top of it below.
   const talk = { hype: hype(s), source: hypeSource(s) };
-  // A festival picture is decided in the room, before anybody else sees it: a prize sells
-  // it, a buyer sells it a little, and no buyer means there is nothing to open.
-  let fest = null;
-  if (rel.scale === 'festival') {
-    fest = { name: pick(FESTIVALS), result: festivalResult(rel.rating, s.fame || 0, rel.tier !== 'supporting', rel.festPush), push: rel.festPush || null };
-    if (fest.result === 'prize') { rel.appealMod = (rel.appealMod ?? 1) * 2.2; rel.rating = clamp(rel.rating + 3, 0, 96); }
-    else if (fest.result === 'sold') rel.appealMod = (rel.appealMod ?? 1) * 1.3;
-  }
+  // A festival picture is decided in the room, before anybody else sees it (release/theatrical.js).
+  const fest = festivalAt(s, rel);
   // What it will end up taking. The player does not see this number yet — it arrives a
   // few thousand at a time, week by week, which is how anybody actually experiences it.
   // A later season opens on a name people know: a tenth more, before anybody has seen it.
@@ -417,19 +410,7 @@ function open(s, rel) {
   else if (film) rel.finalGross = boxOfficeFor(s, rel);
   // A platform's season: its own audience, judged on its own terms (career/streaming.js).
   else if (rel.streaming) { stream = dropStreaming(s, rel, talk); rel.viewers = stream.views28; }
-  else {
-    // Maxi: "how are seasons measured — how many watched at the start and how many at the
-    // end, and then they decide whether to renew?" Two numbers, not one. The first night
-    // is what the name, the last season and any campaign bought you. What happens between
-    // the first episode and the last IS the season, and it is the number the network
-    // decides on. See career/chapter.js holdFactor.
-    const open = Math.max(0.1, Math.round(viewersFor(s, rel) * tourMultiplier(rel) * known * remindLift(rel) * 10) / 10);
-    // A season people enjoy holds its audience whatever the column said about it.
-    const liked = 1 + ((rel.reception ?? rel.rating) - (rel.rating || 0)) / 260;
-    const end = Math.max(0.1, Math.round(open * holdFactor(rel.rating, rel) * liked * 10) / 10);
-    rel.openViewers = open; rel.endViewers = end;
-    rel.viewers = Math.max(0.1, Math.round(((open + end) / 2) * 10) / 10);   // millions, one decimal — rounding to a whole made a bad soap draw nobody
-  }
+  else seasonAudience(s, rel, known);   // a season's first and last night (release/television.js)
   rel.boxOffice = 0;
   const verdict = stream ? stream.outcome : verdictOf({ ...rel, boxOffice: rel.finalGross || 0 });
 
@@ -631,45 +612,14 @@ function closeRun(s, credit, r) {
     type: credit.type, endViewers: credit.endViewers, viewers: credit.viewers });
   credit.verdict = verdict;
   credit.needed = breakEvenFor({ scale: r.scale, campaignTier: r.campaignTier, budget: r.budget ?? credit.budget ?? null });
-  // And the genre is used up by what you released into it, exactly as the world's pictures are.
-  // Weighted by what anybody actually saw of it, not counted as one release. See exposureOf.
-  // The appetite is the AUDIENCE's, and an audience does not know what a picture cost: it is told
-  // how many went to each screen the picture was given, against what a picture of this scale
-  // ordinarily takes (PAR) — never against this one's own budget, and never by how wide its budget sent it.
-  // Fed the real budget (Budget V2), the market read cheapness as appetite and pinned horror and
-  // comedy at the top; fed the gross alone, it read the screens a dear picture buys as appetite
-  // and pinned science fiction there instead (tests/probes/probe_appetite.mjs).
-  const usual = breakEvenFor({ scale: r.scale, campaignTier: r.campaignTier, budget: PAR[r.scale] ?? null }) * reachOf({ scale: r.scale, budget: r.budget ?? credit.budget ?? null });
-  // And, now the one a genre is judged on, how it did against its own kind (genreResidual).
-  if (r.film && r.genre) marketAfterRelease(s, r.genre, r.scale,
-    asOldTrackSawIt(usual ? (credit.boxOffice || 0) / usual : null, r.appetite ?? appetiteFor(s, r.genre, r.scale), r.oldAppetite ?? appetiteFor(s, r.genre, 'blockbuster')),
-    campaignOf({ campaignTier: r.campaignTier }).share, r.part || 1,
-    genreResidual({ scale: r.scale, genre: r.genre, gross: credit.boxOffice || 0, budget: r.budget ?? credit.budget ?? null,
-      appetite: r.appetite ?? appetiteFor(s, r.genre, r.scale), campaignTier: r.campaignTier, part: r.part || 1 }));
+  // And the genre is used up by what you released into it (release/theatrical.js feedTheMarket).
+  feedTheMarket(s, credit, r);
   const film = r.film;
 
   // The score buys respect; the money buys reach. They are different currencies, and both
   // of them are settled here rather than on opening night.
-  // ── was it enormous ──────────────────────────────────────────────────────────
-  // It used to be decided on the set, months before anybody saw it: production.js rolled a die
-  // on the RATING at wrap and wrote 'World Hit' onto the credit, and everything below read that
-  // flag. So a €1.163bn picture rated 7.7 could never be one, and a festival film rated 9.2
-  // that took forty million always could. The game's idea of an enormous film was the critics'
-  // idea of a good one, settled before release.
-  //
-  // It is settled here instead, which is after the run has closed and the final worldwide gross
-  // is on the credit — the rewards were always paid from here, only the flag arrived early.
-  // Two ways in, because there are two ways in life:
-  //   the scale of it — three quarters of a billion, and a crowd that did not hate it;
-  //   the phenomenon  — a smaller picture that went enormously past what it was built for and
-  //                     that people loved, which is how a five-million comedy takes four hundred.
-  // Neither one is the money alone: both read the crowd, because a film nobody enjoyed does not
-  // become the thing people talk about however many tickets the first weekend sold.
-  r.worldHit = film ? isWorldHit(credit, r) : false;
-  if (r.worldHit) {
-    credit.status = 'World Hit';
-    s.worldHits = (s.worldHits || 0) + 1;
-  }
+  // ── was it enormous ── (release/theatrical.js settleWorldHit)
+  settleWorldHit(s, credit, r, film);
   // What the three of them say, measured across this close rather than inferred from the money.
   credit.critical = criticalOf(r.rating);
   const _fameBefore = s.fame || 0, _respBefore = s.respect || 0;
@@ -733,14 +683,8 @@ function closeRun(s, credit, r) {
     s.lastEvent = `"${credit.title}" is being written about as a comeback. It is a generous word for it, and it is doing more for you than the film is.`;
   }
   setFame(s, (s.fame || 0) + (fame < 0 ? fame : fame * headroom(s.fame)));
-  // Two leads that bombed inside two years and the insurers stop covering you on a studio
-  // picture: a year with no studio features or tentpoles on the board, and the trades
-  // have a phrase for it. See castings.js (poison) and meta/press.js.
-  if (verdict === 'bomb' && r.tier !== 'supporting' && film) {
-    const now = (s.year || 0) * 12 + (s.month || 0);
-    s.bombs = [...(s.bombs || []).filter((m) => now - m <= 24), now];
-    if (s.bombs.length >= 2 && !(s.poisonUntil > now)) { s.poisonUntil = now + 12; addTimeline(s, `Two leads that bombed in two years. The trades are using the phrase box office poison, and the insurers have stopped returning the studios' calls about you.`, true); s.lastEvent = `Two leads that bombed inside two years. The studios will not insure you on a picture for a year — the trades' phrase for it is box office poison.`; }
-  }
+  // Two leads that bombed inside two years: box office poison (release/theatrical.js).
+  boxOfficePoison(s, r, verdict, film);
   // A bad film costs standing in proportion to what was expected of you. At forty it is
   // news and it costs the full four; at nothing it costs almost nothing, because nobody
   // expected anything. This mattered the moment standing could go below zero: a flat −4
@@ -775,21 +719,8 @@ function closeRun(s, credit, r) {
   else if (carried && r.rating >= 45 && r.rating < 70) respectGain = 1;
   const soft = (limit, cur) => Math.max(0.16, 1 - (cur || 0) / limit);
   setRespect(s, (s.respect || 0) + (respectGain > 0 ? respectGain * soft(112, s.respect) : respectGain));
-  if (film && verdict === 'smash') setQuote(s, Math.max(s.quote || 0, (r.salary || 0) * 1.6));
-  // Points. A percentage of what it took past what it cost — the clause that only a name gets.
-  // The toys. A tentpole that worked sells a market of its own, and the paper said whether
-  // any of it is yours (contract.js merch). Nobody buys the lunchbox of a bomb.
-  if (film && r.scale === 'blockbuster' && (r.merch || 0) > 0 && (verdict === 'smash' || verdict === 'profitable')) {
-    const market = Math.round((credit.boxOffice || 0) * (verdict === 'smash' ? 0.25 : 0.1));
-    const cut = Math.round(market * (r.merch / 100));
-    if (cut > 0) { paid(s, cut, `"${credit.title}" — ${r.merch}% of the merchandise`); credit.merchPaid = cut; addTimeline(s, `Your face is on the toys, and ${r.merch}% of the toys is yours: €${cut.toLocaleString()}.`); }
-  }
-  if (film && r.backend > 0) {
-    const over = Math.max(0, (credit.boxOffice || 0) - budgetFor({ scale: r.scale, budget: r.budget ?? credit.budget ?? null }) * 2.2);
-    const cut = Math.round(over * (r.backend / 100));
-    if (cut > 0) { paid(s, cut, `"${credit.title}" — ${r.backend}% of the gross`); credit.backendPaid = cut; }
-    else addTimeline(s, `"${credit.title}" never passed break-even. Your points are worth nothing.`, true);
-  }
+  // A smash moves your quote; the toys and the points pay out (release/theatrical.js).
+  pictureMoney(s, credit, r, verdict, film);
 
   // The gross means nothing on its own — "a billion" is only a triumph next to what it cost.
   // The industry never quotes one without the other and neither should this.
@@ -813,16 +744,8 @@ function closeRun(s, credit, r) {
   s.lastEvent = line;
   addTimeline(s, line, r.rating < 50 || verdict === 'bomb');
 
-  // A prize at a festival is the one thing that turns a stranger into a name in a week: the
-  // trades use the word "discovery", the standing comes with it, and a studio sends a script.
-  if (credit.festival && credit.festival.result === 'prize') {
-    setFame(s, (s.fame || 0) + 8 * headroom(s.fame));
-    setRespect(s, (s.respect || 0) + 6 * soft(112, s.respect));
-    addTimeline(s, `The trades are calling you the discovery of ${credit.festival.name}.`);
-    if ((s.fame || 0) < 60) studioCall(s, credit, credit.festival.name);
-  } else if (credit.festival && credit.festival.result === 'sold' && r.rating >= 70) {
-    setRespect(s, (s.respect || 0) + 2 * soft(112, s.respect));
-  }
+  // A prize at a festival: the discovery, the standing, a studio's call (release/theatrical.js).
+  festivalAfterRun(s, credit, r, headroom, soft);
   // The job stays on the credit whatever happens next: a show that was not renewed, or a
   // renewal you let go, can still be pitched back from your own sofa. See night.js revivable.
   if (r.job) credit.job = r.job;

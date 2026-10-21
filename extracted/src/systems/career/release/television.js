@@ -4,6 +4,8 @@
 // release.js still exports viewersFor. The theatrical market is release/theatrical.js, streaming
 // release/streaming.js.
 import { slotNorm } from '../franchise.js';
+import { tourMultiplier } from '../tour.js';
+import { remindLift, holdFactor } from '../chapter.js';
 
 // Television does not sell tickets. It has an audience, in millions per episode.
 const VIEWERS = { episode: [0.4, 6], recurring: [1, 9], prestige: [2, 14] };
@@ -78,4 +80,19 @@ export function tvVerdict(rel) {
   if (pull >= 1.35 || (pull >= 0.95 && (rel.rating || 0) >= 72)) return 'watched';
   if (pull >= 0.7) return 'seen';
   return 'ignored';
+}
+
+// A season's audience, the night it goes out: the first episode and the last (release.js open).
+export function seasonAudience(s, rel, known) {
+  // Maxi: "how are seasons measured — how many watched at the start and how many at the
+  // end, and then they decide whether to renew?" Two numbers, not one. The first night
+  // is what the name, the last season and any campaign bought you. What happens between
+  // the first episode and the last IS the season, and it is the number the network
+  // decides on. See career/chapter.js holdFactor.
+  const open = Math.max(0.1, Math.round(viewersFor(s, rel) * tourMultiplier(rel) * known * remindLift(rel) * 10) / 10);
+  // A season people enjoy holds its audience whatever the column said about it.
+  const liked = 1 + ((rel.reception ?? rel.rating) - (rel.rating || 0)) / 260;
+  const end = Math.max(0.1, Math.round(open * holdFactor(rel.rating, rel) * liked * 10) / 10);
+  rel.openViewers = open; rel.endViewers = end;
+  rel.viewers = Math.max(0.1, Math.round(((open + end) / 2) * 10) / 10);   // millions, one decimal — rounding to a whole made a bad soap draw nobody
 }

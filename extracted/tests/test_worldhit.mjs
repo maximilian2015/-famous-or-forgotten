@@ -26,8 +26,10 @@ const ok = (n, c, e = '') => { if (!c) { fails++; console.log('FAIL  ' + n + (e 
   const prod = fs.readFileSync(new URL('../src/systems/career/production.js', import.meta.url), 'utf8');
   ok('the set cannot declare a world hit', !/'World Hit'/.test(prod), "production.js still writes the status");
   ok('and the set cannot count one', !/worldHits\s*=\s*\(s\.worldHits/.test(prod), 'production.js still increments the counter');
-  const rel = fs.readFileSync(new URL('../src/systems/career/release.js', import.meta.url), 'utf8');
-  ok('the run is what counts them', /worldHits = \(s\.worldHits \|\| 0\) \+ 1/.test(rel));
+  // The close of the run settles it: release.js closeRun calls release/theatrical.js settleWorldHit.
+  const rel = fs.readFileSync(new URL('../src/systems/career/release/theatrical.js', import.meta.url), 'utf8');
+  const close = fs.readFileSync(new URL('../src/systems/career/release.js', import.meta.url), 'utf8');
+  ok('the run is what counts them', /worldHits = \(s\.worldHits \|\| 0\) \+ 1/.test(rel) && /settleWorldHit\(s, credit, r, film\)/.test(close));
   // And nothing unopened can qualify: no gross, no phenomenon.
   ok('a film that has not opened is not one', isWorldHit({ boxOffice: 0, audience: 95, rating: 95 }, { scale: 'blockbuster', rating: 95 }) === false);
   ok('nor is one with no box office at all', isWorldHit({ audience: 99, rating: 99 }, { scale: 'blockbuster', rating: 99 }) === false);

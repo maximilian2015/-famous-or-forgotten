@@ -17,6 +17,10 @@ import { isFilmScale as isFilm } from '../scale.js';
 import { GENRES } from '../../meta/news.js';
 import { quoteFor } from '../../meta/status.js';
 import { newTitle } from '../../world/titles.js';
+import { marketAfterRelease } from '../../meta/market.js';
+import { addTimeline } from '../../../engine/timeline.js';
+import { setQuote, setFame, setRespect } from '../../meta/status.js';
+import { paid } from '../agent.js';
 
 const clamp = (v, a = 0, b = 100) => Math.max(a, Math.min(b, v));
 
@@ -571,4 +575,104 @@ export function moneyVerdict(rel) {
   if (ratio >= 1.25) return 'profitable';
   if (ratio >= 0.7) return 'broke even';
   return 'bomb';
+}
+
+// A festival picture is decided in the room, before anybody else sees it: a prize sells
+// it, a buyer sells it a little, and no buyer means there is nothing to open.
+export function festivalAt(s, rel) {
+  let fest = null;
+  if (rel.scale === 'festival') {
+    fest = { name: pick(FESTIVALS), result: festivalResult(rel.rating, s.fame || 0, rel.tier !== 'supporting', rel.festPush), push: rel.festPush || null };
+    if (fest.result === 'prize') { rel.appealMod = (rel.appealMod ?? 1) * 2.2; rel.rating = clamp(rel.rating + 3, 0, 96); }
+    else if (fest.result === 'sold') rel.appealMod = (rel.appealMod ?? 1) * 1.3;
+  }
+  return fest;
+}
+
+// What a picture's run tells its genre's market (release.js closeRun).
+export function feedTheMarket(s, credit, r) {
+  // And the genre is used up by what you released into it, exactly as the world's pictures are.
+  // Weighted by what anybody actually saw of it, not counted as one release. See exposureOf.
+  // The appetite is the AUDIENCE's, and an audience does not know what a picture cost: it is told
+  // how many went to each screen the picture was given, against what a picture of this scale
+  // ordinarily takes (PAR) — never against this one's own budget, and never by how wide its budget sent it.
+  // Fed the real budget (Budget V2), the market read cheapness as appetite and pinned horror and
+  // comedy at the top; fed the gross alone, it read the screens a dear picture buys as appetite
+  // and pinned science fiction there instead (tests/probes/probe_appetite.mjs).
+  const usual = breakEvenFor({ scale: r.scale, campaignTier: r.campaignTier, budget: PAR[r.scale] ?? null }) * reachOf({ scale: r.scale, budget: r.budget ?? credit.budget ?? null });
+  // And, now the one a genre is judged on, how it did against its own kind (genreResidual).
+  if (r.film && r.genre) marketAfterRelease(s, r.genre, r.scale,
+    asOldTrackSawIt(usual ? (credit.boxOffice || 0) / usual : null, r.appetite ?? appetiteFor(s, r.genre, r.scale), r.oldAppetite ?? appetiteFor(s, r.genre, 'blockbuster')),
+    campaignOf({ campaignTier: r.campaignTier }).share, r.part || 1,
+    genreResidual({ scale: r.scale, genre: r.genre, gross: credit.boxOffice || 0, budget: r.budget ?? credit.budget ?? null,
+      appetite: r.appetite ?? appetiteFor(s, r.genre, r.scale), campaignTier: r.campaignTier, part: r.part || 1 }));
+}
+
+// Whether a picture's run made it a world hit, settled after the close (release.js closeRun).
+export function settleWorldHit(s, credit, r, film) {
+  // ── was it enormous ──────────────────────────────────────────────────────────
+  // It used to be decided on the set, months before anybody saw it: production.js rolled a die
+  // on the RATING at wrap and wrote 'World Hit' onto the credit, and everything below read that
+  // flag. So a €1.163bn picture rated 7.7 could never be one, and a festival film rated 9.2
+  // that took forty million always could. The game's idea of an enormous film was the critics'
+  // idea of a good one, settled before release.
+  //
+  // It is settled here instead, which is after the run has closed and the final worldwide gross
+  // is on the credit — the rewards were always paid from here, only the flag arrived early.
+  // Two ways in, because there are two ways in life:
+  //   the scale of it — three quarters of a billion, and a crowd that did not hate it;
+  //   the phenomenon  — a smaller picture that went enormously past what it was built for and
+  //                     that people loved, which is how a five-million comedy takes four hundred.
+  // Neither one is the money alone: both read the crowd, because a film nobody enjoyed does not
+  // become the thing people talk about however many tickets the first weekend sold.
+  r.worldHit = film ? isWorldHit(credit, r) : false;
+  if (r.worldHit) {
+    credit.status = 'World Hit';
+    s.worldHits = (s.worldHits || 0) + 1;
+  }
+}
+
+// Two leads that bombed in two years (release.js closeRun).
+export function boxOfficePoison(s, r, verdict, film) {
+  // Two leads that bombed inside two years and the insurers stop covering you on a studio
+  // picture: a year with no studio features or tentpoles on the board, and the trades
+  // have a phrase for it. See castings.js (poison) and meta/press.js.
+  if (verdict === 'bomb' && r.tier !== 'supporting' && film) {
+    const now = (s.year || 0) * 12 + (s.month || 0);
+    s.bombs = [...(s.bombs || []).filter((m) => now - m <= 24), now];
+    if (s.bombs.length >= 2 && !(s.poisonUntil > now)) { s.poisonUntil = now + 12; addTimeline(s, `Two leads that bombed in two years. The trades are using the phrase box office poison, and the insurers have stopped returning the studios' calls about you.`, true); s.lastEvent = `Two leads that bombed inside two years. The studios will not insure you on a picture for a year — the trades' phrase for it is box office poison.`; }
+  }
+}
+
+// What a picture that worked pays you after it: your quote, the toys, the points (release.js closeRun).
+export function pictureMoney(s, credit, r, verdict, film) {
+  if (film && verdict === 'smash') setQuote(s, Math.max(s.quote || 0, (r.salary || 0) * 1.6));
+  // Points. A percentage of what it took past what it cost — the clause that only a name gets.
+  // The toys. A tentpole that worked sells a market of its own, and the paper said whether
+  // any of it is yours (contract.js merch). Nobody buys the lunchbox of a bomb.
+  if (film && r.scale === 'blockbuster' && (r.merch || 0) > 0 && (verdict === 'smash' || verdict === 'profitable')) {
+    const market = Math.round((credit.boxOffice || 0) * (verdict === 'smash' ? 0.25 : 0.1));
+    const cut = Math.round(market * (r.merch / 100));
+    if (cut > 0) { paid(s, cut, `"${credit.title}" — ${r.merch}% of the merchandise`); credit.merchPaid = cut; addTimeline(s, `Your face is on the toys, and ${r.merch}% of the toys is yours: €${cut.toLocaleString()}.`); }
+  }
+  if (film && r.backend > 0) {
+    const over = Math.max(0, (credit.boxOffice || 0) - budgetFor({ scale: r.scale, budget: r.budget ?? credit.budget ?? null }) * 2.2);
+    const cut = Math.round(over * (r.backend / 100));
+    if (cut > 0) { paid(s, cut, `"${credit.title}" — ${r.backend}% of the gross`); credit.backendPaid = cut; }
+    else addTimeline(s, `"${credit.title}" never passed break-even. Your points are worth nothing.`, true);
+  }
+}
+
+// What a festival's prize or sale does for you once the run is over (release.js closeRun).
+export function festivalAfterRun(s, credit, r, headroom, soft) {
+  // A prize at a festival is the one thing that turns a stranger into a name in a week: the
+  // trades use the word "discovery", the standing comes with it, and a studio sends a script.
+  if (credit.festival && credit.festival.result === 'prize') {
+    setFame(s, (s.fame || 0) + 8 * headroom(s.fame));
+    setRespect(s, (s.respect || 0) + 6 * soft(112, s.respect));
+    addTimeline(s, `The trades are calling you the discovery of ${credit.festival.name}.`);
+    if ((s.fame || 0) < 60) studioCall(s, credit, credit.festival.name);
+  } else if (credit.festival && credit.festival.result === 'sold' && r.rating >= 70) {
+    setRespect(s, (s.respect || 0) + 2 * soft(112, s.respect));
+  }
 }
