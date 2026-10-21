@@ -1,3 +1,4 @@
+import './helpers/seeded.mjs';   // one fixed sequence of dice: the rates below are measured on the same lives every run
 import { scheduleRelease, releaseTick, runTick, postProduction, boxOfficeFor, budgetFor, verdictOf, isFilm,
   answerFestival, FEST_ENERGY } from '../src/systems/career/release.js';
 import { startProduction, productionTick } from '../src/systems/career/production.js';
