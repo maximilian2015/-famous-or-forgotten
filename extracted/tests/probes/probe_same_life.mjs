@@ -61,6 +61,9 @@ for (let k = 0; k < CAREERS; k++) {
   if (process.env.LOST === '1') {
     const lost = [...(s.timeline || [])].reverse().find((e) => /stopped waiting on .+ · season|cast someone else|they recast|not coming back for season|going ahead without you|could not hold the part|Somebody else signed it|Written out of|Walked out of the option/.test(String(e.text || '')));
     console.log(`  first loss: ${lost ? `${lost.when} — ${lost.text}` : 'none'}`);
+    // And, on a tree that keeps them, the first season or sequel written down as lost (credit.next).
+    const at = (s.filmography || []).filter((c) => c && c.next && c.next.at != null).map((c) => c.next.at).sort((x, y) => x - y)[0];
+    if (at != null) console.log(`  first lost continuation: ${Math.floor(at / 12)}-${String(at % 12 + 1).padStart(2, '0')}`);
   }
   // And the awards, both tracks, so a change to them is caught too.
   for (const key of ['awards', 'seriesAwards']) {
