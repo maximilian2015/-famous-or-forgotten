@@ -11,6 +11,8 @@ import { isMinor } from '../../systems/meta/legacy.js';
 import { criticStars } from '../../systems/world/critics.js';
 import { platformById } from '../../systems/career/streaming.js';
 import { isFilmScale } from '../../systems/career/scale.js';
+import { nextLines, YOU, WHY } from '../../systems/career/continuation.js';
+import { tvVerdict } from '../../systems/career/release/television.js';
 import { theme } from '../theme.js';
 import { money, allSets } from '../helpers.js';
 import { Poster } from './Poster.jsx';
@@ -79,8 +81,17 @@ function groupCredits(list) {
   }).sort((a, b) => b.to - a.to);
 }
 // Reads like a real filmography page: poster, title, star rating out of 10, role, year.
+// A season closed before the verdict read its audience (Maxi, at a show 37 million watched: "and the game
+// is calling it ignored") keeps the word it was given; the screen reads the word its own numbers give
+// now. Display only — nothing that word already did to the career is redone (release/television.js).
+function shownVerdict(c) {
+  if (!c || c.streaming || !(c.season || c.episodes) || !(c.endViewers || c.viewers)) return c && c.verdict;
+  if (!['ignored', 'seen', 'watched'].includes(c.verdict)) return c.verdict;
+  return tvVerdict({ endViewers: c.endViewers, viewers: c.viewers, type: c.type, rating: c.rating });
+}
 function CreditRow({ group, g }) {
   const c = group.best;
+  const v = shownVerdict(c);
   const r = c.rating || 0;
   // One switch for the whole row now. It used to open only the reviews; it opens the film.
   const [open, setOpen] = useState(false);
@@ -160,6 +171,12 @@ function CreditRow({ group, g }) {
           : c.renewal === 'capped' ? `📺 It ended here. ${c.season || 1} season${(c.season || 1) === 1 ? '' : 's'}, and the format ran its course.`
           : `📺 Not renewed.${c.endViewers ? ` It finished on ${c.endViewers}m.` : ''}`}
       </div>)}
+      {/* What the network decided is the show's; what happened to you in the next one is yours, and
+          what it did without you is the third line (career/continuation.js). The Last Woman read
+          "Renewed for season 2" for three years with nothing under it. */}
+      {(() => { const last = group.parts.reduce((a, b) => ((b.season || 0) > (a.season || 0) ? b : a)); const nl = nextLines(last); if (!nl) return null;
+        return (<>{nl.you && <div style={{ fontSize: 11, fontWeight: 700, margin: '2px 0', color: theme.bad }}>👤 {nl.you}</div>}
+          {nl.after && <div style={{ fontSize: 11, color: theme.muted, margin: '2px 0 4px', lineHeight: 1.45 }}>↳ {nl.after}</div>}</>); })()}
       {/* The studio said no. A name in the room can push — favours.js. */}
       {c.sequelDead && <div style={{ fontSize: 11, color: theme.muted, margin: '4px 0 2px', fontWeight: 700 }}>📝 The sequel was announced and never made. Three writers, a director who left, and a studio that stopped answering.</div>}
       {(() => { const sq = sequelDue(g, c.title); if (!sq) return null; const MONS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
@@ -174,8 +191,8 @@ function CreditRow({ group, g }) {
           fate — Maxi, twice now: "но байер, он никогда не вышел что ли?" */}
       {!c.running && (c.verdict || c.critical) && (
         <div style={{ display: 'flex', gap: 7, flexWrap: 'wrap', marginTop: 3, fontSize: 10.5, fontWeight: 900, letterSpacing: '.06em', textTransform: 'uppercase' }}>
-          {c.verdict && <span style={{ color: VERDICT_COL[c.verdict] || theme.muted }}>
-            {c.verdict === 'unsold' ? 'never released' : c.verdict}</span>}
+          {v && <span style={{ color: VERDICT_COL[v] || theme.muted }}>
+            {v === 'unsold' ? 'never released' : v}</span>}
           {c.critical && <span style={{ color: CRIT_COL[c.critical] || theme.muted, fontWeight: 700, letterSpacing: 0, textTransform: 'none', fontSize: 11 }}>{c.critical}</span>}
           {/* A billion euros is not a verdict and does not replace one — it stands beside it,
               and a picture is allowed to read PROFITABLE · WORLD HIT · BILLION CLUB all at
@@ -217,8 +234,8 @@ function CreditRow({ group, g }) {
               which is the only sum the trades mean — so the gross on its own is unreadable. */}
           {group.boxOffice > 0 && c.needed > 0 && <span style={{ color: theme.muted, fontSize: 10.5 }}>
             needed {money(c.needed)}</span>}
-          {c.verdict && !c.running && <span style={{ fontWeight: 900, letterSpacing: '.07em', textTransform: 'uppercase', fontSize: 9.5,
-            color: VERDICT_COL[c.verdict] || theme.muted }}>{c.verdict}</span>}
+          {v && !c.running && <span style={{ fontWeight: 900, letterSpacing: '.07em', textTransform: 'uppercase', fontSize: 9.5,
+            color: VERDICT_COL[v] || theme.muted }}>{v}</span>}
           {/* Two more, kept deliberately apart from the money. A picture can lose everything,
               be the best-reviewed thing of its year and be the making of you, all at once. */}
           {c.critical && !c.running && <span style={{ color: CRIT_COL[c.critical] || theme.muted, fontSize: 10.5, fontWeight: 700 }}>
@@ -416,9 +433,51 @@ export function CreditsList({ g, credits, label }) {
         {real.length === 0
           ? <div style={{ fontSize: 12.5, color: theme.muted, textAlign: 'center', padding: 20, lineHeight: 1.6 }}>Nothing released yet.<br />Audition in OpenCall, or take an offer in Messages.</div>
           : groups.map((gr, i) => <CreditRow key={`${gr.root}-${gr.to}-${i}`} group={gr} g={g} />)}
+        <WithoutYou g={g} list={real} />
         <OtherWork list={odd} />
       </>);
     })()}
+  </div>);
+}
+// The parts that went on without you (career/continuation.js, meta/passed.js), kept for good: the ones
+// you lost — recast, written out, never answered, never agreed, on another set — apart from the ones
+// you turned down yourself.
+function WithoutYou({ g, list }) {
+  const [open, setOpen] = useState(false);
+  const MONS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+  const when = (at) => (at != null ? `${MONS[at % 12]} ${Math.floor(at / 12)}` : '');
+  const recs = list.filter((c) => c.next && c.next.you !== 'returned').map((c) => ({ c, rec: c.next }));
+  const own = new Set(recs.map((x) => x.rec.title));
+  const mine = (x) => x.rec.you === 'declined' || x.rec.you === 'left' || x.rec.you === 'walkedOut';
+  const lost = recs.filter((x) => !mine(x)).sort((a, b) => (b.rec.at || 0) - (a.rec.at || 0));
+  const said = recs.filter(mine).sort((a, b) => (b.rec.at || 0) - (a.rec.at || 0));
+  const passed = (g.passedOn || []).filter((p) => p.how === 'passed' && p.kind !== 'renewal' && p.kind !== 'sequel' && !own.has(p.title));
+  if (!lost.length && !said.length && !passed.length) return null;
+  const row = ({ c, rec }) => { const nl = nextLines(c) || {};
+    return (<div key={rec.title} style={{ padding: '7px 2px', borderBottom: `1px solid ${theme.line}`, fontSize: 12 }}>
+      <div style={{ fontWeight: 700 }}>{rec.kind === 'part' ? rec.title : `${rec.root} · season ${rec.n}`}</div>
+      <div style={{ fontSize: 10.5, color: mine({ rec }) ? theme.muted : theme.bad }}>{YOU[rec.you] || rec.you}{WHY[rec.how] ? ` — ${WHY[rec.how]}` : ''}{rec.at != null ? ` · ${when(rec.at)}` : ''}</div>
+      {nl.after && <div style={{ fontSize: 10.5, color: theme.muted, marginTop: 2, lineHeight: 1.4 }}>{nl.after}</div>}
+    </div>); };
+  return (<div style={{ marginTop: 14 }}>
+    <button onClick={() => setOpen(!open)} style={{ width: '100%', textAlign: 'left', background: 'none', border: 'none', cursor: 'pointer', padding: '6px 0' }}>
+      <span style={{ fontSize: 11, fontWeight: 900, letterSpacing: '.09em', textTransform: 'uppercase', color: theme.muted }}>
+        Without you · {lost.length + said.length + passed.length}
+      </span>
+      <span style={{ fontSize: 10.5, color: theme.muted, marginLeft: 8 }}>
+        {lost.length} lost · {said.length + passed.length} turned down {open ? '▾' : '▸'}
+      </span>
+    </button>
+    {open && <>
+      {lost.length > 0 && <div style={{ fontSize: 10, fontWeight: 900, letterSpacing: '.08em', textTransform: 'uppercase', color: theme.bad, margin: '6px 0 2px' }}>Lost</div>}
+      {lost.map(row)}
+      {(said.length > 0 || passed.length > 0) && <div style={{ fontSize: 10, fontWeight: 900, letterSpacing: '.08em', textTransform: 'uppercase', color: theme.muted, margin: '8px 0 2px' }}>Turned down</div>}
+      {said.map(row)}
+      {passed.map((p) => (<div key={p.title + p.at} style={{ padding: '7px 2px', borderBottom: `1px solid ${theme.line}`, fontSize: 12 }}>
+        <div style={{ fontWeight: 700 }}>{p.title}</div>
+        <div style={{ fontSize: 10.5, color: theme.muted }}>{p.role || 'A part'}{p.director ? ` · ${p.director}` : ''} · {when(p.at)}{p.replacedBy ? ` · ${p.replacedBy} took it` : ''}</div>
+      </div>))}
+    </>}
   </div>);
 }
 // Ads, voice sessions, days as an extra. Kept — it is part of the story of a career, and

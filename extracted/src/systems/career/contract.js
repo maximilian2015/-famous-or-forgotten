@@ -17,7 +17,7 @@ import { negotiationFor, reachOf } from './negotiate.js';
 import { acceptOffer, declineOffer } from './offers.js';
 import { canTakeSet, monthsUntilFree, sets } from '../../engine/sets.js';
 import { walkOffSet } from './production.js';
-import { noteSequelLoss } from '../meta/stories.js';
+import { loseContinuation } from './continuation.js';
 import { recordPassed } from '../meta/passed.js';
 import { paid } from './agent.js';
 import { sendMail } from '../meta/email.js';
@@ -487,8 +487,8 @@ export function contractsTick(s) {
     // the world has a whole story for it (stories.js recast): the fans, the director's
     // letter, the bridge, and the thing opening without you. It was only ever started by
     // a refusal — so the commonest way of losing one, a set that ran over, went unnoticed.
-    if (o.kind === 'sequel' || o.kind === 'renewal') noteSequelLoss(s, o, 'schedule');
-    recordPassed(s, o, 'schedule');
+    if (o.kind === 'sequel' || o.kind === 'renewal') loseContinuation(s, o, 'schedule');
+    else recordPassed(s, o, 'schedule');
     sendMail(s, { from: `${studioOf(o)} · business affairs`, subj: `Re: "${title}"`, tag: 'contract', kind: 'contract',
       body: `We held ${title} for you until ${MON[(o.startAt || now) % 12]} and two months beyond. With no release date from your current production we have had to cast elsewhere. We regret it.`,
       cta: [{ label: 'Delete', fx: {}, reply: 'They waited. Not forever.' }] });
@@ -530,8 +530,8 @@ export function contractsTick(s) {
       s.offers = s.offers.filter((x) => x.id !== o.id);
       s.inbox = (s.inbox || []).filter((m) => m.offerId !== o.id);
       addTimeline(s, `${title}: they could not hold the part. It went to somebody who was free.`, true);
-      if (o.kind === 'sequel' || o.kind === 'renewal') noteSequelLoss(s, o, 'schedule');
-      recordPassed(s, o, 'schedule');
+      if (o.kind === 'sequel' || o.kind === 'renewal') loseContinuation(s, o, 'schedule');
+      else recordPassed(s, o, 'schedule');
       (s.moments = s.moments || []).push({ id: 'contract', kind: 'bad', title, lines, body: 'They needed somebody in the chair on the first day, and you were on another set. The part went to somebody who was free.', walked: true });
       continue;
     }
@@ -557,8 +557,9 @@ export function contractsTick(s) {
         addTimeline(s, `${title} is not being made. Nobody would say the word money out loud, and everybody said it.`, true);
         (s.moments = s.moments || []).push({ id: 'contract', kind: 'bad', title, lines,
           body: `Nobody took the part off you, because there was nobody to give it to — the show is about you and everybody in the room knew it. So they did the other thing. There is no season. The cast were told on a Thursday, the crew found out from the trades, and a piece will run this week about what a shame it is, written by somebody who has been briefed.` });
-        if (o.kind === 'renewal') noteSequelLoss(s, o, 'talks');
-        { const e = recordPassed(s, o, 'talks'); if (e) e.outcome = { cancelled: true, at: e.at }; }   // nobody took it: the season was not made
+        // Nobody took it: the season was not made. The show's own record says so (continuation.js).
+        if (o.kind === 'sequel' || o.kind === 'renewal') loseContinuation(s, o, 'notMade');
+        else { const e = recordPassed(s, o, 'talks'); if (e) e.outcome = { cancelled: true, at: e.at }; }
         sendMail(s, { from: `${studioOf(o)} · business affairs`, subj: `"${title}" — the season`, tag: 'contract', kind: 'contract',
           body: `We have not been able to reach an agreement on terms and the network will not be proceeding with the season. This is not a reflection on the work. It has been a pleasure, and we hope to find something together again before long.` });
         continue;
@@ -567,16 +568,14 @@ export function contractsTick(s) {
       // signed the same paper — nobody signs your recurring part. They write you out, and the
       // show comes back without you. Maxi drew that line: the lead cannot be, anybody else can.
       if (canBeWrittenOut(o)) {
-        writeOut(s, o);
-        noteSequelLoss(s, o, 'talks');
-        recordPassed(s, o, 'talks');
+        writeOut(s, o);   // and writeOut writes it down (standoff.js markRenewalOutcome)
         (s.moments = s.moments || []).push({ id: 'contract', kind: 'bad', title, lines,
           body: `You asked, they said no, and then they solved it the way a show always solves it: your character is written out and the season goes ahead. Nobody has done anything to you. You were simply not the reason anybody was watching.` });
         continue;
       }
       addTimeline(s, `${title}: they stopped answering. Somebody else signed it as written.`, true);
-      if (o.kind === 'sequel' || o.kind === 'renewal') noteSequelLoss(s, o, o.story === 'recast' ? 'meeting' : 'talks');
-      recordPassed(s, o, o.story === 'recast' ? 'meeting' : 'talks');
+      if (o.kind === 'sequel' || o.kind === 'renewal') loseContinuation(s, o, o.story === 'recast' ? 'meeting' : 'talks');
+      else recordPassed(s, o, 'talks');
       (s.moments = s.moments || []).push({ id: 'contract', kind: 'bad', title, lines, body: 'Three times back and forth, and on the third they simply stopped replying. Somebody else signed it as written.', walked: true });
       sendMail(s, { from: `${studioOf(o)} · business affairs`, subj: `Re: "${title}" — withdrawn`, tag: 'contract', kind: 'contract', body: `Further to your revisions: the role has been cast elsewhere. We thank you for your interest and wish you well.\n\n${lines.join(' · ')}`, cta: [{ label: 'Delete', fx: {}, reply: 'Gone.' }] });
       continue;

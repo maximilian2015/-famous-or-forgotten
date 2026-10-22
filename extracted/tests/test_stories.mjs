@@ -43,12 +43,15 @@ const pick = (s, label) => { const i = s.pendingArc.choices.findIndex((c) => new
 }
 // ── 7. the sequel without you ──────────────────────────────────────────────────
 {
-  const s = st({ filmography: [{ title: 'Skinless Bone', role: 'Lead', type: 'Feature Film', genre: 'Horror', rating: 80, year: 2049, director: 'Ivo Kessler', gross: 4.7e8 }] });
+  const s = st({ filmography: [{ title: 'Skinless Bone', role: 'Lead', type: 'Feature Film', genre: 'Horror', rating: 80, year: 2049, director: 'Ivo Kessler', gross: 4.7e8, verdict: 'smash', scale: 'feature' }] });
   const o = { id: 'seq1', kind: 'sequel', part: 2, projectTitle: 'Skinless Bone II', role: 'Lead', type: 'Feature Film', genre: 'Horror', salary: 2000000, months: 5, tier: 'lead', scale: 'feature', prestigeScore: 60, deadline: 3 };
   s.offers = [o];
   const r0 = s.respect;
   declineOffer(s, 'seq1');
-  ok('passing on your own sequel: standing down, the fans furious', s.respect < r0 && s.scandal > 0 && s.timeline.some((x) => /Fans are furious/.test(x.text)));
+  // The fans are furious because the film was a smash — and nobody's standing moves for a no
+  // (Maxi/ChatGPT, 22 Oct; career/continuation.js).
+  ok('passing on your own smash sequel: the fans furious, standing untouched', s.respect === r0 && s.scandal > 0 && s.timeline.some((x) => /Fans are furious/.test(x.text)));
+  ok('and the loss is on the film it followed', s.filmography[0].next && s.filmography[0].next.you === 'declined' && s.filmography[0].next.n === 2);
   const rc = storyOf(s, 'recast');
   ok('the chain has the director from the credit', rc && rc.data.director === 'Ivo Kessler' && rc.beat === 'meeting');
   ok('it says so on the main screen', activeStories(s).some((x) => x.title === 'Without you' && /Kessler|Ivo/.test(x.line)));
@@ -61,14 +64,15 @@ const pick = (s, label) => { const i = s.pendingArc.choices.findIndex((c) => new
   const r1 = s.respect;
   declineOffer(s, back.id);
   ok('the second no is very expensive', s.respect <= r1 - 8 && holdsAGrudge(s, 'Ivo Kessler') && s.timeline.some((x) => /will not work with you again/.test(x.text)));
-  ok('and the film will open without you', storyOf(s, 'recast').beat === 'without' && storyOf(s, 'recast').due > stamp(s) + 11);
+  // It waits for the month the film really opens — the record's, not a roll (career/continuation.js).
+  ok('and the film will open without you', storyOf(s, 'recast').beat === 'without' && storyOf(s, 'recast').due === s.filmography[0].next.due && storyOf(s, 'recast').due > stamp(s) + 6, `${storyOf(s, 'recast').due} vs ${stamp(s)}`);
   month(s, 18); storiesTick(s);
-  ok('the trades say how it opened', s.pendingArc && s.pendingArc.beat === 'without' && /opened at €\d+m without you/.test(s.pendingArc.text) && /has your part/.test(s.pendingArc.text));
+  ok('the trades say how it opened', s.pendingArc && s.pendingArc.beat === 'without' && /opened without you: €\d+m/.test(s.pendingArc.text) && /has your part/.test(s.pendingArc.text), s.pendingArc && s.pendingArc.text);
   resolveArc(s, 0);
   ok('the chain ends or goes on to part three', !storyOf(s, 'recast') || storyOf(s, 'recast').beat === 'again');
   ok('the timeline has the opening', s.timeline.some((x) => /opened without you and (did fine|sank)/.test(x.text)));
   // a season of your own show
-  const t = st({ filmography: [{ title: 'Careless Border', role: 'Lead', type: 'Drama Series', genre: 'Drama', rating: 70, year: 2049, director: 'Anouk Vey', episodes: 10, season: 2 }] });
+  const t = st({ filmography: [{ title: 'Careless Border', role: 'Lead', type: 'Drama Series', genre: 'Drama', rating: 70, year: 2049, director: 'Anouk Vey', episodes: 10, season: 2, endViewers: 6 }] });
   t.offers = [{ id: 'ren1', kind: 'renewal', season: 3, seriesTitle: 'Careless Border', projectTitle: 'Careless Border · season 3', role: 'Lead', type: 'Drama Series', genre: 'Drama', salary: 800000, episodeFee: 80000, episodes: 10, months: 5, tier: 'lead', scale: 'recurring', deadline: 3 }];
   declineOffer(t, 'ren1');
   ok('a season of your own show, same road', storyOf(t, 'recast') && storyOf(t, 'recast').data.kind === 'renewal' && t.timeline.some((x) => /not coming back for season 3/.test(x.text)));
@@ -82,7 +86,9 @@ const pick = (s, label) => { const i = s.pendingArc.choices.findIndex((c) => new
     Object.assign(tr, { beat: 'again', due: stamp(t) + 12 });
     Object.assign(tr.data, { other: 'Ruby Quist', hit: true });
     const a = activeStories(t).find((x) => x.id === 'recast');
-    ok('the postscript wait says what happened: who has the part, and that it held', a.line === 'Season 3 of "Careless Border" went out without you. Ruby Quist has your part, and the numbers held.', a.line);
+    // Who has the part is the record's (career/continuation.js) — somebody real, chosen when you lost it.
+    const rec = t.filmography[0].next, who = rec && rec.by ? rec.by.name : 'Ruby Quist';
+    ok('the postscript wait says what happened: who has the part, and that it held', a.line === `Season 3 of "Careless Border" went out without you. ${who} has your part, and the numbers held.`, a.line);
     ok('a year with nothing coming folds into the quiet line', a.quiet && a.next === stamp(t) + 12);
   }
   // a supporting part is nobody's story

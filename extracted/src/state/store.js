@@ -9,6 +9,7 @@ import { settleCritical } from '../systems/career/release.js';
 import { settleProjects } from '../systems/career/project.js';
 import { settleSeriesAwards } from '../systems/career/awards.js';
 import { settlePress } from '../systems/meta/press.js';
+import { settleLostContinuations } from '../systems/career/continuation.js';
 const KEY = 'fof_react_save';
 const CURRENT_VERSION = 'r0.8b';
 
@@ -71,6 +72,7 @@ function normalize(saved) {
   settleProjects(merged);   // and every piece of work gets the project it would have had. career/project.js
   settleSeriesAwards(merged);   // and a series that was up for an Asker is up for the series award. career/awards.js
   settlePress(merged);      // and what the papers said about each film, while the feed still has it. meta/press.js
+  settleLostContinuations(merged);   // and a season or a sequel you lost, where the save says so outright. career/continuation.js
   return merged;
 }
 function sanitize(st) {

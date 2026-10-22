@@ -30,7 +30,8 @@ import { canAfford, spend, tooTired } from '../../engine/energy.js';
 import { setRespect } from '../meta/status.js';
 import { applyBond } from '../life/bonds.js';
 import { fameTier } from '../meta/status.js';
-import { slotNorm, seriesRoot } from './franchise.js';
+import { slotNorm } from './franchise.js';
+import { loseContinuation } from './continuation.js';
 
 const clamp = (v, a = 0, b = 100) => Math.max(a, Math.min(b, v));
 const stamp = (s) => (s.year || 0) * 12 + (s.month || 0);
@@ -154,16 +155,12 @@ export const EXITS = [
 ];
 
 // Written out over money. The show does not stop, and that is the whole of it.
+// It used to write 'writtenOut' over the show's own fate, so a show that came back without you read
+// as a show that ended. The show's fate and yours are kept apart now (career/continuation.js): a
+// written-out character is a renewed show you are not in; a season nobody would make is a cancelled one.
 function markRenewalOutcome(s, o, result, reason) {
   if (!o || o.kind !== 'renewal') return;
-  const shelf = s.filmography || [];
-  // New renewals point to a credit by ID, which survives JSON. Old papers can
-  // only point to the preceding season of the same show, never a later one.
-  const root = seriesRoot(o.seriesTitle || o.projectTitle);
-  const credit = o.sourceCreditId ? shelf.find(c => c.id === o.sourceCreditId)
-    : shelf.filter(c => !c.minor && (c.season || 1) === (o.season || 1) - 1
-      && seriesRoot(c.title) === root).sort((a, b) => (b.year || 0) - (a.year || 0))[0];
-  if (credit) { credit.renewal = result; credit.renewalReason = reason; }
+  loseContinuation(s, o, result === 'cancelled' ? 'notMade' : 'writtenOut', { exit: reason });
 }
 export function writeOut(s, o) {
   const e = EXITS[Math.floor(Math.random() * EXITS.length)];

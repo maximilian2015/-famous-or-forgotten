@@ -842,7 +842,9 @@ function closeRun(s, credit, r) {
     id: 'verdict', tv: film ? null : r.stream ? 'streaming' : (r.scale === 'recurring' ? 'soap' : r.scale === 'prestige' ? 'prestige' : 'episode'), kind: r.rating >= 70 || verdict === 'smash' || verdict === 'hit' || verdict === 'breakout' ? 'good' : 'bad',
     title: credit.title, score, money, verdict, reviews: credit.reviews, genre: credit.genre, scale: r.scale,
     // Television: the network's number against yours, and what it decided.
-    network: r.stream ? streamLine : !film && r.scale !== 'episode' && credit.renewal ? networkLine(credit.type, credit.endViewers || credit.viewers, null, r.rating, credit.renewal) : null,
+    network: r.stream ? streamLine : !film && r.scale !== 'episode' && credit.renewal ? networkLine(credit.type, credit.endViewers || credit.viewers, null, r.rating,
+      // Renewed without you is still renewed; the line says the second half too (career/continuation.js).
+      credit.renewal === 'renewed' && credit.next && (credit.next.you === 'writtenOut' || credit.next.you === 'killed') ? 'writtenOut' : credit.renewal) : null,
     // A platform's three numbers (BigMoment draws them in place of the box office).
     streaming: r.stream ? { views: `${r.stream.views28}m`, completion: `${Math.round((r.stream.completion || 0) * 100)}%`, outcome: OUTCOME_WORD[verdict],
       ...(r.stream.movie ? { week1: `${r.stream.opening7}m` } : {}) } : null,

@@ -289,18 +289,20 @@ test('money-related write-out updates the source season, not another season/show
     { id: 'older', title: 'Black Harbor · season 1', season: 1, renewal: 'renewed' });
   const o = renewal({ tier: 'supporting', role: 'Supporting', sourceCreditId: 'season-2' });
   s.offers = [o]; writeOut(s, o);
-  assert.equal(s.filmography[0].renewal, 'writtenOut');
+  // The show was renewed; you are not in it — two facts, two fields (career/continuation.js).
+  assert.equal(s.filmography[0].renewal, 'renewed'); assert.equal(s.filmography[0].next.you, 'writtenOut');
   assert.equal(s.filmography[1].renewal, 'renewed'); assert.equal(s.filmography[2].renewal, 'renewed');
+  assert.ok(!s.filmography[1].next && !s.filmography[2].next, 'another season or show was marked');
 });
 test('write-out also updates a legacy renewal without a source ID', () => {
   const s = career(), o = renewal({ tier: 'supporting', role: 'Supporting' });
-  writeOut(s, o); assert.equal(s.filmography[0].renewal, 'writtenOut');
+  writeOut(s, o); assert.equal(s.filmography[0].renewal, 'renewed'); assert.equal(s.filmography[0].next.you, 'writtenOut');
 });
 test('the chosen scripted exit remains on the source credit', () => {
   const s = career(), o = renewal({ tier: 'supporting', role: 'Supporting' });
   const random = Math.random;
   try { Math.random = () => 0.3; writeOut(s, o); } finally { Math.random = random; }
-  assert.equal(s.filmography[0].renewalReason, 'a death');
+  assert.equal(s.filmography[0].next.exit, 'a death'); assert.equal(s.filmography[0].next.you, 'killed');
 });
 test('failed room cancellation records that the ordered season will not happen', () => {
   const { s, o } = meeting(); itFails(s, { ...o, _forced: 'cancel' });
@@ -308,11 +310,11 @@ test('failed room cancellation records that the ordered season will not happen',
 });
 test('being killed/written around changes the prior credit to without-you', () => {
   const { s, o } = meeting(); itFails(s, { ...o, _forced: 'around' });
-  assert.equal(s.filmography[0].renewal, 'writtenOut');
+  assert.equal(s.filmography[0].renewal, 'renewed'); assert.equal(s.filmography[0].next.you, 'writtenOut');
 });
 test('the failed meeting remembers a killed-off outcome rather than only its prose', () => {
   const { s, o } = meeting(); itFails(s, { ...o, _forced: 'killed' });
-  assert.equal(s.filmography[0].renewalReason, 'killed');
+  assert.equal(s.filmography[0].next.exit, 'killed'); assert.equal(s.filmography[0].next.you, 'killed');
 });
 test('the invitation names the upcoming third season, not the fourth', () => {
   const s = career(), o = renewal(); s.offers = [o];

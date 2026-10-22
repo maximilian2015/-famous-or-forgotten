@@ -11,7 +11,8 @@ import { rollStability } from './stability.js';
 import { canWork } from '../life/strain.js';
 import { newTitle } from '../world/titles.js';
 import { refusedOnType } from '../meta/typecast.js';
-import { storyOfferFactor, noteRefusal, noteSequelLoss, holdsAGrudge } from '../meta/stories.js';
+import { storyOfferFactor, noteRefusal, holdsAGrudge } from '../meta/stories.js';
+import { loseContinuation } from './continuation.js';
 import { recordPassed } from '../meta/passed.js';
 import { ensureBudget } from './budget.js';
 import { ambitionLean } from '../meta/ambition.js';
@@ -141,8 +142,11 @@ export function offersTick(s) {
     // reason a deadline is on the card.
     if (o.kind === 'thaw') addTimeline(s, `${title} finally went ahead without you.`, true);
     else addTimeline(s, `They stopped waiting on ${title} and cast someone else.`, true);
-    if (o.kind === 'sequel' || o.kind === 'renewal') noteSequelLoss(s, o, o.story === 'recast' ? 'meeting' : 'expired');
-    recordPassed(s, o, o.story === 'recast' ? 'meeting' : 'expired');
+    // Your own season or sequel: written down on its credit whatever else is going on (continuation.js).
+    // A paper that had been argued over did not lapse — the deal was never closed.
+    const lapsed = o.story === 'recast' ? 'meeting' : o.contract && (o.contract.round || 0) > 0 ? 'talks' : 'expired';
+    if (o.kind === 'sequel' || o.kind === 'renewal') loseContinuation(s, o, lapsed);
+    else recordPassed(s, o, lapsed);
     s.inbox = (s.inbox || []).filter((m) => m.offerId !== o.id);
   }
   if (kept.length !== s.offers.length && !s.lastEvent) {
@@ -330,14 +334,19 @@ export function declineOffer(s, id) {
   // nobody's lawyer and nobody's fans have a word to say.
   const byExit = o.kind === 'renewal' && (o.exitAfter || 0) > 0 && (o.season || 0) > o.exitAfter;
   if (byExit) {
+    loseContinuation(s, o, 'exit');
     s.lastEvent = `You left "${o.seriesTitle || title}" after season ${(o.season || 1) - 1}, the way the paper said you could. The network wrote a graceful exit and the fans got a last episode.`;
     addTimeline(s, `Left ${o.seriesTitle || title} by the exit clause. A last episode, and no hard feelings.`);
     return s;
   }
-  if (o.kind === 'sequel' || o.kind === 'renewal') noteSequelLoss(s, o, o.story === 'recast' ? 'meeting' : 'passed');
-  else if (o.tier !== 'supporting' && o.via !== 'casting') noteRefusal(s, o);
-  // Kept for good, whatever the stories above make of it (meta/passed.js).
-  recordPassed(s, o, o.story === 'recast' ? 'meeting' : 'passed');
+  // Your own season or sequel: written down on its credit, the ledger and the fans (continuation.js).
+  // Walking out of an option is its own thing, below.
+  if (o.kind === 'sequel' || o.kind === 'renewal') loseContinuation(s, o, o.story === 'recast' ? 'meeting' : o.optioned ? 'option' : 'passed');
+  else {
+    if (o.tier !== 'supporting' && o.via !== 'casting') noteRefusal(s, o);
+    // Kept for good, whatever the stories above make of it (meta/passed.js).
+    recordPassed(s, o, 'passed');
+  }
   // And saying no to the box is how you get out of it — see meta/typecast.js refusedOnType.
   refusedOnType(s, o);
   // Walking out of a season the network holds an option on is walking out of a contract.

@@ -150,12 +150,12 @@ const byTag = (s, tag) => (s.sms || []).find((m) => m.tag === tag);
   // walking out of it
   const d = actor({ respect: 20 }); d.offers = [{ id: 'sq', kind: 'sequel', part: 2, optioned: true, optionParts: 3, projectTitle: 'North Water II' }];
   O.declineOffer(d, 'sq');
-  // Maxi: a lead who does not come back for their own sequel — the fans are furious (−3,
-  // stories.js), and walking out of an option is a contract on top of that (−6).
-  ok('passing on an optioned sequel is walking out of a contract: −6, and the fans: −3', d.respect === 11 && /lawyers/.test(d.lastEvent || ''), String(d.respect));
+  // Walking out of an option is a contract (−6). The fans no longer take standing for a no
+  // (Maxi/ChatGPT, 22 Oct, career/continuation.js): they react to how much it meant, in the papers.
+  ok('passing on an optioned sequel is walking out of a contract: −6, and nothing more off standing', d.respect === 14 && /lawyers/.test(d.lastEvent || ''), String(d.respect));
   const d2 = actor({ respect: 20 }); d2.offers = [{ id: 'sq', kind: 'sequel', part: 2, optioned: false, projectTitle: 'North Water II' }];
   O.declineOffer(d2, 'sq');
-  ok('passing on an ordinary sequel: the fans, and the director writes in two months', d2.respect === 17 && (d2.stories || []).some((x) => x.id === 'recast' && x.beat === 'meeting'), String(d2.respect));
+  ok('passing on an ordinary sequel: no standing off, and the director writes in two months', d2.respect === 20 && (d2.stories || []).some((x) => x.id === 'recast' && x.beat === 'meeting'), String(d2.respect));
 }
 {
   // fan mail, hate mail, spam

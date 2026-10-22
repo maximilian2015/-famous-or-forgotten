@@ -35,7 +35,8 @@ const agree = (s, o, id, askId) => { const k = draftContract(s, o); const c = cl
   // walking out of an optioned season
   const r0 = s.respect;
   declineOffer(s, ren.id);
-  ok('walking out of an optioned season is walking out of a contract', s.respect === r0 - 3 - 6 && /lawyers/.test(s.lastEvent), `${s.respect} vs ${r0}`);
+  // The contract costs six; the fans no longer take standing for a no (career/continuation.js, 22 Oct).
+  ok('walking out of an optioned season is walking out of a contract', s.respect === r0 - 6 && /lawyers/.test(s.lastEvent), `${s.respect} vs ${r0}`);
   // leaving by the exit
   const t = st(); const r1 = t.respect;
   t.offers = [{ ...ren, id: 'ren4', season: 4, exitAfter: 3, optioned: true, projectTitle: 'Careless Border · season 4' }];

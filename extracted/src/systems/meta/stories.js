@@ -24,6 +24,8 @@ import { GENRES } from './news.js';
 import { rollStability } from '../career/stability.js';
 import { ambitionOf } from './ambition.js';
 import { notePassedOutcome } from './passed.js';
+import { loseContinuation, recordForTitle, ensureResult, withoutYouLine } from '../career/continuation.js';
+import { slotNorm } from '../career/franchise.js';
 
 const clamp = (v, a = 0, b = 100) => Math.max(a, Math.min(b, v));
 const stamp = (s) => (s.year || 0) * 12 + (s.month || 0);
@@ -273,7 +275,9 @@ export const CHAINS = {
   //    Series too: your own show, a season without you.
   recast: {
     title: 'Without you', cooldown: 0,
-    start: () => null,   // started by noteSequelLoss, not by a roll
+    // Started by noteSequelLoss, not by a roll — and, when one was already running, from the queue
+    // it left (nextQueuedRecast), so a second loss waits its turn instead of never being told.
+    start: (s) => nextQueuedRecast(s),
     // Said from what has happened, not only which beat is next. Maxi, at "Small Wedding · season 5
     // goes on without you" sitting on Home for a year: "it never changes?" It waited twelve months
     // for the next piece of news and said the same half-sentence the whole time.
@@ -288,34 +292,47 @@ export const CHAINS = {
                   note: `After the meeting: ${Math.round(((salary / Math.max(1, o.salary || 1)) - 1) * 100)}% more, a month shorter, no exclusivity, and points. ${first(st.data.director)} said it was the most they could do, and it is.` });
                 st.data.path = 'met';
                 return { reply: `An hour that is mostly listening. The paper comes back the same evening with the numbers moved and a note on the front in their handwriting. It is in Messages. It will not come again.`, next: { beat: 'answer', inMonths: 5 } }; } },
-            { label: 'Decline the meeting', hint: 'They shoot without you. The director does not forget.', shows: burnShows(st), apply: () => { burnTheBridge(s, st); return { reply: `You do not go. ${first(st.data.director)} does not write again. The trades have the recast by the end of the month, and the fans have it an hour later.`, next: { beat: 'without', inMonths: rint(12, 18) } }; } },
+            { label: 'Decline the meeting', hint: 'They shoot without you. The director does not forget.', shows: burnShows(st), apply: () => { burnTheBridge(s, st); return { reply: `You do not go. ${first(st.data.director)} does not write again. The trades have the recast by the end of the month, and the fans have it an hour later.`, next: { beat: 'without', inMonths: monthsToIt(s, st) } }; } },
           ] }) },
       answer: {
         build: (s, st) => {
           const back = wentBack(s, st);
+          if (back) { const f = recordForTitle(s, st.data.title); if (f) f.rec.you = 'returned'; }
           if (back) return { speaker: 'Back', text: `You went back to "${st.data.title}". The piece about it uses the word "reunited", and the fans use a lot of exclamation marks.`, choices: [{ label: 'Good', shows: { fx: { respect: 2 } }, apply: () => { setRespect(s, (s.respect || 0) + 2); return { reply: 'Good.', end: true }; } }] };
           if ((s.offers || []).some((o) => o.story === 'recast' && String(o.projectTitle || '').replace('⭐ ', '') === st.data.title)) { st.due = stamp(s) + 2; return null; }
-          return { speaker: 'The trades', text: `"${st.data.title}" has been recast. ${first(st.data.director)} said, on the record, that the door had been open and that it is now shut. The fans have a hashtag.`, choices: [{ label: 'On', shows: st.data.burned ? {} : burnShows(st), apply: () => { if (!st.data.burned) burnTheBridge(s, st); return { reply: 'On.', next: { beat: 'without', inMonths: rint(12, 18) } }; } }] };
+          return { speaker: 'The trades', text: `"${st.data.title}" has been recast. ${first(st.data.director)} said, on the record, that the door had been open and that it is now shut. The fans have a hashtag.`, choices: [{ label: 'On', shows: st.data.burned ? {} : burnShows(st), apply: () => { if (!st.data.burned) burnTheBridge(s, st); return { reply: 'On.', next: { beat: 'without', inMonths: monthsToIt(s, st) } }; } }] };
         } },
       without: {
         build: (s, st) => {
           const tv = st.data.kind === 'renewal';
-          if (st.data.hit == null) st.data.hit = chance(tv ? 50 : 45);
-          const other = st.data.other || (st.data.other = (activeActors(s).filter((x) => Math.abs(ageOf(s, x) - (s.ageY || 30)) <= 8 && x.gender === s.gender)[0] || {}).name || 'somebody younger');
-          const gross = st.data.gross || (st.data.gross = tv ? 0 : (st.data.scale === 'blockbuster' ? rint(250, 800) : rint(60, 220)) * 1e6 * (st.data.hit ? 1 : 0.4));
-          // Kept on the part you lost (meta/passed.js): who has it, and how it went.
-          notePassedOutcome(s, st.data.title, { replacedBy: other !== 'somebody younger' ? other : null, outcome: { hit: !!st.data.hit, gross } });
-          const text = tv
-            ? (st.data.hit ? `Season ${st.data.season} of "${st.data.title}" went out without you. ${other} has your part, the numbers held, and the piece about it says the show was always bigger than any one name. That is the sentence.` : `Season ${st.data.season} of "${st.data.title}" went out without you. ${other} has your part and the numbers fell off a cliff. The fans blame the recast, loudly, and the piece agrees with them.`)
-            : (st.data.hit ? `"${st.data.title}" opened at ${money(gross)} without you. ${other} has your part, and the reviews use their name in the first line. The fans were furious for a week and then they went to see it.` : `"${st.data.title}" opened at ${money(gross)} without you, which is not a number the studio wanted. ${other} has your part, and the fans have decided, loudly, that this is why.`);
-          return { speaker: 'The trades', text, choices: [{ label: st.data.hit ? 'Noted' : 'Told you', shows: { fx: st.data.hit ? { fame: -3 } : { respect: 1, mental: 2 } }, apply: () => {
-            if (st.data.hit) { setFame(s, (s.fame || 0) - 3); addTimeline(s, `"${st.data.title}" ${tv ? 'went out' : 'opened'} without you and did fine. The fans moved on.`, true); }
+          // What it really did: the season or the part worked out off-screen by the same arithmetic
+          // as your own (career/continuation.js), with whoever really has your part. It used to be a
+          // coin here and a random gross, and the first name off the actors' list.
+          const found = recordFor(s, st);
+          if (!found) return null;
+          const { src, rec } = found;
+          if (rec.due != null && rec.due > stamp(s)) { st.due = rec.due; return null; }
+          const x = ensureResult(s, src, rec);
+          if (!x) { end(s, st); return null; }
+          rec.told = true;
+          const hit = tv ? (x.renewed || x.verdict === 'watched' || x.verdict === 'hit' || x.verdict === 'breakout') : (x.verdict === 'smash' || x.verdict === 'profitable');
+          st.data.hit = hit; st.data.other = rec.by ? rec.by.name : null; st.data.gross = x.gross || 0; st.data.renewed = !!x.renewed;
+          const fans = hit ? (tv ? ' The piece says the show was always bigger than any one name. That is the sentence.' : ' The fans were furious for a week and then they went to see it.')
+            : (tv ? ' The fans blame the recast, loudly, and the piece agrees with them.' : ' The fans have decided, loudly, that this is why.');
+          const text = withoutYouLine(rec, src) + fans;
+          return { speaker: 'The trades', text, choices: [{ label: hit ? 'Noted' : 'Told you', shows: { fx: hit ? { fame: -3 } : { respect: 1, mental: 2 } }, apply: () => {
+            if (hit) { setFame(s, (s.fame || 0) - 3); addTimeline(s, `"${st.data.title}" ${tv ? 'went out' : 'opened'} without you and did fine. The fans moved on.`, true); }
             else { setRespect(s, (s.respect || 0) + 1); s.mental = clamp((s.mental || 50) + 2); addTimeline(s, `"${st.data.title}" ${tv ? 'went out' : 'opened'} without you and sank. The fans blame the recast.`); }
-            if (st.data.hit && chance(55)) return { reply: st.data.hit ? 'They went to see it.' : 'They did not.', next: { beat: 'again', inMonths: tv ? 12 : 24 } };
-            return { reply: st.data.hit ? 'They went to see it.' : 'They did not.', end: true }; } }] };
+            // Another season without you only if the network really ordered one.
+            if (tv && x.renewed) return { reply: hit ? 'They went to see it.' : 'They did not.', next: { beat: 'again', inMonths: 12 } };
+            return { reply: hit ? 'They went to see it.' : 'They did not.', end: true }; } }] };
         } },
       again: {
         build: (s, st) => { const tv = st.data.kind === 'renewal'; const n = tv ? (st.data.season || 2) + 1 : (st.data.part || 2) + 1;
+          // A thread from before the record existed rolled this on a coin; the record says whether
+          // there really is another one (career/continuation.js). If not, there is nothing to tell.
+          const f = recordForTitle(s, st.data.title);
+          if (f && f.rec.result && !f.rec.result.renewed) { end(s, st); return null; }
           return { speaker: 'The trades', text: tv ? `Season ${n} of "${st.data.title}". Without you, again. Nobody writes the word "originally" any more.` : `"${st.data.title.replace(/\s+(II|III|IV|V|VI)$/, '')}", part ${n}. Without you, again. The piece does not mention you, which is the piece.`,
             choices: [{ label: 'On', shows: { fx: { fame: -1 } }, apply: () => { setFame(s, (s.fame || 0) - 1); addTimeline(s, `${tv ? `Season ${n}` : `Part ${n}`} of "${st.data.title.replace(/\s+(II|III|IV|V|VI)$/, '')}" — without you, again.`, true); return { reply: 'On.', end: true }; } }] }; } },
     },
@@ -332,11 +349,20 @@ function recastStatus(s, st) {
   if (st.beat === 'meeting') return `${which}: they will make it anyway. ${first(d.director)} has asked to meet.`;
   if (st.beat === 'answer') return `${which}: the paper came back changed. They are waiting.`;
   if (st.beat === 'again') {
-    const who = d.other ? `${d.other} has your part` : 'Somebody else has your part';
+    const f = recordForTitle(s, d.title);
+    const who = f && f.rec.by ? `${f.rec.by.name} has your part` : d.other ? `${d.other} has your part` : 'Somebody else has your part';
+    // What the record knows beats what an old thread rolled.
+    const x = f && f.rec.result;
+    if (x && tv) return `${which} went out without you. ${who}, and ${x.renewed ? 'the network has ordered another' : 'it was not renewed'}.`;
     return tv ? `${which} went out without you. ${who}, and the numbers held.`
       : `${which} opened without you${d.gross ? ` at ${money(d.gross)}` : ''}. ${who}, and it did fine.`;
   }
   return `${which} is being made with somebody else in your part.`;
+}
+// How long until it comes out, from the record: that is when the trades can say how it did.
+function monthsToIt(s, st) {
+  const f = recordForTitle(s, st.data.title);
+  return f && f.rec.due != null ? Math.max(1, f.rec.due - stamp(s)) : rint(12, 18);
 }
 function wentBack(s, st) {
   const t = st.data.title;
@@ -356,24 +382,80 @@ function burnTheBridge(s, st) {
 // A lead who was asked back and did not come: passed, let the paper lapse, or pushed the
 // talks until they stopped answering (offers.js, contract.js). The fans are furious now;
 // the director writes in two months.
-export function noteSequelLoss(s, o, how) {
+// Called by career/continuation.js loseContinuation, which has already written the fact down — on the
+// credit and in the ledger — whatever happens here. This is only what people make of it.
+export function noteSequelLoss(s, o, how, rec = null, src = null) {
   if (!o || (o.kind !== 'sequel' && o.kind !== 'renewal') || o.tier === 'supporting') return;
   const title = String(o.projectTitle || '').replace('⭐ ', '');
   const root = o.kind === 'renewal' ? (o.seriesTitle || title) : title.replace(/\s+(II|III|IV|V|VI)$/, '');
   const st = storyOf(s, 'recast');
-  // The second no, after the meeting.
-  if (o.story === 'recast' && st) { burnTheBridge(s, st); st.beat = 'without'; st.due = stamp(s) + rint(12, 18); return; }
-  if (st) return;   // one at a time
-  const source = (s.filmography || []).find((c) => !c.minor && (c.title === root || c.title === title)) || {};
+  // The second no, after the meeting: it goes ahead without you, and the trades tell you how the
+  // month it comes out.
+  if (o.story === 'recast' && st) { burnTheBridge(s, st); st.beat = 'without'; st.due = Math.max(stamp(s) + 1, (rec && rec.due) || stamp(s) + rint(12, 18)); return; }
+  // The fans. Not every recast is a scandal (Maxi/ChatGPT, 22 Oct): it depends on how much the show
+  // meant to people, how long they have lived with it, and whose doing it looks like. A show nobody
+  // watched recasts in a paragraph. And nobody's standing moves because a negotiation did not close —
+  // walking out of an option (offers.js) and walking out of the room (standoff.js) cost what they cost there.
+  const mood = fansOf(o, how, src);
+  const onYou = how !== 'writtenOut' && how !== 'network' && how !== 'exit';
+  if (mood === 'furious' && onYou) {
+    s.scandal = clamp((s.scandal || 0) + 3);
+    addTimeline(s, how === 'schedule'
+      ? (o.kind === 'renewal' ? `Fans are furious: you could not free yourself for season ${o.season} of "${root}", and they are recasting.` : `Fans are furious: you were on another set and "${title}" is going ahead without you.`)
+      : how === 'notMade' ? `Fans are furious: there will be no ${o.kind === 'renewal' ? `season ${o.season} of "${root}"` : `"${title}"`}, and they have decided whose fault that is.`
+      : (o.kind === 'renewal' ? `Fans are furious: you are not coming back for season ${o.season} of "${root}".` : `Fans are furious: "${title}" is going ahead without you.`), true);
+  } else if (mood === 'furious') addTimeline(s, `Fans are furious with the network: your character is gone from "${root}". Some of the anger is on your side.`);
+  else if (mood === 'sorry') addTimeline(s, o.kind === 'renewal' ? `"${root}" goes on without you. The fans are sorry to see you go; the trades give it a paragraph.` : `"${title}" goes ahead without you. A paragraph in the trades, and some disappointed fans.`);
+  // The director's letter is for a part you could still go back to.
+  if (how === 'writtenOut' || how === 'network' || how === 'notMade' || how === 'exit' || how === 'option') return;
+  const source = src || (s.filmography || []).find((c) => !c.minor && (c.title === root || c.title === title)) || {};
   const director = source.director || personName(chance(50) ? 'female' : 'male', namesInUse(s));
-  // Saying no costs most; not being free costs least — you did not refuse them, you were
-  // on another set. The fans do not draw that distinction, which is the point of the story.
-  setRespect(s, (s.respect || 0) - (how === 'passed' ? 3 : how === 'schedule' ? 1 : 2));
-  s.scandal = clamp((s.scandal || 0) + 3);
-  addTimeline(s, how === 'schedule'
-    ? (o.kind === 'renewal' ? `Fans are furious: you could not free yourself for season ${o.season} of "${root}", and they are recasting.` : `Fans are furious: you were on another set and "${title}" is going ahead without you.`)
-    : (o.kind === 'renewal' ? `Fans are furious: you are not coming back for season ${o.season} of "${root}".` : `Fans are furious: "${title}" is going ahead without you.`), true);
-  stories(s).push({ id: 'recast', beat: 'meeting', due: stamp(s) + 2, since: stamp(s), data: { title, root, kind: o.kind, part: o.part || 0, season: o.season || 0, scale: o.scale, director, how, offer: { ...o, contract: undefined, signed: false, sent: false, waitsForWrap: false, startAt: 0, _warned: 0, deadline: 4 } } });
+  const data = { title, root, kind: o.kind, part: o.part || 0, season: o.season || 0, scale: o.scale, director, how, offer: { ...o, contract: undefined, signed: false, sent: false, waitsForWrap: false, startAt: 0, _warned: 0, deadline: 4 } };
+  // One "Without you" at a time — the next one waits its turn instead of never happening.
+  if (st) {
+    const q = (s.recastQueue = s.recastQueue || []);
+    if (!q.some((x) => x.title === title) && st.data.title !== title) q.push({ ...data, queued: stamp(s) });
+    return;
+  }
+  stories(s).push({ id: 'recast', beat: 'meeting', due: stamp(s) + 2, since: stamp(s), data });
+}
+// How much the show or the film meant to the people watching it, and whose doing the loss looks like.
+function fansOf(o, how, src) {
+  if (!src) return 'quiet';
+  let pull;
+  if (o.kind === 'sequel') pull = src.worldHit || src.status === 'World Hit' ? 2.5 : ({ smash: 2, profitable: 1.3, 'broke even': 0.8, bomb: 0.4, breakout: 2, hit: 1.4, solid: 0.9, miss: 0.4 }[src.verdict] ?? 0.8);
+  else if (src.streaming) pull = (src.views28 || 0) / 30;
+  else pull = (src.endViewers || src.viewers || 0) / slotNorm(src.type);
+  const lived = o.kind === 'renewal' ? Math.min(0.6, Math.max(0, ((o.season || 2) - 2) * 0.15)) : 0;
+  // How strongly they feel. Whose doing it looks like decides only who they are angry with (onYou in
+  // noteSequelLoss): a hit show that writes out its lead has furious fans, furious with the network.
+  const strength = { passed: 1.2, option: 1.2, meeting: 1.1, schedule: 0.9, exit: 0.4 }[how] ?? 1;
+  const v = (Math.min(3, pull) + lived) * strength;
+  return v >= 1.6 ? 'furious' : v >= 0.9 ? 'sorry' : 'quiet';
+}
+// The next "Without you" in the queue (the chain's start). A part you could still go back to gets the
+// director's letter; one already being made without you gets the news the month it comes out; one
+// the trades have already told is done.
+function nextQueuedRecast(s) {
+  const q = s.recastQueue || [];
+  while (q.length) {
+    const d = q.shift();
+    const found = recordForTitle(s, d.title);
+    if (!found || found.rec.told || found.rec.you === 'returned') continue;
+    const late = found.rec.due != null && found.rec.due - ((d.offer && d.offer.months) || 4) - 2 <= stamp(s);
+    return { ...d, beat: late ? 'without' : 'meeting', due: late ? Math.max(stamp(s), found.rec.due) : stamp(s) + 1 };
+  }
+  return null;
+}
+// A "Without you" already running from before the record existed: its record is written now, from
+// the offer it carries, so what it tells is the same arithmetic as everybody else's.
+function recordFor(s, st) {
+  let found = recordForTitle(s, st.data.title);
+  if (!found && st.data.offer) {
+    loseContinuation(s, { ...st.data.offer, story: undefined }, st.data.how || 'talks', { quiet: true, at: st.since });
+    found = recordForTitle(s, st.data.title);
+  }
+  return found;
 }
 
 // ── the engine ───────────────────────────────────────────────────────────────────
