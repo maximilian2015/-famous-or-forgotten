@@ -56,6 +56,12 @@ for (let k = 0; k < CAREERS; k++) {
       c.season || 0, c.part || 0, Math.round(c.salary || 0), c.minor ? 'minor' : '', c.renewal || '', c.status || ''].join(' | '));
   }
   for (const y of years) console.log('  ' + y);
+  // LOST=1: when this life first lost a season or a sequel it was offered — the point a change to what
+  // that does (career/continuation.js) can first move anything. Read off the timeline, which both trees write.
+  if (process.env.LOST === '1') {
+    const lost = [...(s.timeline || [])].reverse().find((e) => /stopped waiting on .+ · season|cast someone else|they recast|not coming back for season|going ahead without you|could not hold the part|Somebody else signed it|Written out of|Walked out of the option/.test(String(e.text || '')));
+    console.log(`  first loss: ${lost ? `${lost.when} — ${lost.text}` : 'none'}`);
+  }
   // And the awards, both tracks, so a change to them is caught too.
   for (const key of ['awards', 'seriesAwards']) {
     const a = s[key];

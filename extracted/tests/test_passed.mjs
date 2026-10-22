@@ -54,7 +54,11 @@ const month = (s, n = 1) => { for (let i = 0; i < n; i++) { s.month++; if (s.mon
   declineOffer(s, 'seq1');
   const e = passedOn(s).find((x) => x.title === 'Skinless Bone II');
   ok('your own sequel is kept, as a franchise you walked out of', !!e && e.why.includes('franchise') && e.root === 'Skinless Bone' && e.part === 2);
-  // Straight to the trades: the recast thread's opening beat writes the outcome back.
+  // The loss is written on the film it followed (career/continuation.js), with the month it comes out.
+  const rec = s.filmography[0].next;
+  ok('the loss is on the film it followed', !!rec && rec.you === 'declined' && rec.kind === 'part' && rec.n === 2 && rec.due > stamp(s), JSON.stringify(rec));
+  // Straight to the trades, the month it opens: the recast thread writes the outcome back.
+  s.year = Math.floor(rec.due / 12); s.month = rec.due % 12;
   const rc = storyOf(s, 'recast'); rc.beat = 'without'; rc.due = stamp(s);
   storiesTick(s);
   ok('the trades say how it opened (stories.js recast)', s.pendingArc && s.pendingArc.beat === 'without');
