@@ -47,7 +47,8 @@ for (let k = 0; k < CAREERS; k++) {
     s = advanceMonth(s);
     if (!s.alive) break;
   }
-  const mine = (s.filmography || []).filter((c) => c.streaming && !c.running);
+  // Seasons only: a platform's films have their own probe (probe_streaming_movies.mjs).
+  const mine = (s.filmography || []).filter((c) => c.streaming && !c.running && !(ST.isPlatformFilm && ST.isPlatformFilm(c)));
   for (const c of mine) credits.push({ ...c, platform: (ST.platformById(s, c.platformId) || {}).archetype || '?', route: (PJ.projectOf(s, c) || {}).route || '?' });
   const z = s.seriesAwards || {};
   careers.push({ streams: mine.length, work: (s.filmography || []).filter((c) => !c.minor).length,

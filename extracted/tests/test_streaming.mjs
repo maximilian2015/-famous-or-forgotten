@@ -196,7 +196,10 @@ test('the streaming shelf sits on top of the board and takes nothing from it', (
     const board = on.castingPool.filter((c) => c.shelf !== 'stream').length, stream = on.castingPool.filter((c) => c.shelf === 'stream');
     assert.equal(board, boardSize(on), `fame ${fame}: the board has ${board}, not ${boardSize(on)}`);
     assert.ok(stream.length >= 1 && stream.length <= 3, `fame ${fame}: ${stream.length} on the streaming shelf`);
-    for (const c of stream) assert.ok(c.platformId && c.episodeCost > 0 && c.perEpisode && /^stream_/.test(c.payMarket), JSON.stringify(c));
+    // A season is paid by the episode from a platform's fee table; a platform's film (Streaming Movies V1)
+    // shares the shelf, with an all-in budget and the cinema table for its size.
+    for (const c of stream) assert.ok(c.platformId && (c.perEpisode ? c.episodeCost > 0 && /^stream_/.test(c.payMarket)
+      : c.type === 'Streaming Film' && c.budget > 0 && /^film_/.test(c.payMarket) && !c.episodes), JSON.stringify(c));
   }
   ST.setStreamingPool(false);
   try { const off = career({ castingPool: [] }); refreshCastingPool(off, true); assert.ok(!off.castingPool.some((c) => c.shelf === 'stream'), 'off is off'); }
@@ -216,10 +219,14 @@ test('a supporting part on a platform is a supporting part — in the offer, the
 
 // ── the routes (plan §8) ─────────────────────────────────────────────────────
 const fixedDice = (fn, v = 0) => { const r = Math.random; Math.random = () => v; try { return fn(); } finally { Math.random = r; } };
-test('the shelf is for a career that is starting: supporting parts only', () => {
+test("the shelf is for a career that is starting: a season's supporting parts, and the cheap services' films", () => {
   for (const fame of [0, 20, 40, 80]) {
     const s = career({ fame, peakFame: fame, castingPool: [] }); refreshCastingPool(s, true);
-    for (const c of s.castingPool.filter((x) => x.shelf === 'stream')) assert.equal(c.tier, 'supporting', `fame ${fame}: ${c.role} on the shelf`);
+    for (const c of s.castingPool.filter((x) => x.shelf === 'stream')) {
+      // A nobody can lead a genre-service film, and a rising name an ad-supported one (movies plan §6).
+      if (!c.perEpisode) assert.ok(c.tier === 'supporting' || ['plt-niche', 'plt-library'].includes(c.platformId), `fame ${fame}: a ${c.role} in a film on ${c.platformId}`);
+      else assert.equal(c.tier, 'supporting', `fame ${fame}: ${c.role} on the shelf`);
+    }
   }
 });
 test('from Known Face an agent brings a platform\'s lead', () => {
@@ -227,7 +234,8 @@ test('from Known Face an agent brings a platform\'s lead', () => {
   let o = null;
   for (let i = 0; i < 400 && !o; i++) { s.offers = []; maybeGenerateOffer(s); o = (s.offers || []).find((x) => x.platformId); }
   assert.ok(o, 'no agent ever brought a streaming part');
-  assert.equal(o.via, 'agent'); assert.equal(o.tier, 'lead'); assert.ok(/^stream_/.test(o.payMarket) && o.episodeCost > 0);
+  assert.equal(o.via, 'agent'); assert.equal(o.tier, 'lead');
+  assert.ok(o.perEpisode ? /^stream_/.test(o.payMarket) && o.episodeCost > 0 : /^film_/.test(o.payMarket) && o.budget > 0, JSON.stringify(o));
   const none = career({ fame: 45, peakFame: 45, offers: [], agent: null });
   for (let i = 0; i < 200; i++) { none.offers = []; maybeGenerateOffer(none); assert.ok(!(none.offers || []).some((x) => x.platformId), 'no agent, and yet'); }
 });
