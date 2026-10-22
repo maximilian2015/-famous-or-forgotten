@@ -1564,9 +1564,14 @@ function careerNow(g) {
     return `You are on ${p.title}. ${left <= 1 ? 'Last month of the shoot.' : `${count(left, 'month')} of shooting left.`} `
       + `Rehearse when you have the energy — the set is where the film is decided.`;
   }
+  // A festival picture two buyers want is not in post: it screened, and it is waiting on you
+  // (career/release/acquisition.js). Said first, because it is the one thing here only you can move.
+  const buyers = (g.releases || []).find((r) => r.awaitingBuyer);
+  if (buyers) return `"${buyers.title}" screened, and two buyers want it: cinemas or a platform. The choice is yours, in Messages — by next month the producers take the cinema offer.`;
   const post = (g.releases || [])[0];
   if (post) {
     const wait = Math.max(0, post.due - ((g.year || 0) * 12 + (g.month || 0)));
+    if (post.buyer === 'platform') return `"${post.title}" is sold to a platform. It goes out everywhere at once in about ${count(Math.max(1, wait), 'month')} — no cinemas, and the platform's number four weeks later.`;
     return `"${post.title}" is in post. It opens in about ${count(wait, 'month')}, and until it does nobody knows what you made.`;
   }
   const waiting = (g.submissions || []).length;

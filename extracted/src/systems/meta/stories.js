@@ -324,7 +324,7 @@ export const CHAINS = {
             if (hit) { setFame(s, (s.fame || 0) - 3); addTimeline(s, `"${st.data.title}" ${tv ? 'went out' : 'opened'} without you and did fine. The fans moved on.`, true); }
             else { setRespect(s, (s.respect || 0) + 1); s.mental = clamp((s.mental || 50) + 2); addTimeline(s, `"${st.data.title}" ${tv ? 'went out' : 'opened'} without you and sank. The fans blame the recast.`); }
             // Another season without you only if the network really ordered one.
-            if (tv && x.renewed) return { reply: hit ? 'They went to see it.' : 'They did not.', next: { beat: 'again', inMonths: 12 } };
+            // The seasons after this one are the trades' to tell, as each one comes out (career/continuation.js).
             return { reply: hit ? 'They went to see it.' : 'They did not.', end: true }; } }] };
         } },
       again: {

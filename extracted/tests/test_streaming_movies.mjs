@@ -15,6 +15,7 @@ import { draftContract } from '../src/systems/career/contract.js';
 import { emailTick } from '../src/systems/meta/email.js';
 import { rollLaterSale } from '../src/systems/career/release/acquisition.js';
 import * as ST from '../src/systems/career/streaming.js';
+import { ensureWorld, activeActors } from '../src/systems/world/world.js';
 
 let failed = 0;
 function test(name, fn) {
@@ -119,6 +120,15 @@ test("a platform's film goes out on the platform, closes in four weeks, and is n
   assert.ok(!credit.worldHit && credit.status !== 'World Hit', 'a world hit');
   assert.equal(trackOfWork(s, credit), 'film');
   assert.ok(ASKER.eligible(s, credit) && !SERIES.eligible(s, credit), 'the wrong award');
+});
+test("the co-star on the poster gets the platform's film on their own record, judged by how many pressed play", () => {
+  const s = career({ fame: 30, peakFame: 30 }); ensureWorld(s);
+  const a = activeActors(s)[0], before = a.credits.length;
+  startProduction(s, filmListing({ id: 'cast-f9', projectTitle: 'Night Ferry Nine' }));
+  Object.assign(s.productions[0], { withId: a.id, with: a.name, withFame: a.fame || 0 });
+  const { credit } = throughTheDrop(s, 72);
+  const mine = a.credits.slice(before).find((x) => x.title === 'Night Ferry Nine');
+  assert.ok(mine && mine.streaming && mine.gross === 0 && mine.views28 === credit.views28 && mine.withYou, JSON.stringify(mine));
 });
 test('a platform does not pay points: the paper says so on the line, with nothing to ask', () => {
   const s = career({ fame: 90, peakFame: 90 });

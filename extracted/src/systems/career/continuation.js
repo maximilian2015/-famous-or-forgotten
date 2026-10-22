@@ -29,12 +29,12 @@ import { addTimeline } from '../../engine/timeline.js';
 import { sendMail } from '../meta/email.js';
 import { recordPassed, notePassedOutcome } from '../meta/passed.js';
 import { noteSequelLoss } from '../meta/stories.js';
-import { activeActors, ageOf, actorById, applyFilmToActor } from '../world/world.js';
-import { renewalOdds, seriesRoot } from './franchise.js';
+import { activeActors, ageOf, actorById, applyFilmToActor, applyStreamingToActor } from '../world/world.js';
+import { renewalOdds, seriesRoot, seasonCap } from './franchise.js';
 import { tvVerdict } from './release/television.js';
 import { grossFor, moneyVerdict, studioCampaign, castDraw } from './release/theatrical.js';
 import { holdFactor } from './chapter.js';
-import { platformById, platformOfKind, dropSeason, renewalFor, seasonCost } from './streaming.js';
+import { platformById, platformOfKind, dropSeason, dropFilm, renewalFor, seasonCost } from './streaming.js';
 import { getProject } from './project.js';
 import { planEpisodeCost } from './budget.js';
 
@@ -50,7 +50,7 @@ const money = (n) => (n >= 1e9 ? `€${(n / 1e9).toFixed(2)}bn` : n >= 1e6 ? `�
 export const YOU = {
   declined: 'You turned it down', left: 'You left by the exit clause', recast: 'Recast',
   writtenOut: 'Written out', killed: 'Your character was killed off', walkedOut: 'You walked out of the option',
-  notMade: 'Not made', returned: 'You went back',
+  notMade: 'Not made', returned: 'You went back', pending: 'Negotiations pending',
 };
 export const WHY = {
   passed: 'you said no', exit: 'with notice, as the paper allowed', expired: 'you never answered in time',
@@ -130,7 +130,9 @@ export function loseContinuation(s, o, how, extra = {}) {
     by: !goesOn ? null : rec.by || ((you === 'writtenOut' || you === 'killed') && extra.exit !== 'newLead' ? null : replacementFor(s, o, src)),
     due: goesOn ? (rec.due || dueOf(s, o, film)) : null,
     episodes: o.episodes || 0, budget: Number.isFinite(o.budget) ? o.budget : null, scale: o.scale || (src && src.scale) || null,
-    result: rec.result || null, told: !!rec.told,
+    // Where it goes out is the project's, not yours: a platform's sequel stays a platform's whoever is in it.
+    medium: rec.medium || mediumOf(o, src), platformId: rec.platformId || o.platformId || (src && src.platformId) || null,
+    result: rec.result || null, told: !!rec.told, later: rec.later || [], ended: rec.ended || null,
   });
   if (src) {
     src.next = rec;
@@ -142,6 +144,11 @@ export function loseContinuation(s, o, how, extra = {}) {
   if (e && !goesOn) e.outcome = { cancelled: true, at: e.at };
   if (!extra.quiet) noteSequelLoss(s, o, how, rec, src);
   return rec;
+}
+
+function mediumOf(o, src) {
+  if (o.platformId || (src && src.streaming)) return 'streaming';
+  return o.kind === 'sequel' ? 'theatrical' : 'television';
 }
 
 // The network writing you out at the renewal itself, with no paper to lose (franchise.js maybeContinue):
@@ -162,6 +169,18 @@ export function simulate(s, src, rec) {
   return seeded('without:' + rec.title + ':' + rec.n, () => {
     const r = Math.random;
     const lead = rec.tier !== 'supporting';
+    if (rec.kind === 'part' && rec.medium === 'streaming') {
+      // A platform's sequel, on the same platform, through the platform's own arithmetic (streaming.js
+      // dropFilm) — never a cinema release because you are not in it.
+      const pr = getProject(s, src.projectId) || {};
+      const platform = platformById(s, rec.platformId || src.platformId || pr.platformId) || platformOfKind(s, 'library');
+      const rating = clamp(Math.round((src.rating || 60) + (r() * 14 - 9) - (lead ? 2 : 0)), 5, 95);
+      const d = dropFilm({ platform, genre: src.genre, rating, word: rating, crowd: rating, hype: 0, draw: castDraw([rec.by ? rec.by.fame : 25]),
+        budget: rec.budget ?? (src.filmCost ? src.filmCost / 1.1 : 20), prev: { views28: src.views28 || 0, outcome: src.verdict }, dice: 0.8 + r() * 0.45 });
+      const a = rec.by && actorById(s, rec.by.id);
+      if (a) applyStreamingToActor(a, { title: rec.title, year: Math.floor(rec.due / 12), rating, views28: d.views28, platform: platform.name, scale: rec.scale || src.scale, genre: src.genre });
+      return { rating, streaming: true, movie: true, platform: platform.name, views28: d.views28, completion: d.completion, verdict: d.outcome, at: rec.due };
+    }
     if (rec.kind === 'part') {
       // A world film with somebody else on the poster, through the same arithmetic as everybody's.
       const scale = rec.scale || src.scale || 'feature';
@@ -173,29 +192,43 @@ export function simulate(s, src, rec) {
       if (a) applyFilmToActor(a, { title: rec.title, year: Math.floor(rec.due / 12), rating, gross, scale, genre: src.genre, budget });
       return { rating, gross, verdict, at: rec.due };
     }
-    if (src.streaming) {
-      // A platform's next season, on the platform's own numbers.
-      const pr = getProject(s, src.projectId) || {};
-      const platform = platformById(s, src.platformId || pr.platformId) || platformOfKind(s, 'library');
-      const episodes = rec.episodes || src.episodes || 8;
-      const episodeCost = pr.episodeCost ?? planEpisodeCost({ seed: pr.seriesId || src.projectId || rec.root, genre: src.genre, archetype: platform.archetype });
-      const rating = clamp(Math.round((src.rating || 60) + (r() * 13 - 8) - (lead ? 3 : 0)), 5, 95);
-      const d = dropSeason({ platform, genre: src.genre, episodes, season: rec.n, rating, word: rating, hype: 0,
-        draw: castDraw([rec.by ? rec.by.fame : 25]), episodeCost, prev: { finished28: src.finished28 || 0, views28: src.views28 || 0, outcome: src.verdict }, dice: 0.8 + r() * 0.45 });
-      const next = renewalFor({ platform, season: rec.n, rating, finished28: d.finished28, views28: d.views28, prevViews28: src.views28 || null,
-        nextCost: seasonCost({ episodes, episodeCost, salaryM: 0 }) });
-      return { rating, streaming: true, platform: platform.name, views28: d.views28, completion: d.completion, verdict: d.outcome, renewed: next.decision === 'renewed', at: rec.due };
-    }
-    // Television: the last season's finish is this one's start, less whatever you were to it.
-    const base = src.endViewers || src.viewers || 1;
-    const factor = !lead ? 0.96 : rec.you === 'killed' ? 0.84 : rec.by ? 0.8 : 0.74;
-    const rating = clamp(Math.round((src.rating || 60) + (r() * 13 - 8) - (lead ? 3 : 0)), 5, 95);
-    const open = r1(Math.max(0.1, base * factor * (0.9 + r() * 0.2)));
-    const end = r1(Math.max(0.1, open * holdFactor(rating, {})));
-    const verdict = tvVerdict({ endViewers: end, viewers: r1((open + end) / 2), type: src.type, rating });
-    const renewed = r() * 100 < renewalOdds(rating, rec.n, src.type, end, base);
-    return { rating, open, end, verdict, renewed, at: rec.due };
+    return seasonWithout(s, src, rec, rec.n, null, r, lead);
   });
+}
+// One season of a show going on without you: the first (from your last season's numbers, less
+// whatever you were to it) or a later one (from the season before it, without you already).
+function seasonWithout(s, src, rec, n, prev, r, lead) {
+  const first = !prev;
+  const at = first ? rec.due : prev.next;
+  // Losing you costs the first season something; after that the show is what it is without you.
+  const lastRating = first ? (src.rating || 60) : prev.rating;
+  const rating = clamp(Math.round(lastRating + (r() * 13 - 8) - (first && lead ? 3 : 0)), 5, 95);
+  // The last season a format runs (franchise.js seasonCap): past it, it ends rather than being renewed.
+  const capped = n >= seasonCap(src.type || (src.streaming ? 'Streaming Series' : 'Drama Series'));
+  if (src.streaming) {
+    // A platform's next season, on the platform's own numbers.
+    const pr = getProject(s, src.projectId) || {};
+    const platform = platformById(s, rec.platformId || src.platformId || pr.platformId) || platformOfKind(s, 'library');
+    const episodes = rec.episodes || src.episodes || 8;
+    const episodeCost = pr.episodeCost ?? planEpisodeCost({ seed: pr.seriesId || src.projectId || rec.root, genre: src.genre, archetype: platform.archetype });
+    const before = first ? { finished28: src.finished28 || 0, views28: src.views28 || 0, outcome: src.verdict } : { finished28: prev.finished28 || 0, views28: prev.views28 || 0, outcome: prev.verdict };
+    const d = dropSeason({ platform, genre: src.genre, episodes, season: n, rating, word: rating, hype: 0,
+      draw: castDraw([rec.by ? rec.by.fame : 25]), episodeCost, prev: before, dice: 0.8 + r() * 0.45 });
+    const next = renewalFor({ platform, season: n, rating, finished28: d.finished28, views28: d.views28, prevViews28: before.views28 || null,
+      nextCost: seasonCost({ episodes, episodeCost, salaryM: 0 }) });
+    const renewed = !capped && next.decision === 'renewed';
+    return { n, rating, streaming: true, platform: platform.name, views28: d.views28, finished28: d.finished28, completion: d.completion, verdict: d.outcome,
+      renewed, ended: renewed ? null : capped || next.decision === 'capped' ? 'capped' : 'cancelled', at, next: renewed ? at + 12 : null };
+  }
+  // Television: the last season's finish is this one's start — less whatever you were to it, the
+  // first time.
+  const base = first ? (src.endViewers || src.viewers || 1) : (prev.end || 1);
+  const factor = !first ? 0.88 + r() * 0.2 : !lead ? 0.96 : rec.you === 'killed' ? 0.84 : rec.by ? 0.8 : 0.74;
+  const open = r1(Math.max(0.1, base * factor * (first ? 0.9 + r() * 0.2 : 1)));
+  const end = r1(Math.max(0.1, open * holdFactor(rating, {})));
+  const verdict = tvVerdict({ endViewers: end, viewers: r1((open + end) / 2), type: src.type, rating });
+  const renewed = !capped && r() * 100 < renewalOdds(rating, n, src.type, end, base);
+  return { n, rating, open, end, verdict, renewed, ended: renewed ? null : capped ? 'capped' : 'cancelled', at, next: renewed ? at + 12 : null };
 }
 // The result, worked out now if its day has come and nobody has yet (the story asks for it too).
 export function ensureResult(s, src, rec) {
@@ -217,10 +250,47 @@ export function withoutYouLine(rec, src) {
   const x = rec.result; if (!x) return null;
   const who = rec.by ? `${rec.by.name} has your part.` : rec.you === 'killed' ? 'Your character is dead, and the show did not look back.'
     : rec.you === 'writtenOut' ? 'Your character is simply not in it.' : 'Somebody new has your part.';
+  if (rec.kind === 'part' && x.streaming) return `"${rec.title}" dropped on ${x.platform} without you. ${x.views28}m started it in 28 days and ${Math.round((x.completion || 0) * 100)}% finished it. ${who}`;
   if (rec.kind === 'part') return `"${rec.title}" opened without you: ${money(x.gross || 0)}${x.verdict === 'bomb' ? ', which is not a number the studio wanted' : x.verdict === 'smash' ? ', and it was a smash' : ''}. ${who}`;
-  if (x.streaming) return `Season ${rec.n} of "${rec.root}" dropped on ${x.platform} without you. ${x.views28}m pressed play in 28 days and ${Math.round((x.completion || 0) * 100)}% finished it. ${who} ${x.renewed ? `${x.platform} has ordered another.` : 'It was not renewed.'}`;
+  if (x.streaming) return `Season ${rec.n} of "${rec.root}" dropped on ${x.platform} without you. ${x.views28}m pressed play in 28 days and ${Math.round((x.completion || 0) * 100)}% finished it. ${who} ${endWords(x, x.platform)}`;
   const yours = src && (src.endViewers || src.viewers);
-  return `Season ${rec.n} of "${rec.root}" went out without you. ${who} ${x.open}m watched the first episode and ${x.end}m the last${yours ? ` — yours finished on ${yours}m` : ''}. ${x.renewed ? 'The network has ordered another.' : 'It was not renewed.'}`;
+  return `Season ${rec.n} of "${rec.root}" went out without you. ${who} ${x.open}m watched the first episode and ${x.end}m the last${yours ? ` — yours finished on ${yours}m` : ''}. ${endWords(x, 'The network')}`;
+}
+function endWords(x, who) {
+  return x.renewed ? `${who} has ordered another.` : x.ended === 'capped' ? 'That was its last season: the format ran its course.' : 'It was not renewed.';
+}
+// A later season of a show that went on without you, in the trades' words.
+export function laterLine(rec, x) {
+  const seen = x.streaming ? `${x.views28}m pressed play in 28 days` : `${x.end}m watched the last episode`;
+  const tail = x.renewed ? 'It has been renewed.' : x.ended === 'capped' ? `That was the last: it ended after ${x.n} seasons.` : `It has been cancelled after ${x.n} seasons.`;
+  return `Season ${x.n} of "${rec.root}"${x.streaming ? ` on ${x.platform}` : ''}, still without you: ${seen}. ${tail}`;
+}
+// What became of the show after the season without you, in one line for the card: every season it
+// had after that, and how it ended.
+export function afterlifeLine(rec) {
+  if (!rec || rec.kind !== 'season' || !rec.result) return null;
+  const later = rec.later || [];
+  if (!later.length) return null;
+  const seasons = later.map((x) => `S${x.n} ${x.streaming ? x.views28 : x.end}m`).join(' · ');
+  const end = rec.ended ? (rec.ended.why === 'capped' ? `ended after season ${rec.ended.n}` : `cancelled after season ${rec.ended.n}`) : 'still running';
+  return `Then: ${seasons} — ${end}.`;
+}
+// The show goes on after the season without you, season by season, until it is cancelled or runs its
+// course — worked out as each one comes due, whether or not anybody tells you (it is on the card either
+// way). Each later season has its own dice, seeded by the show and the season.
+function followShow(s, c, rec, now) {
+  if (rec.kind !== 'season' || !rec.result) return;
+  rec.later = rec.later || [];
+  let last = rec.later.length ? rec.later[rec.later.length - 1] : rec.result;
+  let guard = 0;
+  while (last && last.renewed && last.next != null && last.next <= now && guard++ < 20) {
+    const prev = last;
+    const x = seeded('without:' + rec.root + ':' + (prev.n + 1), () => seasonWithout(s, c, rec, prev.n + 1, prev, Math.random, rec.tier !== 'supporting'));
+    x.told = false;
+    rec.later.push(x);
+    last = x;
+  }
+  if (last && !last.renewed && !rec.ended) rec.ended = { n: last.n, why: last.ended || 'cancelled', at: last.at };
 }
 
 // Monthly: a continuation whose month has come is worked out and, unless the "Without you" story is
@@ -233,17 +303,40 @@ export function continuationTick(s) {
     // You went back after all (the director's meeting): there is nothing to tell.
     if ((s.filmography || []).some((x) => x !== c && clean(x.title) === rec.title)
       || (s.productions || []).concat(s.production ? [s.production] : []).some((p) => p && clean(p.title) === rec.title)) { rec.you = 'returned'; continue; }
+    // Still being argued over — the director's meeting, a paper in Messages: nothing is settled yet.
+    if (negotiationPending(s, rec)) continue;
     ensureResult(s, c, rec);
-    if (rec.told) continue;
+    followShow(s, c, rec, now);
+    if (rec.told) { tellLater(s, rec); continue; }
     if (storyWillTell(s, rec)) continue;
     rec.told = true;
     const line = withoutYouLine(rec, c);
     addTimeline(s, line, rec.kind === 'part' ? rec.result.verdict !== 'bomb' : !!rec.result.renewed);
     sendMail(s, { from: 'The trades', subj: rec.kind === 'part' ? `"${rec.title}" — without you` : `"${rec.root}", season ${rec.n} — without you`, tag: 'trades', kind: 'news',
       body: `${line}\n\n${YOU[rec.you]} — ${WHY[rec.how] || ''}, ${MON[(rec.at || 0) % 12]} ${Math.floor((rec.at || 0) / 12)}.`, cta: [{ label: 'Delete', fx: {}, reply: 'Filed.' }] });
+    tellLater(s, rec);
   }
   return s;
 }
+// The later seasons, each told once and in order, after the first one has been.
+function tellLater(s, rec) {
+  for (const x of rec.later || []) {
+    if (x.told) continue;
+    x.told = true;
+    const line = laterLine(rec, x);
+    addTimeline(s, line, !x.renewed);
+    sendMail(s, { from: 'The trades', subj: `"${rec.root}", season ${x.n}`, tag: 'trades', kind: 'news', body: line, cta: [{ label: 'Delete', fx: {}, reply: 'Filed.' }] });
+  }
+}
+// Whether the loss is still being argued over: the director has asked to meet, or their new paper is in
+// Messages. Until that is settled it is not a recast, and the card says so.
+export function negotiationPending(s, rec) {
+  if (!rec || rec.result || (rec.you !== 'recast' && rec.you !== 'declined')) return false;
+  const st = (s.stories || []).find((x) => x.id === 'recast' && x.data && clean(x.data.title) === rec.title);
+  if (st && (st.beat === 'meeting' || st.beat === 'answer')) return true;
+  return (s.offers || []).some((o) => o.story === 'recast' && clean(o.projectTitle) === rec.title);
+}
+
 // The "Without you" story tells it itself when it is running for this title (stories.js).
 function storyWillTell(s, rec) {
   return (s.stories || []).some((st) => st.id === 'recast' && st.data && clean(st.data.title) === rec.title && st.beat !== 'again');
@@ -312,7 +405,8 @@ export function settleLostContinuations(s) {
       due: f.at != null ? f.at + (kind === 'sequel' ? 12 : 7) : null, episodes: src.episodes || 0, budget: null, scale: src.scale || null,
       result: null, told: true, migrated: true };
     if (src.next.you !== 'writtenOut' && src.next.you !== 'killed') src.next.by = replacementFor(s, o, src);
-    if (src.next.due != null && src.next.due <= stamp(s)) ensureResult(s, src, src.next);
+    src.next.medium = mediumOf(o, src); src.next.platformId = src.platformId || null; src.next.later = []; src.next.ended = null;
+    if (src.next.due != null && src.next.due <= stamp(s)) quietly(s, src, src.next);
     else src.next.told = false;
   }
   // A "Without you" thread from before, waiting a year to say "another season without you, again"
@@ -331,17 +425,31 @@ export function settleLostContinuations(s) {
       you: youFor('writtenOut', c.renewalReason), how: 'writtenOut', exit: c.renewalReason || null, at: c.closedAt ?? null, tier: c.tier || 'lead',
       offerId: null, show: 'on', by: null, due: c.closedAt != null ? c.closedAt + 7 : null, episodes: c.episodes || 0, budget: null, scale: c.scale || null,
       result: null, told: true, migrated: true };
-    if (c.next.due != null && c.next.due <= stamp(s)) ensureResult(s, c, c.next);
+    c.next.medium = c.streaming ? 'streaming' : 'television'; c.next.platformId = c.platformId || null; c.next.later = c.next.later || []; c.next.ended = c.next.ended || null;
+    if (c.next.due != null && c.next.due <= stamp(s)) quietly(s, c, c.next);
   }
   return s;
 }
+// History, worked out without the trades: the season without you and every season after it that has
+// already happened by now, each marked told.
+function quietly(s, src, rec) {
+  ensureResult(s, src, rec);
+  followShow(s, src, rec, stamp(s));
+  for (const x of rec.later || []) x.told = true;
+}
 // For the screen: what a credit says about the next one without you.
-export function nextLines(c) {
+export function nextLines(c, s = null) {
   const rec = c && c.next; if (!rec) return null;
   const when = rec.at != null ? `${MON[rec.at % 12]} ${Math.floor(rec.at / 12)}` : null;
   const which = rec.kind === 'part' ? `"${rec.title}"` : `Season ${rec.n}`;
+  // Not a recast while it is still being argued over (Maxi/ChatGPT, 22 Oct): no replacement, no outcome.
+  if (s && negotiationPending(s, rec)) {
+    const paper = (s.offers || []).some((o) => o.story === 'recast' && clean(o.projectTitle) === rec.title);
+    return { you: `${which}: ${YOU.pending} — ${paper ? 'their new paper is in Messages' : 'the director has asked to meet'}`, after: null, pending: true };
+  }
+  const later = afterlifeLine(rec);
   return {
     you: rec.you === 'returned' ? null : `${which}: ${YOU[rec.you] || rec.you}${WHY[rec.how] ? ` — ${WHY[rec.how]}` : ''}${when ? ` · ${when}` : ''}`,
-    after: rec.result ? withoutYouLine(rec, c) : rec.show === 'on' && rec.you !== 'returned' && rec.due != null ? `${which} is going ahead without you.` : null,
+    after: rec.result ? withoutYouLine(rec, c) + (later ? ` ${later}` : '') : rec.show === 'on' && rec.you !== 'returned' && rec.due != null ? `${which} is going ahead without you.` : null,
   };
 }

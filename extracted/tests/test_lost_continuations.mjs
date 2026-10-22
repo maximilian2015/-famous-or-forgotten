@@ -228,5 +228,69 @@ test('old saves: nothing inferred from a season that simply never appeared, the 
   assert.equal(JSON.stringify(s.filmography), snap, 'a second pass changed it');
 });
 
+// ── integration (Maxi/ChatGPT, 22 Oct, before the merge) ─────────────────────
+test('while it is still being argued over it is "Negotiations pending", not a recast — no replacement, no outcome', () => {
+  const s = life({ filmography: [{ ...SHOW }] });
+  s.offers = [season2()]; declineOffer(s, 'ren-tlw');
+  const c = s.filmography[0], rec = c.next;
+  assert.equal(storyOf(s, 'recast').beat, 'meeting');
+  let nl = C.nextLines(c, s);
+  assert.ok(nl.pending && /Negotiations pending/.test(nl.you) && !/Recast/.test(nl.you) && !nl.after, JSON.stringify(nl));
+  // Their new paper, after the meeting: still pending.
+  s.offers = [{ ...season2(), id: 'meet-1', story: 'recast', meeting: true }];
+  storyOf(s, 'recast').beat = 'answer';
+  to(s, rec.due + 1); C.continuationTick(s);
+  assert.ok(!rec.result && !s.inbox.some((m) => m.tag === 'trades'), 'worked out while still being argued over');
+  nl = C.nextLines(c, s);
+  assert.ok(nl.pending && /new paper/.test(nl.you), JSON.stringify(nl));
+  // The second no: now it is a recast.
+  declineOffer(s, 'meet-1');
+  nl = C.nextLines(c, s);
+  assert.ok(!nl.pending && /Season 2: Recast/.test(nl.you) && rec.by, JSON.stringify(nl));
+});
+test('a platform\'s sequel without you stays a platform\'s film: dropped on the platform, on the replacement\'s record as one', () => {
+  const s = life({ filmography: [{ id: 'nf-1', title: 'Night Ferry', type: 'Streaming Film', scale: 'indie', tier: 'lead', role: 'Lead', genre: 'Horror', rating: 72,
+    streaming: true, platformId: 'plt-niche', views28: 3.2, finished28: 2, completion: 0.62, filmCost: 3, verdict: 'hit', year: 2076, projectId: 'prj-nf' }] });
+  s.offers = [{ id: 'seq-nf', kind: 'sequel', part: 2, projectTitle: 'Night Ferry II', type: 'Streaming Film', role: 'Lead', tier: 'lead', genre: 'Horror',
+    scale: 'indie', platformId: 'plt-niche', parentProjectId: 'prj-nf', budget: 3, months: 3, salary: 1e5, deadline: 3 }];
+  declineOffer(s, 'seq-nf');
+  const rec = s.filmography[0].next;
+  assert.ok(rec.medium === 'streaming' && rec.platformId === 'plt-niche' && rec.kind === 'part', JSON.stringify(rec));
+  s.stories = []; to(s, rec.due); C.continuationTick(s);
+  assert.ok(rec.result.streaming && rec.result.movie && !('gross' in rec.result) && ['miss', 'solid', 'hit', 'breakout'].includes(rec.result.verdict), JSON.stringify(rec.result));
+  assert.ok(/dropped on .+ without you/.test(C.withoutYouLine(rec, s.filmography[0])), C.withoutYouLine(rec, s.filmography[0]));
+  const a = actorById(s, rec.by.id);
+  assert.ok(a.credits.some((x) => x.title === 'Night Ferry II' && x.streaming && x.gross === 0), 'not on the replacement\'s record as a platform film');
+});
+test('the show goes on after you, season by season, to its end — each season on the card and told once, in order', () => {
+  const s = life({ filmography: [{ ...SHOW, type: 'Drama Series', scale: 'recurring', viewers: 9, openViewers: 9.5, endViewers: 8.8, rating: 74 }] });
+  s.offers = [season2()]; declineOffer(s, 'ren-tlw');
+  const rec = s.filmography[0].next;
+  s.stories = [];
+  for (let m = rec.due; m <= rec.due + 12 * 25; m++) { to(s, m); C.continuationTick(s); }
+  assert.ok(rec.result && rec.ended, 'the show never ended: ' + JSON.stringify({ later: rec.later.length, ended: rec.ended }));
+  const last = rec.later.length ? rec.later[rec.later.length - 1] : rec.result;
+  assert.equal(rec.ended.n, last.n);
+  assert.ok(rec.later.every((x, i) => x.n === rec.n + 1 + i && x.told), 'a season skipped or untold');
+  const mails = s.inbox.filter((m) => m.tag === 'trades');
+  assert.equal(mails.length, 1 + rec.later.length, 'told twice, or not at all');
+  assert.equal(new Set(mails.map((m) => m.subj)).size, mails.length);
+  const line = C.nextLines(s.filmography[0], s).after;
+  if (rec.later.length) assert.ok(/Then: S\d/.test(line) && /(cancelled|ended) after season/.test(line), line);
+});
+test('nothing is lost while a story holds the news: later seasons are recorded, then told in order once it has spoken', () => {
+  const s = life({ filmography: [{ ...SHOW, type: 'Drama Series', scale: 'recurring', viewers: 9, openViewers: 9.5, endViewers: 8.8, rating: 74 }] });
+  s.offers = [season2()]; declineOffer(s, 'ren-tlw');
+  const rec = s.filmography[0].next;
+  const st = storyOf(s, 'recast'); st.beat = 'without'; st.due = 999999;   // a story that has the first season to tell
+  for (let m = rec.due; m <= rec.due + 12 * 6; m++) { to(s, m); C.continuationTick(s); }
+  assert.ok(rec.result && !rec.told && !s.inbox.some((m) => m.tag === 'trades'), 'the trades spoke over the story');
+  const recorded = rec.later.length;
+  s.stories = [];   // the story is done (or gone): the trades take over
+  C.continuationTick(s);
+  assert.ok(rec.told && rec.later.every((x) => x.told), 'left untold');
+  assert.equal(s.inbox.filter((m) => m.tag === 'trades').length, 1 + recorded);
+});
+
 if (failed) { console.log(`\n${failed} failed`); process.exit(1); }
 console.log('\nall passed');

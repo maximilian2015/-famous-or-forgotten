@@ -174,8 +174,8 @@ function CreditRow({ group, g }) {
       {/* What the network decided is the show's; what happened to you in the next one is yours, and
           what it did without you is the third line (career/continuation.js). The Last Woman read
           "Renewed for season 2" for three years with nothing under it. */}
-      {(() => { const last = group.parts.reduce((a, b) => ((b.season || 0) > (a.season || 0) ? b : a)); const nl = nextLines(last); if (!nl) return null;
-        return (<>{nl.you && <div style={{ fontSize: 11, fontWeight: 700, margin: '2px 0', color: theme.bad }}>👤 {nl.you}</div>}
+      {(() => { const last = group.parts.reduce((a, b) => ((b.season || 0) > (a.season || 0) ? b : a)); const nl = nextLines(last, g); if (!nl) return null;
+        return (<>{nl.you && <div style={{ fontSize: 11, fontWeight: 700, margin: '2px 0', color: nl.pending ? theme.gold : theme.bad }}>👤 {nl.you}</div>}
           {nl.after && <div style={{ fontSize: 11, color: theme.muted, margin: '2px 0 4px', lineHeight: 1.45 }}>↳ {nl.after}</div>}</>); })()}
       {/* The studio said no. A name in the room can push — favours.js. */}
       {c.sequelDead && <div style={{ fontSize: 11, color: theme.muted, margin: '4px 0 2px', fontWeight: 700 }}>📝 The sequel was announced and never made. Three writers, a director who left, and a studio that stopped answering.</div>}
@@ -453,10 +453,10 @@ function WithoutYou({ g, list }) {
   const said = recs.filter(mine).sort((a, b) => (b.rec.at || 0) - (a.rec.at || 0));
   const passed = (g.passedOn || []).filter((p) => p.how === 'passed' && p.kind !== 'renewal' && p.kind !== 'sequel' && !own.has(p.title));
   if (!lost.length && !said.length && !passed.length) return null;
-  const row = ({ c, rec }) => { const nl = nextLines(c) || {};
+  const row = ({ c, rec }) => { const nl = nextLines(c, g) || {};
     return (<div key={rec.title} style={{ padding: '7px 2px', borderBottom: `1px solid ${theme.line}`, fontSize: 12 }}>
       <div style={{ fontWeight: 700 }}>{rec.kind === 'part' ? rec.title : `${rec.root} · season ${rec.n}`}</div>
-      <div style={{ fontSize: 10.5, color: mine({ rec }) ? theme.muted : theme.bad }}>{YOU[rec.you] || rec.you}{WHY[rec.how] ? ` — ${WHY[rec.how]}` : ''}{rec.at != null ? ` · ${when(rec.at)}` : ''}</div>
+      <div style={{ fontSize: 10.5, color: nl.pending ? theme.gold : mine({ rec }) ? theme.muted : theme.bad }}>{nl.pending ? String(nl.you).replace(/^[^:]+: /, '') : `${YOU[rec.you] || rec.you}${WHY[rec.how] ? ` — ${WHY[rec.how]}` : ''}${rec.at != null ? ` · ${when(rec.at)}` : ''}`}</div>
       {nl.after && <div style={{ fontSize: 10.5, color: theme.muted, marginTop: 2, lineHeight: 1.4 }}>{nl.after}</div>}
     </div>); };
   return (<div style={{ marginTop: 14 }}>

@@ -23,7 +23,7 @@ import { appealShift } from './story.js';
 import { dirAppeal, reminderOf, retentionLine } from './chapter.js';
 import { comebackFloor } from '../meta/standing.js';
 import { reviewsFor } from '../world/critics.js';
-import { actorById, applyFilmToActor } from '../world/world.js';
+import { actorById, applyFilmToActor, applyStreamingToActor } from '../world/world.js';
 import { tourFame } from './tour.js';
 import { networkLine } from './franchise.js';
 import { typecastAfterCredit, typeFit, roleAcceptance, acceptanceWord } from '../meta/typecast.js';
@@ -500,6 +500,11 @@ function open(s, rel) {
   if (film && rel.withId) {
     const a = actorById(s, rel.withId);
     if (a) applyFilmToActor(a, { title: rel.title, year: s.year, rating: rel.rating, gross: rel.finalGross || 0, scale: rel.scale, genre: rel.genre, withYou: true });
+  }
+  // And a platform's film too, judged by how many pressed play — it has no gross (world.js).
+  if (platformFilm && stream && rel.withId) {
+    const a = actorById(s, rel.withId);
+    if (a) applyStreamingToActor(a, { title: rel.title, year: s.year, rating: rel.rating, views28: stream.views28, platform: stream.platform.name, scale: rel.scale, genre: rel.genre, tier: 'supporting', withYou: true });
   }
 
   // Opening night is worth something on its own — the carpet, the photographs, the fact

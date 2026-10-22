@@ -140,6 +140,20 @@ export function applyFilmToActor(a, f) {
   a.credits.push({ title: f.title, year: f.year, rating: f.rating, gross: f.gross, scale: f.scale, genre: f.genre, withYou: !!f.withYou });
   if (a.credits.length > 60) a.credits.shift();
 }
+// A platform's film on somebody's own record (Streaming Movies V1): a co-star of yours, or the name
+// who took your part in a sequel. There is no gross to judge it by, so it is judged as the platform
+// judged it — by how many pressed play (+1 fame per 5M, up to 8, half for a supporting part, as for
+// yours) — and the craft and the standing move as they would for any film of that rating.
+export function applyStreamingToActor(a, f) {
+  const views = Math.min(8, Math.floor((f.views28 || 0) / 5));
+  const fame = Math.max(1, (f.tier === 'supporting' ? Math.floor(views / 2) : views) + (f.rating >= 85 ? 2 : 0));
+  a.fame = clamp(a.fame + fame * headroom(a.fame));
+  a.respect = clamp((a.respect || 50) + (f.rating >= 85 ? 4 : f.rating >= 70 ? 1.5 : f.rating < 45 ? -2 : 0));
+  a.craft = clamp(Math.min(a.talent || 96, a.craft + rint(1, 3)));
+  a.credits.push({ title: f.title, year: f.year, rating: f.rating, gross: 0, views28: f.views28 || 0, streaming: true, platform: f.platform || null,
+    scale: f.scale, genre: f.genre, withYou: !!f.withYou });
+  if (a.credits.length > 60) a.credits.shift();
+}
 // An icon is not a number. Ninety fame and either a statuette or three enormous pictures —
 // and there are never more than a handful at once: past five, the bar goes up.
 // Only the top three chairs make an icon, and only once the name has actually got there.
