@@ -139,13 +139,15 @@ function theEnding(s, out) {
   const now = stamp(s);
   for (const c of (s.filmography || [])) {
     if (c.minor || !c.renewal || c.running) continue;
-    if (c.renewal !== 'cancelled' && c.renewal !== 'capped' && c.renewal !== 'writtenOut') continue;
+    // Written out is your fate, not the show's: the show was renewed (career/continuation.js).
+    const gone = c.renewal === 'writtenOut' || (c.next && (c.next.you === 'writtenOut' || c.next.you === 'killed') && !c.next.migrated);
+    if (c.renewal !== 'cancelled' && c.renewal !== 'capped' && !gone) continue;
     c._after = c._after || {};
     if (c._after.end) continue;
     c._after.end = now;
     const root = String(c.title || '').replace(/(\s*·\s*season\s+\d+)+\s*$/i, '');
     const n = c.season || 1;
-    if (c.renewal === 'writtenOut') {
+    if (gone) {
       out.push({ tone: 'pan', kind: 'you', about: c.title, react: true,
         head: `"${root}" is coming back. You are not.`,
         body: `Season ${n + 1} was ordered on Tuesday and the cast list went out on Wednesday without your name on it. The network's line is that the story took your character somewhere. The piece prints that line and then prints the numbers.` });

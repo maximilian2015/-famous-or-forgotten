@@ -28,6 +28,7 @@ import { maybeScene } from '../systems/career/scenes.js';
 import { releaseTick, runTick, cultTick } from '../systems/career/release.js';
 import { frozenTick } from '../systems/career/stability.js';
 import { laterOffersTick, resolveBubbles } from '../systems/career/franchise.js';
+import { continuationTick } from '../systems/career/continuation.js';
 import { bubbleTick } from '../systems/career/bubble.js';
 import { submissionsTick, refreshCastingPool } from '../systems/career/castings.js';
 import { runNominations, ceremonyTick, SERIES } from '../systems/career/awards.js';
@@ -180,6 +181,7 @@ export function advanceMonth(state) {
   bubbleTick(s);      // and somewhere a network finally decides about a show it has been sitting on
   resolveBubbles(s);  // and the ones that came good become papers
   laterOffersTick(s); // and a sequel announced years ago finally has a script
+  continuationTick(s); // and the season or the sequel that went on without you comes out, and the trades say how
   if (inCareer(s)) runNominations(s);   // the lists come out in September, and judge the year behind them
   ceremonyTick(s);   // and the night itself is the following March
   if (inCareer(s)) runNominations(s, SERIES);   // the series award: its list in May

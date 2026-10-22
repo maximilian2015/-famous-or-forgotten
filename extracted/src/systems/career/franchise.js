@@ -12,6 +12,7 @@ import { onTheBubble, hangIt, takeDecided } from './bubble.js';
 import { carriedToNextSeason } from './terms.js';
 import { sequelBudget, planEpisodeCost } from './budget.js';
 import { platformById, platformOfKind, numbersOf, seasonCost, renewalFor, platformLine } from './streaming.js';
+import { writtenOutAtRenewal } from './continuation.js';
 
 // How long a format can plausibly run. Daytime soaps run for decades; prestige
 // streaming shows are written to end. This is the ceiling, not the expectation —
@@ -460,8 +461,10 @@ export function maybeContinue(s, credit, p, force = false) {
     const aud = credit.reviews && credit.reviews.audience != null ? credit.reviews.audience : null;
     const out = !force && ((p.type === 'Soap Opera' && aud != null && aud < 4.5 && chance(30)) || (p.type !== 'Soap Opera' && credit.rating < 40 && chance(35)));
     if (out) {
-      credit.renewal = 'writtenOut';
+      // The show is renewed; you are not in it. Two facts, kept apart (continuation.js).
+      credit.renewal = 'renewed';
       addTimeline(s, `"${root}" was renewed — without you. Your character was written out.`, true);
+      writtenOutAtRenewal(s, credit, p, root, season + 1, tvMonths(p.type, p.scale, p.episodes || 8));
       return null;
     }
     credit.renewal = 'renewed';
