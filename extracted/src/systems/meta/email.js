@@ -144,6 +144,24 @@ export function emailTick(s) {
         { label: 'Let it screen', fest: 'skip' },
       ] });
   }
+  // Two buyers want a festival picture: a distributor and a platform (career/release/acquisition.js).
+  // The choice is the player's, and each button says what it does before it is pressed.
+  for (const r of s.releases || []) {
+    if (!r.awaitingBuyer || r.buyerAsked) continue;
+    r.buyerAsked = true;
+    const platform = (s.world && s.world.streaming && s.world.streaming.platforms || []).find((p) => p.id === r.bidder);
+    const pname = platform ? platform.name : 'A platform';
+    const prize = r.fest && r.fest.result === 'prize';
+    push(s, { from: 'the producers', subj: `Two buyers want "${r.title}"`, tag: 'fest', kind: 'fest', releaseId: r.id, title: r.title,
+      body: `${prize ? `The prize did it` : `The screenings did it`}: two offers by Sunday, and the producers want to know what you think before they sign.\n\n`
+        + `${r.distributor} — cinemas. A small release, a few cities, the laurels on the poster. If people take to it, the release grows; if they do not, it is gone in a month and the numbers are yours. A picture that sells to cinemas is one the people who hire for films have seen.\n\n`
+        + `${pname} — streaming. Everywhere on the same Friday, at a price agreed now. No box office and no long run: it is judged on how many start it and finish it in four weeks, and far more people will see it than a small release finds.${r.backend > 0 ? ' Your points are paid out of the price.' : ''}\n\n`
+        + `If you have not answered by next month, they take the offer from ${r.distributor}.`,
+      cta: [
+        { label: `Cinemas — ${r.distributor}`, fest: 'cinema' },
+        { label: `Streaming — ${pname}`, fest: 'platform' },
+      ] });
+  }
   // A letter about a picture that has opened is not a letter.
   s.inbox = (s.inbox || []).filter((m) => (m.tag !== 'tour' && m.tag !== 'fest') || (s.releases || []).some((r) => r.id === m.releaseId));
   // ── fan mail, hate mail, spam ──

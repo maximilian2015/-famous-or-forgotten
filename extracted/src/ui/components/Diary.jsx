@@ -71,15 +71,17 @@ function itemsFor(g, i, abs) {
     // Post-production is not on here: you are not there for it. Maxi: "only the premiere."
     // The month before: the studio's two weeks of you, if it is that kind of picture.
     if (r.due === abs + 1 && toursFor(r)) it('tour', '🎤', 'Press tour', r.title, r.tour ? `Done · buzz ${r.tour.buzz}` : r.tourSkipped ? 'Skipped' : r.tourAsked ? 'The letter is in Email' : 'Next month');
-    if (r.due === abs) { const tv = !isFilmScale(r.scale); const fest = r.scale === 'festival';
-      it('premiere', fest ? '🎞️' : r.streaming ? '📱' : tv ? '📺' : '🎬', fest ? 'The festival' : r.streaming ? 'The drop' : tv ? (r.scale === 'recurring' ? 'On air' : (r.season || 0) > 1 && r.joined ? 'Your first episode' : 'First episode') : 'Premiere', r.title, fest ? `In competition · ${MON[abs % 12]} ${Math.floor(r.due / 12)}` : `${dayOf(r.title)} ${MON[abs % 12]} ${Math.floor(r.due / 12)}`, { big: true, ref: { kind: 'release', id: r.id } }); }
+    // A festival picture two buyers want waits for your answer (career/release/acquisition.js).
+    if (r.due === abs && r.awaitingBuyer) { it('answer', '🎞️', 'Two buyers', r.title, r.buyer ? 'Sold — it goes out this month' : 'Cinemas or a platform — the letter is in Email', { big: true, ref: { kind: 'release', id: r.id } }); continue; }
+    if (r.due === abs) { const tv = !isFilmScale(r.scale); const fest = r.scale === 'festival' && !r.buyer; const drop = r.streaming || r.buyer === 'platform';
+      it('premiere', fest ? '🎞️' : drop ? '📱' : tv ? '📺' : '🎬', fest ? 'The festival' : drop ? 'The drop' : tv ? (r.scale === 'recurring' ? 'On air' : (r.season || 0) > 1 && r.joined ? 'Your first episode' : 'First episode') : 'Premiere', r.title, fest ? `In competition · ${MON[abs % 12]} ${Math.floor(r.due / 12)}` : `${dayOf(r.title)} ${MON[abs % 12]} ${Math.floor(r.due / 12)}`, { big: true, ref: { kind: 'release', id: r.id } }); }
   }
   for (const c of (g.filmography || [])) {
     if (!c.running) continue;
     const weeksLeft = Math.max(0, (c.weeksTotal || 0) - (c.weeks || 0)), left = Math.ceil(weeksLeft / 4);
     // A platform's season is out all at once: what is left is the four weeks to its number.
     if (c.streaming) {
-      if (i < left) it('onair', '📱', 'Streaming', c.title, i === left - 1 ? 'The platform\'s number' : 'Every episode is out; the platform is counting', { card: i === 0 });
+      if (i < left) it('onair', '📱', 'Streaming', c.title, i === left - 1 ? 'The platform\'s number' : isFilmScale(c.scale) ? 'The film is out everywhere; the platform is counting' : 'Every episode is out; the platform is counting', { card: i === 0 });
       continue;
     }
     const tv = !!c.tv || !isFilmScale(c.scale);

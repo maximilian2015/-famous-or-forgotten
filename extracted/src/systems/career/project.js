@@ -44,6 +44,9 @@ function mediumFor(x, pay) {
   // Streaming is a platform's fee table and nothing else (Streaming V1): a rescued network show keeps
   // its type and its scale, and is streaming from the season a platform pays for.
   if (pay === 'stream_series' || pay === 'stream_premium') return 'streaming';
+  // A platform's film (Streaming Movies V1): a film scale, a platform, no episodes. Paid from the
+  // cinema table for its size, so the platform is the only thing that says where it goes out.
+  if (x.platformId && FILM_SCALES.has(x.scale) && !(x.episodes > 0)) return 'streaming';
   if (TV_SCALES.has(x.scale) || TV_TYPES.test(x.type || '') || pay === 'tv_daytime' || pay === 'tv_network' || pay === 'tv_prestige') return 'television';
   if (x.episodes > 0 || x.perEpisode) return 'television';
   if (FILM_SCALES.has(x.scale)) return 'theatrical';
@@ -52,7 +55,7 @@ function mediumFor(x, pay) {
 function formatFor(x, medium) {
   const type = x.type || '';
   if (medium === 'television') return /Soap Opera/.test(type) ? 'soap' : 'series';
-  if (medium === 'streaming') return /Limited/.test(type) ? 'limited_series' : 'series';
+  if (medium === 'streaming') return FILM_SCALES.has(x.scale) && !(x.episodes > 0) ? 'movie' : /Limited/.test(type) ? 'limited_series' : 'series';
   if (medium === 'theatrical') return 'movie';
   if (/Commercial|Brand|Fashion|Jingle|Music Video/.test(type)) return 'commercial';
   if (/Magazine|Cover/.test(type)) return 'editorial';
@@ -144,7 +147,8 @@ export function adoptProject(s, offer, fallbackId) {
   const parent = getProject(s, offer.parentProjectId);
   const p = { id, parentId: parent ? parent.id : null, ...describeProject(offer) };
   p.seriesId = null; p.franchiseId = null;
-  const serial = (x) => x.medium === 'television' || x.medium === 'streaming';
+  // A platform's film is a film: its sequel is a franchise, not a season.
+  const serial = (x) => (x.medium === 'television' || x.medium === 'streaming') && x.format !== 'movie';
   if (parent && parent.medium === p.medium) {
     // The same show is the same show: its format, its outlet, its fee table; a sequel is the same
     // franchise.

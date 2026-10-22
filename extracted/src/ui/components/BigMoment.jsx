@@ -411,7 +411,7 @@ export function BigMoment({ moment, look, onClose }) {
           it from the verdict — so this must not assume they are there. It crashed the modal
           outright the first time a film opened. See systems/career/release.js. */}
       {/* The column and the room saw different films. career/release.js splitLine */}
-      {moment.id === 'verdict' && moment.split && (<div style={{ fontSize: 12, lineHeight: 1.5, margin: '0 0 8px', padding: '8px 11px', borderRadius: 9, background: theme.panel2, border: `1px solid ${theme.gold}44`, color: theme.gold }}>🎟 {moment.split}</div>)}
+      {moment.id === 'verdict' && moment.split && (<div style={{ fontSize: 12, lineHeight: 1.5, margin: '0 0 8px', padding: '8px 11px', borderRadius: 9, background: theme.panel2, border: `1px solid ${theme.gold}44`, color: theme.gold }}>{moment.streaming ? '📱' : '🎟'} {moment.split}</div>)}
       {/* The first night and the last one. A season is two numbers, and the gap between
           them is the season itself. career/chapter.js retentionLine */}
       {moment.id === 'verdict' && moment.retention && (<div style={{ fontSize: 12, lineHeight: 1.5, margin: '0 0 8px', padding: '8px 11px', borderRadius: 9, background: theme.panel2, border: `1px solid ${theme.line}`, color: theme.text }}>📈 {moment.retention}</div>)}
@@ -421,7 +421,9 @@ export function BigMoment({ moment, look, onClose }) {
       {moment.id === 'verdict' && moment.streaming && (
         <div style={{ display: 'flex', gap: 8, margin: '0 0 12px' }}>
           <Figure label="Score" value={`${moment.score}/10`} accent={accent} />
-          <Figure label="Views, 28 days" value={moment.streaming.views} accent={accent} />
+          {/* A film's life is front-loaded: week one against the four weeks says how it travelled. */}
+          {moment.streaming.week1 && <Figure label="Week one" value={moment.streaming.week1} accent={accent} />}
+          <Figure label={moment.streaming.week1 ? 'Started, 28 days' : 'Views, 28 days'} value={moment.streaming.views} accent={accent} />
           <Figure label="Finished it" value={moment.streaming.completion} accent={accent} />
           <Figure label="For the platform" value={moment.streaming.outcome} accent={accent} />
         </div>

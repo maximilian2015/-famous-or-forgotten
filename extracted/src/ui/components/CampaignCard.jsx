@@ -1,6 +1,6 @@
 import { dispatch } from '../../state/store.js';
 import { liveCampaign, campaignable, CAMPAIGN_MONTHS, campaignKind, canCampaign, ownCampaignCost,
-  startCampaign, CAMPAIGN_ENERGY, CAMPAIGN_NOM, campaignTrackOf, MONTH_NAMES as MONTHS } from '../../systems/career/awards.js';
+  startCampaign, CAMPAIGN_ENERGY, CAMPAIGN_NOM, campaignTrackOf, campaignBacker, MONTH_NAMES as MONTHS } from '../../systems/career/awards.js';
 import { theme } from '../theme.js';
 import { Card } from './Card.jsx';
 
@@ -42,7 +42,7 @@ export function CampaignCard({ g }) {
             <div style={{ fontSize: 12.5, fontWeight: 800 }}>"{String(c.title).replace('⭐ ', '')}" · {c.score}/10</div>
             <div style={{ fontSize: 11.5, color: theme.muted, lineHeight: 1.45, marginTop: 2 }}>
               {kind === 'studio'
-                ? `The ${T.id === 'series' ? 'network' : 'studio'} wants to run an awards campaign for it before ${when}. They pay for all of it; what they want from you is ${CAMPAIGN_MONTHS} months of lunches, panels and the same four questions.`
+                ? `${(() => { const b = campaignBacker(g, c, T); return b.charAt(0).toUpperCase() + b.slice(1); })()} wants to run an awards campaign for it before ${when}. They pay for all of it; what they want from you is ${CAMPAIGN_MONTHS} months of lunches, panels and the same four questions.`
                 : `Nobody is running an awards campaign for this one before ${when}. You could: €${ownCampaignCost(g).toLocaleString()} of your own, and it does about half what a studio's would.`}
             </div>
             <button onClick={() => dispatch(startCampaign, c.title)} disabled={!fit.ok}

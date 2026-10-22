@@ -11,7 +11,7 @@ import { priceYoungReturn } from './youngblood.js';
 import { onTheBubble, hangIt, takeDecided } from './bubble.js';
 import { carriedToNextSeason } from './terms.js';
 import { sequelBudget, planEpisodeCost } from './budget.js';
-import { platformById, platformOfKind, numbersOf, seasonCost, renewalFor, platformLine } from './streaming.js';
+import { platformById, platformOfKind, numbersOf, seasonCost, renewalFor, platformLine, filmSequelOdds, filmLine } from './streaming.js';
 
 // How long a format can plausibly run. Daytime soaps run for decades; prestige
 // streaming shows are written to end. This is the ceiling, not the expectation —
@@ -424,6 +424,43 @@ export function streamingRenewal(s, credit, p) {
   const offer = maybeContinue(s, credit, p, true);
   if (offer) offer.note = String(offer.note || '').replace(/The network/g, platform.name).replace(/the network/g, platform.name);
   return { offer, decision: 'renewed', line };
+}
+
+// A platform's film is never renewed and never goes on the bubble: the platform decides whether it
+// wants a second one (Streaming Movies V1, plan §1), on the outcome — the giant after a Breakout more
+// often than not, the cheap services after a Hit now and then, the premium service never. Not through
+// maybeContinue, whose sequel table is keyed by the box office's words. A lead's film only, up to three
+// parts. The script comes the way a studio's does, through laterOffers. Returns the platform's line.
+export function platformFilmSequel(s, credit, p, st) {
+  const pr = getProject(s, p.projectId) || {};
+  const platform = platformById(s, pr.platformId || st.platformId) || platformOfKind(s, 'library');
+  const part = p.part || 1, nextPart = part + 1;
+  const odds = p.tier === 'supporting' || part >= 3 ? 0 : filmSequelOdds(platform, credit.verdict);
+  const yes = odds > 0 && chance(odds);
+  const line = filmLine({ platform, opening7: st.opening7, views28: st.views28, completion: st.completion, outcome: credit.verdict, cost: st.cost, sequel: yes });
+  if (!yes) return line;
+  const first = p.baseSalary || p.salary;
+  const salary = Math.min(Math.round(first * sequelRaise(nextPart)), ceilingFor(s, payOf(s, p)));
+  const now = (s.year || 0) * 12 + (s.month || 0);
+  addTimeline(s, `${platform.name} wants a second "${p.title}". They want you in it.`);
+  (s.laterOffers = s.laterOffers || []).push({
+    due: now + rint(14, 24), since: now,
+    line: `${platform.name} has a script for "${sequelTitle(p.title, nextPart)}". The paper is in Messages.`,
+    event: `${platform.name} is making "${sequelTitle(p.title, nextPart)}", and the contract is in Messages — the same platform, a bigger fee.`,
+    offer: {
+      id: uid(s, 'seq'), kind: 'sequel', part: nextPart, scale: p.scale, via: 'platform', from: platform.name,
+      parentProjectId: p.projectId || null, platformId: platform.id, payMarket: pr.payMarket || null,
+      budget: Number.isFinite(p.budget) ? sequelBudget(p.budget, p.scale, nextPart) : null, needs: p.needs ?? null,
+      stability: Math.max(85, p.stability || 85),
+      projectTitle: sequelTitle(p.title, nextPart), role: p.role, type: p.type || 'Streaming Film', genre: p.genre,
+      salary, baseSalary: first, months: Math.max(2, Math.round((p.months || 3) * (0.95 + Math.random() * 0.25))),
+      prestigeScore: sequelMaterial(p.prestigeScore || 50, nextPart, p.arc || rollArc()),
+      potential: p.potential || null, tier: p.tier || 'lead', fame: 5, deadline: rint(2, 3), waitsForWrap: true,
+      character: p.character || null, premise: p.premise || null, seriesTitle: seriesRoot(p.title),
+      note: `${platform.name} wants another one, on the numbers of the first: ${Math.round((sequelRaise(nextPart) - 1) * 100)}% more, bought out like the last one.`,
+    },
+  });
+  return line;
 }
 
 // Called at the end of every production. Returns an offer to push, or null.

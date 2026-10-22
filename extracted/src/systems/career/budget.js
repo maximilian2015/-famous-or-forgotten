@@ -81,3 +81,25 @@ export function planEpisodeCost({ seed, genre, archetype }) {
   const t = Math.max(0, Math.min(1, (GENRE_AT[genre] ?? 0.4) + (r() - 0.5) * 0.6));
   return Math.round(lo * Math.pow(hi / lo, t) * 10) / 10;
 }
+
+// ── a platform's film ─────────────────────────────────────────────────────────
+// What a film costs a platform to make, €m, all in — like a cinema budget it pays everybody on the
+// call sheet, you too, so your fee is never added on top of it (Streaming Movies V1, revision 2,
+// docs/handoffs/2026-10-21-streaming-movies-v1-plan.md §1). The genre places it the way it places a
+// picture; the film itself moves it from there. Seeded by the listing, kept on the project.
+export const PLATFORM_FILM_RANGE = { global: [40, 220], prestige: [6, 45], library: [3, 25], niche: [1, 8] };
+export function planPlatformFilmBudget({ seed, genre, archetype }) {
+  const [lo, hi] = PLATFORM_FILM_RANGE[archetype] || PLATFORM_FILM_RANGE.library;
+  const r = rng(hash('platformfilm:' + String(seed) + '|' + (genre || '') + '|' + archetype));
+  const t = Math.max(0, Math.min(1, (GENRE_AT[genre] ?? 0.4) + (r() - 0.5) * 0.7));
+  const m = lo * Math.pow(hi / lo, t);
+  return m >= 10 ? Math.round(m) : Math.round(m * 10) / 10;
+}
+// Which film scale a platform's film is, so the critics, the crowd, the Asker and the poster read it
+// as the film it is: the cheap services make indies, the premium service indies and features, the
+// giant features and, from €150m, its event films.
+export function platformFilmScale(archetype, budget) {
+  if (archetype === 'global') return budget >= 150 ? 'blockbuster' : 'feature';
+  if (archetype === 'prestige') return budget >= 15 ? 'feature' : 'indie';
+  return 'indie';
+}

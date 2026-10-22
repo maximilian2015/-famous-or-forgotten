@@ -249,8 +249,17 @@ export function draftContract(s, o) {
       text: `${prep} month${prep === 1 ? '' : 's'} before the first day — the body, the accent, the stunts. Unpaid, on the calendar, and the set starts better for it`,
       options: prep > 1 ? [{ id: 'cut', label: 'Cut it to one month', value: 1, odds: 50 }] : [] });
   }
+  // A platform's film (Streaming Movies V1): there is no gross to take a share of, so no back end, no
+  // merchandise and no points instead of pay. The paper says so on the line where they would be, with
+  // nothing to ask — the fee is the cinema fee for its size, bought out (career/streaming.js FILM_BUYOUT).
+  const platformFilm = !!o.platformId && !o.perEpisode && !(o.episodes > 0);
+  if (big && platformFilm) {
+    clauses.push({ id: 'buyout', label: 'Back end', value: 0,
+      text: 'None. A platform pays for the film up front and keeps whatever it makes — there is no box office to take a share of, and no points to ask for. The fee is bought out: a quarter above a cinema fee for a film this size',
+      options: [] });
+  }
   // Points and options: only once you are somebody.
-  if (big && tierIdx(s) >= 4 && (o.scale === 'blockbuster' || o.scale === 'feature')) {
+  if (big && !platformFilm && tierIdx(s) >= 4 && (o.scale === 'blockbuster' || o.scale === 'feature')) {
     const pts = rint(1, 3);
     clauses.push({ id: 'backend', label: 'Back end', value: pts, text: `${pts}% of the gross past break-even`,
       options: [{ id: 'more', label: `Ask for ${pts + 3}%`, value: pts + 3, odds: 30 }] });
@@ -284,12 +293,12 @@ export function draftContract(s, o) {
       text: 'If the picture stalls you are paid for the days you shot, and nothing else',
       options: [{ id: 'ask', label: 'Pay-or-play — the whole fee, whether or not the picture happens', value: true, odds: tierIdx(s) >= 4 ? 50 : 25 }] });
   }
-  if (big && o.scale === 'blockbuster') {
+  if (big && !platformFilm && o.scale === 'blockbuster') {
     clauses.push({ id: 'merch', label: 'Merchandise', value: 0,
       text: 'Your face on the toys, the lunchboxes and the game is theirs',
       options: [{ id: 'two', label: 'Ask for two per cent of the merchandise', value: 2, odds: o.kind === 'sequel' ? 40 : 25 }] });
   }
-  if (big && (o.scale === 'indie' || o.scale === 'festival') && !o.perEpisode && tierIdx(s) >= 1) {
+  if (big && !platformFilm && (o.scale === 'indie' || o.scale === 'festival') && !o.perEpisode && tierIdx(s) >= 1) {
     clauses.push({ id: 'points', label: 'Points', value: 0,
       text: 'The fee, and no share of what it makes',
       options: [{ id: 'five', label: `Points instead of pay — ${money(Math.round(o.salary * 0.6))} now and five per cent of the gross`, value: 5, odds: 70 }] });

@@ -14,10 +14,10 @@ import { setFame, setRespect } from '../meta/status.js';
 import { addTimeline, showMoment } from '../../engine/timeline.js';
 import { regardAfterWorking } from '../life/regard.js';
 import { markReleased } from '../../engine/economy.js';
-import { maybeContinue, streamingRenewal } from './franchise.js';
+import { maybeContinue, streamingRenewal, platformFilmSequel } from './franchise.js';
 import { getProject } from './project.js';
 import { isFilmScale as isFilm } from './scale.js';
-import { fameFromViews, hypeFor, OUTCOME_WORD } from './streaming.js';
+import { fameFromViews, hypeFor, OUTCOME_WORD, FILM_WEEKS, filmFame } from './streaming.js';
 import { tvTermsOf } from './terms.js';
 import { appealShift } from './story.js';
 import { dirAppeal, reminderOf, retentionLine } from './chapter.js';
@@ -90,6 +90,7 @@ export { isFilmScale as isFilm } from './scale.js';
 import { tvVerdict } from './release/television.js';
 import { moneyVerdict } from './release/theatrical.js';
 import { dropStreaming, STREAM_WEEKS } from './release/streaming.js';
+import { holdForBuyers, sellToPlatform, rollLaterSale, dueLaterSales } from './release/acquisition.js';
 import { festivalAt, feedTheMarket, settleWorldHit, boxOfficePoison, pictureMoney, festivalAfterRun } from './release/theatrical.js';
 import { seasonAudience } from './release/television.js';
 // ── what the room thought ─────────────────────────────────────────────────────
@@ -169,13 +170,17 @@ export function audienceFor(s, rel) {
 }
 // When the two of them have seen different films, and which way round.
 export const SPLIT_AT = 18;
-export function splitLine(rating, audience) {
+export function splitLine(rating, audience, home = false) {
   // A credit from before the room had its own opinion has no number, and "audience || 0"
   // turned that into a forty-nine point gap: a bomb rated 4.9 was announced on the night
   // as "the reviews are the best of your career".
   if (audience == null || !Number.isFinite(audience)) return null;
   const d = Math.round(audience - (rating || 0));
   if (Math.abs(d) < SPLIT_AT) return null;
+  // On a platform nobody bought a ticket: they pressed play at home (Streaming Movies V1).
+  if (home) return d > 0
+    ? 'The reviews were not kind and nobody told the audience. They pressed play anyway, and they are telling each other to.'
+    : 'The reviews are the best of your career and the people who pressed play at home gave up on it halfway.';
   return d > 0
     ? 'The reviews were not kind and nobody told the audience. They went anyway, and they are telling each other to go.'
     : 'The reviews are the best of your career and the people who bought a ticket came out looking at their phones.';
@@ -190,7 +195,8 @@ export function splitLine(rating, audience) {
 // forecast, and no money at all. The money is the next weeks, and that is the point.
 // Anything an old save does not have is left out rather than guessed.
 export function premiereCard(s, rel, talk) {
-  const film = isFilm(rel.scale);
+  // A platform's film has no campaign of the studio's, no date and nothing opening against it.
+  const film = isFilm(rel.scale) && !rel.streaming;
   const ch = rel.character;
   const character = typeof ch === 'string' ? ch : (ch && ch.name) || null;
   const card = { type: rel.type || null, genre: rel.genre || null, role: rel.role || null,
@@ -273,7 +279,8 @@ export function scheduleRelease(s, credit, p) {
   // (Streaming V1, plan §5). Which market it is in is its project's (career/project.js).
   const proj = getProject(s, p.projectId);
   const streaming = !!(proj && proj.medium === 'streaming');
-  const wait = streaming ? rint(4, 7) : postProduction(p.scale || 'feature');
+  // A platform's film is finished like any film of its size; only a season goes out in four to seven months.
+  const wait = streaming && !isFilm(p.scale) ? rint(4, 7) : postProduction(p.scale || 'feature');
   const rel = {
     id: uid(s, 'rel'),
     ...(streaming ? { streaming: true } : {}),
@@ -355,6 +362,8 @@ export function scheduleRelease(s, credit, p) {
 // Runs every month. Anything whose day has come opens.
 export function releaseTick(s) {
   const now = (s.year || 0) * 12 + (s.month || 0);
+  // An unsold festival picture a platform bought months later goes out tonight (release/acquisition.js).
+  if (s.laterSales && s.laterSales.length) for (const rel of dueLaterSales(s)) open(s, rel);
   const due = (s.releases || []).filter((r) => r.due <= now);
   if (!due.length) return s;
   s.releases = (s.releases || []).filter((r) => r.due > now);
@@ -380,12 +389,18 @@ function runWeeks(rel, verdict) {
 }
 
 function open(s, rel) {
-  const film = isFilm(rel.scale);
   // What was being said about you as it opened — the number demandFor reads, taken before the
   // opening's own noise lands on top of it below.
   const talk = { hype: hype(s), source: hypeSource(s) };
   // A festival picture is decided in the room, before anybody else sees it (release/theatrical.js).
   const fest = festivalAt(s, rel);
+  // Two buyers want it — a distributor and a platform — and the player chooses: the release waits a
+  // month for the answer. Sold to the platform, it goes out as the platform's film (release/acquisition.js).
+  if (holdForBuyers(s, rel, fest)) return s;
+  if (rel.buyer === 'platform' && !rel.streaming) sellToPlatform(s, rel);
+  // A film in cinemas. A platform's film is a film to the critics and the crowd, and not to the money.
+  const film = isFilm(rel.scale) && !rel.streaming;
+  const platformFilm = isFilm(rel.scale) && !!rel.streaming;
   // What it will end up taking. The player does not see this number yet — it arrives a
   // few thousand at a time, week by week, which is how anybody actually experiences it.
   // A later season opens on a name people know: a tenth more, before anybody has seen it.
@@ -423,7 +438,7 @@ function open(s, rel) {
     rating: rel.rating, status: rel.status, year: s.year, season: rel.season,
     part: rel.part > 1 ? rel.part : 0, episodes: rel.episodes,
     // In cinemas. Everything below is provisional until runTick closes it.
-    running: true, weeks: 0, weeksTotal: stream ? STREAM_WEEKS : runWeeks(rel, verdict), openedAt: (s.year || 0) * 12 + (s.month || 0),
+    running: true, weeks: 0, weeksTotal: stream ? (stream.movie ? FILM_WEEKS : STREAM_WEEKS) : runWeeks(rel, verdict), openedAt: (s.year || 0) * 12 + (s.month || 0),
     budget: rel.budget ?? null, needs: rel.needs ?? null,   // what it cost, for the filmography and the press (budget.js)
     boxOffice: 0, viewers: rel.viewers || 0, openViewers: rel.openViewers || 0, endViewers: rel.endViewers || 0,
     // What the room thought, which is not what the column thought. See audienceFor above.
@@ -439,11 +454,14 @@ function open(s, rel) {
     campaignShare: rel.campaign ? 0.65 : 0,
     exceptional: !!rel.exceptional,
     with: rel.with || null, withId: rel.withId || null, withIcon: !!rel.withIcon, withFame: rel.withFame || 0,
-    festival: fest,
+    // A festival picture a platform bought months after the festival keeps the festival it had.
+    festival: rel.laterSale ? rel.laterSale.festival : fest,
     // A platform's three numbers, and the ones under them (career/streaming.js). The score stays off
     // every screen; the cost is said only when it is the reason a show ends.
     ...(stream ? { streaming: true, platformId: stream.platform.id, views7: stream.opening7, views28: stream.views28, completion: stream.completion,
-      finished28: stream.finished28, reach: stream.reach, seasonCost: stream.cost, push: stream.push, platformScore: stream.score } : {}),
+      finished28: stream.finished28, reach: stream.reach, push: stream.push, platformScore: stream.score,
+      // A film's cost is the whole film's, paid once; a season's is the season's (the renewal reads it).
+      ...(stream.movie ? { filmCost: stream.cost, momentum: stream.momentum } : { seasonCost: stream.cost }) } : {}),
   };
   const bucket = s.dream === 'singer' ? 'discography' : 'filmography';
   // Two years without anything coming out and the trades will call the next one a
@@ -473,6 +491,8 @@ function open(s, rel) {
         ? `Two screenings in a room that was half full, and the half that came stood up at the end. The buyers did not. Nobody could say what shelf it belonged on, so it stays on none — but the people who saw it will remember who was in it.`
         : `Two screenings, a bar afterwards where everybody said kind things, and a flight home. No distributor rang. It will exist on a hard drive somewhere, and nowhere else.`,
     });
+    // Not always the end: a platform may buy it months from now (release/acquisition.js).
+    rollLaterSale(s, rel, fest);
     return s;
   }
   // A film you made together is on both careers. It goes on theirs tonight, at the money
@@ -502,7 +522,8 @@ function open(s, rel) {
     meter: rel.meter || 0, viaPartner: rel.viaPartner || null, fellApart: !!rel.fellApart, backend: rel.backend || 0, merch: rel.merch || 0, potential: rel.potential || null,
     moments: rel.moments || [], crewKnown: rel.crewKnown || [],
     with: rel.with || null, withIcon: !!rel.withIcon,
-    stream: stream ? { outcome: stream.outcome, views28: stream.views28, completion: stream.completion, finished28: stream.finished28, platformId: stream.platform.id } : null };
+    stream: stream ? { outcome: stream.outcome, views28: stream.views28, completion: stream.completion, finished28: stream.finished28, platformId: stream.platform.id,
+      ...(stream.movie ? { movie: true, opening7: stream.opening7, momentum: stream.momentum, cost: stream.cost } : {}) } : null };
   // BY ID, never by reference. A save is JSON, and JSON.parse hands back a fresh object for
   // every entry — so a list holding the credit itself pointed at a copy the moment anybody
   // reloaded, and the run finished on the copy while the credit in the filmography sat at
@@ -525,6 +546,8 @@ function open(s, rel) {
     if (burst >= 12) addHype(s, burst, 'hit');
   }
   const tvKind = rel.scale === 'recurring' ? 'soap' : rel.scale === 'prestige' ? 'prestige' : 'episode';
+  // A platform's film: a festival picture it bought, one it bought months later, or its own.
+  if (platformFilm && stream) { platformFilmNight(s, rel, stream, fest, talk); return s; }
   s.lastEvent = fest
     ? (fest.result === 'prize' ? `"${rel.title}" took the prize at ${fest.name}. Your phone has not stopped.` : `"${rel.title}" was bought at ${fest.name}. A small release, but a release.`)
     : stream ? `"${rel.title}" dropped on ${stream.platform.name} — all ${rel.episodes || 8} episodes at once. The platform will not say a number for four weeks.`
@@ -557,6 +580,29 @@ function open(s, rel) {
   });
 
   return s;
+}
+
+// The night a platform's film goes out (Streaming Movies V1): no carpet and no first night, and a
+// festival picture says who bought it.
+function platformFilmNight(s, rel, stream, fest, talk) {
+  const name = stream.platform.name;
+  const later = rel.laterSale && rel.laterSale.festival;
+  s.lastEvent = fest
+    ? (fest.result === 'prize' ? `"${rel.title}" took the prize at ${fest.name}, and ${name} bought it. It is on every screen they have tonight.` : `"${rel.title}" sold at ${fest.name} to ${name}. It is on every screen they have tonight.`)
+    : later ? `Nobody bought "${rel.title}" at ${later.name}. ${name} has, months later — it is on every screen they have tonight.`
+    : `"${rel.title}" is on ${name} tonight — everywhere at once, and never in a cinema. The platform will not say a number for four weeks.`;
+  addTimeline(s, fest ? `"${rel.title}" ${fest.result === 'prize' ? 'won' : 'sold'} at ${fest.name} — bought by ${name}.` : `"${rel.title}" went out on ${name}.`);
+  showMoment(s, {
+    id: 'premiere', kind: 'good', tv: 'streaming', movie: true, genre: rel.genre, scale: rel.scale, title: rel.title,
+    ...(fest ? { festival: fest.name, result: fest.result } : {}),
+    verdict: fest ? (fest.result === 'prize' ? 'the jury prize' : `bought by ${name}`) : later ? `a home, at last` : 'everywhere at once',
+    card: premiereCard(s, rel, fest ? talk : null),
+    body: fest
+      ? `${fest.result === 'prize' ? 'A jury in the front row, your title read out at the end of the week, and' : 'Two screenings, and'} on the Sunday the offer you took: ${name}, everywhere at once, at a price agreed before anybody pressed play. No cinemas and no box office — four weeks, and then the platform says how many started it and how many got to the end.`
+      : later
+      ? `It screened at ${later.name} and went home with nobody. Months later ${name} wanted a film like it for its home screen, and paid a little for it. It will be seen after all — four weeks, and then the platform's number.`
+      : `No carpet and no first night. A title on a home screen, a thumbnail with your face on it, and four weeks before ${name} says how many started it and how many got to the end.`,
+  });
 }
 
 // ── the run ───────────────────────────────────────────────────────────────────
@@ -626,7 +672,8 @@ function closeRun(s, credit, r) {
   const bySkill = { tentpole: 9, lead: 5, supporting: 2 }[r.tier] || 2;
   let fame = bySkill + (r.rating >= 85 ? 4 : 0) + (r.worldHit ? 25 : 0);
   // A platform's season makes a name from how many pressed play, not from the band it landed in.
-  if (r.stream) fame = fameFromViews(r.stream.views28, r.tier);
+  // A platform's film adds the face on the thumbnail to that (streaming.js filmFame).
+  if (r.stream) fame = r.stream.movie ? filmFame(r.stream.views28, r.tier, r.scale === 'blockbuster') : fameFromViews(r.stream.views28, r.tier);
   // Hype: where the talk comes from this year. A hit replaces whatever was there; a flop
   // takes it off the lead, and only a little off a supporting part. See meta/hype.js.
   // How it turned out, asked through the one place that knows the words (career/outcome.js).
@@ -729,7 +776,8 @@ function closeRun(s, credit, r) {
   // the digits of, which is the opposite of what that line is for. This half came in with an
   // uncommitted cut to the opening constant that was reverted — the cut made a billion
   // impossible and broke three tests; saying the number properly was right and stayed.
-  const money = r.stream ? `${r.stream.views28}m in 28 days · ${Math.round((r.stream.completion || 0) * 100)}% finished`
+  const money = r.stream && r.stream.movie ? `${r.stream.opening7}m in the first week, ${r.stream.views28}m in 28 days · ${Math.round((r.stream.completion || 0) * 100)}% finished`
+    : r.stream ? `${r.stream.views28}m in 28 days · ${Math.round((r.stream.completion || 0) * 100)}% finished`
     : film
     ? `${credit.boxOffice >= 1e9 ? `€${(credit.boxOffice / 1e9).toFixed(2)}bn` : `€${(credit.boxOffice / 1000000).toFixed(credit.boxOffice >= 100000000 ? 0 : 1)}m`} on a €${(bud / 1000000).toFixed(0)}m film, ${credit.weeksTotal} weeks`
     : (credit.openViewers && credit.endViewers)
@@ -752,7 +800,9 @@ function closeRun(s, credit, r) {
   // Only now does anyone know whether there is a second one. A platform decides on what the next
   // season would cost (franchise.js streamingRenewal); everything else as it always did.
   let streamLine = null;
-  if (r.job && r.stream) {
+  // A platform's film is never renewed: the platform decides whether it wants a second one (franchise.js).
+  if (r.job && r.stream && r.stream.movie) streamLine = platformFilmSequel(s, credit, r.job, r.stream);
+  else if (r.job && r.stream) {
     const sr = streamingRenewal(s, credit, r.job);
     if (sr.offer) (s.offers = s.offers || []).push(sr.offer);
     streamLine = sr.line;
@@ -774,7 +824,7 @@ function closeRun(s, credit, r) {
     moment: (r.moments || [])[Math.floor(Math.random() * Math.max(1, (r.moments || []).length))] || null,
     costar: r.with, costarIcon: r.withIcon, comeback: !!credit.comeback, sequel: (credit.part || 0) > 1,
     lateShelf: /Character lead|matriarch|Elder|Grandparent/.test(credit.role || ''),
-    series: !film });   // a season is reviewed as a series, not a film (world/critics.js asSeries)
+    series: !film && !(r.stream && r.stream.movie) });   // a season is reviewed as a series, a platform's film as a film (world/critics.js asSeries)
   // Standing next to an icon is worth something on its own: the photographs, the poster,
   // the fact that they said yes to a film you were in.
   if (r.withIcon) { setFame(s, (s.fame || 0) + 3 * headroom(s.fame)); setRespect(s, (s.respect || 0) + 2 * soft(112, s.respect)); addTimeline(s, `Your name is on a poster next to ${r.with}'s. People noticed.`); }
@@ -794,12 +844,14 @@ function closeRun(s, credit, r) {
     // Television: the network's number against yours, and what it decided.
     network: r.stream ? streamLine : !film && r.scale !== 'episode' && credit.renewal ? networkLine(credit.type, credit.endViewers || credit.viewers, null, r.rating, credit.renewal) : null,
     // A platform's three numbers (BigMoment draws them in place of the box office).
-    streaming: r.stream ? { views: `${r.stream.views28}m`, completion: `${Math.round((r.stream.completion || 0) * 100)}%`, outcome: OUTCOME_WORD[verdict] } : null,
+    streaming: r.stream ? { views: `${r.stream.views28}m`, completion: `${Math.round((r.stream.completion || 0) * 100)}%`, outcome: OUTCOME_WORD[verdict],
+      ...(r.stream.movie ? { week1: `${r.stream.opening7}m` } : {}) } : null,
+    movie: !!(r.stream && r.stream.movie),
     // How many were there on the first night and how many on the last. Maxi asked how a
     // season is measured; this is the answer, on the night it is answered.
     retention: !film && !r.stream && r.scale !== 'episode' ? retentionLine(credit.openViewers, credit.endViewers) : null,
     // When the column and the room have seen different films. career/release.js splitLine
-    split: splitLine(r.rating, credit.audience),
+    split: splitLine(r.rating, credit.audience, !!r.stream),
     // What the run cost and took, kept for the money card the verdict will get (gross, total
     // cost, studio revenue, profit). Maxi, at a 5.9 that took €216m on a €90m film and was called
     // "broke even": "how much does the film itself cost?" A one-line "it had to take €209m" was

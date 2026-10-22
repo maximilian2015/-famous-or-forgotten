@@ -21,6 +21,7 @@ import { marketAfterRelease } from '../../meta/market.js';
 import { addTimeline } from '../../../engine/timeline.js';
 import { setQuote, setFame, setRespect } from '../../meta/status.js';
 import { paid } from '../agent.js';
+import { chooseBuyer } from './acquisition.js';
 
 const clamp = (v, a = 0, b = 100) => Math.max(a, Math.min(b, v));
 
@@ -525,6 +526,8 @@ export function answerFestMail(s, id, i) {
 export function answerFestival(s, m, what) {
   const r = (s.releases || []).find((x) => x.id === m.releaseId);
   if (!r) { s.lastEvent = 'That one has already screened.'; return true; }
+  // Two buyers on the Sunday: cinemas or a platform (release/acquisition.js).
+  if (what === 'cinema' || what === 'platform') { chooseBuyer(s, r, what); return true; }
   if (what === 'skip') { r.festPush = 'none'; s.lastEvent = `You are not going. "${r.title}" screens on a Tuesday afternoon to four hundred people and whatever happens, happens.`; return true; }
   if (what === 'go') {
     if (!canAfford(s, FEST_ENERGY)) { s.lastEvent = tooTired(s, FEST_ENERGY); return false; }
@@ -580,11 +583,15 @@ export function moneyVerdict(rel) {
 // A festival picture is decided in the room, before anybody else sees it: a prize sells
 // it, a buyer sells it a little, and no buyer means there is nothing to open.
 export function festivalAt(s, rel) {
+  // Decided once. A picture that waited a month for the player to choose its buyer goes out on the
+  // festival it already had (release/acquisition.js), and a later sale has none (null).
+  if (rel.fest !== undefined) return rel.fest;
   let fest = null;
   if (rel.scale === 'festival') {
     fest = { name: pick(FESTIVALS), result: festivalResult(rel.rating, s.fame || 0, rel.tier !== 'supporting', rel.festPush), push: rel.festPush || null };
     if (fest.result === 'prize') { rel.appealMod = (rel.appealMod ?? 1) * 2.2; rel.rating = clamp(rel.rating + 3, 0, 96); }
     else if (fest.result === 'sold') rel.appealMod = (rel.appealMod ?? 1) * 1.3;
+    rel.fest = fest;
   }
   return fest;
 }
@@ -672,7 +679,9 @@ export function festivalAfterRun(s, credit, r, headroom, soft) {
     setRespect(s, (s.respect || 0) + 6 * soft(112, s.respect));
     addTimeline(s, `The trades are calling you the discovery of ${credit.festival.name}.`);
     if ((s.fame || 0) < 60) studioCall(s, credit, credit.festival.name);
-  } else if (credit.festival && credit.festival.result === 'sold' && r.rating >= 70) {
+  } else if (credit.festival && credit.festival.result === 'sold' && r.rating >= 70 && !credit.streaming) {
+    // Sold to cinemas, that is: the rooms that hire for films watch films in cinemas. A platform's
+    // sale is reach instead (Streaming Movies V1, plan §7).
     setRespect(s, (s.respect || 0) + 2 * soft(112, s.respect));
   }
 }

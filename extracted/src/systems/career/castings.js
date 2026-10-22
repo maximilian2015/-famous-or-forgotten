@@ -27,8 +27,8 @@ import { ambitionLean } from '../meta/ambition.js';
 import { hypeReach, hypeBrands } from '../meta/hype.js';
 import { socialReach } from '../social/posting.js';
 import { heirReach } from '../life/origin.js';
-import { ensureBudget, planEpisodeCost } from './budget.js';
-import { STREAMING, streamingOf, platformOfKind, platformById, platformWord, numbersOf } from './streaming.js';
+import { ensureBudget, planEpisodeCost, planPlatformFilmBudget, platformFilmScale } from './budget.js';
+import { STREAMING, streamingOf, platformOfKind, platformById, platformWord, numbersOf, filmNumbersOf, FILM_BUYOUT } from './streaming.js';
 import { adoptProject, payMarketOf } from './project.js';
 export { tvMonths, TV_PACE } from './franchise.js';
 // What a casting office will see you for. Usually that is fame — but an Asker counts,
@@ -442,6 +442,21 @@ const STREAM_ROWS = [
   ['Streaming Series', 'Season lead', [8, 10], 'stream_premium', 'prestige', 'lead', 55, 1, ['prestige'], null, 'direct'],
   ['Streaming Series', 'Event series lead', [6, 8], 'stream_series', 'recurring', 'lead', 75, 1.3, ['global'], null, 'direct'],
 ];
+// A platform's films share the same shelf, the same agent calls and the same platform calls — a new
+// kind of work, not more of it (Streaming Movies V1, plan §6). A nobody can lead a genre-service horror
+// film, which is the real way in; a name is rung for an awards film or an event film.
+const FILM_ROWS = [
+  { film: true, role: 'Lead', tier: 'lead', fame: 0, share: 1, kinds: ['niche'], maxFame: 45, route: 'shelf' },
+  { film: true, role: 'Supporting', tier: 'supporting', fame: 0, share: 0.45, kinds: ['niche'], maxFame: 45, route: 'shelf' },
+  { film: true, role: 'Supporting', tier: 'supporting', fame: 15, share: 0.5, kinds: ['library'], maxFame: null, route: 'shelf' },
+  { film: true, role: 'Lead', tier: 'lead', fame: 15, share: 1, kinds: ['library'], maxFame: null, route: 'shelf' },
+  { film: true, role: 'Lead', tier: 'lead', fame: 35, share: 1, kinds: ['library', 'prestige'], maxFame: null, route: 'agent' },
+  { film: true, role: 'Supporting', tier: 'supporting', fame: 35, share: 0.5, kinds: ['global'], maxFame: null, route: 'agent' },
+  { film: true, role: 'Lead', tier: 'lead', fame: 55, share: 1, kinds: ['prestige'], maxFame: null, route: 'direct' },
+  { film: true, role: 'Lead', tier: 'lead', fame: 70, share: 1, kinds: ['global'], maxFame: null, route: 'direct', event: true },
+];
+const rowFame = (r) => (r.film ? r.fame : r[6]) || 0;
+const rowRoute = (r) => (r.film ? r.route : r[10]);
 const takenTitles = (s) => new Set([
   ...(s.castingPool || []).map((c) => c.title), ...(s.filmography || []).map((c) => c.title), ...(s.releases || []).map((r) => r.title),
   ...(s.offers || []).map((o) => String(o.projectTitle || '').replace('⭐ ', '')), s.production ? s.production.title : '',
@@ -488,6 +503,52 @@ function makeStreamPart(s, row, taken) {
     genre, minFame: minFame || 0,
   };
 }
+// One film part on a platform, or null. The same tests as a season's part; the film's own money: an
+// all-in budget from the platform's range (your fee is inside it, never added), a film scale read off
+// that budget, and the cinema fee for its size bought out at FILM_BUYOUT — no points, no merchandise.
+function makePlatformFilmPart(s, row, taken) {
+  if (!seenForIt(s, row.role)) return null;
+  if (row.maxFame != null && reach(s) > row.maxFame) return null;
+  const platform = platformOfKind(s, pick(row.kinds));
+  if (platform.archetype === 'prestige' && prestigeShut(s)) return null;
+  const box = boxedInto(s);
+  const genre = box && chance(44) ? box : pick(GENRES);
+  const id = uid(s, 'cast');
+  let budget = planPlatformFilmBudget({ seed: id, genre, archetype: platform.archetype });
+  // The giant's call to a name it builds a film around is for an event film.
+  if (row.event) budget = Math.max(budget, 150);
+  const scale = platformFilmScale(platform.archetype, budget);
+  const tier = row.tier === 'lead' && scale === 'blockbuster' ? 'tentpole' : row.tier;
+  const payMarket = tier === 'tentpole' ? 'film_tentpole' : scale === 'indie' ? 'film_indie' : 'film_studio';
+  const quoted = Math.round(quoteFor(s, payMarket) * row.share * FILM_BUYOUT);
+  if (quoted <= 0) return null;
+  const stability = rollStability(scale);
+  const fee = feeFactor(stability);
+  const salary = Math.round(quoted * fee);
+  const worth = quoteFor(s, 'film_studio') || quoteFor(s, 'film_indie') || 0;
+  const picky = Math.max(0, Math.min(1, (reach(s) - 35) / 65));
+  if (worth > 0 && picky > 0 && salary < worth * 0.25 * picky && platform.archetype !== 'prestige') return null;
+  const most = filmNumbersOf(platform).maxFee;
+  if (most && salary > most * 1e6) return null;
+  const title = titleFor(s, genre, taken);
+  taken.add(title);
+  const drawn = directorFor(s, scale, genre);
+  const helmer = drawn && holdsAGrudge(s, drawn.name) ? null : drawn;
+  const span = FILM_MONTHS[scale] || FILM_MONTHS.indie;
+  return {
+    id, title, type: 'Streaming Film', role: row.role, shelf: 'stream', scale, tier, payMarket,
+    platformId: platform.id, budget, needs: [],
+    share: row.share, stability, feeFactor: fee,
+    months: rint(span[0], span[1]), episodes: 0, perEpisode: false, episodeFee: 0, salary,
+    season: 0, audience: 0,
+    director: helmer ? helmer.name : null, directorId: helmer ? helmer.id : null,
+    directorBand: helmer ? helmer.band : null, directorTop: !!(helmer && isOneOfTheFive(s, helmer)),
+    genre, minFame: row.fame || 0,
+  };
+}
+// How long a platform's film shoots: as a cinema film of its size does (the board's rows above).
+const FILM_MONTHS = { indie: [2, 4], feature: [3, 5], blockbuster: [5, 8] };
+const makePart = (s, row, taken) => (row.film ? makePlatformFilmPart(s, row, taken) : makeStreamPart(s, row, taken));
 function fillStreamShelf(s) {
   if (!STREAMING.pool || hiding(s)) return;
   const want = reach(s) >= 35 ? 3 : 2;
@@ -495,13 +556,13 @@ function fillStreamShelf(s) {
   if (have >= want) return;
   streamingOf(s);
   const now = (s.year || 0) * 12 + (s.month || 0);
-  const rows = STREAM_ROWS.filter((r) => r[10] === 'shelf');
+  const rows = [...STREAM_ROWS, ...FILM_ROWS].filter((r) => rowRoute(r) === 'shelf');
   const taken = takenTitles(s);
   let guard = 0;
   while (have < want && guard++ < 60) {
     const row = pick(rows);
-    if ((row[6] || 0) > reach(s) + 12) continue;   // one rung up can show; further up does not exist yet
-    const c = makeStreamPart(s, row, taken);
+    if (rowFame(row) > reach(s) + 12) continue;   // one rung up can show; further up does not exist yet
+    const c = makePart(s, row, taken);
     if (!c) continue;
     s.castingPool.push({ ...c, _expires: now + rint(2, 4) });
     roomFor(s, s.castingPool[s.castingPool.length - 1]);
@@ -514,13 +575,25 @@ function fillStreamShelf(s) {
 export function streamingOfferFor(s, route) {
   if (!STREAMING.pool) return null;
   streamingOf(s);
-  const rows = STREAM_ROWS.filter((r) => r[10] === route && reach(s) >= (r[6] || 0));
+  const rows = [...STREAM_ROWS, ...FILM_ROWS].filter((r) => rowRoute(r) === route && reach(s) >= rowFame(r));
   if (!rows.length) return null;
   const taken = takenTitles(s);
   for (let i = 0; i < 6; i++) {
-    const c = makeStreamPart(s, pick(rows), taken);
+    const c = makePart(s, pick(rows), taken);
     if (!c) continue;
     const sc = scaleOf(c), platform = platformById(s, c.platformId);
+    if (!c.perEpisode) return {
+      id: uid(s, 'off'), via: route === 'agent' ? 'agent' : 'platform', from: route === 'agent' ? null : platform.name,
+      director: c.director, directorId: c.directorId, directorBand: c.directorBand, directorTop: c.directorTop,
+      projectTitle: c.title, role: c.role, type: c.type, genre: c.genre,
+      salary: c.salary, months: c.months, tier: c.tier, scale: c.scale, budget: c.budget, needs: c.needs,
+      episodes: 0, perEpisode: false, stability: c.stability, payMarket: c.payMarket, platformId: c.platformId, feeFactor: c.feeFactor,
+      prestigeScore: rint(sc.prestige[0], sc.prestige[1]) + riskPrestige(c.stability),
+      fame: c.tier === 'supporting' ? 2 : 5, deadline: rint(2, 4) + 1, waitsForWrap: false,
+      note: route === 'agent'
+        ? `Your agent put you up for "${c.title}", a film for ${platformWord(platform)}, and they want you: ${c.role.toLowerCase()}. It goes out everywhere on the same day, and never in a cinema.`
+        : `${platform.name} want you for "${c.title}" — the lead in a €${c.budget}m film${c.director ? `, ${c.director} directing` : ''}. They asked for you by name; there is no read.`,
+    };
     return {
       id: uid(s, 'off'), via: route === 'agent' ? 'agent' : 'platform', from: route === 'agent' ? null : platform.name,
       director: c.director, directorId: c.directorId, directorBand: c.directorBand, directorTop: c.directorTop,
@@ -541,6 +614,7 @@ export function streamingOfferFor(s, route) {
 export function platformLineFor(s, c) {
   const p = c && c.platformId ? platformById(s, c.platformId) : null;
   if (!p) return null;
+  if (!c.perEpisode && !(c.episodes > 0)) return 'A film for ' + platformWord(p) + ' — everywhere at once, never in a cinema. The platform judges it on how many people start it and finish it in its first four weeks, against what it cost. There is no box office, and no points to ask for: the fee is bought out.';
   return 'A new series on ' + platformWord(p) + ' — every episode at once. The platform judges it on how many people finish it in the first four weeks, against what the season cost, and renews it on what the next one would cost.';
 }
 // One prestige listing on the board because you asked for it. See favours.js openShelf.
@@ -842,7 +916,7 @@ export function auditionFor(s, id, quality = 50) {
 export const SHELVES = [['tv', 'TV'], ['stream', 'Streaming'], ['film', 'Film'], ['indie', 'Indie'], ['day', 'Day work']];
 export const SHELF_BLURB = {
   tv: 'Soaps, series, the prestige seasons. Paid by the episode, renewed by the network, your face every week.',
-  stream: 'Series for the four platforms. Paid by the episode, every episode out at once, renewed on how many finish it against what it cost.',
+  stream: 'Series and films for the four platforms. Everything out at once, judged on how many start it and finish it against what it cost. A series is paid by the episode and renewed on its numbers; a film is paid once, bought out, and never in a cinema.',
   film: 'The studio pictures. One shot, one release, the credits that define you — and the studios do not send scripts to strangers.',
   indie: 'Small pictures, horror, the festival films. Where a career starts, where it goes to be taken seriously — and the one door a nobody can walk through, if a jury opens it.',
   day: 'A day\'s work — adverts, covers, a voice session, a run on stage. Fits around any set that is not exclusive.',

@@ -15,7 +15,8 @@ const money = (n) => n >= 1e9 ? `€${(n / 1e9).toFixed(2)}bn` : n >= 1e6 ? `€
 // known the night it opens even though you are shown it a week at a time.
 function yourFilms(s, year) {
   return (s.filmography || [])
-    .filter((c) => c.year === year && isFilm(c.scale) && !c.minor)
+    // A platform's film was never in a cinema: it is not on the box-office lists (Streaming Movies V1).
+    .filter((c) => c.year === year && isFilm(c.scale) && !c.minor && !c.streaming)
     .map((c) => ({ id: c.id, title: c.title, genre: c.genre, scale: c.scale, rating: c.rating || 0,
       gross: c._rel ? (c._rel.finalGross || 0) : (c.boxOffice || 0), actor: s.name, actorId: 'you', you: true, with: c.with || null, withId: c.withId || null }));
 }

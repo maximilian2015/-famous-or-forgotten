@@ -14,6 +14,7 @@ import { addHype } from '../meta/hype.js';
 import { canAfford, spend, tooTired } from '../../engine/energy.js';
 import { projectOf } from './project.js';
 import { isTvScale } from './scale.js';
+import { isPlatformFilm, platformBacksCampaign, archetypeOfId, platformById } from './streaming.js';
 
 const clamp = (v, a = 0, b = 100) => Math.max(a, Math.min(b, v));
 // The same diminishing curve the premieres use. Five nominations at a flat +6 each put a
@@ -118,7 +119,17 @@ export function campaignable(s) {
     return !!T && (s.month || 0) < T.nomsMonth;
   });
 }
-export function campaignKind(c) { return studioBacks(c.scale) ? 'studio' : 'own'; }
+export function campaignKind(c) {
+  // A platform's film (Streaming Movies V1): the platform pays for the campaign as a studio would when it
+  // backs the film — the premium service from 7.0, the giant from 8.0 — and otherwise nobody but you does.
+  if (isPlatformFilm(c)) return platformBacksCampaign(archetypeOfId(c.platformId), c.rating) ? 'studio' : 'own';
+  return studioBacks(c.scale) ? 'studio' : 'own';
+}
+// Who is paying for it, in the words the card and the news use.
+export function campaignBacker(s, c, T = null) {
+  if (isPlatformFilm(c)) return (platformById(s, c.platformId) || {}).name || 'the platform';
+  return (T || campaignTrackOf(s, c) || ASKER).id === SERIES.id ? 'the network' : 'the studio';
+}
 export function canCampaign(s, c) {
   if (!c) return { ok: false, why: '' };
   if ((s._campaign || {}).title) return { ok: false, why: 'You are already doing one of these. Two at once and you are nowhere properly.' };
@@ -134,12 +145,12 @@ export function startCampaign(s, title) {
   if (kind === 'own') s.cash = (s.cash || 0) - ownCampaignCost(s);
   s._campaign = { title, kind, months: 0, started: (s.year || 0) * 12 + (s.month || 0), track: (campaignTrackOf(s, c) || ASKER).id };
   c.campaign = kind;
-  // A series is a network's campaign, not a studio's.
-  const backer = s._campaign.track === SERIES.id ? 'network' : 'studio';
+  // A series is a network's campaign, not a studio's; a platform's film is the platform's.
+  const backer = campaignBacker(s, c, trackById(s._campaign.track));
   addTimeline(s, 'Started the season for "' + String(title).replace('⭐ ', '') + '".');
   s.lastEvent = kind === 'studio'
-    ? `The awards people have a plan for you and it runs until the nominations: lunches, panels, a moderated Q&A after every screening, and the same four questions from people who have not seen it. The ${backer} is paying for all of it. What it costs you is the months.`
-    : `Nobody is spending a penny on this ${backer === 'network' ? 'show' : 'picture'}, so you are. It buys screeners, an advertisement in the trades that everybody claims not to read, and somebody who knows which forty people matter. Less than a ${backer} would spend, and more than you would like.`;
+    ? `The awards people have a plan for you and it runs until the nominations: lunches, panels, a moderated Q&A after every screening, and the same four questions from people who have not seen it. ${backer.charAt(0).toUpperCase() + backer.slice(1)} is paying for all of it. What it costs you is the months.`
+    : `Nobody is spending a penny on this ${backer === 'the network' ? 'show' : 'picture'}, so you are. It buys screeners, an advertisement in the trades that everybody claims not to read, and somebody who knows which forty people matter. Less than ${backer === 'the network' ? 'a network' : 'a studio'} would spend, and more than you would like.`;
   return s;
 }
 // Monthly. Every month you actually turn up is a month of it; miss it twice and it stops

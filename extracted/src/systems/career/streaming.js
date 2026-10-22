@@ -208,3 +208,140 @@ export function platformLine({ platform, views28, completion, decision, why = nu
 export function legacyIndex(finalePull, heat) {
   return Math.round(clamp((finalePull || 0) * ({ none: 1, some: 1.15, loud: 1.3 }[heat] || 1), 0, 2) * 100) / 100;
 }
+
+// ── a platform's film (Streaming Movies V1) ───────────────────────────────────
+// docs/handoffs/2026-10-21-streaming-movies-v1-plan.md, revision 2 (Maxi's corrections of 21 Oct).
+// A film is not a season with the renewal taken out. Three things are kept apart, each counted once:
+//
+//   starts      unique accounts that pressed play. Week one is the names, the talk, the push and the
+//               platform's taste — nobody has seen it, so no quality. After that each week finds NEW
+//               viewers, a share of the week before: that share is the MOMENTUM, from what people tell
+//               each other (wordFor — the crowd's reception and the critics, the number that gives a
+//               cinema run its legs). Momentum is inside starts28 and nowhere else in the score.
+//   completion  how many of those who started it finished it — from what the room made of it. A
+//               two-hour film is mostly finished, so its band is narrow (0.40–0.85, a season's 0.12–0.90).
+//   finished28  starts28 × completion, against the whole cost: the platform's verdict.
+//
+//   Miss < 0.7 · Solid < 1.4 · Hit · Breakout = a Hit with a big audience (starts28 past the
+//   platform's bar) AND a strong second week (momentum 0.6+). The second week is a condition for the
+//   word, never a second multiplier on the same viewers. No "Number one": that needs a ranking against
+//   the platform's other titles, which is the stage 5 streaming world.
+//
+// What a platform wants from a film, by kind. target: M who finished it in 28 days per €1m of the whole
+// cost, at par · breakout: starts28 (M) a Hit needs to be a Breakout · big / low: the push lines on the
+// cost (€m) · sell: what the platform spends selling it, a share of the budget (a cinema release spends
+// half to all of its budget; a home screen is free) · maxFee: the most it pays anybody (€m) · backs: the
+// rating from which it pays for an Asker campaign itself · sequel: % it makes a second one, by outcome.
+// Calibrated on careers (tests/probes/probe_streaming_movies.mjs, 21 Oct; the plan's starting values in
+// brackets, kept in tests/test_streaming_movies.mjs PLAN). At the starting values a film's median score
+// came out at 2.9 on the giant, 2.4 on the premium service, 1.9–2.7 on the ad-supported one, and half
+// of the giant's films were Breakouts: on a real career the names are bigger, the talk louder and the
+// crowd kinder than in the plan's examples. Targets were set so the median film scores about 1 where
+// most of that platform's films are made (the giant's and the premium service's by names, the cheap
+// services' by a career that is starting); Breakout bars sit near the top tenth of what pressed play.
+// Budgets are career/budget.js PLATFORM_FILM_RANGE.
+export const FILM = {
+  global: { target: 0.52, breakout: 120, big: 120, low: 30, sell: 0.10, backs: 80, sequel: { breakout: 60, hit: 25 } },   // [0.18 · 70]
+  prestige: { target: 0.74, breakout: 32, big: 35, low: 10, sell: 0.06, backs: 70, sequel: null },                        // [0.32 · 25]
+  library: { target: 1.2, breakout: 40, big: 18, low: 6, sell: 0.04, maxFee: 3, backs: null, sequel: { breakout: 20, hit: 20 } },   // [0.65 · 35]
+  niche: { target: 0.26, breakout: 10, big: 6, low: 2, sell: 0.03, maxFee: 1, backs: null, sequel: { breakout: 30, hit: 30 } },     // [0.33 · 10]
+};
+export const FILM_WEEKS = 4;            // a film's credit closes at its verdict: no tail month
+export const FILM_BUYOUT = 1.25;        // the cinema fee for its size, bought out: no points, no merchandise
+export const FILM_BREAKOUT_MOMENTUM = 0.6;
+export const filmNumbersOf = (p) => FILM[p && p.archetype] || FILM.library;
+// A platform's film is a platform's work on a film scale. One test, read everywhere a film's market
+// matters — the critics, the crowd and the Asker read the scale and see a film; the money does not.
+const FILM_SCALE = new Set(['small', 'festival', 'indie', 'feature', 'blockbuster']);
+export function isPlatformFilm(x) { return !!(x && x.streaming && FILM_SCALE.has(x.scale)); }
+// Platform ids are 'plt-' + their kind (streamingOf), so the kind is known without the save.
+export function archetypeOfId(id) { return typeof id === 'string' && id.startsWith('plt-') ? id.slice(4) : null; }
+
+export function filmCost({ platform, budget, price = null }) {
+  return price != null ? price : (budget || 0) * (1 + filmNumbersOf(platform).sell);
+}
+export function filmPushFor(platform, cost, draw, prev = null) {
+  const P = filmNumbersOf(platform);
+  if (prev && (prev.outcome === 'hit' || prev.outcome === 'breakout')) return 'big';
+  if (cost >= P.big || draw >= 30) return 'big';
+  if (cost <= P.low && draw < 12) return 'low';
+  return 'standard';
+}
+export function momentumFor(word) { return clamp(0.30 + ((word ?? 50) - 50) * 0.01, 0.15, 0.75); }
+export function filmCompletionFor(crowd) { return clamp(0.55 + ((crowd ?? 50) - 50) * 0.007, 0.40, 0.85); }
+export function filmOutcomeFor(platform, score, starts28, momentum) {
+  if (score < MISS_BELOW) return 'miss';
+  if (score < HIT_FROM) return 'solid';
+  return starts28 >= filmNumbersOf(platform).breakout && momentum >= FILM_BREAKOUT_MOMENTUM ? 'breakout' : 'hit';
+}
+export function dropFilm({ platform, genre, rating = 50, word = 50, crowd = 50, hype = 0, draw = 0, budget = 0, price = null, prev = null, dice = 1 }) {
+  const cost = filmCost({ platform, budget, price });
+  const push = filmPushFor(platform, cost, draw, prev);
+  const subs = numbersOf(platform).subscribers;
+  // A film is sold on a thumbnail with a face on it: the names count for more than on a season (draw/40).
+  const awareness = 0.5 + draw / 25 + hype / 100;
+  const affinity = (AFFINITY[platform && platform.archetype] || {})[genre] ?? 1;
+  const fresh7 = subs * 0.03 * awareness * PUSH[push] * affinity * dice;
+  // A sequel's audience is in its first week, and counted there once (the series' lesson).
+  const fans = 0.4 * ((prev && prev.views28) || 0);
+  const m = momentumFor(word);
+  const starts28 = Math.min(fresh7 * (1 + m + m * m + m * m * m) + fans, subs * 0.6);
+  const completion = filmCompletionFor(crowd);
+  const finished28 = starts28 * completion;
+  const score = finished28 / Math.max(0.1, cost) / filmNumbersOf(platform).target * acclaimFor(platform, rating);
+  return {
+    movie: true, push, cost: r1(cost), awareness: Math.round(awareness * 100) / 100, opening7: r1(fresh7 + fans), momentum: Math.round(m * 100) / 100,
+    views28: r1(starts28), completion: Math.round(completion * 100) / 100, finished28: r1(finished28), reach: r1(starts28 * (1 + m)),
+    score: Math.round(score * 100) / 100, outcome: filmOutcomeFor(platform, score, starts28, m), viral: false,
+  };
+}
+// Fame from a film: the face on the thumbnail, and then how many pressed play at the series' rate.
+export function filmFame(views28, tier, event = false) {
+  const poster = tier === 'supporting' ? 1 : event ? 5 : 3;
+  return poster + fameFromViews(views28, tier);
+}
+// The platform's reasons, in one line, on the night of the verdict.
+export function filmLine({ platform, opening7, views28, completion, outcome, cost, sequel = false }) {
+  const name = platform ? platform.name : 'The platform';
+  const pct = Math.round((completion || 0) * 100);
+  const seen = `${opening7}m started it in the first week, ${views28}m in 28 days, and ${pct}% finished it.`;
+  if (sequel) return `${seen} ${name} wants a second one.`;
+  if (outcome === 'breakout') return `${seen} It kept finding people every week. ${name} is very pleased.`;
+  if (outcome === 'hit') return `${seen} More than ${name} paid for.`;
+  if (outcome === 'solid') return `${seen} About what ${name} paid for.`;
+  return `${seen} For €${Math.round(cost || 0)}m, ${name} wanted more of them.`;
+}
+export function filmSequelOdds(platform, outcome) {
+  const q = filmNumbersOf(platform).sequel;
+  return (q && q[outcome]) || 0;
+}
+// Whether the platform pays for an Asker campaign on its film, the way a studio pays for its picture's.
+export function platformBacksCampaign(archetype, rating) {
+  const P = FILM[archetype];
+  return !!(P && P.backs != null && (rating || 0) >= P.backs);
+}
+
+// ── a festival picture and a platform ─────────────────────────────────────────
+// Who, besides the distributor, wants a festival picture that sold (plan §7): the genre service for
+// horror and science fiction, the premium one for a serious picture rated 70+, the ad-supported one
+// for a comedy or a romance rated 60+, the giant only for a name it can put on its home screen.
+export function festivalBidder(s, { genre, rating = 0, leadFame = 0 }) {
+  if (leadFame >= 60) return platformOfKind(s, 'global');
+  if (genre === 'Horror' || genre === 'Sci-Fi') return platformOfKind(s, 'niche');
+  if ((genre === 'Drama' || genre === 'Crime' || genre === 'Thriller') && rating >= 70) return platformOfKind(s, 'prestige');
+  if ((genre === 'Comedy' || genre === 'Romance') && rating >= 60) return platformOfKind(s, 'library');
+  return null;
+}
+// An unsold festival picture that a platform buys months later (plan §7). Rolled once, on the night.
+// Quality, how well it fits the platform that would buy it, the audience a name could bring, and how
+// it already failed to sell: a sales agent showed it to every buyer and they passed; you went and they
+// met you. Returns the chance (%) and the kind of platform that would buy it.
+export function laterSaleOdds({ genre, rating = 0, leadFame = 0, push = null }) {
+  if (rating < 55) return { odds: 0, archetype: null };
+  const kinds = rating >= 72 ? ['niche', 'library', 'prestige'] : ['niche', 'library'];
+  const archetype = kinds.reduce((a, k) => ((AFFINITY[k][genre] ?? 1) > (AFFINITY[a][genre] ?? 1) ? k : a), kinds[0]);
+  const fit = AFFINITY[archetype][genre] ?? 1;
+  const base = rating >= 75 ? 24 : rating >= 65 ? 14 : 6;
+  const history = push === 'agent' ? 0.6 : push === 'went' ? 1.15 : 1;
+  return { odds: Math.round(Math.min(40, base * fit * (1 + leadFame / 100) * history)), archetype };
+}

@@ -97,7 +97,7 @@ function CreditRow({ group, g }) {
   const starCol = group.worldHit ? theme.gold : r >= 85 ? theme.good : r >= 60 ? theme.gold : theme.muted;
   const tv = !!(c.season || group.series);
   // A platform's show says so — and which kind (career/streaming.js).
-  const kind = c.streaming ? (/Limited/.test(c.type || '') ? 'Limited Series' : 'Streaming Series') : tv ? 'TV Series' : c.type || 'Feature Film';
+  const kind = c.streaming ? (isFilmScale(c.scale) ? 'Streaming Film' : /Limited/.test(c.type || '') ? 'Limited Series' : 'Streaming Series') : tv ? 'TV Series' : c.type || 'Feature Film';
   const years = group.from === group.to ? String(group.to) : `${group.from}–${group.to}`;
   const eps = tv ? (group.episodes || c.episodes || 0) : 0;
   return (<div onClick={() => setOpen(!open)} style={{ display: 'flex', gap: 10, padding: '6px 8px', borderRadius: 11, marginBottom: 4, cursor: 'pointer',
@@ -115,7 +115,7 @@ function CreditRow({ group, g }) {
       <div style={{ display: 'flex', alignItems: 'center', gap: 7, marginTop: 3, flexWrap: 'wrap', fontSize: 11.5 }}>
         {c.running
           ? <span style={{ fontSize: 10.5, fontWeight: 900, letterSpacing: '.06em', textTransform: 'uppercase', color: theme.gold }}>
-              {c.streaming ? `Streaming · all ${c.episodes || '?'} episodes out` : (c.tv || !isFilmScale(c.scale)) ? `On air · episode ${Math.max(1, Math.round(((c.weeks || 0) / Math.max(1, c.weeksTotal || 1)) * (c.episodes || 1)))} of ${c.episodes || '?'}` : `In cinemas · week ${Math.max(1, c.weeks || 0)} of ${c.weeksTotal}`}</span>
+              {c.streaming && isFilmScale(c.scale) ? `Streaming · week ${Math.max(1, c.weeks || 0)} of ${c.weeksTotal}` : c.streaming ? `Streaming · all ${c.episodes || '?'} episodes out` : (c.tv || !isFilmScale(c.scale)) ? `On air · episode ${Math.max(1, Math.round(((c.weeks || 0) / Math.max(1, c.weeksTotal || 1)) * (c.episodes || 1)))} of ${c.episodes || '?'}` : `In cinemas · week ${Math.max(1, c.weeks || 0)} of ${c.weeksTotal}`}</span>
           : <span style={{ fontWeight: 900, color: starCol }}>★ {stars}</span>}
         <span style={{ color: theme.muted }}>{group.to}</span>
         {eps > 0 && <span style={{ color: theme.muted }}>{eps}eps</span>}
