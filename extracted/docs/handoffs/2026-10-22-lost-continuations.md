@@ -65,7 +65,7 @@ a meeting. Three faults:
 
 ## Measured
 
-`tests/test_lost_continuations.mjs` has 19 checks, among them:
+`tests/test_lost_continuations.mjs` has 17 checks, among them:
 - failed negotiations, voluntary departure, recasting;
 - written out and not made;
 - a renewed show and a sequel without you;
@@ -139,7 +139,7 @@ down one continuation in six and lets papers lapse while it shoots):
 
 ## Debt
 
-- `continuation.js` is new, ~290 lines.
+- `continuation.js` is new, 347 lines.
 - `stories.js` grew by ~80 lines.
 - `Filmography.jsx` grew by ~50 lines for the list.
 - No function over the line.
