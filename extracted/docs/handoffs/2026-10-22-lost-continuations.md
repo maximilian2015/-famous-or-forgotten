@@ -122,6 +122,60 @@ down one continuation in six and lets papers lapse while it shoots):
 - Small Wedding's old thread, which had announced a sixth season on a coin, closed itself; the model
   says season 5 was not renewed.
 
+## Integration with Streaming Movies (23 Oct, on main)
+
+Merged after `streaming-movies-v1`, with these fixes before the push (Maxi/ChatGPT):
+
+1. **"Negotiations pending", not "Recast", while it is still being argued over.** This covers the
+   director's meeting and their new paper in Messages. No replacement and no outcome are shown, and
+   nothing is worked out until it is settled (`negotiationPending`).
+2. **Where a continuation goes out is the project's.** A platform's film sequel without you is
+   dropped on the same platform (`dropFilm`). It goes on the replacement's record as a platform film,
+   never as a cinema release (`rec.medium`, `rec.platformId`).
+3. **The show goes on after you.**
+   - Each later season is worked out as it comes due, from the season before, until it is cancelled
+     or runs its course (`seasonCap`): `rec.later`, `rec.ended`.
+   - Every season is on the card ("Then: S3 18m · S4 12m — cancelled after season 4"), whether or
+     not anybody told you.
+   - Each season is told once, in order, after the first.
+   - The "Without you" story no longer announces "another season, again" on its own. It tells the
+     first season; the trades tell the rest.
+4. **The 1%.** It was a season worked out without you that you then went back to, not lost news.
+   - On the old code, three such cases were caught over 120 careers. All were marked "went back",
+     with no story and no queue.
+   - Counted directly, it was far commoner: 176 such seasons in 120 careers, with the pending guard
+     already in.
+   - The path: you went back through the director's paper and shot the season. It sat in post the
+     month it would have opened. The "went back" check looked at your record and at the set, but not
+     at releases in post. So the season was worked out without you a month before you opened in it,
+     and a sequel went on the replacement's record. The story's own "went back" missed it the same
+     way, and could announce a recast of a season about to open with you in it.
+   - The fix:
+     - "went back" now sees releases in post and stopped sets;
+     - the same part offered to you again counts as still being talked about;
+     - anything already worked out is undone on the way back (`returned`): the replacement's credit
+       and the ledger's outcome.
+   - The probe counts these apart and finds none.
+5. **A co-star's own record** gets a platform film, judged by how many pressed play
+   (`world.js applyStreamingToActor`).
+6. **RIGHT NOW** names the two buyers waiting on you, and a picture sold to a platform, instead of
+   "in post".
+7. **The row's show line is the last season's**, so it agrees with what happened to you in the next
+   one.
+8. **A platform's hit is counted as a hit** in the story, the ledger and the timeline.
+
+Played in the browser:
+- The Last Woman on a copy of Maxi's save: the season lost, recast, the real season without you, and
+  its cancellation.
+- A festival picture, through each step:
+  - two buyers, and Static chosen;
+  - the drop and the verdict, with "Static wants a second one";
+  - the sequel offer passed;
+  - "Negotiations pending" while the director asked to meet; the meeting declined;
+  - the sequel dropped on Static without you, with Petra Rasmussen in the part and the film on her
+    own record as a platform film;
+  - the card and the "Without you" list.
+
 ## Not built, or open
 
 - The "Without you" story still runs one at a time. The others now wait their turn: a part you
