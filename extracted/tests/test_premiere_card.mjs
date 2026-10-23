@@ -4,6 +4,7 @@
 // event". The rule he kept: only what the game knows. Every line on the card is checked here
 // against the field it claims to read, on a release that really opened.
 import { scheduleRelease, releaseTick, windowWord, CAMPAIGN } from '../src/systems/career/release.js';
+import { ORDINARY_DATE } from '../src/systems/career/release/theatrical.js';
 
 let fails = 0;
 const ok = (n, c, e = '') => { if (!c) { fails++; console.log('FAIL  ' + n + (e ? ' :: ' + e : '')); } else console.log('ok    ' + n); };
@@ -35,14 +36,25 @@ const job = (o = {}) => ({ title: 'My Crazy Family', role: 'Lead', type: 'Featur
   ok('who you played, by name', c.you === 'Alex Moon' && c.character === 'Nora Hale', JSON.stringify([c.you, c.character]));
   ok('who made it with you', c.director === 'Ines Kalder' && c.with === 'Teo Albright');
   const line = (k) => (c.tonight.find((l) => l.k === k) || {}).t || '';
-  ok('the campaign is the one the studio bought', line('campaign').includes(CAMPAIGN.major.label.toLowerCase()), line('campaign'));
-  ok('the date is the month it opened in', line('date') === `The date: ${windowWord(month)}.`, line('date') + ' / ' + windowWord(month));
-  ok('what opened against it is the roll the money used', line('against') === (rel._against < 1 ? 'Something enormous opened the same weekend.' : 'Nothing big opened against it.'), line('against') + ' ' + rel._against);
-  ok('the talk is what demand read, before the night\'s own noise', line('talk') === 'People are talking about you this month.' && s.media >= 45, line('talk'));
+  // Only what is out of the ordinary (Maxi/ChatGPT, 23 Oct): a feature's usual campaign, an
+  // ordinary date, an empty weekend and a month of ordinary talk are not lines.
+  ok('the usual campaign for a picture this size is not a line', line('campaign') === '', line('campaign'));
+  ok('the date is said only when it is not an ordinary one', windowWord(month) === ORDINARY_DATE ? line('date') === '' : line('date') === `The date: ${windowWord(month)}.`, line('date') + ' / ' + windowWord(month));
+  ok('what opened against it is said only when something did, off the roll the money used', line('against') === (rel._against < 1 ? 'Something enormous opened the same weekend.' : ''), line('against') + ' ' + rel._against);
+  ok('ordinary talk is not a line, read before the night\'s own noise', line('talk') === '' && s.media >= 45, line('talk'));
+  ok('no line on the card says nothing is happening', !/Nothing big|the usual|an ordinary date|People are talking|Nobody much/.test(JSON.stringify(c.tonight)), JSON.stringify(c.tonight));
   const all = JSON.stringify(c) + ' ' + m.body;
   ok('and not a euro anywhere on it', !/€|\d+\s*m\b|million|box office|gross/i.test(all), all.slice(0, 200));
   ok('a short body, the kind of night it is', /full house/.test(m.body) && m.body.length < 220, m.body);
   ok('no sequel line on a first film', c.sequel === null);
+}
+// ── less than its size usually gets, and a month everybody is talking: both said ──
+{
+  const s = st({ media: 60 });
+  const { m } = openIt(s, credit({ title: 'Thin Ice' }), job({ title: 'Thin Ice', campaignTier: 'standard' }));
+  const line = (k) => (m.card.tonight.find((l) => l.k === k) || {}).t || '';
+  ok('a feature sold on a normal campaign is told it got less than usual', line('campaign') === `Selling it: ${CAMPAIGN.standard.label.toLowerCase()}, less than a picture this size usually gets.`, line('campaign'));
+  ok('a month everybody is talking is a line', line('talk') === 'Everybody is talking about you this month.', line('talk'));
 }
 // ── a scandal sells nothing, and the card says so ─────────────────────────────
 {
