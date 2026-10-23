@@ -17,8 +17,9 @@ const W = await import(P + 'systems/life/work.js');
 const A = await import(P + 'systems/career/agent.js');
 const O = await import(P + 'systems/career/offers.js');
 const ARC = await import(P + 'systems/life/arcs.js');
+const PJ = await import(P + 'systems/career/project.js');
 const untold = [];
-let phantoms = 0;
+let phantoms = 0; const phantomWhy = [];
 const recs = [], fans = { furious: 0, network: 0, sorry: 0 }, tally = { stories: 0, queued: 0, mails: 0 };
 let standingLost = 0;
 for (let k = 0; k < CAREERS; k++) {
@@ -55,7 +56,14 @@ for (let k = 0; k < CAREERS; k++) {
   for (const c of s.filmography || []) if (c && c.next) {
     const rec = c.next;
     // Anything that came out and was never told: where it is stuck, so "99%" has a reason or a fix.
-    if (rec.result && rec.you === 'returned') phantoms++;   // a season worked out without you that you went back to
+    if (rec.result && rec.you === 'returned') {   // a season worked out without you that you went back to
+      phantoms++;
+      if (phantomWhy.length < 12) {
+        const back = (s.filmography || []).find((x) => x !== c && String(x.title).replace(/^⭐\s*/, '') === rec.title);
+        const pj = back && PJ.projectOf(s, back);
+        phantomWhy.push(`${rec.title} · lost ${rec.at} (${rec.how}) · due ${rec.due} · worked out ${rec.result.at} · back: ${back ? `credit ${back.year} opened ${back.openedAt} route ${pj && pj.route} parent ${pj && pj.parentId ? 'yes' : 'no'}` : 'no credit (a set or the story)'}`);
+      }
+    }
     if (rec.result && !rec.told && rec.you !== 'returned') {
       const st = (s.stories || []).find((x) => x.id === 'recast' && x.data && String(x.data.title).replace(/^⭐\s*/, '') === rec.title);
       untold.push(`${rec.title} · result ${rec.result.at} · end ${s.year * 12 + s.month} · story ${st ? `${st.beat} due ${st.due}` : 'none'} · queued ${(s.recastQueue || []).some((x) => x.title === rec.title)} · pending arc ${s.pendingArc ? s.pendingArc.story + '/' + s.pendingArc.beat : '—'}`);
@@ -89,3 +97,4 @@ console.log(`  the show after that: ${later} later seasons worked out (${laterUn
 console.log(`  untold after coming out: ${untold.length}`);
 for (const u of untold) console.log('    ' + u);
 console.log(`  worked out for a season you went back to (should be none): ${phantoms}`);
+for (const w of phantomWhy) console.log('    ' + w);

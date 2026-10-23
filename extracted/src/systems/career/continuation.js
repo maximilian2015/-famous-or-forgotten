@@ -301,9 +301,9 @@ export function continuationTick(s) {
   for (const c of s.filmography || []) {
     const rec = c && c.next;
     if (!rec || rec.show !== 'on' || rec.you === 'returned' || rec.due == null || rec.due > now) continue;
-    // You went back after all (the director's meeting): there is nothing to tell.
-    if ((s.filmography || []).some((x) => x !== c && clean(x.title) === rec.title)
-      || (s.productions || []).concat(s.production ? [s.production] : []).some((p) => p && clean(p.title) === rec.title)) { rec.you = 'returned'; continue; }
+    // You went back after all (the director's meeting, a rescue): there is nothing to tell. On the
+    // record, on a set, finished and waiting to open, or stopped — any of those is yours.
+    if (wentBackTo(s, rec, c)) { returned(s, rec); continue; }
     // Still being argued over — the director's meeting, a paper in Messages: nothing is settled yet.
     if (negotiationPending(s, rec)) continue;
     ensureResult(s, c, rec);
@@ -336,7 +336,29 @@ export function negotiationPending(s, rec) {
   if (!rec || rec.result || (rec.you !== 'recast' && rec.you !== 'declined')) return false;
   const st = (s.stories || []).find((x) => x.id === 'recast' && x.data && clean(x.data.title) === rec.title);
   if (st && (st.beat === 'meeting' || st.beat === 'answer')) return true;
-  return (s.offers || []).some((o) => o.story === 'recast' && clean(o.projectTitle) === rec.title);
+  // The same part offered to you again — the director's paper, a rescue, a sequel come round again.
+  return (s.offers || []).some((o) => clean(o.projectTitle) === rec.title)
+    || (s.laterOffers || []).some((x) => x.offer && clean(x.offer.projectTitle) === rec.title);
+}
+// Whether the part you lost is yours after all: on your record, on a set, finished and in post (the
+// one the first version missed — a season you went back to was worked out without you the month
+// before it opened), or stopped mid-shoot.
+export function wentBackTo(s, rec, src = null) {
+  const mine = (x) => !!x && clean(x.title) === rec.title;
+  return (s.filmography || []).some((x) => x !== src && mine(x))
+    || (s.productions || []).concat(s.production ? [s.production] : []).some(mine)
+    || (s.releases || []).some(mine) || (s.frozen || []).some(mine);
+}
+// You went back. If the season without you had already been worked out, it never happened: the
+// replacement's record forgets it and the ledger's outcome is cleared.
+export function returned(s, rec) {
+  if (rec.result) {
+    const a = rec.by && actorById(s, rec.by.id);
+    if (a && Array.isArray(a.credits)) a.credits = a.credits.filter((x) => x.title !== rec.title);
+    const e = [...(s.passedOn || [])].reverse().find((x) => x.title === rec.title);
+    if (e) { e.outcome = null; e.replacedBy = null; }
+  }
+  rec.you = 'returned'; rec.result = null; rec.later = []; rec.ended = null; rec.told = true;
 }
 
 // The "Without you" story tells it itself when it is running for this title (stories.js).

@@ -229,6 +229,28 @@ test('old saves: nothing inferred from a season that simply never appeared, the 
 });
 
 // ── integration (Maxi/ChatGPT, 22 Oct, before the merge) ─────────────────────
+test('a season you went back to is never worked out without you — not even while it is finished and waiting to open', () => {
+  const s = life({ filmography: [{ ...FILM }] });
+  s.offers = [part2()]; declineOffer(s, 'seq-skb');
+  const rec = s.filmography[0].next;
+  s.stories = []; s.offers = [];
+  // You went back (the director's paper), shot it, and it is in post the month it would have opened.
+  s.releases = [{ id: 'rel-skb2', title: 'Skinless Bone II', due: rec.due + 1 }];
+  to(s, rec.due); C.continuationTick(s);
+  assert.ok(rec.you === 'returned' && !rec.result && !s.inbox.some((m) => m.tag === 'trades'), JSON.stringify(rec));
+});
+test('and if it had been worked out before you went back, it never happened: the replacement\'s record forgets it', () => {
+  const s = life({ filmography: [{ ...FILM }] });
+  s.offers = [part2()]; declineOffer(s, 'seq-skb');
+  const src = s.filmography[0], rec = src.next;
+  to(s, rec.due); C.ensureResult(s, src, rec);
+  const a = actorById(s, rec.by.id);
+  assert.ok(a.credits.some((x) => x.title === 'Skinless Bone II'));
+  C.returned(s, rec);
+  assert.ok(!a.credits.some((x) => x.title === 'Skinless Bone II') && !rec.result && rec.you === 'returned');
+  const e = passedOn(s).find((p) => p.title === 'Skinless Bone II');
+  assert.ok(!e || !e.outcome, 'the ledger kept an outcome for a film you made');
+});
 test('while it is still being argued over it is "Negotiations pending", not a recast — no replacement, no outcome', () => {
   const s = life({ filmography: [{ ...SHOW }] });
   s.offers = [season2()]; declineOffer(s, 'ren-tlw');

@@ -24,7 +24,7 @@ import { GENRES } from './news.js';
 import { rollStability } from '../career/stability.js';
 import { ambitionOf } from './ambition.js';
 import { notePassedOutcome } from './passed.js';
-import { loseContinuation, recordForTitle, ensureResult, withoutYouLine } from '../career/continuation.js';
+import { loseContinuation, recordForTitle, ensureResult, withoutYouLine, returned } from '../career/continuation.js';
 import { slotNorm } from '../career/franchise.js';
 
 const clamp = (v, a = 0, b = 100) => Math.max(a, Math.min(b, v));
@@ -297,7 +297,7 @@ export const CHAINS = {
       answer: {
         build: (s, st) => {
           const back = wentBack(s, st);
-          if (back) { const f = recordForTitle(s, st.data.title); if (f) f.rec.you = 'returned'; }
+          if (back) { const f = recordForTitle(s, st.data.title); if (f) returned(s, f.rec); }
           if (back) return { speaker: 'Back', text: `You went back to "${st.data.title}". The piece about it uses the word "reunited", and the fans use a lot of exclamation marks.`, choices: [{ label: 'Good', shows: { fx: { respect: 2 } }, apply: () => { setRespect(s, (s.respect || 0) + 2); return { reply: 'Good.', end: true }; } }] };
           if ((s.offers || []).some((o) => o.story === 'recast' && String(o.projectTitle || '').replace('⭐ ', '') === st.data.title)) { st.due = stamp(s) + 2; return null; }
           return { speaker: 'The trades', text: `"${st.data.title}" has been recast. ${first(st.data.director)} said, on the record, that the door had been open and that it is now shut. The fans have a hashtag.`, choices: [{ label: 'On', shows: st.data.burned ? {} : burnShows(st), apply: () => { if (!st.data.burned) burnTheBridge(s, st); return { reply: 'On.', next: { beat: 'without', inMonths: monthsToIt(s, st) } }; } }] };
@@ -366,10 +366,13 @@ function monthsToIt(s, st) {
   const f = recordForTitle(s, st.data.title);
   return f && f.rec.due != null ? Math.max(1, f.rec.due - stamp(s)) : rint(12, 18);
 }
+// You went back: on a set, finished and in post (which this used to miss, so the trades announced a
+// recast of a season about to open with you in it), on your record lately, or a signed paper.
 function wentBack(s, st) {
-  const t = st.data.title;
+  const t = String(st.data.title || '').replace('⭐ ', '');
+  const mine = (x) => !!x && String(x.title || '').replace('⭐ ', '') === t;
   const sets = (s.productions || []).concat(s.production ? [s.production] : []);
-  return sets.some((p) => p && p.title === t) || (s.filmography || []).some((c) => c.title === t && (c.year || 0) >= (s.year || 0) - 2) || (s.offers || []).some((o) => o.story === 'recast' && o.signed);
+  return sets.some(mine) || (s.releases || []).some(mine) || (s.filmography || []).some((c) => mine(c) && (c.year || 0) >= (s.year || 0) - 2) || (s.offers || []).some((o) => o.story === 'recast' && o.signed);
 }
 // The second no. Very expensive, and the director is gone for good.
 function burnShows(st) { return { fx: { respect: -8, scandal: 4 }, more: [{ t: `${first(st.data.director)} never works with you again`, good: false }] }; }
