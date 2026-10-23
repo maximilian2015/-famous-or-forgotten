@@ -30,18 +30,22 @@ const low = (s) => s[0].toLowerCase() + s.slice(1);
 // spark: what sets it off; `motif` is the object a poster can be about; its twists are about it
 // block: what stands in the way
 // roles: the other parts in it, for a player who is not the lead
+// Any option (a who, where, spark, block or twist; a block or twist can be { t, needs }) may say
+// `needs: [...]`: it is only used when every one of those is true of the hero and the place — the
+// where's `place`, or a word in the who's or where's `is`. That is how a coach party only arrives
+// at a hotel, and a dead father's ashes are only driven by his children.
 // Templates use {who} {where} {spark} {block}; {they}/{them}/{their} follow the hero.
 export const SHAPES = [
   // ── Comedy ──
   { id: 'lastShow', genre: 'Comedy', k: ['night', 'radio', 'talk', 'talker', 'voice', 'midnight', 'signal'],
-    who: [{ t: 'a late-night radio host', k: ['radio', 'talker', 'talk', 'midnight', 'night', 'voice'] }, { t: 'a hospital radio volunteer who believes {they} {is} famous', k: ['radio', 'hospital'] },
-      { t: 'a phone-in agony aunt who has never been on a date', g: 'f', k: ['talk', 'talker', 'voice', 'heart'] }, { t: 'a bingo caller with a voice like warm toast', k: ['voice', 'lucky'] }],
+    who: [{ t: 'the host of a midnight phone-in', k: ['radio', 'talker', 'talk', 'midnight', 'night', 'voice'] }, { t: 'a hospital radio volunteer who believes {they} {is} famous', needs: ['ward'], k: ['radio', 'hospital'] },
+      { t: 'a phone-in agony aunt who has never been on a date', g: 'f', k: ['talk', 'talker', 'voice', 'heart'] }, { t: 'a bingo host with a voice like warm toast', k: ['voice', 'lucky'] }],
     where: [{ t: 'the hospital it broadcasts from closes at dawn', place: 'ward', k: ['hospital', 'ward', 'unit'] }, { t: 'the pier is being demolished on Monday', place: 'sea', k: ['pier', 'sea', 'harbour'] },
       { t: 'the station has been sold to a chain that only plays adverts', place: 'studio', k: ['station', 'signal'] }],
     spark: [{ t: 'a photograph nobody can explain is taped to the studio door', motif: 'photo', k: ['photograph', 'picture'],
-        twists: ['The photograph was taken the night {they} {was} born, in the same building.', 'The photograph is of the new owner, aged nine, winning the station’s talent contest.'] },
+        twists: ['The photograph was taken the night {they} {was} born, in the same building.', { t: 'The photograph is of the new owner, aged nine, winning the station’s talent contest.', needs: ['studio'] }] },
       { t: 'a caller rings in claiming to be {their} long-lost father', motif: 'phone', k: ['caller', 'father', 'talker'],
-        twists: ['Three callers claim it before midnight, and one of them is telling the truth.', 'The caller is the new owner, checking whether anybody still listens.'] },
+        twists: ['Three callers claim it before midnight, and one of them is telling the truth.', { t: 'The caller is the new owner, checking whether anybody still listens.', needs: ['studio'] }] },
       { t: 'a rival broadcast starts up on the same frequency', motif: 'signal', k: ['signal', 'rival'],
         twists: ['The rival is {their} own producer, who wanted to be on air just once.', 'The rival is broadcasting from the next room.'] }],
     block: ['everybody still in the building decides to help, live on air', 'every attempt to hide it goes out on air', 'the only engineer who can keep them broadcasting is {their} ex'],
@@ -49,10 +53,10 @@ export const SHAPES = [
     tpl: '{Who} has one night left on air, and {where}. Then {spark} — and {block}.',
     log: '{Who} has one night left on air when {spark}.', tags: ['One last show. One small problem.', 'Stay tuned.'] },
   { id: 'theLie', genre: 'Comedy', k: ['roommate', 'honeymoon', 'weekend', 'cousin', 'cousins', 'fools', 'idiots', 'wedding', 'perfect'],
-    who: [{ t: 'a junior accountant who has told {their} family {they} {run} the company', k: ['ordinary', 'perfect'] }, { t: 'a woman who has invented a fiancé to keep her grandmother happy', g: 'f', k: ['wedding', 'honeymoon'] },
-      { t: 'a tour guide who has never once left the city {they} {show} people round', k: ['weekend'] }, { t: 'a lodger who has been pretending to be the landlord', k: ['roommate', 'apartment', 'flat'] }],
-    where: [{ t: 'over one wedding weekend', place: 'town', k: ['wedding'] }, { t: 'across a family Christmas in a cottage with one bathroom', place: 'house', k: ['cousin', 'cousins', 'family'] },
-      { t: 'for the four days of a school reunion', place: 'school', k: ['reunion', 'fools', 'idiots'] }, { t: 'for the week the real owner comes to stay', place: 'house', k: ['roommate', 'apartment'] }],
+    who: [{ t: 'a junior accountant who has told {their} family {they} {run} the company', k: ['ordinary', 'perfect'] }, { t: 'a woman who has invented a fiancé to make her grandmother happy', g: 'f', k: ['wedding', 'honeymoon'] },
+      { t: 'a tour guide who tells everybody {they} {is} a world traveller and has never once left town', k: ['weekend'] }, { t: 'a lodger who has been pretending to be the landlord', is: ['lodger'], k: ['roommate', 'apartment', 'flat'] }],
+    where: [{ t: 'over one wedding weekend', place: 'town', k: ['wedding'] }, { t: 'across Christmas in a cottage with eleven relatives and one bathroom', place: 'house', k: ['cousin', 'cousins', 'family'] },
+      { t: 'for the four days of a school reunion', place: 'school', k: ['reunion', 'fools', 'idiots'] }, { t: 'for the week the real owner comes to stay', needs: ['lodger'], place: 'house', k: ['roommate', 'apartment'] }],
     spark: [{ t: 'the one person who knows the truth arrives a day early', motif: 'key', k: [],
         twists: ['Everybody at the table is lying about something; {their} lie is just the smallest.', 'The family worked it out years ago and has been playing along.'] },
       { t: 'the lie gets a toast of its own at dinner', motif: 'ring', k: ['wedding'],
@@ -64,7 +68,7 @@ export const SHAPES = [
     tpl: '{Who} has to keep it up {where}. Then {spark}, and {block}.',
     log: '{Who} has to keep up one lie {where}.', tags: ['It was only meant to be for one weekend.', 'Nobody panic.'] },
   { id: 'doubleBooked', genre: 'Comedy', k: ['wedding', 'funeral', 'booking', 'saturday', 'cousins', 'neighbours'],
-    who: [{ t: 'a wedding planner on {their} final warning', k: ['wedding'] }, { t: 'a funeral director’s child running the business for one week', k: ['funeral', 'grave'] },
+    who: [{ t: 'a bridal planner on {their} final warning', k: ['wedding'] }, { t: 'an undertaker’s child running the business for one week', k: ['funeral', 'grave'] },
       { t: 'the new manager of a seaside hotel', k: ['hotel', 'sea'] }, { t: 'a vicar who cannot say no to anybody', k: ['angels', 'church'] }],
     where: [{ t: 'a Saturday that has to go perfectly', place: 'town', k: ['saturday', 'perfect'] }, { t: 'the busiest weekend of the year', place: 'hotel', k: ['weekend'] }, { t: 'one afternoon, one hall and one kitchen', place: 'house', k: [] }],
     spark: [{ t: 'a wedding and a funeral turn out to be booked into the same room', motif: 'ring', k: ['wedding', 'funeral'],
@@ -77,6 +81,89 @@ export const SHAPES = [
     roles: ['the groom’s mother, who has opinions', 'the caterer who has seen everything', 'the organist who will not stop playing'],
     tpl: '{Who} has one job: {where}. Then {spark}, and {block}.',
     log: '{Who} has one job — until {spark}.', tags: ['Something old. Something borrowed. Something dead.', 'Everybody stay calm.'] },
+  { id: 'seriousPerson', genre: 'Comedy', k: ['ordinary', 'perfect', 'serious', 'fools', 'idiots', 'accidental', 'mostly', 'slightly'],
+    who: [{ t: 'a high-court judge', is: ['judge'], k: ['verdict', 'serious'] }, { t: 'a tax inspector who has never once been late', is: ['taxman'], k: ['ledger', 'perfect'] },
+      { t: 'the strictest headmistress in the county', g: 'f', is: ['school'], k: ['ordinary'] }, { t: 'a funeral director who has never laughed at work', is: ['undertaker'], k: ['funeral'] }],
+    where: [{ t: 'has to spend a week as the entertainer at a children’s holiday camp', place: 'field', k: ['weekend', 'summer'] },
+      { t: 'is sentenced to coach the worst amateur football team in the north', place: 'town', k: ['fools', 'idiots'] },
+      { t: 'loses a bet and has to host the village talent show', place: 'stage', k: ['accidental'] }],
+    spark: [{ t: 'a video of {their} first day goes round the whole country', motif: 'phone', k: [],
+        twists: ['The person who filmed it is the only one who knew {they} would be good at it.', 'The video made {them} more famous than anything {they} ever did properly.'] },
+      { t: 'the man {they} once sent to prison turns up to watch', needs: ['judge'], motif: 'list', k: ['verdict'],
+        twists: ['He is not there for revenge. He is there because {they} changed his life, and wants to say so.'] },
+      { t: 'the family {they} once audited into ruin turns up to watch', needs: ['taxman'], motif: 'list', k: ['ledger'],
+        twists: ['They are not there for revenge. The audit was the best thing that ever happened to them, and they want to say so.'] },
+      { t: 'the pupil {they} once expelled turns up to watch', needs: ['school'], motif: 'list', k: [],
+        twists: ['The pupil is not there for revenge, but to say {they} {was} the only teacher who ever took any notice.'] },
+      { t: 'the man whose funeral {they} arranged last spring turns up to watch, alive', needs: ['undertaker'], motif: 'list', k: ['funeral'],
+        twists: ['He faked it to get away from his family, and they are sitting three rows behind him.'] },
+      { t: 'it turns out {they} {is} very, very good at it', motif: 'song', k: ['perfect'],
+        twists: ['{They} {was} good at it once before, as a child, and gave it up on purpose.'] }],
+    block: ['nobody back at the office can ever find out', { t: 'the children have unionised', needs: ['field'] }, { t: 'the rival camp cheats openly and wins everything', needs: ['field'] },
+      'the whole town has started placing bets', 'the local paper has sent a reporter who will not leave'],
+    roles: ['the camp leader who thinks this is all beneath them', 'the ten-year-old who runs the place really', 'the colleague trying to get the video taken down'],
+    tpl: '{Who} {where}. Then {spark}, and {block}.', log: '{Who} {where}.', tags: ['Dignity not included.', 'Court is now in session. Bring snacks.'] },
+  { id: 'roadTrip', genre: 'Comedy', k: ['honeymoon', 'weekend', 'cousin', 'cousins', 'roommate', 'crust', 'highway'],
+    who: [{ t: 'a man who has never driven further than the supermarket, and his teenage daughter', is: ['kin'], k: ['ordinary'] }, { t: 'two sisters who have not shared a car since 1998', is: ['kin'], k: ['cousins', 'sisters'] },
+      { t: 'a photographer and the groom’s furious ex', k: ['honeymoon', 'wedding'] }, { t: 'a pensioner and the delivery driver who crashed into her garden', k: ['roommate'] }],
+    where: [{ t: 'have three days to drive their father’s ashes to a beach in Portugal', needs: ['kin'], place: 'road', k: ['highway'] },
+      { t: 'have to get a prize-winning cake across the country before Sunday', place: 'road', k: ['crust', 'cake'] },
+      { t: 'are stuck in one hire car on the way to a wedding nobody wants to attend', place: 'road', k: ['wedding'] }],
+    spark: [{ t: 'the satnav only speaks Finnish and nobody knows how to change it', motif: 'phone', k: [],
+        twists: ['The Finnish was set on purpose, years ago, by the person they are driving to see.'] },
+      { t: 'they find a letter in the glovebox that was never meant for either of them', motif: 'letter', k: ['letter'],
+        twists: ['The letter explains why the trip was arranged at all, and who arranged it.'] },
+      { t: 'the car is stolen at the first service station, with everything in it', motif: 'key', k: [],
+        twists: ['The thief is the one person who knows the way.'] }],
+    block: ['every shortcut makes it longer', 'neither of them will admit they are lost', 'the police are now very slightly involved'],
+    roles: ['the hitchhiker with opinions', 'the mechanic who has seen this before', 'the ex who keeps texting directions'],
+    tpl: '{Who} {where}. Then {spark}, and {block}.', log: '{Who} {where}.', tags: ['Are we there yet?', 'It is not about the destination. It is about the shouting.'] },
+  { id: 'smallHeist', genre: 'Comedy', k: ['thieves', 'lottery', 'accidental', 'fools', 'idiots', 'debts', 'attempt'],
+    who: [{ t: 'a retired bank clerk and her bridge club', k: ['debts', 'ledger'] }, { t: 'six pensioners from the church choir', k: ['fools'] }, { t: 'a dinner lady and the school caretaker', k: ['crust'] },
+      { t: 'the two most law-abiding men in the parish', k: ['ordinary'] }],
+    where: [{ t: 'decide to rob back the pension fund their old boss emptied', place: 'city', is: ['pension'], k: ['debts', 'debts'] },
+      { t: 'plan to steal the trophy the next village cheated them out of', place: 'town', k: ['lottery'] },
+      { t: 'have one weekend to rob their own branch before it is sold', place: 'city', k: ['attempt'] }],
+    spark: [{ t: 'a real gang turns up the same night with the same idea', motif: 'money', k: ['thieves'],
+        twists: [{ t: 'The real gang is the old boss, robbing his own company before the auditors arrive.', needs: ['pension'] }, 'The real gang are their own grandchildren, who thought of it first.'] },
+      { t: 'the only person who can open the safe is a nine-year-old', needs: ['city'], motif: 'key', k: [],
+        twists: ['She has been opening it for months, to put money back.'] },
+      { t: 'the plan is accidentally posted on the parish noticeboard', motif: 'list', k: ['accidental'],
+        twists: ['Half the village has signed up to help.'] }],
+    block: ['nobody in the gang can run, climb or whisper', 'the getaway car is a mobility scooter', 'the policeman who lives next door keeps popping round'],
+    roles: ['the ex-convict who is far too nervous', 'the vicar who drives the van', 'the old boss who suspects nothing'],
+    tpl: '{Who} {where}. Then {spark}, and {block}.', log: '{Who} {where}.', tags: ['Old enough to know better. Too old to care.', 'The plan is perfect. The people are not.'] },
+  { id: 'impostor', genre: 'Comedy', k: ['stranger', 'cousin', 'perfect', 'ordinary', 'kismet', 'whoops', 'question', "who's"],
+    who: [{ t: 'a hotel night porter', k: ['hotel'] }, { t: 'an out-of-work actor', k: ['ordinary'] }, { t: 'a shy librarian', k: ['letter'] }, { t: 'a cab driver with a very familiar face', k: ['stranger'] }],
+    where: [{ t: 'is mistaken for a famous surgeon at a medical conference', place: 'hotel', k: ['conference'] },
+      { t: 'is taken for the long-lost heir of an enormously rich family', place: 'house', k: ['cousin', 'inheritance'] },
+      { t: 'is mistaken for a royal on a cruise ship with no way off', place: 'sea', k: ['cruise'] }],
+    spark: [{ t: '{they} {is} asked to give the keynote speech in an hour', needs: ['hotel'], motif: 'song', k: [],
+        twists: ['The real one is in the audience, and enjoying every minute.'] },
+      { t: 'the real one turns up', motif: 'key', k: ['stranger'],
+        twists: ['The real one is a fraud too, and much worse at it.'] },
+      { t: 'someone falls in love with the person {they} {is} pretending to be', motif: 'ring', k: ['kismet'],
+        twists: ['They knew all along, and fell in love with who {they} really {is}.'] }],
+    block: ['every lie needs two more to hold it up', 'a journalist is writing everything down', { t: 'the family wants a DNA test by Friday', needs: ['house'] }],
+    roles: ['the assistant who works it out first', 'the real heir', 'the journalist who smells a story'],
+    tpl: '{Who} {where}. Then {spark}, and {block}.', log: '{Who} {where}.', tags: ['Fake it till you make it out alive.', 'Nobody asked who they were. Big mistake.'] },
+  { id: 'theWill', genre: 'Comedy', k: ['cousins', 'inheritance', 'family', 'neighbours', 'idiots', 'fools', 'crust', 'orchard'],
+    who: [{ t: 'four siblings who have not been in one room since the divorce', is: ['siblings'], k: ['cousins', 'family'] }, { t: 'a widow and her husband’s secret second family', g: 'f', k: ['inheritance'] },
+      { t: 'two neighbours at war over a hedge', k: ['neighbours'] }],
+    where: [{ t: 'must run the terrible seaside hotel they have been left, together, for one summer, to inherit it', place: 'hotel', k: ['hotel', 'summer'] },
+      { t: 'have to win the village baking contest as a team, or the money goes to the cat', place: 'town', is: ['cat'], k: ['crust', 'cake'] },
+      { t: 'must share the old farmhouse for a month before anyone can sell', place: 'field', k: ['orchard', 'farm'] }],
+    spark: [{ t: 'a lawyer reveals the will has a second page', motif: 'list', k: ['inheritance'],
+        twists: ['There is no money. There never was. The will was the only way to get them all back in one room.'] },
+      { t: 'a coach party of forty arrives with a booking nobody remembers taking', needs: ['hotel'], motif: 'key', k: ['hotel'],
+        twists: ['The person who left it to them booked it, a year ago, for the week they would have to be there.'] },
+      { t: 'the cat turns out to have a lawyer of its own', needs: ['cat'], motif: 'money', k: [],
+        twists: [{ t: 'The cat’s lawyer is the sibling nobody invited.', needs: ['siblings'] }, 'The cat’s lawyer is the person who wrote the will, and is not dead.'] },
+      { t: 'the buyer each of them secretly called turns up on the same morning', motif: 'key', k: [],
+        twists: ['The buyer was sent by the lawyer, to find out which of them would sell first.'] }],
+    block: ['nobody agrees on anything, including what day it is', { t: 'the hotel has one star and it is falling off', needs: ['hotel'] }, 'each of them is secretly trying to sabotage the others'],
+    roles: ['the sibling who stayed and did all the work', 'the lawyer who is enjoying it far too much', 'the cat'],
+    tpl: '{Who} {where}. Then {spark}, and {block}.', log: '{Who} {where}.', tags: ['Family is forever. Unfortunately.', 'Some inheritances come with conditions.'] },
   // ── Romance ──
   { id: 'theOneWhoLeft', genre: 'Romance', k: ['letter', 'promise', 'postcard', 'honest', 'summer', 'wedding', 'small', 'kiss', 'orchard'],
     who: [{ t: 'a woman who left her hometown at nineteen', g: 'f', k: ['small', 'summer'] }, { t: 'a widower whose children keep setting him up', g: 'm', k: ['honest', 'sunday'] },
@@ -296,9 +383,10 @@ function titleWords(title) {
 }
 const score = (opt, words) => (opt.k || []).reduce((n, k) => n + (words.has(k) ? 1 : 0), 0);
 // The best-matching option, the seed breaking ties — so a title with nothing to say gets a fair draw.
-function choose(opts, words, r, filter = () => true) {
-  const ok = opts.filter(filter);
-  const list = ok.length ? ok : opts;
+// `filter` is what is wanted, `must` what is required: when nothing passes the first, the second.
+function choose(opts, words, r, filter = () => true, must = filter) {
+  const ok = opts.filter(filter), need = opts.filter(must);
+  const list = ok.length ? ok : need.length ? need : opts;
   const best = Math.max(...list.map((o) => score(o, words)));
   return pickR(list.filter((o) => score(o, words) === best), r);
 }
@@ -310,39 +398,59 @@ function fill(text, g) {
   return text.replace(/\{(They|they|Them|them|Their|their|themselves|is|was|run|show|stay|believe|love)\}/g, (m, w) => { const v = p[w.toLowerCase()]; return w[0] === w[0].toUpperCase() && !VERB[w] ? cap(v) : v; });
 }
 
+// One combination, written out — what storyFor does once it has chosen, and what the checker reads
+// for every combination a shape can make.
+export function compose(shape, who, where, spark, block, twist, g) {
+  const f = (t) => fill(t, g);
+  const W = f(who.t), S = f(spark.t), P = f(where.t), B = f(text(block));
+  const put = (tpl) => tpl.replace('{Who}', cap(W)).replace('{who}', W).replace('{where}', P).replace('{Spark}', cap(S)).replace('{spark}', S).replace('{Block}', cap(B)).replace('{block}', B);
+  return { logline: put(shape.log), synopsis: put(shape.tpl), twist: f(text(twist)), hero: W };
+}
+const text = (o) => (typeof o === 'string' ? o : o.t);
+// what is true of this hero in this place, for `needs`
+export const traitsOf = (who, where) => new Set([where.place, ...(who.is || []), ...(where.is || [])]);
+export const fits = (o, traits) => typeof o === 'string' || !o.needs || o.needs.every((n) => traits.has(n));
+
 // ── a film's story ────────────────────────────────────────────────────────────
 // { title, genre, gender (the hero's, when the player is the lead), lead (is the player the hero) }
-export function storyFor({ title, genre, gender = 'm', lead = true }) {
+// `recent` is the stories of the player's last films, newest last: the last three shapes are not
+// told again, and no hero, place or incident from any of them is used twice while another will do.
+export function storyFor({ title, genre, gender = 'm', lead = true, recent = [] }) {
   const r = rng(hash('story|' + title + '|' + genre));
   for (let i = 0; i < 3; i++) r();
   const words = titleWords(title);
-  const shapes = SHAPES.filter((s) => s.genre === genre);
-  if (!shapes.length) return null;
+  const all = SHAPES.filter((s) => s.genre === genre);
+  if (!all.length) return null;
+  const lately = new Set(recent.slice(-3).map((x) => x.shape));
+  const shapes = all.filter((s) => !lately.has(s.id)).length ? all.filter((s) => !lately.has(s.id)) : all;
+  const used = new Set(recent.flatMap((x) => x.parts || []));
+  const unused = (o) => !used.has(o.t);
   // the shape the title speaks to most: its own words, and the best option in each slot
   const fit = (s) => score(s, words) + Math.max(0, ...s.who.map((o) => score(o, words))) + Math.max(0, ...s.where.map((o) => score(o, words))) + Math.max(0, ...s.spark.map((o) => score(o, words)));
   const best = Math.max(...shapes.map(fit));
   const shape = pickR(shapes.filter((s) => fit(s) === best), r);
   const g = lead ? gender : (r() < 0.5 ? 'm' : 'f');
-  const who = choose(shape.who, words, r, (o) => !o.g || o.g === g);
-  const where = choose(shape.where, words, r);
-  const spark = choose(shape.spark, words, r);
-  const block = pickR(shape.block, r);
-  const twist = pickR(spark.twists, r);
-  const f = (t) => fill(t, g);
-  const W = f(who.t), S = f(spark.t), P = f(where.t), B = f(block);
-  const put = (tpl) => tpl.replace('{Who}', cap(W)).replace('{who}', W).replace('{where}', P).replace('{Spark}', cap(S)).replace('{spark}', S).replace('{Block}', cap(B)).replace('{block}', B);
+  const who = choose(shape.who, words, r, (o) => (!o.g || o.g === g) && unused(o), (o) => !o.g || o.g === g);
+  const where = choose(shape.where, words, r, (o) => fits(who, traitsOf(who, o)) && fits(o, traitsOf(who, o)) && unused(o), (o) => fits(who, traitsOf(who, o)) && fits(o, traitsOf(who, o)));
+  const tr = traitsOf(who, where);
+  const spark = choose(shape.spark, words, r, (o) => fits(o, tr) && unused(o), (o) => fits(o, tr));
+  const block = pickR(shape.block.filter((o) => fits(o, tr)), r);
+  const twist = pickR(spark.twists.filter((o) => fits(o, tr)), r);
+  const c = compose(shape, who, where, spark, block, twist, g);
   const matched = [...new Set([...(shape.k || []), ...(who.k || []), ...(where.k || []), ...(spark.k || [])].filter((k) => words.has(k)))];
   return {
     v: 1, shape: shape.id, genre, g,
-    hero: W, place: where.place, motif: spark.motif || null,
-    logline: put(shape.log), synopsis: put(shape.tpl),
-    twist: f(twist),                                   // hidden: never on a poster, an offer or a review
+    hero: c.hero, place: where.place, traits: [...tr], motif: spark.motif || null,
+    logline: c.logline, synopsis: c.synopsis,
+    twist: c.twist,                                    // hidden: never on a poster, an offer or a review
     tagline: pickR(shape.tags, r),
     // the player's part: the hero when it is the lead, one of the shape's other people when not
-    part: lead ? W : pickR(shape.roles, r),
+    part: lead ? c.hero : pickR(shape.roles, r),
     matched,
     // for a sequel: what is now common knowledge, and what the next one can be set off by
-    used: { spark: spark.t, twist: f(twist) },
+    used: { spark: spark.t, twist: c.twist },
+    // what the next films should not repeat
+    parts: [who.t, where.t, spark.t],
   };
 }
 // A part two remembers part one: the twist is now what everybody knows, the hero is the same
@@ -352,13 +460,15 @@ export function sequelFor(first, { title, years = 3, fate = null }) {
   const shape = SHAPES.find((s) => s.id === first.shape);
   if (!shape) return null;
   const r = rng(hash('sequel|' + title + '|' + first.shape));
-  const fresh = shape.spark.filter((x) => x.t !== first.used.spark);
-  const spark = pickR(fresh.length ? fresh : shape.spark, r);
-  const block = pickR(shape.block, r);
+  const tr = new Set(first.traits || [first.place]);
+  const ok = shape.spark.filter((x) => fits(x, tr));
+  const fresh = ok.filter((x) => x.t !== first.used.spark);
+  const spark = pickR(fresh.length ? fresh : ok, r);
+  const block = text(pickR(shape.block.filter((o) => fits(o, tr)), r));
   const after = years <= 1 ? 'A year after' : `${years} years after`;
   const known = first.twist.replace(/\.$/, '');
   const S = fill(spark.t, first.g);
   return { logline: `${after} the first film, ${low(first.hero)} is living with what everybody now knows. Then ${S}.`,
     synopsis: `Everybody knows now: ${low(known)}. ${after} it, ${low(first.hero)} is still there${fate ? ', ' + fate : ''} — and then ${S}, and ${fill(block, first.g)}.`,
-    twist: fill(pickR(spark.twists, r), first.g) };
+    twist: fill(text(pickR(spark.twists.filter((o) => fits(o, tr)), r)), first.g) };
 }
