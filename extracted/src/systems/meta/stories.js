@@ -315,7 +315,9 @@ export const CHAINS = {
           const x = ensureResult(s, src, rec);
           if (!x) { end(s, st); return null; }
           rec.told = true;
-          const hit = tv ? (x.renewed || x.verdict === 'watched' || x.verdict === 'hit' || x.verdict === 'breakout') : (x.verdict === 'smash' || x.verdict === 'profitable');
+          // A platform's film is a hit by the platform's words, a cinema film by the box office's.
+          const hit = tv ? (x.renewed || x.verdict === 'watched' || x.verdict === 'hit' || x.verdict === 'breakout')
+            : x.streaming ? (x.verdict === 'hit' || x.verdict === 'breakout') : (x.verdict === 'smash' || x.verdict === 'profitable');
           st.data.hit = hit; st.data.other = rec.by ? rec.by.name : null; st.data.gross = x.gross || 0; st.data.renewed = !!x.renewed;
           const fans = hit ? (tv ? ' The piece says the show was always bigger than any one name. That is the sentence.' : ' The fans were furious for a week and then they went to see it.')
             : (tv ? ' The fans blame the recast, loudly, and the piece agrees with them.' : ' The fans have decided, loudly, that this is why.');

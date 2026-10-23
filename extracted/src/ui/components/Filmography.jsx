@@ -91,6 +91,9 @@ function shownVerdict(c) {
 }
 function CreditRow({ group, g }) {
   const c = group.best;
+  // What the network decided, and what happened to you after it, are the LAST season's — the best-rated
+  // one is the face of the row, but a show's fate is where it ended.
+  const ls = group.parts.reduce((a, b) => ((b.season || 0) > (a.season || 0) ? b : a));
   const v = shownVerdict(c);
   const r = c.rating || 0;
   // One switch for the whole row now. It used to open only the reviews; it opens the film.
@@ -157,24 +160,24 @@ function CreditRow({ group, g }) {
       {c.streaming && !c.running && (<div style={{ fontSize: 11, color: theme.muted, margin: '4px 0 2px' }}>
         📱 {(platformById(g, c.platformId) || {}).name || 'A platform'} · {c.views28}m in 28 days · {Math.round((c.completion || 0) * 100)}% finished
       </div>)}
-      {c.streaming && c.renewal && c.renewal !== 'renewed' && c.renewal !== 'moved' && (<div style={{ fontSize: 11, fontWeight: 700, margin: '2px 0', color: c.renewal === 'ended' || c.renewal === 'capped' ? theme.muted : theme.bad }}>
-        {c.renewal === 'ended' ? '📱 A limited series — it ended as it was written.'
-          : c.renewal === 'capped' ? `📱 It ended here: the platform's last season.`
-          : `📱 Not renewed.${c.nextCost ? ` Another season would have cost €${Math.round(c.nextCost)}m.` : ''}`}
+      {ls.streaming && ls.renewal && ls.renewal !== 'renewed' && ls.renewal !== 'moved' && (<div style={{ fontSize: 11, fontWeight: 700, margin: '2px 0', color: ls.renewal === 'ended' || ls.renewal === 'capped' ? theme.muted : theme.bad }}>
+        {ls.renewal === 'ended' ? '📱 A limited series — it ended as it was written.'
+          : ls.renewal === 'capped' ? `📱 It ended here: the platform's last season.`
+          : `📱 Not renewed.${ls.nextCost ? ` Another season would have cost €${Math.round(ls.nextCost)}m.` : ''}`}
       </div>)}
-      {c.renewal && !(c.streaming && c.renewal !== 'renewed' && c.renewal !== 'moved') && (<div style={{ fontSize: 11, fontWeight: 700, margin: '4px 0 2px',
-        color: c.renewal === 'renewed' || c.renewal === 'moved' ? theme.good : c.renewal === 'capped' || c.renewal === 'finale' ? theme.muted : theme.bad }}>
-        {c.renewal === 'renewed' ? `${c.streaming ? '📱' : '📺'} Renewed for season ${(c.season || 1) + 1}`
-          : c.renewal === 'moved' ? `📺 Cancelled, and then saved. Somebody else bought it for season ${(c.season || 1) + 1} — a shorter order and less money, and it is still on.`
-          : c.renewal === 'finale' ? `📺 Cancelled, and then given an ending: one special, two hours, and everybody came back for it.`
-          : c.renewal === 'writtenOut' ? `📺 Renewed for season ${(c.season || 1) + 1} — without you. Your character was written out.`
-          : c.renewal === 'capped' ? `📺 It ended here. ${c.season || 1} season${(c.season || 1) === 1 ? '' : 's'}, and the format ran its course.`
-          : `📺 Not renewed.${c.endViewers ? ` It finished on ${c.endViewers}m.` : ''}`}
+      {ls.renewal && !(ls.streaming && ls.renewal !== 'renewed' && ls.renewal !== 'moved') && (<div style={{ fontSize: 11, fontWeight: 700, margin: '4px 0 2px',
+        color: ls.renewal === 'renewed' || ls.renewal === 'moved' ? theme.good : ls.renewal === 'capped' || ls.renewal === 'finale' ? theme.muted : theme.bad }}>
+        {ls.renewal === 'renewed' ? `${ls.streaming ? '📱' : '📺'} Renewed for season ${(ls.season || 1) + 1}`
+          : ls.renewal === 'moved' ? `📺 Cancelled, and then saved. Somebody else bought it for season ${(ls.season || 1) + 1} — a shorter order and less money, and it is still on.`
+          : ls.renewal === 'finale' ? `📺 Cancelled, and then given an ending: one special, two hours, and everybody came back for it.`
+          : ls.renewal === 'writtenOut' ? `📺 Renewed for season ${(ls.season || 1) + 1} — without you. Your character was written out.`
+          : ls.renewal === 'capped' ? `📺 It ended here. ${ls.season || 1} season${(ls.season || 1) === 1 ? '' : 's'}, and the format ran its course.`
+          : `📺 Not renewed.${ls.endViewers ? ` It finished on ${ls.endViewers}m.` : ''}`}
       </div>)}
       {/* What the network decided is the show's; what happened to you in the next one is yours, and
           what it did without you is the third line (career/continuation.js). The Last Woman read
           "Renewed for season 2" for three years with nothing under it. */}
-      {(() => { const last = group.parts.reduce((a, b) => ((b.season || 0) > (a.season || 0) ? b : a)); const nl = nextLines(last, g); if (!nl) return null;
+      {(() => { const nl = nextLines(ls, g); if (!nl) return null;
         return (<>{nl.you && <div style={{ fontSize: 11, fontWeight: 700, margin: '2px 0', color: nl.pending ? theme.gold : theme.bad }}>👤 {nl.you}</div>}
           {nl.after && <div style={{ fontSize: 11, color: theme.muted, margin: '2px 0 4px', lineHeight: 1.45 }}>↳ {nl.after}</div>}</>); })()}
       {/* The studio said no. A name in the room can push — favours.js. */}
@@ -462,7 +465,7 @@ function WithoutYou({ g, list }) {
   return (<div style={{ marginTop: 14 }}>
     <button onClick={() => setOpen(!open)} style={{ width: '100%', textAlign: 'left', background: 'none', border: 'none', cursor: 'pointer', padding: '6px 0' }}>
       <span style={{ fontSize: 11, fontWeight: 900, letterSpacing: '.09em', textTransform: 'uppercase', color: theme.muted }}>
-        Without you · {lost.length + said.length + passed.length}
+        Without you
       </span>
       <span style={{ fontSize: 10.5, color: theme.muted, marginLeft: 8 }}>
         {lost.length} lost · {said.length + passed.length} turned down {open ? '▾' : '▸'}

@@ -18,6 +18,7 @@ const A = await import(P + 'systems/career/agent.js');
 const O = await import(P + 'systems/career/offers.js');
 const ARC = await import(P + 'systems/life/arcs.js');
 const untold = [];
+let phantoms = 0;
 const recs = [], fans = { furious: 0, network: 0, sorry: 0 }, tally = { stories: 0, queued: 0, mails: 0 };
 let standingLost = 0;
 for (let k = 0; k < CAREERS; k++) {
@@ -54,7 +55,8 @@ for (let k = 0; k < CAREERS; k++) {
   for (const c of s.filmography || []) if (c && c.next) {
     const rec = c.next;
     // Anything that came out and was never told: where it is stuck, so "99%" has a reason or a fix.
-    if (rec.result && !rec.told) {
+    if (rec.result && rec.you === 'returned') phantoms++;   // a season worked out without you that you went back to
+    if (rec.result && !rec.told && rec.you !== 'returned') {
       const st = (s.stories || []).find((x) => x.id === 'recast' && x.data && String(x.data.title).replace(/^⭐\s*/, '') === rec.title);
       untold.push(`${rec.title} · result ${rec.result.at} · end ${s.year * 12 + s.month} · story ${st ? `${st.beat} due ${st.due}` : 'none'} · queued ${(s.recastQueue || []).some((x) => x.title === rec.title)} · pending arc ${s.pendingArc ? s.pendingArc.story + '/' + s.pendingArc.beat : '—'}`);
     }
@@ -77,7 +79,7 @@ console.log(`  seasons and sequels gone on without you: ${recs.length} (${(recs.
 console.log(`  what happened to you: ${by((r) => r.you)}`);
 console.log(`  why: ${by((r) => r.how)}`);
 console.log(`  somebody real in your part: ${pct(recs.filter((r) => r.by).length, recs.filter((r) => r.you !== 'writtenOut' && r.you !== 'killed' && r.show === 'on').length)} of those with a part to fill`);
-const out = recs.filter((r) => r.result);
+const out = recs.filter((r) => r.result && r.you !== 'returned');
 console.log(`  came out without you so far: ${out.length} · told ${pct(out.filter((r) => r.told).length, out.length)} · still to come ${recs.filter((r) => r.show === 'on' && !r.result && r.you !== 'returned').length} · not made ${recs.filter((r) => r.show === 'notMade').length} · you went back ${recs.filter((r) => r.you === 'returned').length}`);
 console.log(`  how it did without you: ${by((r) => (r.result ? r.result.verdict : '—'))} · renewed again ${pct(out.filter((r) => r.result.renewed).length, out.filter((r) => r.kind === 'season').length)}`);
 console.log(`  the fans: furious with you ${fans.furious} · furious with the network ${fans.network} · sorry ${fans.sorry} · nothing ${Math.max(0, recs.filter((r) => r.tier !== 'supporting').length - fans.furious - fans.network - fans.sorry)}`);
@@ -86,3 +88,4 @@ const later = recs.reduce((n, r) => n + (r.later || []).length, 0), laterUntold 
 console.log(`  the show after that: ${later} later seasons worked out (${laterUntold} not yet told) · ended: ${recs.filter((r) => r.ended).length} (cancelled ${recs.filter((r) => r.ended && r.ended.why === 'cancelled').length}, ran its course ${recs.filter((r) => r.ended && r.ended.why === 'capped').length})`);
 console.log(`  untold after coming out: ${untold.length}`);
 for (const u of untold) console.log('    ' + u);
+console.log(`  worked out for a season you went back to (should be none): ${phantoms}`);

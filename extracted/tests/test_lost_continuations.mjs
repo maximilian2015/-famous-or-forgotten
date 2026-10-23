@@ -259,6 +259,9 @@ test('a platform\'s sequel without you stays a platform\'s film: dropped on the 
   s.stories = []; to(s, rec.due); C.continuationTick(s);
   assert.ok(rec.result.streaming && rec.result.movie && !('gross' in rec.result) && ['miss', 'solid', 'hit', 'breakout'].includes(rec.result.verdict), JSON.stringify(rec.result));
   assert.ok(/dropped on .+ without you/.test(C.withoutYouLine(rec, s.filmography[0])), C.withoutYouLine(rec, s.filmography[0]));
+  // A platform's Hit is a hit in the ledger, by the platform's words — not a box-office miss.
+  const e = passedOn(s).find((p) => p.title === 'Night Ferry II');
+  assert.equal(!!(e && e.outcome && e.outcome.hit), rec.result.verdict === 'hit' || rec.result.verdict === 'breakout', JSON.stringify(e && e.outcome));
   const a = actorById(s, rec.by.id);
   assert.ok(a.credits.some((x) => x.title === 'Night Ferry II' && x.streaming && x.gross === 0), 'not on the replacement\'s record as a platform film');
 });

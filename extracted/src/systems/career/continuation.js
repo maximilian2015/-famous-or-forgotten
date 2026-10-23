@@ -241,6 +241,7 @@ export function ensureResult(s, src, rec) {
 }
 function outcomeFor(rec) {
   const x = rec.result || {};
+  if (rec.kind === 'part' && x.streaming) return { hit: x.verdict === 'hit' || x.verdict === 'breakout', views28: x.views28 || 0 };
   if (rec.kind === 'part') return { hit: x.verdict === 'smash' || x.verdict === 'profitable', gross: x.gross || 0 };
   return { hit: x.verdict === 'watched' || x.verdict === 'hit' || x.verdict === 'breakout' || !!x.renewed, viewers: x.end ?? x.views28 ?? 0 };
 }
@@ -311,7 +312,8 @@ export function continuationTick(s) {
     if (storyWillTell(s, rec)) continue;
     rec.told = true;
     const line = withoutYouLine(rec, c);
-    addTimeline(s, line, rec.kind === 'part' ? rec.result.verdict !== 'bomb' : !!rec.result.renewed);
+    // Red when it did well without you — by its own medium's words.
+    addTimeline(s, line, rec.kind === 'part' ? outcomeFor(rec).hit : !!rec.result.renewed);
     sendMail(s, { from: 'The trades', subj: rec.kind === 'part' ? `"${rec.title}" — without you` : `"${rec.root}", season ${rec.n} — without you`, tag: 'trades', kind: 'news',
       body: `${line}\n\n${YOU[rec.you]} — ${WHY[rec.how] || ''}, ${MON[(rec.at || 0) % 12]} ${Math.floor((rec.at || 0) / 12)}.`, cta: [{ label: 'Delete', fx: {}, reply: 'Filed.' }] });
     tellLater(s, rec);
