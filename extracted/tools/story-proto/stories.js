@@ -38,6 +38,7 @@ const low = (s) => s[0].toLowerCase() + s.slice(1);
 // spark: what sets it off; `motif` is the object a poster can be about; its twists are about it
 // block: what stands in the way
 // roles: the other parts in it, for a player who is not the lead
+// pl: true on a shape (or a who) — the hero is more than one person: they, and plural verbs.
 // Any option (a who, where, spark, block or twist; a block or twist can be { t, needs }) may say
 // `needs: [...]`: it is only used when every one of those is true of the hero and the place — the
 // where's `place`, or a word in the who's or where's `is`. That is how a coach party only arrives
@@ -66,11 +67,11 @@ function choose(opts, words, r, filter = () => true, must = filter) {
   return pickR(list.filter((o) => score(o, words) === best), r);
 }
 // he / she / they, for the hero
-const VERB = { is: 'is', was: 'was', run: 'runs', show: 'shows', stay: 'stays', believe: 'believes', love: 'loves' };
+const VERB = { is: 'is', was: 'was', run: 'runs', show: 'shows', stay: 'stays', believe: 'believes', love: 'loves', stop: 'stops', know: 'knows', have: 'has', do: 'does', work: 'works', make: 'makes', remember: 'remembers', need: 'needs', want: 'wants', talk: 'talks' };
 const PRON = { m: { they: 'he', them: 'him', their: 'his', themselves: 'himself', ...VERB }, f: { they: 'she', them: 'her', their: 'her', themselves: 'herself', ...VERB } };
 function fill(text, g) {
   const p = PRON[g] || PRON.m;
-  return text.replace(/\{(They|they|Them|them|Their|their|themselves|is|was|run|show|stay|believe|love)\}/g, (m, w) => { const v = p[w.toLowerCase()]; return w[0] === w[0].toUpperCase() && !VERB[w] ? cap(v) : v; });
+  return text.replace(/\{(They|they|Them|them|Their|their|themselves|is|was|run|show|stay|believe|love|stop|know|have|do|work|make|remember|need|want|talk)\}/g, (m, w) => { const v = p[w.toLowerCase()]; return w[0] === w[0].toUpperCase() && !VERB[w] ? cap(v) : v; });
 }
 
 // One combination, written out — what storyFor does once it has chosen, and what the checker reads
@@ -97,14 +98,16 @@ export function storyFor({ title, genre, gender = 'm', lead = true, recent = [] 
   const all = SHAPES.filter((s) => s.genre === genre);
   if (!all.length) return null;
   const lately = new Set(recent.slice(-3).map((x) => x.shape));
-  const shapes = all.filter((s) => !lately.has(s.id)).length ? all.filter((s) => !lately.has(s.id)) : all;
   const used = new Set(recent.flatMap((x) => x.parts || []));
   const unused = (o) => !used.has(o.t);
+  // not one of the last three, and with a hero this career has not met yet — each while one is left
+  const narrow = (list, ok) => (list.some(ok) ? list.filter(ok) : list);
+  const g = lead ? gender : (r() < 0.5 ? 'm' : 'f');
+  const shapes = narrow(narrow(all, (s) => !lately.has(s.id)), (s) => s.who.some((o) => unused(o) && (!o.g || o.g === g)));
   // the shape the title speaks to most: its own words, and the best option in each slot
   const fit = (s) => score(s, words) + Math.max(0, ...s.who.map((o) => score(o, words))) + Math.max(0, ...s.where.map((o) => score(o, words))) + Math.max(0, ...s.spark.map((o) => score(o, words)));
   const best = Math.max(...shapes.map(fit));
   const shape = pickR(shapes.filter((s) => fit(s) === best), r);
-  const g = lead ? gender : (r() < 0.5 ? 'm' : 'f');
   const who = choose(shape.who, words, r, (o) => (!o.g || o.g === g) && unused(o), (o) => !o.g || o.g === g);
   const where = choose(shape.where, words, r, (o) => fits(who, traitsOf(who, o)) && fits(o, traitsOf(who, o)) && unused(o), (o) => fits(who, traitsOf(who, o)) && fits(o, traitsOf(who, o)));
   const tr = traitsOf(who, where);
@@ -140,10 +143,12 @@ export function sequelFor(first, { title, years = 3, fate = null }) {
   const fresh = ok.filter((x) => x.t !== first.used.spark);
   const spark = pickR(fresh.length ? fresh : ok, r);
   const block = text(pickR(shape.block.filter((o) => fits(o, tr)), r));
-  const after = years <= 1 ? 'A year after' : `${years} years after`;
+  const NUM = ['', 'one', 'two', 'three', 'four', 'five', 'six', 'seven', 'eight', 'nine', 'ten', 'eleven', 'twelve'];
+  const later = years <= 1 ? 'A year later' : `${cap(NUM[years] || String(years))} years later`;
+  const is = shape.pl ? 'are' : 'is';
   const known = first.twist.replace(/\.$/, '');
   const S = fill(spark.t, first.g);
-  return { logline: `${after} the first film, ${low(first.hero)} is living with what everybody now knows. Then ${S}.`,
-    synopsis: `Everybody knows now: ${low(known)}. ${after} it, ${low(first.hero)} is still there${fate ? ', ' + fate : ''} — and then ${S}, and ${fill(block, first.g)}.`,
+  return { logline: `${later}, ${low(first.hero)} ${is} living with what everybody now knows. Then ${S}.`,
+    synopsis: `Everybody knows now: ${low(known)}. ${later}, ${low(first.hero)} ${is} drawn back in${fate ? ', ' + fate : ''} — and then ${S}, and ${fill(block, first.g)}.`,
     twist: fill(text(pickR(spark.twists.filter((o) => fits(o, tr)), r)), first.g) };
 }
