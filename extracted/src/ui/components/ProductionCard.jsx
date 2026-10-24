@@ -113,7 +113,9 @@ export function ProductionCard({ g, p }) {
     </div>}
     <div style={{ fontSize: 10.5, fontWeight: 900, letterSpacing: '.08em', textTransform: 'uppercase', color: theme.muted, marginBottom: 6 }}>Crew</div>
     {p.crew.map((c) => (<div key={c.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '6px 0', borderBottom: `1px solid ${theme.line}` }}>
-      <div><div style={{ fontSize: 12.5, fontWeight: 700 }}>{c.name}</div><div style={{ fontSize: 10.5, color: theme.muted }}>{c.role} · {c.trait} · bond {Math.round(c.bond || 0)}</div></div>
+      <div><div style={{ fontSize: 12.5, fontWeight: 700 }}>{c.name}</div><div style={{ fontSize: 10.5, color: theme.muted }}>{c.role} · {c.trait} · bond {Math.round(c.bond || 0)}</div>
+        {/* What they remember about you from before (meta/memory.js) — why they started where they did. */}
+        {c.remembers && <div style={{ fontSize: 10.5, color: theme.gold, lineHeight: 1.4, marginTop: 2 }}>{c.remembers}</div>}</div>
 
     </div>))}
   </Card>);

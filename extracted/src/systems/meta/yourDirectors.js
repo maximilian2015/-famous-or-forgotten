@@ -29,7 +29,9 @@ export function stateOf(p) { return p.cold ? 'cold' : (p.relationship || 0) >= 5
 //   stories.js burnTheBridge — until +9999: the door shut on the record, for good;
 //   production.js walkOffSet — due +9999, until +60: you walked off their set;
 //   stories.js noteRefusal   — due in 14–22 months, until +24, or +60 if the film is a hit.
+//   career/cover.js          — `why` written on it: something you did that they took personally.
 export function grudgeKind(g) {
+  if (g.why) return 'deed';
   if ((g.until || 0) - (g.since || 0) >= 9999) return 'shut';
   if ((g.due || 0) - (g.since || 0) >= 9999) return 'walked';
   return 'passed';
@@ -51,8 +53,9 @@ function grudgeView(g, now) {
   // same grudge (tentpoles.js gives it tier 'lead'), and the grudge does not keep the role.
   const reason = kind === 'shut' ? `Would not come back for "${title}" — and they said so to the trades.`
     : kind === 'walked' ? `Walked off the set of "${title}".`
+    : kind === 'deed' ? `${g.why.replace(/^./, (c) => c.toUpperCase())}.`
     : `Turned down a part in "${title}".`;
-  const expires = kind === 'shut' ? 'For good' : `Until ${monthName(ends)} · ${left(ends, now)}`;
+  const expires = kind === 'shut' ? 'For good' : kind === 'deed' ? 'Until you put it right' : `Until ${monthName(ends)} · ${left(ends, now)}`;
   const ifHit = unknown ? `Until ${monthName(g.since + 60)} if "${title}" is a hit · ${left(g.since + 60, now)}` : null;
   return { kind, title, since: g.since, until: g.until, forGood: kind === 'shut', monthsLeft: kind === 'shut' ? null : ends - now, reason, expires, ifHit };
 }

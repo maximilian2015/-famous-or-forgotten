@@ -26,6 +26,7 @@ import { ambitionOf } from './ambition.js';
 import { notePassedOutcome } from './passed.js';
 import { loseContinuation, recordForTitle, ensureResult, withoutYouLine, returned } from '../career/continuation.js';
 import { slotNorm } from '../career/franchise.js';
+import { COVER } from '../career/cover.js';
 
 const clamp = (v, a = 0, b = 100) => Math.max(a, Math.min(b, v));
 const stamp = (s) => (s.year || 0) * 12 + (s.month || 0);
@@ -339,6 +340,8 @@ export const CHAINS = {
             choices: [{ label: 'On', shows: { fx: { fame: -1 } }, apply: () => { setFame(s, (s.fame || 0) - 1); addTimeline(s, `${tv ? `Season ${n}` : `Part ${n}`} of "${st.data.title.replace(/\s+(II|III|IV|V|VI)$/, '')}" — without you, again.`, true); return { reply: 'On.', end: true }; } }] }; } },
     },
   },
+  // 8. Covering for a co-star (career/cover.js): started from the on-set ask, never by a roll.
+  cover: COVER,
 };
 export const CHAIN_ORDER = ['scandal', 'refused', 'recast', 'comeback', 'ageing', 'agent', 'rival'];
 
