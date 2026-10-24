@@ -128,7 +128,7 @@ Before the choice, the option's hint reads the trait and the ledger. For example
   - one or two beats later, through the career-story mechanism, the lie can come out → the director's deed `reliability −`;
   - years later, the co-star (now bigger, or not) is the one who asks for you — or does not.
 
-## 7. How the player fixes it — and the rule that each fix says what it fixes
+## 6. How the player fixes it — and the rule that each fix says what it fixes
 
 Maxi: the player has to understand how to repair it — a charity campaign, or asking somebody to
 handle it properly; there is no star manager.
@@ -168,7 +168,7 @@ manager runs the career. The game has the first two. A manager:
 - **Warns before a risky choice on set** when the ledger already has a similar deed with this person. For example: "Your manager: Ulrich has seen this from you once already."
 - Costs a monthly fee and a cut, like the publicist and the agent. Without one, all of this is still possible — slower, and without the warnings.
 
-## 6. In what order to build it
+## 7. In what order to build it
 
 1. The ledger and the trait weights, written by the existing on-set asks. No new screens, just the reasons on the existing controls and in the grudge text.
 2. The grudge from deeds, and the reason on the board and the Directors screen.
