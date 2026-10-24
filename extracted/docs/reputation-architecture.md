@@ -128,6 +128,46 @@ Before the choice, the option's hint reads the trait and the ledger. For example
   - one or two beats later, through the career-story mechanism, the lie can come out → the director's deed `reliability −`;
   - years later, the co-star (now bigger, or not) is the one who asks for you — or does not.
 
+## 7. How the player fixes it — and the rule that each fix says what it fixes
+
+Maxi: the player has to understand how to repair it — a charity campaign, or asking somebody to
+handle it properly; there is no star manager.
+
+**What exists today:**
+- **A publicist** (staff, €40k a month, from fame 45). Scandal fades 2.4× faster, scandal hype ×0.6, the press reading +8.
+- **An agent.** Brings work and reach at the table, by tier.
+- **Favours.** "Have a word" on a cold set, plus four others; they cost standing.
+- **Fix lines.** Every risk on the main screen already has one ("→ A month with nothing on the calendar").
+
+**What does not exist:**
+- a manager;
+- charity as an action (only a line in a gala invitation);
+- any fix line for "directors will not work with you".
+
+### The rule
+
+Every remedy says, on its control, what it repairs and what it does not.
+
+| Remedy | Repairs | Does not repair |
+|---|---|---|
+| Charity (a gala, or your own campaign) | scandal, the press, the fans | directors' trust, Standing — *"Directors do not care what you gave the shelter. They care whether you stopped their shoot."* Right after a scandal and without a publicist, the press can call it PR. |
+| Interviews / a publicist | public image | professional trust |
+| A clean shoot (no reliability deed) | insurability, Standing, the deeds cooling | — |
+| A small film "to show you can be worked with" | the fastest way back for insurability and the board | money |
+| Writing to / meeting the person | that one grudge (the existing reconciliation beat) | everybody else |
+| Somebody vouching (a heavyweight with a good deed of yours) | a rumour from somebody lighter | a grudge |
+
+### A manager — new staff, in the existing staff list, not a new system
+
+The real business has three people: the agent finds the work, the publicist handles the press, the
+manager runs the career. The game has the first two. A manager:
+
+- **Shows the plan out, as steps the game can check.** For example: "two shoots without trouble · write to Ulrich · a small film with a calm director". Each step reads the ledger, so it ticks itself.
+- **Arranges the meeting** with somebody holding a grudge. The reconciliation beat opens sooner and with better odds.
+- **Brings proof films.** While insurability is low: small films with calm (chill) directors.
+- **Warns before a risky choice on set** when the ledger already has a similar deed with this person. For example: "Your manager: Ulrich has seen this from you once already."
+- Costs a monthly fee and a cut, like the publicist and the agent. Without one, all of this is still possible — slower, and without the warnings.
+
 ## 6. In what order to build it
 
 1. The ledger and the trait weights, written by the existing on-set asks. No new screens, just the reasons on the existing controls and in the grudge text.
@@ -135,5 +175,6 @@ Before the choice, the option's hint reads the trait and the ledger. For example
 3. Insurability from recent deeds instead of the permanent burnout count (the way back).
 4. The cover chain, with the co-star's memory.
 5. Rumour reach by `industryWeight`; the press only for public deeds.
+6. The remedies with what they fix on their controls; charity as an action; the manager.
 
 **Nothing in this adds a new scale.** Every consequence goes through a door that already exists: grudges, `onTheBoard`, `sendsOffers`, `rumourFactor`, `insurability`, `coldStart`, `setRespect`, `setPieces`.
