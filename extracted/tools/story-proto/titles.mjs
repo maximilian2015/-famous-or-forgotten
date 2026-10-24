@@ -7,7 +7,7 @@
 // Inside Your Heart"); a title can be linked by its adjective and still miss its head, which is
 // what "Small Wedding" with no wedding was.
 import { newTitle } from '../../src/systems/world/titles.js';
-import { storyFor, SHAPES, conceptsOf, headOf } from './stories.js';
+import { storyFor, SHAPES, conceptsOf, headOf } from '../../src/systems/career/plot/plot.js';
 import { lemma } from './words.mjs';
 
 const N = +process.argv[2] || 400, only = process.argv[3];

@@ -4,7 +4,7 @@
 // Counts careers that meet the same hero twice, plots told twice in a row, and titles whose head
 // word is not in the story.
 import { newTitle } from '../../src/systems/world/titles.js';
-import { storyFor, conceptsOf, headOf } from './stories.js';
+import { storyFor, conceptsOf, headOf } from '../../src/systems/career/plot/plot.js';
 import { titleFor, aboutOf } from './titlefor.mjs';
 import { lemma } from './words.mjs';
 const headIn = (t, st) => { const k = aboutOf(st); return [...conceptsOf(headOf(t))].some((c) => k.has(c) || k.has(lemma(c))); };

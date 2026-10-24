@@ -3,7 +3,7 @@
 // films before it, beside the premise the game gave it — grouped by genre, then the sequels told
 // from their first parts. Markdown, for forwarding.
 import fs from 'node:fs';
-import { storyFor, sequelFor } from './stories.js';
+import { storyFor, sequelFor } from '../../src/systems/career/plot/plot.js';
 
 const [,, savePath, out] = process.argv;
 const raw = JSON.parse(fs.readFileSync(savePath, 'utf8'));

@@ -94,7 +94,7 @@ export const SCIFI = [
     who: [{ t: 'a widow who pays to keep her husband’s past alive', g: 'f', k: ['hollow'] }, { t: 'a clerk who files what other people would rather forget', k: ['lacuna', 'binary'] },
       { t: 'a soldier who remembers a war that never happened', k: ['crosses'] }],
     where: [{ t: 'in a city where memories are bought and sold', place: 'city', k: ['glass', 'transparent'] },
-      { t: 'in a clinic that removes painful years', place: 'ward', k: ['lacuna'] },
+      { t: 'in a city where a clinic will remove any painful year', place: 'ward', k: ['lacuna'] },
       { t: 'in a country where every memory is evidence', place: 'city', k: ['mirror'] }],
     spark: [{ t: 'a memory turns up in {them} that belongs to somebody else', motif: 'photo', k: ['mirror'],
         twists: ['It belongs to the person {they} {was} before the last removal.'] },

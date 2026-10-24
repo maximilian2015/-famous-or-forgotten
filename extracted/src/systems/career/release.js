@@ -310,7 +310,7 @@ export function scheduleRelease(s, credit, p) {
     // Who was on the poster with you, if it was somebody. See production.js makeCrew.
     with: p.with || null, withId: p.withId || null, withFame: p.withFame || 0, withIcon: !!p.withIcon,
     // What the version you shot does to the box office, and the line it was pitched on.
-    appealMod: appealShift(p) * dirAppeal(p), premise: p.premise || credit.premise || null, take: credit.take || null,
+    appealMod: appealShift(p) * dirAppeal(p), premise: p.premise || credit.premise || null, plot: p.plot || credit.plot || null, take: credit.take || null,
     // What the studio is spending to sell it, decided when it is booked — see CAMPAIGN above.
     campaignTier: p.campaignTier || studioCampaign(p.scale || 'feature'),
     // What the script was before anybody argued it somewhere else (career/story.js).
@@ -346,7 +346,7 @@ export function scheduleRelease(s, credit, p) {
       // and the next part are built from this object and nothing else — leaving these out
       // meant season four was about a stranger with a new name, under a brief that said
       // "is back". See career/script.js and career/chapter.js.
-      character: p.character || null, premise: p.premise || null, direction: p.direction || null,
+      character: p.character || null, premise: p.premise || null, plot: p.plot || null, direction: p.direction || null,
       prestigeScore: p.prestigeScore, optioned: !!p.optioned, optionParts: p.optionParts || 0,
       // Whether there is a part two IN it at all — rolled when it was made (franchise.js).
       potential: p.potential || null,
@@ -450,7 +450,7 @@ function open(s, rel) {
     verdict: 'in cinemas', score: null,
     // Carried for the Asker season: what kind of thing it was, and whether it was pushed.
     scale: rel.scale, tier: rel.tier, prestigeScore: rel.prestigeScore, director: rel.director || null,
-    premise: rel.premise || null, take: rel.take || null, potential: rel.potential || null,
+    premise: rel.premise || null, plot: rel.plot || null, take: rel.take || null, potential: rel.potential || null,
     campaignShare: rel.campaign ? 0.65 : 0,
     exceptional: !!rel.exceptional,
     with: rel.with || null, withId: rel.withId || null, withIcon: !!rel.withIcon, withFame: rel.withFame || 0,

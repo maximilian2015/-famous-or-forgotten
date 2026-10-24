@@ -4,7 +4,7 @@
 // a row, a plural hero (a shape or hero marked pl) with a singular verb (or the other way), the same content word twice in the
 // logline, a sentence that starts in lower case. Combinations a part's `needs` rules out are not
 // counted: storyFor never makes them. Prints the count per shape and the first examples.
-import { SHAPES, compose, traitsOf, fits } from './stories.js';
+import { SHAPES, compose, traitsOf, fits } from '../../src/systems/career/plot/plot.js';
 
 const genre = process.argv[2] || 'Comedy';
 const SING_VERB = /^(has|is|loses|gets|takes|comes|moves|arrives|lives|inherits|agrees|wants)\b/;

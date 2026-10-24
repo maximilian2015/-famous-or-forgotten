@@ -16,7 +16,7 @@
 //               twist said out loud, a new incident, nothing part one's place could not have, every
 //               "the X" known from part one or the shape, and the sentence rules of check.mjs.
 // Prints every distinct problem once, with the shape it is in.
-import { SHAPES, traitsOf, fits, compose, sequelFor } from './stories.js';
+import { SHAPES, traitsOf, fits, compose, sequelFor } from '../../src/systems/career/plot/plot.js';
 import { lemma, words } from './words.mjs';
 
 const only = process.argv[2];

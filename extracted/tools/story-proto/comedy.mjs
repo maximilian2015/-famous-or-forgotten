@@ -2,7 +2,7 @@
 // Every comedy in a save: the premise it has today, and the story the prototype tells for it —
 // plus the same hero as a she and as a he, to show the wording follows.
 import fs from 'node:fs';
-import { storyFor } from './stories.js';
+import { storyFor } from '../../src/systems/career/plot/plot.js';
 
 const [,, savePath, out] = process.argv;
 const raw = JSON.parse(fs.readFileSync(savePath, 'utf8'));

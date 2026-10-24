@@ -1,8 +1,8 @@
 // node tools/story-proto/titlefor-probe.mjs — a story first, then its title: how often the title's head is in the story.
 import { newTitle } from '../../src/systems/world/titles.js';
-import { storyFor, headOf } from './stories.js';
+import { storyFor, headOf } from '../../src/systems/career/plot/plot.js';
 import { titleFor, aboutOf } from './titlefor.mjs';
-import { conceptsOf } from './stories.js';
+import { conceptsOf } from '../../src/systems/career/plot/plot.js';
 import { lemma } from './words.mjs';
 for (const genre of ['Comedy', 'Romance', 'Musical', 'Drama', 'Horror', 'Thriller', 'Crime', 'Sci-Fi']) {
   const st = {}; const used = new Set(); let ok = 0, none = 0, n = 0; const ex = [];

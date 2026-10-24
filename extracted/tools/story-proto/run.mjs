@@ -2,7 +2,7 @@
 // Twenty real films from a save, the premise each has today beside the story the prototype
 // tells for the same title and genre, and two sequels told from their first parts.
 import fs from 'node:fs';
-import { storyFor, sequelFor } from './stories.js';
+import { storyFor, sequelFor } from '../../src/systems/career/plot/plot.js';
 
 const [,, savePath, out] = process.argv;
 const raw = JSON.parse(fs.readFileSync(savePath, 'utf8'));

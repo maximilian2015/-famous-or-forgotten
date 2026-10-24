@@ -1,7 +1,8 @@
-// Story generator V2 — PROTOTYPE, not imported by the game (Maxi/ChatGPT, 23 Oct: "do not change
-// the code yet; audit, then show twenty stories beside the old ones").
+// What a film is about. Built in tools/story-proto (where the checkers that read every
+// combination live: check.mjs, structure.mjs, titles.mjs, memory.mjs) and used by the game from
+// career/script.js, which gives a new film offer its story once and never rewrites it.
 //
-// The premise the game writes today (career/story.js makePremise) is three phrases drawn from
+// The premise the game wrote before (career/story.js makePremise) is three phrases drawn from
 // three tables, independently: a place, an incident, a twist. Nothing connects them — the twist
 // may be about a dead man nobody mentioned — and nobody in them wants anything. A film is a person
 // who wants something, a thing that happens to them, what stands in the way, and what the
@@ -18,7 +19,7 @@
 // A film that already has a TITLE (every film in an old save) is read the other way round: the
 // words of the title choose the shape and the options that share them — "Midnight Talker" finds
 // the radio host. Everything is seeded by the title, so a film always tells the same story.
-import { hash, rng } from '../../src/engine/hash.js';
+import { hash, rng } from '../../../engine/hash.js';
 import { COMEDY } from './shapes/comedy.js';
 import { ROMANCE } from './shapes/romance.js';
 import { MUSICAL } from './shapes/musical.js';
