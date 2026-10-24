@@ -33,14 +33,15 @@ for (const genre of [...new Set(rows.map((x) => x.c.genre))]) {
   }
 }
 const pairs = (s.filmography || []).map((c) => [base(c.title).replace(/\s+(II+|\d)$/, ''), c]).filter(([t, c]) => t !== base(c.title));
-const seqs = [];
+const seqs = []; const seqRecent = [];
 for (const [firstTitle, two] of pairs) {
   const one = (s.filmography || []).find((c) => base(c.title) === firstTitle);
   if (!one || seqs.some((q) => q.second === two.title)) continue;
   // part one as the career told it, with its memory — never told a second time without it
   const first = (rows.find((x) => base(x.c.title) === firstTitle) || {}).story;
   if (!first) continue;
-  seqs.push({ first: firstTitle, second: two.title, old1: one.premise, old2: two.premise, s1: first, s2: sequelFor(first, { title: two.title, years: Math.max(1, (two.year || 0) - (one.year || 0)) }) });
+  seqs.push({ first: firstTitle, second: two.title, old1: one.premise, old2: two.premise, s1: first, s2: sequelFor(first, { title: two.title, years: Math.max(1, (two.year || 0) - (one.year || 0)), recent: seqRecent }) });
+  seqRecent.push(seqs[seqs.length - 1].s2);
 }
 if (seqs.length) {
   md += '\n## Sequels\n\n';
