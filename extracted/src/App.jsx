@@ -926,6 +926,8 @@ function SceneModal({ g }) {
   return (<div style={{ maxWidth: 440, margin: '0 auto', minHeight: '100vh', color: theme.text, padding: 16, display: 'flex', flexDirection: 'column', justifyContent: 'center', fontFamily: FONT }}>
     {state !== 'brief' && <>
       <div style={{ fontSize: 11, fontWeight: 900, letterSpacing: '.1em', textTransform: 'uppercase', color: theme.gold, marginBottom: 8 }}>🎬 {sc.title} · {sc.label}</div>
+      {/* The film's own story: which page of it today is (career/plot/sheet.js pageAt). */}
+      {sc.page && <div style={{ fontSize: 12.5, lineHeight: 1.55, marginBottom: 8, color: theme.gold, fontStyle: 'italic' }}>{sc.page}</div>}
       <div style={{ fontSize: 14.5, lineHeight: 1.6, marginBottom: 14 }}>{sc.line}</div>
     </>}
     {state === 'brief'
@@ -941,6 +943,7 @@ function SceneModal({ g }) {
               (written off the components), the trust bar from the approach that needs it, and
               the cost in the game's own numbers where the brief can know them. */}
           <ScriptPage kicker={`On set · ${sc.label}`} line={sc.line}>
+            {sc.page && <div style={{ color: '#302d26', fontStyle: 'italic', marginBottom: 4 }}>{sc.page}</div>}
             {rulesFor(sc.game) && <div style={{ color: '#302d26', marginBottom: 4 }}>{rulesFor(sc.game).slice(0, 2).join(' ')}</div>}
             {(() => { const bond = Math.round(lead.bond ?? 40); const gated = approachesFor(g, onSet).find((a) => a.needsBond);
               return (<div><b style={{ color: '#302d26' }}>{dirName}</b> is directing and trusts you {bond} of 100{gated

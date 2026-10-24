@@ -99,7 +99,7 @@ function choose(opts, words, r, filter = () => true, must = filter) {
 // he / she / they, for the hero
 const VERB = { is: 'is', was: 'was', run: 'runs', show: 'shows', stay: 'stays', believe: 'believes', love: 'loves', stop: 'stops', know: 'knows', have: 'has', do: 'does', work: 'works', make: 'makes', remember: 'remembers', need: 'needs', want: 'wants', talk: 'talks' };
 const PRON = { m: { they: 'he', them: 'him', their: 'his', themselves: 'himself', ...VERB }, f: { they: 'she', them: 'her', their: 'her', themselves: 'herself', ...VERB } };
-function fill(text, g) {
+export function fill(text, g) {
   const p = PRON[g] || PRON.m;
   return text.replace(/\{(They|they|Them|them|Their|their|themselves|is|was|run|show|stay|believe|love|stop|know|have|do|work|make|remember|need|want|talk)\}/g, (m, w) => { const v = p[w.toLowerCase()]; return w[0] === w[0].toUpperCase() && !VERB[w] ? cap(v) : v; });
 }
@@ -161,10 +161,12 @@ export function storyFor({ title, genre, gender = 'm', lead = true, recent = [] 
     tagline: pickR(shape.tags, r),
     // the player's part: the hero when it is the lead, one of the shape's other people when not
     // a role with a gender in its wording only goes to a player of that gender
-    part: lead ? c.hero : text(pickR(shape.roles.filter((o) => typeof o === 'string' || o.g === gender), r)),
+    part: lead ? c.hero : fill(text(pickR(shape.roles.filter((o) => typeof o === 'string' || o.g === gender), r)), g),
     matched,
     // for a sequel: what is now common knowledge, and what the next one can be set off by
     used: { spark: spark.t, twist: c.twist },
+    // the incident and the obstacle as the story tells them — the pages a shoot works through
+    spark: fill(spark.t, g), block: fill(text(block), g),
     // what the next films should not repeat
     parts: [who.t, where.t, spark.t],
   };

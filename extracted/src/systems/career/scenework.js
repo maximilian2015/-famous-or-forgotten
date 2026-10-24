@@ -5,6 +5,7 @@
 // two films never throw the same day — Maxi's rule for the whole set system: "minigames,
 // different every time, so they do not repeat."
 import { pick } from '../../engine/rng.js';
+import { chronologyFromPlot } from './plot/sheet.js';
 
 const her = (p) => ((p && p.character && p.character.name) ? p.character.name.split(' ')[0] : 'she');
 const shuffle = (a) => { const o = [...a]; for (let i = o.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [o[i], o[j]] = [o[j], o[i]]; } return o; };
@@ -23,6 +24,8 @@ const REVEALS = [
 // Six scenes, in the order the location was free. Three sit before she knows and three
 // after, and the player has to say which is which.
 export function chronologyFor(s, p, difficulty = 1) {
+  // A film with a story is shot out of order around ITS secret, from the side of the part you play.
+  if (p && p.plot) return chronologyFromPlot(p.plot, p.character, p.tier);
   const r = pick(REVEALS);
   const name = her(p);
   // Half the lines are written with "she" and half without, because they read better that

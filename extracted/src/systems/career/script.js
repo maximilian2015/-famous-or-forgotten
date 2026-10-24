@@ -103,8 +103,10 @@ function plotFor(s, o) {
   const st = storyFor({ title: o.projectTitle || o.title || '', genre: o.genre, gender, lead, recent: recentPlots(s) });
   if (!st) return null;
   // What is kept: enough to tell it, hide its twist, and continue it. Not the title words it matched.
-  const { v, shape, g, hero, place, traits, motif, logline, synopsis, twist, tagline, part, used, parts } = st;
-  return { v, shape, g, hero, place, traits, motif, logline, synopsis, twist, tagline, part, lead, used, parts };
+  const { v, shape, g, hero, place, traits, motif, logline, synopsis, twist, tagline, part, used, parts, spark, block } = st;
+  // A supporting part plays opposite somebody, and the set calls that somebody by name.
+  const heroName = lead ? null : `${pick(g === 'f' ? FIRST_F : FIRST_M)} ${pick(LAST)}`;
+  return { v, shape, g, hero, heroName, place, traits, motif, logline, synopsis, twist, tagline, part, lead, used, parts, spark, block };
 }
 // A season or a part that continues something keeps the same person. Rolling a new name for
 // season four of the show you have been on for three years was the kind of thing that made

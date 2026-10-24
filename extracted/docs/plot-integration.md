@@ -17,16 +17,36 @@ Branch `story-v1` (from `story-audit`). Nothing on main until Maxi says so.
   - genres without stories (Commercial etc.).
 - Tests: `tests/test_plot.mjs`. Story checks: `tools/story-proto` (check, structure, titles, memory).
 
-## Stage 1b — a new film's title from its story
+## Stage 1b — a new film's title from its story (audited, not switched on)
 
-Today the title is made first (systems/world/titles.js) and the story reads it, so about one title
-in five has a head word the story cannot answer. `tools/story-proto/titlefor.mjs` makes the title
-from the story instead, in the game's own manner: head word in the story 100%, no repeats.
+The story is already kept on the film, not derived from its title. Renaming a film (`career/naming.js`
+lets the player rename anything that has not opened) does not change its story. So the three
+things are already separate: the film itself (its id, its place in a franchise through
+`seriesRoot` of the title at signing), the title on the poster, and the story.
 
-Before switching, an audit is needed: who else reads an offer's title (the board, franchises,
-rumours, the world's films, "titles used in this life").
+Titles are born in 14 places. Story-first titles are only safe where nobody has seen the title yet:
 
-## Stage 2 — the character, after the part is accepted
+| Where | Safe for story-first? |
+|---|---|
+| `offers.js` (direct offers), `youngblood.js`, `theatrical.js` comeback offer, `collab.js` | yes — make the story first, then the title |
+| `castings.js` (OpenCall) | at the listing, not at the offer — the player reads the title before auditioning |
+| `tentpoles.js` (the board) | at the board entry — same reason |
+| `night.js` pitches | at the pitch; and never when the player typed the title themselves |
+| `decline.js` scripted offers, `stories.js` chain offers | yes, at creation |
+| sequels, seasons, renewals, thaws, `bubble.js` revivals | **never** — they continue a title |
+| `world.js` films of other actors | not ours; untouched |
+
+So it is a change at each birthplace, not in `dressOffers`, which runs after the title has been shown.
+
+## Stage 2 — the character, after the part is accepted (first version on the branch)
+
+Done: the script on the set card (who you are, what the hero wants, who else is in it, what happens,
+the twist marked "in the script, never in the trailer", and when your character learns it); scene
+days know which page of the story they are; "Out of order" is shot around the film's own secret
+from the side of your part; a remembered day names its scene for the critics, never the twist.
+Examples: docs/story-stage2-examples.md.
+
+Original plan:
 
 The offer shows two or three sentences. After signing:
 - who you play;
