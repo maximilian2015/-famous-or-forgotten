@@ -239,3 +239,147 @@ The existing `replacementThreat` event is the starting point for this. A safely 
 **Depression is not burnout.** It exists (`life/depression.js`: therapy, medication) and today it **starts automatically on the fourth burnout** (`strain.js`, `DEPRESSION_AT = 4`). That automatic rule goes. A long exhaustion can *sometimes* meet the existing depression; it never equals it.
 
 **The test for Step 3b:** on Alex Moon, does the player get a real reason to say *"they offer ten million for this one, and I will turn it down"*?
+
+## 13. High-stakes contracts and real dilemmas — matched against the code (Maxi/ChatGPT, 27 Oct)
+
+Source: Maxi's brief "Burnout, High-Stakes Contracts & Hollywood Intrigues".
+- Most of it is already in §7–12 and is not repeated.
+- Below: what the code does today in the areas the brief asks about, what is new, and where each new piece belongs.
+- No code was changed.
+
+### 13.1 What the code does today (read from the handlers)
+
+| Area | Today |
+|---|---|
+| **Burnout stop** | `strain.js` puts every running set into `s.frozen` with `byYou: true` and a patience window by fame (`stability.js patienceFor`: 14 months for an unknown, about 52 for an icon). The studio waits; when the window runs out, the film is recast or written off. Nothing in between: no rescheduling around you, no rewrite without your scenes. The decision does not read lead vs supporting or how much is shot. |
+| **A burnout counted as blame** | When a burnout-frozen film dies, `stability.js` takes **Standing −6, or −9 if the window ran out**, and writes "it stopped because of you". That is illness charged as unreliability. §6 did not list this one; it found only `burnouts`, insurability and the "Difficult" risk. |
+| **Signed off = no paper at all** | `offers.js` checks `canWork`. While you are signed off you cannot accept **any** offer, even one that starts in nine months. The brief wants the agent to close a film that starts after you recover; that is impossible today. |
+| **replacementThreat** | `arcs.js`. It fires only when the shoot's **meter is under 25**, i.e. bad dailies, not health. Choices: promise to turn it around; fight for the part (a confidence roll); walk with a **30% kill fee**. It never reads strain. |
+| **Walking off** | `production.js walkOffSet`. Only by choice, for a bigger picture. Costs Standing −7 (TV) or −9 (film), a five-year grudge with the director, and `walkedOff` for the lawyer (`risk.js`). It is a choice, so a penalty is right. |
+| **Pay-or-play** | `contract.js`, films only. You get the whole fee if the picture is recast because of your schedule or if it collapses (`stability.js`). |
+| **Exclusivity** | A contract clause on big films. You can try to strike it: 22% on a blockbuster, 45% otherwise. An exclusive set takes all three slots, even a day's work. |
+| **Schedule clash** | Signing while busy: you ask them to hold the part, or, for a bigger picture, walk off the current one. A held part waits two months past its date, and the agent can ask once to move it. After that it is recast. Pay-or-play is honoured, and a lost sequel or season is told by `continuation.js`. |
+| **Series** | `standoff.js` already has season options (cut or strike), an exit after season three, the right to work between seasons, being **written out** (`writeOut`, `canBeWrittenOut`), and `replacementCost`/`dependency`. `continuation.js` already tells the season that runs without you. Missing: a rule for **your long absence while under contract**. A burnout simply freezes the show like a film. |
+| **Money against the actor** | **None.** No liability, no per-month delay charge, no clawback of an advance. The only money that moves is in your favour (pay-or-play, the kill fee). |
+| **Bonuses tied to conditions** | None. The back end (points), points-for-pay on small films and merchandise all pay on the result; none pays for keeping a schedule. |
+| **Agent at high strain** | Says nothing about the load (§11). |
+
+### 13.2 New requirements (not in §7–12)
+
+**A. Step 3b — on existing mechanics, small extensions**
+
+1. **The studio's decision when you stop.** One resolver on top of the existing freeze. It reads:
+   - lead or supporting;
+   - how much is shot;
+   - fame, and whether you are the franchise face;
+   - the budget;
+   - the contract.
+
+   Outcomes:
+   - reschedule around you;
+   - freeze your part (today's freeze);
+   - cut or rewrite the rest;
+   - recast: the last resort for a franchise face, but still possible.
+
+   It replaces the single patience number. That number stays as the fallback for old frozen entries.
+2. **Remove the Standing charge when a burnout-frozen film dies** (13.1, second row). This follows from §6 and §9.8. What you lose is the role, never Standing.
+3. **Paper during a medical stop.**
+   - You can sign work that starts after your expected return.
+   - The agent can ask for a later start, a lighter schedule or an exception from exclusivity.
+   - No set starts before you are cleared.
+   - `canWork` splits in two: "can start work" and "can sign".
+4. **replacementThreat also opens from sustained exhaustion** (95+ for months, §12), not only from a meter under 25. It stays the same event: a new way in, and choices that read strain. **The Studio's Ultimatum** (quest B) is this event at strain 94:
+   - fewer days, and lose a bonus;
+   - speed up and risk it;
+   - rearrange, and lose another project;
+   - a medical pause.
+5. **A crisis remembers the choice before it.** If you chose to speed up, the next crisis reads that choice. The place to keep it is the rep-cover memory ledger (`s.memory`). No independent random second crisis.
+6. **Series: a long absence under contract.** The show can go on without you:
+   - the season is delayed or shortened;
+   - the character is written out for a while (the existing `writeOut`);
+   - the storyline moves to someone else;
+   - the season's result is simulated the way `continuation.js` already does it.
+
+   If the show does **better** without you, the next renewal can offer **fewer episodes**. That is **quest C, The Replacement**:
+   - accept the smaller part;
+   - refuse and go back to film;
+   - argue for a bigger line;
+   - invoke a guarantee you negotiated.
+
+   It is judged on the show's own result and your contract, never as a penalty for being ill.
+7. **Losses you feel without fines** (brief §8). Most already happen and only need to be **said**:
+   - offers keep arriving and lapse unanswered while you are signed off;
+   - a sequel or season can be lost;
+   - living costs keep running.
+
+   New: a **temporary** insurability limit on the biggest productions after a medical stop. It lifts after recovery and good work, and it rides on Step 4's recoverable insurability.
+8. **The agent's three levels** (60 / 82 / 95). §12 already agreed that the agent speaks only when it matters. New here: the wording at 95+ and the future-start negotiation from item 3. The agent never signs anything for you.
+
+**B. Contract terms: in 3b only where burnout needs them; the rest after Step 4**
+
+These build on the existing clause list in `contract.js draftContract`: fee, exclusivity, preparation, back end, option, seasons, exit, pay-or-play. **No second contract system.**
+
+| New clause | Where | Note |
+|---|---|---|
+| A **schedule bonus**, paid for finishing on the agreed dates | 3b | What a requested lighter schedule or a postponement can cost (§12). One clause, shown before signing. |
+| **Postponement terms**: how many times, how long | 3b | Puts "a postponement is a request, not a right" on the paper. |
+| **Liability for a proven breach**, capped, with an optional per-month figure | after Step 4 | Only for breaches the code can **prove were chosen**: walking off, a hidden conflicting contract, drink. Never for a medical stop. It needs Step 4's four categories first, or illness leaks into it. |
+| **Clawback of an unearned advance** | after Step 4 | Same reason. |
+| **Limits on conflicting projects** beyond exclusivity | after Step 4 | Feeds quest A. |
+
+Every clause is on the paper **before** signing. Not every big contract carries the dangerous clauses: they depend on the deal (the studio, the scale, your record).
+
+**C. Hollywood Intrigues: a later step, not 3b**
+
+These are real dilemmas between two things the player wants, and NPCs who push. They build on:
+- the career-story chains (`meta/stories.js`);
+- the memory ledger;
+- director traits;
+- the contract.
+
+**Quest A, The Offer of a Lifetime.**
+- Already exists: the clash between two signed or offered contracts (schedule clash, hold, walk off).
+- New:
+  - a legendary director's one-time offer that will not move;
+  - the agent buying out part of the obligation for money;
+  - leaving by agreement.
+
+**NPC manipulation:**
+- a rival producer's offer at the worst moment;
+- a reshoot that clashes with another job;
+- an agent working for another client;
+- a co-star shifting the blame;
+- a rival's false rumour about your reliability (the rumour pieces exist: `rumour`, press, scandal).
+
+The rule: an NPC's malice never becomes the player's proven fault.
+
+**The quality bar** for every quest: two things the player wants, and no option that is both safe and free. The brief's weak examples are dropped: leaking the NDA script, and secretly signing a forbidden contract.
+
+### 13.3 Boundaries
+
+- **Step 3b:** everything in §7–12, plus 13.2-A items 1–8, plus two contract clauses (the schedule bonus and postponement terms). No liability, no clawback, no NPC intrigue.
+- **Step 4 (reputation):** recoverable insurability and the four categories. This is the precondition for charging the actor any money.
+- **Hollywood Intrigues**, a new step after Step 5:
+  - the liability and clawback clauses;
+  - limits on conflicting projects;
+  - quest A;
+  - NPC manipulation;
+  - long career-conflict chains.
+- **Balance:** the three-career check (§9.10) now also counts:
+  - roles lost and replacements;
+  - offers missed while signed off;
+  - medical pauses;
+  - schedule bonuses lost.
+
+  Alex Moon's save is the named test.
+
+### 13.4 Priority (Maxi's first paste, 27 Oct)
+
+Maxi and ChatGPT looked at Alex Moon still shooting at strain 100 and Mental 33. Their conclusion: the core of burnout should come **earlier**. The core is:
+- sustained 95–100 leads to a real production crisis;
+- the studio decides;
+- recovery has consequences.
+
+**Proposal, awaiting Maxi's word:** move 3b part 1 (Burnout: the §12 path plus 13.2-A items 1–5) **ahead of Step 3** (the minigames).
+- It touches scene days only through the existing quality penalty, so the minigame rework does not block it.
+- Recovery, overexposure and the balance pass keep their order after it.

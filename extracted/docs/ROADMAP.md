@@ -116,6 +116,18 @@ Order inside the step (Maxi/ChatGPT, 27 Oct). Nothing replaces anything; burnout
 3. **Audience overexposure** — frequent big releases tire the audience, even when the actor feels fine; counted by release date, so it can grow during a rest.
 4. **Balance** — three strategies over 10–20 years, once both are in, so neither work nor rest is automatically best.
 
+**Added 27 Oct** (audit §13: high-stakes contracts, matched against the code). These are in 3b too:
+- **The studio decides when you stop:** reschedule, freeze, cut, or recast. It reads the role, how much is shot, whether you are the franchise face, and the contract.
+- **A burnout-frozen film that dies no longer costs Standing.** Today it costs −6 or −9.
+- **While signed off you can still sign work that starts after you return.**
+- **`replacementThreat` also opens from sustained exhaustion,** and the next crisis remembers the choice before it.
+- **A series can go on without you,** and can come back with fewer episodes.
+- **Two contract clauses:** a schedule bonus and postponement terms.
+
+**Not in 3b:** liability, clawback and NPC intrigue. They go after Step 4, to Hollywood Intrigues.
+
+**Proposed, awaiting Maxi:** move part 1 (Burnout) ahead of Step 3.
+
 - **Scope:**
   - one scale (`s.strain`), made to mean something: a 36-month load record;
   - four states with distinct effects;
@@ -160,6 +172,19 @@ Order inside the step (Maxi/ChatGPT, 27 Oct). Nothing replaces anything; burnout
 - **Uses:** the career-story mechanism, stability.js freeze/collapse, demands.js.
 - **Done when:** a choice can come back in a month and in years; the safe-money guarantee still holds (test_stability).
 - **Tests:** test_arcs (says what it does), frequency probe.
+
+### Step 5b — Hollywood Intrigues (audit §13.2-C)
+
+- **Scope:**
+  - real dilemmas between two things the player wants. Example, quest A "The Offer of a Lifetime": a $40m franchise against the dream director.
+  - NPCs who push: a rival producer's offer at the worst moment, a clashing reshoot, an agent working for another client, blame-shifting, a false rumour about reliability;
+  - contract liability for a **proven, chosen** breach (capped, with a per-month figure), clawback of an advance, and limits on conflicting projects. All of these are on the paper before signing.
+- **Rules:**
+  - no quest where one answer is safe and free;
+  - an NPC's malice never becomes the player's proven fault;
+  - illness is never a breach.
+- **Uses:** career-story chains, the memory ledger, director traits, `contract.js` clauses, rumour and press. No second contract system.
+- **Needs first:** Step 4 (the four categories, recoverable insurability).
 
 ### Step 6 — Media and markets
 
