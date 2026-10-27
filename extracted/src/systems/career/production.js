@@ -27,6 +27,7 @@ import { youngAfterCredit } from './youngblood.js';
 import { sets, addSet, removeSet, setById, canTakeSet, slotsFree, isShort, MAX_SETS, SET_RESPECT } from '../../engine/sets.js';
 import { ensureBudget } from './budget.js';
 import { adoptProject } from './project.js';
+import { arriveRemembering } from '../meta/memory.js';
 export { sets, canTakeSet, slotsFree, MAX_SETS, SET_RESPECT };
 const clamp = (v) => Math.max(0, Math.min(100, v));
 // A shoot opens on 20 and 20 used to be labelled "Disaster", so the very first thing the
@@ -69,7 +70,8 @@ function makeCrew(s, scale) {
   const known = (s.people || []).filter((p) => directsYouAgain(s, p));
   if (known.length && chance(33)) {
     const k = pick(known);
-    crew[0] = { ...crew[0], name: k.name, bond: Math.max(10, Math.min(90, k.relationship || 40)), knownId: k.id };
+    // a person keeps their character: before, a director who came back was rolled a new trait
+    crew[0] = { ...crew[0], name: k.name, bond: Math.max(10, Math.min(90, k.relationship || 40)), knownId: k.id, trait: k.trait || crew[0].trait };
   }
   return crew.map((c) => ({ ...c, bond0: c.bond }));
   function makeOne(role) {
@@ -102,7 +104,7 @@ function keepTheCrew(s, p) {
     const isDirector = c.role === 'Director' || c.role === 'Producer';
     const existing = c.knownId ? (s.people || []).find((x) => x.id === c.knownId) : (s.people || []).find((x) => x.name === c.name);
     // Somebody you already knew: the shoot IS the relationship now, warmer or colder.
-    if (existing) { existing.relationship = c.bond; existing.lastSeen = (s.year || 0) * 12 + (s.month || 0); if (c.bond > 10) existing.cold = false; continue; }
+    if (existing) { existing.relationship = c.bond; existing.lastSeen = (s.year || 0) * 12 + (s.month || 0); if (c.bond > 10) existing.cold = false; if (!existing.trait && c.trait) existing.trait = c.trait; continue; }
     if ((c.bond || 0) < 60) continue;
     const span = DIRECTOR_WEIGHT[p.scale] || [55, 70];
     const star = c.worldId ? actorById(s, c.worldId) : null;
@@ -110,7 +112,7 @@ function keepTheCrew(s, p) {
       gender: star ? star.gender : (c.gender || null), born: star ? star.born : (s.year || 2040) - Math.max(22, (s.ageY || 30) + rint(-6, 18)),
       role: isDirector ? (s.dream === 'singer' ? 'Music Producer' : 'Film Director') : star ? (star.icon ? 'Icon' : 'Star') : (s.dream === 'singer' ? 'Fellow Musician' : 'Fellow Actor'),
       industryWeight: isDirector ? rint(span[0], span[1]) : star ? Math.round(Math.max(40, star.fame)) : rint(Math.max(15, Math.round((s.fame || 0) * 0.5)), Math.min(90, Math.round((s.fame || 0) * 0.5) + 30)),
-      relationship: c.bond, unlocks: isDirector ? 'aaa' : null, met: `${s.year}`, fromSet: p.title, lastSeen: (s.year || 0) * 12 + (s.month || 0) });
+      relationship: c.bond, unlocks: isDirector ? 'aaa' : null, met: `${s.year}`, fromSet: p.title, lastSeen: (s.year || 0) * 12 + (s.month || 0), trait: c.trait || null });
     kept.push(`${c.name} (${isDirector ? 'director' : 'co-star'})`);
   }
   if (kept.length) addTimeline(s, `${kept.join(' and ')} ${kept.length > 1 ? 'are' : 'is'} in your phone now. That is what a good set leaves you.`);
@@ -188,7 +190,7 @@ export function startProduction(s, offer) {
   // 16 measured renewals, the bond restarting from nothing (tests/probes/probe_transition_tv.mjs).
   const leadId = offer.directorId || offer.showrunnerId || null, leadName = offer.director || offer.showrunner || null;
   const known = leadId ? (s.people || []).find((x) => x.id === leadId) : null;
-  if (known) { const b = Math.max(10, Math.min(90, known.relationship || 40)); p.crew[0] = { ...p.crew[0], name: known.name, bond: b, bond0: b, knownId: known.id }; }
+  if (known) { const b = Math.max(10, Math.min(90, known.relationship || 40)); p.crew[0] = { ...p.crew[0], name: known.name, bond: b, bond0: b, knownId: known.id, trait: known.trait || p.crew[0].trait }; }
   else if (leadName) p.crew[0] = { ...p.crew[0], name: leadName };
   if (offer.costarId) { const a = actorById(s, offer.costarId); if (a && p.crew[1]) { const b = rint(15, 35); p.crew[1] = { ...p.crew[1], name: a.name, worldId: a.id, bond: b, bond0: b, trait: 'perfectionist' }; } }
   // A supporting part is in somebody else's picture, and that somebody sells it. Before Budget V2 an
@@ -235,9 +237,12 @@ export function startProduction(s, offer) {
   // Walking onto a second call sheet while the first is running costs more again.
   const others = sets(s).length - 1;
   s.strain = Math.min(100, (s.strain || 0) + 6 + ((s.strain || 0) > 48 ? 9 : 0) + others * 5);
+  // Somebody who remembers you arrives where your history left them, and says so (meta/memory.js).
+  arriveRemembering(s, p);
   const dir = p.crew[0];
   s.lastEvent = dir.knownId ? `Cameras roll on "${p.title}". ${dir.name} is directing — you two have done this before.` : `Cameras roll on "${p.title}". First day on set.`;
   if (others) s.lastEvent += ` That is ${others + 1} sets at once — the month is shorter for it.`;
+  for (const c of p.crew || []) if (c.remembers) s.lastEvent += ` ${c.remembers}`;
   addTimeline(s, `Production began: ${p.title}.`);
   return s;
 }

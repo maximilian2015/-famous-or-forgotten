@@ -1,6 +1,7 @@
 import { useEffect } from 'react';
 import { theme } from '../../ui/theme.js';
 import { partLine, sizeLine } from '../../systems/career/script.js';
+import { memoryLine, keyOfPerson } from '../../systems/meta/memory.js';
 import { continues, briefFor, directionsFor, chooseDirection, remindersFor, buyReminder, thingName } from '../../systems/career/chapter.js';
 import { smsReply, smsReadAll } from '../../systems/social/sms.js';
 import { dispatch } from '../../state/store.js';
@@ -105,6 +106,8 @@ export function Messages({ g }) {
         {o.character && <div style={{ fontSize: 12, fontWeight: 800, color: theme.text, marginTop: 5 }}>You: {partLine(o)}</div>}
         {o.character && <div style={{ fontSize: 10.5, color: theme.muted, marginTop: 1 }}>{sizeLine(o)}</div>}
         {o.premise && <div style={{ fontSize: 11.5, color: theme.muted, marginTop: 4, lineHeight: 1.5, fontStyle: 'italic' }}>{o.premise}</div>}
+        {/* Who is behind it, and what they remember about you (meta/memory.js). */}
+        {(() => { const line = (o.directorId && memoryLine(g, keyOfPerson(g, o.directorId))) || (o.costarId && memoryLine(g, 'w:' + o.costarId)); return line ? <div style={{ fontSize: 11.5, color: theme.gold, marginTop: 5, lineHeight: 1.45 }}>History: {line}</div> : null; })()}
         {/* A returning show or a sequel should read as the same thing coming back. */}
         {o.note && <div style={{ fontSize: 11.5, color: theme.gold, marginTop: 5, lineHeight: 1.45 }}>{o.note}</div>}
         <div style={{ fontSize: 11.5, color: theme.muted, marginTop: 5 }}>
