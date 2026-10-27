@@ -520,7 +520,12 @@ export function maybeContinue(s, credit, p, force = false) {
     const wasFee = p.episodeFee || Math.round(p.salary / Math.max(1, p.episodes || 1));
     const episodeFee = Math.min(Math.round(wasFee * raise), ceilingFor(s, payOf(s, p)));
     const marketFee = Math.min(Math.round(wasFee * raiseMarket), ceilingFor(s, payOf(s, p)));
-    const episodes = Math.max(4, Math.round((p.episodes || 8) * (0.9 + Math.random() * 0.3)));
+    const full = Math.max(4, Math.round((p.episodes || 8) * (0.9 + Math.random() * 0.3)));
+    // You were written out of the end of last season on a doctor's word (life/burnout.js) and the
+    // show held up without you: the room built this one around somebody else, and the paper says
+    // so — fewer episodes. Not a penalty for being ill; the show's own result decides it.
+    const builtAround = !!p.writtenOut && (credit.rating || 0) >= 55;
+    const episodes = builtAround ? Math.max(3, Math.round(full * 0.5)) : full;
     // Old release jobs did not keep the crew. Their credit may still name the
     // director; use that existing identity, never roll a replacement person.
     const showrunner = p.showrunner || ((p.crew || [])[0] || {}).name || credit.director || null;
@@ -565,6 +570,7 @@ export function maybeContinue(s, credit, p, force = false) {
         : pct > 0 ? `The network wants you back. Same part, ${pct}% more an episode.`
         : pct < 0 ? `The network wants you back — at ${-pct}% less an episode. The numbers were not good.`
         : 'The network wants you back. Same part, same money.',
+      ...(builtAround ? { builtAround: true, note: `While you were off, the room gave the season to somebody else, and it worked. ${episodes} episodes this time, not ${full}. You can take it, argue for more, or walk.` } : {}),
     };
   }
 

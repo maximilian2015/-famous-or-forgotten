@@ -154,7 +154,7 @@ export function startProduction(s, offer) {
     story: offer.story || null,   // a career story this shoot belongs to (stories.js)
     // The kinds of paper (contract.js): the network's options and your exit, pay-or-play,
     // a share of the toys. Carried season to season by franchise.js.
-    optionSeasons: offer.optionSeasons || 0, optionFrom: offer.optionFrom || (offer.optionSeasons ? (offer.season || 1) : 0), exitAfter: offer.exitAfter || 0, payOrPlay: !!offer.payOrPlay, merch: offer.merch || 0,
+    scheduleBonus: offer.scheduleBonus || 0, optionSeasons: offer.optionSeasons || 0, optionFrom: offer.optionFrom || (offer.optionSeasons ? (offer.season || 1) : 0), exitAfter: offer.exitAfter || 0, payOrPlay: !!offer.payOrPlay, merch: offer.merch || 0,
     // How solid the money is. Decides whether this shoot ever reaches its last day, and
     // how wildly the finished thing can turn out. See systems/career/stability.js.
     stability: offer.stability ?? rollStability(offer.scale || 'feature'),
@@ -316,10 +316,10 @@ export function shootTick(s) {
     // and a short feature were paying exactly the same and the difference only appeared at three.
     const spread = over * 1.6 * demanding;
     p.spreadThin = spread;
-    // Running on empty is less of you in the work: from 82 your month's contribution shrinks,
-    // up to three points at 100. It is the one chain (burnout-audit §12.4) — the meter is your
+    // Running on empty is less of you in the work: from 75 your month's contribution shrinks,
+    // up to five points at 100. It is the one chain (burnout-audit §12.4) — the meter is your
     // contribution, the rating reads it at wrap, nothing else is charged for the same tiredness.
-    const empty = Math.max(0, (s.strain || 0) - 82) / 6;
+    const empty = Math.max(0, (s.strain || 0) - 75) / 5;
     p.meter = clamp(p.meter + Math.max(empty > 0 ? 0 : 1, rint(3, 6) + craft + warmth - spread - empty));
     // `_workedMonth` is NOT set here, although the first version of this set it. Turning up is
     // not putting something into the picture, and the director is meant to notice the actor who
@@ -524,6 +524,12 @@ function tickSet(s, p) {
     // meant a shoot that stopped in month one left you with literally nothing.
     productionTrouble(s, p);
     return;
+  }
+  // The schedule bonus (contract.js): on the agreed dates, paid; a lighter schedule or a moved
+  // date gave it up (life/burnout.js askProduction). A medical stop alone does not.
+  if ((p.scheduleBonus || 0) > 0) {
+    if (!p.lostBonus) paid(s, p.scheduleBonus, `"${p.title}" — schedule bonus`);
+    else addTimeline(s, `"${p.title}" wrapped. The schedule bonus went with the dates you moved.`);
   }
   wrapProduction(s, p);
 }

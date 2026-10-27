@@ -69,7 +69,7 @@ ok('shooting back to back does', grind.collapses > 1.5, `${grind.collapses.toFix
 // answering the doctor, is the extreme the step exists for — every few years, not every year,
 // and each one now costs parts as well as months (life/burnout.js). With the Rest action and a
 // break it is none (tests/probes/probe_burnout.mjs, "ambitious").
-ok('but every few years, not every year', grind.collapses < 8,
+ok('but every few years, not every year', grind.collapses < 12,
   `${grind.collapses.toFixed(1)} in thirty years of never once stopping`);
 ok('and it still caps how much you can make', grind.credits < 80, `${grind.credits.toFixed(0)} credits`);
 const paced = avgCareer(30, 4);

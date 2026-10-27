@@ -298,6 +298,16 @@ export function draftContract(s, o) {
       text: 'Your face on the toys, the lunchboxes and the game is theirs',
       options: [{ id: 'two', label: 'Ask for two per cent of the merchandise', value: 2, odds: o.kind === 'sequel' ? 40 : 25 }] });
   }
+  // The schedule bonus and the postponement terms (Burnout Core, life/burnout.js): what asking for a
+  // lighter schedule or a moved date can cost, on the paper before you sign. A bonus kept or given
+  // up — never a fine, and a doctor's stop is not a broken date.
+  if (big && !platformFilm && !o.perEpisode && ['blockbuster', 'feature', 'prestige'].includes(o.scale) && o.tier !== 'supporting') {
+    const bonus = Math.round(((o.salary || 0) * 0.1) / 1000) * 1000;
+    if (bonus > 0) clauses.push({ id: 'scheduleBonus', label: 'Schedule bonus', value: bonus,
+      text: `${money(bonus)} at wrap for finishing on the agreed dates. Asking for a lighter schedule or a later date gives it up`, options: [] });
+    clauses.push({ id: 'postpone', label: 'Postponement', value: 1,
+      text: 'They will move your dates once if you ask; a second time is up to them. A doctor’s stop is not a broken date', options: [] });
+  }
   if (big && !platformFilm && (o.scale === 'indie' || o.scale === 'festival') && !o.perEpisode && tierIdx(s) >= 1) {
     clauses.push({ id: 'points', label: 'Points', value: 0,
       text: 'The fee, and no share of what it makes',
@@ -650,6 +660,7 @@ export function signContract(s, id) {
     if (c.id === 'exit') o.exitAfter = c.value || 0;
     if (c.id === 'payOrPlay') o.payOrPlay = !!c.value;
     if (c.id === 'merch') o.merch = c.value || 0;
+    if (c.id === 'scheduleBonus') o.scheduleBonus = c.value || 0;
     if (c.id === 'points' && c.value) { o.salary = Math.round((o.salary || 0) * 0.6); o.backend = Math.max(o.backend || 0, c.value); o.points = true; }
   }
   o.signed = true;

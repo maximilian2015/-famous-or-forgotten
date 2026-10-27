@@ -75,6 +75,7 @@ function month(t, st, r) {
     const o = t.offers[0]; PR.startProduction(t, o); t.offers = t.offers.filter((x) => x.id !== o.id);
   }
   if (st.rest && !(t.productions || []).length && (t.ap || 0) >= 10) AC.runAction(t, 'rest');
+  for (const p of t.productions || []) if ((p.monthsLeft || 0) === 1 && !p.paused) { r.meter += p.meter || 0; r.wraps++; }
   const before = { cash: t.cash, burnouts: t.burnouts || 0, frozen: (t.frozen || []).length };
   t = advanceMonth(t);
   const L = (t.inbox || []).find((x) => x.tag === 'agent'); if (L) EM.emailAct(t, L.id, 0);
@@ -93,7 +94,7 @@ function career(strat, life) {
   let t = createInitialState({ name: strat + life, dream: 'actor', created: true, gender: life % 2 ? 'female' : 'male' });
   beginLife(t);
   Object.assign(t, { stage: 'career', ageY: 22, year: 2050, month: 0, hasApartment: true, housing: 'room', cash: 9000, alive: true, ap: 100, apMax: 100, apMaxEff: 100, fame: 0, peakFame: 0 });
-  const r = { months: 0, red: 0, top: 0, off: 0, collapses: 0, breaks: 0, peakFame: 0, doctor: 0 };
+  const r = { months: 0, red: 0, top: 0, off: 0, collapses: 0, breaks: 0, peakFame: 0, doctor: 0, meter: 0, wraps: 0 };
   for (let m = 0; m < YEARS * 12 && t.alive !== false; m++) {
     try { t = month(t, st, r); } catch (e) { r.threw = e.message + ' ' + (e.stack || '').split('\n')[1]; break; }
     if (m % 24 === 23) t = JSON.parse(JSON.stringify(t));
@@ -124,7 +125,7 @@ console.log(`${CAREERS} careers × ${YEARS} years per strategy — ${Math.round(
 const cols = [
   ['red 82+ %', (r) => (100 * r.red) / r.months, avg], ['at 95+ %', (r) => (100 * r.top) / r.months, avg],
   ['collapses', (r) => r.collapses, avg], ['signed off mo', (r) => r.off, avg], ['breaks', (r) => r.breaks, avg],
-  ['held', (r) => r.held, avg], ['cut', (r) => r.cut, avg], ['films lost', (r) => r.lost, avg], ['doctor', (r) => r.doctor, avg], ['pauses', (r) => r.pauses, avg], ['credits', (r) => r.credits, med], ['avg rating', (r) => r.rating, avg],
+  ['held', (r) => r.held, avg], ['cut', (r) => r.cut, avg], ['films lost', (r) => r.lost, avg], ['doctor', (r) => r.doctor, avg], ['pauses', (r) => r.pauses, avg], ['credits', (r) => r.credits, med], ['meter@wrap', (r) => r.meter / (r.wraps || 1), avg], ['avg rating', (r) => r.rating, avg],
   ['peak fame', (r) => r.peakFame, med], ['Standing', (r) => r.standing, med], ['cash €m', (r) => r.cash / 1e6, med],
   ['health', (r) => r.health, avg], ['depressed', (r) => r.depression, avg],
 ];

@@ -97,10 +97,10 @@ export function forcedStopOdds(s) {
   if (now(s) < (s._burntUntil || 0)) return 0;
   let r = 0.3 + Math.max(0, st - 88) * 0.08 + Math.min(1.5, Math.max(0, red - 6) * 0.03);
   const top = s._topMonths || 0;
-  if (top >= 3) r += Math.min(3, (top - 2) * 0.25);
+  if (top >= 3) r += Math.min(3.5, (top - 2) * 0.35);
   r *= 1 + loadOf(s) / 72;
   if (now(s) - (s._doctorIgnored ?? -99) < 12) r *= 1.8;
-  return Math.min(5, Math.round(r * 10) / 10);
+  return Math.min(6, Math.round(r * 10) / 10);
 }
 
 // ── the studio's decision ─────────────────────────────────────────────────────
@@ -189,7 +189,7 @@ export function forcedStop(s) {
   s.burnout = { left: months, since: now(s), rest: true, forced: true };
   (s.medical = s.medical || []).push({ at: now(s), months, forced: true });
   s._redMonths = 0; s._topMonths = 0; s._doctorIgnored = null;
-  s._burntUntil = now(s) + months + 24;
+  s._burntUntil = now(s) + months + 12;
   s.mental = clamp((s.mental || 0) - 14);
   s.health = clamp((s.health || 0) - 4);
   const lines = studiosDecide(s, months);
