@@ -278,9 +278,12 @@ const theirFault = abandon(false), yourFault = abandon(true);
 // a decade. The money dying is not your fault, and the game says so now.
 ok('a film the money let die costs you nothing', theirFault.respect === 60, String(theirFault.respect));
 ok('and the diary does not blame you for it', /nobody blames you/.test(JSON.stringify(theirFault.timeline)), JSON.stringify(theirFault.timeline.slice(-1)));
-ok('but one that died because you walked off it does cost you', yourFault.respect < 60, String(yourFault.respect));
-ok('and more again when they held it open and you never went back', yourFault.respect <= 60 - 9 && /recast/.test(JSON.stringify(yourFault.timeline)),
-  `${yourFault.respect} · ${JSON.stringify(yourFault.timeline.slice(-1))}`);
+// A frozen film marked byYou is one a burnout stopped (life/strain.js is the only place that
+// marks it). It used to cost −6, or −9 past the window: illness charged as a breach. Losing
+// the part is the consequence; Standing is not touched (burnout-audit §13, Maxi 27 Oct).
+ok('one a burnout stopped costs you the film, not your standing', yourFault.respect === 60, String(yourFault.respect));
+ok('and the diary says they recast it, without calling it your fault', /recast/.test(JSON.stringify(yourFault.timeline)) && !/because of you|never went back/.test(JSON.stringify(yourFault.timeline)),
+  JSON.stringify(yourFault.timeline.slice(-1)));
 ok('and it is gone from the freezer', theirFault.frozen.length === 0 && yourFault.frozen.length === 0);
 
 console.log(fails ? `\n${fails} FAILED` : '\nall passed');
