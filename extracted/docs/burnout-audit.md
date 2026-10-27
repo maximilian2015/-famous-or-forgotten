@@ -154,3 +154,23 @@ Alex Moon has five releases in 2080. Even if they were shot at different times, 
 - **It is said on the offer:** "Three of your films already open this year".
 
 It belongs to Step 3b because it is the same decision as burnout — how much work to take — seen from the audience. The three-career balance above has to include it. Otherwise the always-busy star pays only in body and never in box office.
+
+## 11. Where the burnout bar goes (Maxi, 27 Oct: "куда вставить шкалу")
+
+**Today strain has no bar anywhere**, only a word in three places:
+- the home screen's life card, "Energy · Running on empty", shown only from 34;
+- the passport, "Body · 100 · running on empty";
+- the risk card, "No month off".
+
+The life card also shows **"Energy 85/85"** a few lines away. That is the monthly action energy (`ap`), a different thing, so two different "Energy" sit side by side.
+
+**Proposal:**
+1. **A home-screen tile** beside HEALTH and MENTAL: **LOAD 77** with a bar and the state word (rested / overworked / burning out / exhausted). Tapping it shows:
+   - what the load does now;
+   - the last 36 months of work;
+   - the two ways down: work less, or step away.
+2. **The offer and the contract** — the place the decision is made. One forecast line: *"Load 62 → 88 if you sign. Two months overlap with Light and Rain III."*
+3. **The set card:** one line under "Your performance" when it matters ("You are running on empty — scene days are harder").
+4. **Rename the life card's strain row** from "Energy" to "Load", so it is never confused with action energy.
+
+Nowhere else. The passport keeps its word.
