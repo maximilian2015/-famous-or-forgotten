@@ -290,7 +290,7 @@ export function rehearsalsThisMonth(s, id) { const p = setById(s, id); return p 
 export function shootTick(s) {
   expireDemands(s);
   for (const p of sets(s)) {
-    if ((p.prepLeft || 0) > 0 || p.paused) continue;
+    if ((p.prepLeft || 0) > 0 || p.paused || p.cutShort) continue;
     // What a month of competent work is worth: your craft, and whether the person directing
     // it is getting anything out of you. Nobody is charged for this and nobody chooses it.
     const lead = (p.crew || [])[0];
@@ -316,7 +316,11 @@ export function shootTick(s) {
     // and a short feature were paying exactly the same and the difference only appeared at three.
     const spread = over * 1.6 * demanding;
     p.spreadThin = spread;
-    p.meter = clamp(p.meter + Math.max(1, rint(3, 6) + craft + warmth - spread));
+    // Running on empty is less of you in the work: from 82 your month's contribution shrinks,
+    // up to three points at 100. It is the one chain (burnout-audit §12.4) — the meter is your
+    // contribution, the rating reads it at wrap, nothing else is charged for the same tiredness.
+    const empty = Math.max(0, (s.strain || 0) - 82) / 6;
+    p.meter = clamp(p.meter + Math.max(empty > 0 ? 0 : 1, rint(3, 6) + craft + warmth - spread - empty));
     // `_workedMonth` is NOT set here, although the first version of this set it. Turning up is
     // not putting something into the picture, and the director is meant to notice the actor who
     // only turns up. A scene day sets it (career/scenes.js) and so does answering them when
@@ -423,9 +427,12 @@ function tickSet(s, p) {
     return;
   }
   // A serious illness stops the shoot dead — the schedule waits for you.
-  if ((s.illness && s.illness.freezes) || (s.burnout && s.burnout.rest && s.burnout.left > 0)) {
+  // A part the studio decided to finish without you (life/burnout.js `cutShort`) wraps on its
+  // own; one they hold, or one whose scenes you got moved, waits for its date.
+  const held = (p.heldUntil || 0) > (s.year || 0) * 12 + (s.month || 0);
+  if (!p.cutShort && (held || (s.illness && s.illness.freezes) || (s.burnout && s.burnout.rest && s.burnout.left > 0))) {
     p.paused = (p.paused || 0) + 1;
-    if (p.paused === 1) addTimeline(s, `${p.title} is on hold while you recover.`, true);
+    if (p.paused === 1 && p.heldFor !== 'postponed') addTimeline(s, `${p.title} is on hold while you recover.`, true);
     return;
   }
   p.paused = 0;
@@ -453,7 +460,7 @@ function tickSet(s, p) {
   // Reading the meter alone instead was worse, and test_scales said so — a picture starts at
   // 20, so nobody is above 55 in month two and every director cooled on every actor for doing
   // nothing wrong at all.
-  if (lead && p._workedMonth !== stamp - 1 && (p.months - p.monthsLeft) >= 1 && (p.meter || 0) < 55) {
+  if (lead && !p.cutShort && p._workedMonth !== stamp - 1 && (p.months - p.monthsLeft) >= 1 && (p.meter || 0) < 55) {
     p._winged = (p._winged || 0) + 1;
     // A pattern, not a bad week. The first month everybody gets; the second they notice; from
     // the third it is who you are on this set. A flat penalty from month one put an

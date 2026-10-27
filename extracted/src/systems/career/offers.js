@@ -9,6 +9,7 @@ import { GENRES } from '../meta/news.js';
 import { startProduction } from './production.js';
 import { rollStability } from './stability.js';
 import { canWork } from '../life/strain.js';
+import { off, signLater } from '../life/burnout.js';
 import { newTitle } from '../world/titles.js';
 import { refusedOnType, refusalLoosens, labelInfo } from '../meta/typecast.js';
 import { storyOfferFactor, noteRefusal, holdsAGrudge, storyOf, fanMood, BURN_STANDING } from '../meta/stories.js';
@@ -296,8 +297,13 @@ export function acceptOffer(s, id) {
   // Anything with a real schedule becomes a shoot you live through — same rule as a
   // casting. Only a day's work resolves in the same click.
   const fit = canWork(s);
+  const shoot = o.tier !== 'supporting' || (o.months || 0) >= 2;
+  // Signed off, or on a break: a shoot can still be signed, to start the month you are back
+  // (life/burnout.js). The agent asks; they may not wait. A paper already signed to a later
+  // date just keeps waiting (contract.js startSigned).
+  if (!fit.ok && shoot && off(s) && !o.signed) { const r = signLater(s, o); s.lastEvent = r.say; if (!r.ok) { s.offers = (s.offers || []).filter((x) => x.id !== id); recordPassed(s, o, 'health'); } return s; }
   if (!fit.ok) { s.lastEvent = fit.why; return s; }
-  if (o.tier !== 'supporting' || (o.months || 0) >= 2) {
+  if (shoot) {
     const room = canTakeSet(s, o);
     if (!room.ok) { s.lastEvent = room.why; return s; }
     s.offers = (s.offers || []).filter((x) => x.id !== id);

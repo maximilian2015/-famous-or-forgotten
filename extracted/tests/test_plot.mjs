@@ -114,25 +114,25 @@ test('a frozen film that thaws comes back as the same story', () => {
   startProduction(s, thaw);
   assert.deepEqual(s.productions.find((p) => p.title === o.projectTitle).plot, o.plot);
 });
-test('a shoot that stops because you burned out thaws as the same film, the same part and the same story', () => {
-  // Found by tests/probes/probe_integration.mjs: this freeze (life/strain.js) kept none of it, so a
-  // rescued shoot came back with a new story and a stranger's name in your part.
+test('a shoot a burnout stops keeps its film, its part and its story — held, finished short, or recast on the record', () => {
+  // Found by tests/probes/probe_integration.mjs when a burnout froze the shoot: the freeze kept none of
+  // it. Burnout Core (life/burnout.js) no longer freezes — the production decides — and whatever it
+  // decides, the story stays the film's: a held set is the same set, a recast is written down.
   const s = career({ gender: 'male', filmography: [] }); const o = film({ projectTitle: 'Protocol 56', genre: 'Sci-Fi', months: 6 }); s.offers = [o];
   dressOffers(s); startProduction(s, o);
-  const name = s.productions[0].character.name;
-  Object.assign(s, { strain: 100, _redMonths: 6 });
+  const set = s.productions[0]; set.prepLeft = 0; set.monthsLeft = 2;   // most of it shot: they wait
+  const name = set.character.name;
+  Object.assign(s, { strain: 100, _redMonths: 30, _topMonths: 10, fame: 75 });
   const random = Math.random; Math.random = () => 0;
   try { strainTick(s); } finally { Math.random = random; }
-  assert.ok((s.frozen || []).length, 'the shoot did not stop');
-  assert.deepEqual(s.frozen[0].plot, o.plot, 'the frozen shoot forgot its story');
-  s.offers = []; s.month += 4;
-  Math.random = () => 0;
-  try { frozenTick(s); } finally { Math.random = random; }
-  const thaw = (s.offers || []).find((x) => x.kind === 'thaw');
-  assert.ok(thaw, 'nothing thawed');
+  assert.ok(s.burnout && s.burnout.left > 0, 'the shoot did not stop');
+  assert.ok(!(s.frozen || []).length, 'it went into the freezer');
+  const still = (s.productions || []).find((p) => p.title === 'Protocol 56');
+  assert.ok(still, 'a lead with most of it shot was not held');
+  assert.deepEqual(still.plot, o.plot, 'the held shoot forgot its story');
+  assert.equal(still.character.name, name, 'a stranger is in your part');
   dressOffers(s);
-  assert.deepEqual(thaw.plot, o.plot, 'it came back as a different story');
-  assert.equal(thaw.character.name, name, 'it came back with a stranger in your part');
+  assert.deepEqual(still.plot, o.plot, 'it was re-told');
 });
 test('turning a film down takes its story with it and leaves nothing to be re-told', () => {
   const s = career({ filmography: [] }); const o = film({ projectTitle: 'Small Wedding', genre: 'Romance' }); s.offers = [o];

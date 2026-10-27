@@ -49,7 +49,9 @@ export const RISKS = {
     level: (s) => { if (!hasAgent(s)) return 0; const r = s.respect || 0, ins = insurability(s); return r < -10 || ins < 0.6 ? 2 : r < 0 || ins < 0.8 ? 1 : 0; },
     line: (s, l) => (l === 2 ? 'Your agent is doing more explaining than selling. One more rung down and the calls stop being returned.' : 'Your agent has to argue for you now. Agents do that for a while, and then they do not.') },
   difficult: { label: 'Difficult', fix: 'A set that ends warm. Time.',
-    level: (s) => (rumourOn(s) || (s.respect || 0) < -15 ? 2 : (s.burnouts || 0) >= 2 ? 1 : 0),
+    // A medical stop is not "difficult" (burnout-audit §6): it used to light at two collapses
+    // with "two sets stopped because of you". Only the rumour and the standing do it now.
+    level: (s) => (rumourOn(s) || (s.respect || 0) < -15 ? 2 : 0),
     line: (s, l) => (l === 2 ? 'The word is difficult, and it is in the room before you are. A co-star with an interview to fill will use it.' : 'Two sets stopped because of you. It gets said about people; it is starting to be said about you.') },
   paper: { label: 'A lawyer has the paper', fix: 'Nothing but time. Do not walk off another.',
     level: (s) => { const n = within(s, s.walkedOff, 24); return n >= 2 ? 2 : n >= 1 ? 1 : 0; },

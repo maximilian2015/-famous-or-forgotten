@@ -138,7 +138,7 @@ const DEAD_REASONS = [
 
 // Pay-or-play (contract.js): the fee is owed whether or not the picture happens. Paid the
 // month it stops, and the shutdown is somebody else's problem.
-function payOrPlay(s, p) {
+export function payOrPlay(s, p) {
   if (!p.payOrPlay) return 0;
   const owed = Math.max(0, (p.salary || 0) - (p.paid || 0));
   if (owed > 0) { paid(s, owed, `"${p.title}" — pay-or-play, the rest of the fee`); p.paid = p.salary; addTimeline(s, `"${p.title}" stopped and the paper said pay-or-play. They paid the rest of the fee.`); }
