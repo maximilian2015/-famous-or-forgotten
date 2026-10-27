@@ -11,6 +11,7 @@ import { declineOffer } from '../src/systems/career/offers.js';
 import { draftContract, signContract } from '../src/systems/career/contract.js';
 import { sheetOf, pageAt } from '../src/systems/career/plot/sheet.js';
 import { chronologyFor } from '../src/systems/career/scenework.js';
+import { strainTick } from '../src/systems/life/strain.js';
 
 let failed = 0;
 function test(name, fn) {
@@ -112,6 +113,26 @@ test('a frozen film that thaws comes back as the same story', () => {
   assert.deepEqual(thaw.plot, o.plot, 'the thawed offer has a different story');
   startProduction(s, thaw);
   assert.deepEqual(s.productions.find((p) => p.title === o.projectTitle).plot, o.plot);
+});
+test('a shoot that stops because you burned out thaws as the same film, the same part and the same story', () => {
+  // Found by tests/probes/probe_integration.mjs: this freeze (life/strain.js) kept none of it, so a
+  // rescued shoot came back with a new story and a stranger's name in your part.
+  const s = career({ gender: 'male', filmography: [] }); const o = film({ projectTitle: 'Protocol 56', genre: 'Sci-Fi', months: 6 }); s.offers = [o];
+  dressOffers(s); startProduction(s, o);
+  const name = s.productions[0].character.name;
+  Object.assign(s, { strain: 100, _redMonths: 6 });
+  const random = Math.random; Math.random = () => 0;
+  try { strainTick(s); } finally { Math.random = random; }
+  assert.ok((s.frozen || []).length, 'the shoot did not stop');
+  assert.deepEqual(s.frozen[0].plot, o.plot, 'the frozen shoot forgot its story');
+  s.offers = []; s.month += 4;
+  Math.random = () => 0;
+  try { frozenTick(s); } finally { Math.random = random; }
+  const thaw = (s.offers || []).find((x) => x.kind === 'thaw');
+  assert.ok(thaw, 'nothing thawed');
+  dressOffers(s);
+  assert.deepEqual(thaw.plot, o.plot, 'it came back as a different story');
+  assert.equal(thaw.character.name, name, 'it came back with a stranger in your part');
 });
 test('turning a film down takes its story with it and leaves nothing to be re-told', () => {
   const s = career({ filmography: [] }); const o = film({ projectTitle: 'Small Wedding', genre: 'Romance' }); s.offers = [o];
