@@ -30,7 +30,7 @@ const GO = (off) => ({
 // only person who has to hold the story in their head is the one in front of the camera:
 // in this scene she knows about the letter, in that one she does not. Playing the wrong one
 // is the most visible mistake an actor can make, and nobody catches it until the edit.
-export function Chronology({ difficulty = 1, beats = [], reveal = 0, onResult }) {
+export function Chronology({ difficulty = 1, beats = [], reveal = 0, ask = null, onResult }) {
   const [picked, setPicked] = useState({});
   const [done, setDone] = useState(false);
   const knows = (i) => (beats[i] ? beats[i].pos > reveal : false);
@@ -46,7 +46,7 @@ export function Chronology({ difficulty = 1, beats = [], reveal = 0, onResult })
   };
   return (<div>
     <div style={{ fontSize: 11.5, color: theme.muted, lineHeight: 1.5, marginBottom: 9 }}>
-      They are shooting out of order today. Tick every scene where she already knows.
+      {ask || 'They are shooting out of order today. Tick every scene where she already knows.'}
     </div>
     {beats.map((b, i) => {
       const on = !!picked[i];

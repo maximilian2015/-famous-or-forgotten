@@ -258,6 +258,11 @@ function collapse(s) {
       // They will hold it for a name and recast an unknown — and this one stopped because
       // of you, which costs more if it never gets made.
       patience: patienceFor(s.fame || 0), byYou: true,
+      // The same script and the same part when it thaws — the freeze in career/stability.js
+      // learned this; this one did not, so a rescued shoot came back as a different film with a
+      // stranger in your part.
+      character: p.character || null, premise: p.premise || null, plot: p.plot || null,
+      seriesTitle: p.seriesTitle || '', potential: p.potential || null,
       owed: Math.max(0, (p.salary || 0) - (p.paid || 0)), paid: p.paid || 0, salary: p.salary || 0,
       why: 'you could not carry on and the production shut down around you',
     });

@@ -28,6 +28,8 @@
 import { rint, chance } from '../../engine/rng.js';
 import { addHype } from '../meta/hype.js';
 import { setRespect } from '../meta/status.js';
+import { startCover, coverRisk } from './cover.js';
+import { keyFor, remember } from '../meta/memory.js';
 
 const clamp = (v, a = 0, b = 100) => Math.max(a, Math.min(b, v));
 const dir = (p) => ((p && p.crew) || [])[0] || null;
@@ -101,11 +103,17 @@ export const DEMANDS = {
     needs: (p) => !!co(p),
     ask: (p) => `${coName(p)} has not been right for a fortnight. The unit knows, the AD knows, and nobody has said it out loud yet.`,
     options: [
-      { id: 'cover', label: 'Cover for them', hint: 'Your days get longer and the film gets worse',
-        fx: (s, p) => { bond(co(p), rint(8, 14)); meter(p, -rint(3, 6)); s.strain = clamp((s.strain || 0) + rint(2, 5)); log(p, `You covered for ${coName(p)} for a fortnight and nobody ever knew.`); },
+      // What happens after is a story (career/cover.js): they straighten out, they ask again, it
+      // comes out, or nothing. The hint says what kind of person the director is before you lie
+      // to them — the trait was on the crew card all along and nothing read it.
+      { id: 'cover', label: 'Cover for them', hint: (s, p) => `Your days get longer and the film gets worse. If it comes out: ${dir(p) ? coverRisk(dir(p).name, dir(p).trait, dir(p).gender === 'female' ? 'f' : 'm') : 'the director will know you lied.'}`,
+        fx: (s, p) => { bond(co(p), rint(8, 14)); meter(p, -rint(3, 6)); s.strain = clamp((s.strain || 0) + rint(2, 5)); log(p, `You covered for ${coName(p)} for a fortnight.`); startCover(s, p); },
         said: (s, p) => `You ran the lines alone and played to a mark. ${coName(p)} knows exactly what you did and will not forget it.` },
       { id: 'tell', label: 'Tell the first AD', hint: 'The set runs again, and they will know it was you',
-        fx: (s, p) => { bond(co(p), -rint(10, 18)); meter(p, rint(4, 8)); crewAll(p, rint(2, 4)); log(p, 'Somebody finally said it out loud, and it was you.'); },
+        fx: (s, p) => { bond(co(p), -rint(10, 18)); meter(p, rint(4, 8)); crewAll(p, rint(2, 4)); log(p, 'Somebody finally said it out loud, and it was you.');
+          // Both of them will remember who said it (meta/memory.js).
+          if (co(p) && dir(p)) { const ck = keyFor(s, co(p), p), dk = keyFor(s, dir(p), p);
+            remember(s, { act: 'told', p, about: ck, witnesses: [dk], felt: { [ck]: { felt: -2, why: 'that you were the one who told the first AD about them' }, [dk]: { felt: 1, why: 'that you told the truth about a co-star when it was hard' } } }); } },
         said: (s, p) => `It was handled by Thursday. The work is better and ${coName(p)} has stopped saying good morning.` },
       { id: 'none', label: 'Say nothing to anybody', hint: 'It is not your set to run', passive: true,
         fx: () => {},

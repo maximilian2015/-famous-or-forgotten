@@ -10,9 +10,9 @@ import { startProduction } from './production.js';
 import { rollStability } from './stability.js';
 import { canWork } from '../life/strain.js';
 import { newTitle } from '../world/titles.js';
-import { refusedOnType } from '../meta/typecast.js';
-import { storyOfferFactor, noteRefusal, holdsAGrudge } from '../meta/stories.js';
-import { loseContinuation } from './continuation.js';
+import { refusedOnType, refusalLoosens, labelInfo } from '../meta/typecast.js';
+import { storyOfferFactor, noteRefusal, holdsAGrudge, storyOf, fanMood, BURN_STANDING } from '../meta/stories.js';
+import { loseContinuation, sourceCredit } from './continuation.js';
 import { recordPassed } from '../meta/passed.js';
 import { ensureBudget } from './budget.js';
 import { ambitionLean } from '../meta/ambition.js';
@@ -322,8 +322,94 @@ export function acceptOffer(s, id) {
   addTimeline(s, `${credit.title}: ${status} (${Math.round(rating)}/100).`, rating < 50);
   return s;
 }
+// ── saying no ─────────────────────────────────────────────────────────────────
+// What passing on an offer will do, worked out BEFORE it is done (Maxi/ChatGPT, 23 Oct). The same Pass
+// was a harmless no on one card and a broken contract worth six points of standing on the next, and
+// neither button said which. This is the one place the rules live: the offer card and the contract
+// room read it to warn you, and declineOffer reads it to act — so the warning cannot drift from the rule.
+//   path       ordinary · exit (the paper's exit clause) · option (an option still running) · thaw (a
+//              set they held open for you) · meeting (no again, after the director's meeting) ·
+//              continuation (your own next season or part)
+//   standing   the exact loss, when there is one
+//   certain    what will happen, every time: { text, tone: 'bad' | 'good' | 'plain' }
+//   maybe      what can happen, and is not promised — the fans, a letter — because other things decide it
+//   confirm    whether Pass should ask first: anything that costs standing, breaks a paper, ends your own
+//              part, or makes a director remember. An ordinary no stays one click.
+// An option is running when the paper still binds you to this season or this part: a renewal's offer
+// knows (franchise.js underOption, from the real term); a sequel's option covers the parts it named.
+export const OPTION_STANDING = 6, THAW_STANDING = 5;
+export function optionRunning(o) {
+  if (!o || !o.optioned) return false;
+  if (o.kind === 'renewal') return true;
+  if (o.kind === 'sequel') return (o.part || 2) <= (o.optionParts || 3);
+  return false;
+}
+export function exitApplies(o) {
+  return !!o && o.kind === 'renewal' && (o.exitAfter || 0) > 0 && (o.season || 0) > o.exitAfter;
+}
+export function declineConsequences(s, o) {
+  if (!o) return null;
+  const title = String(o.projectTitle || '').replace('⭐ ', '');
+  const show = o.seriesTitle || title;
+  const continuation = o.kind === 'sequel' || o.kind === 'renewal';
+  const lead = o.tier !== 'supporting';
+  const out = { path: 'ordinary', standing: 0, breach: false, certain: [], maybe: [], confirm: false,
+    heading: 'Pass on this?', body: 'They will cast somebody else.', leave: 'Pass' };
+  const st = storyOf(s, 'recast');
+  if (exitApplies(o)) {
+    Object.assign(out, { path: 'exit', confirm: true, heading: `Leave "${show}"?`, leave: 'Leave by the exit clause',
+      body: `Your paper has an exit after season ${o.exitAfter}. You are using it.` });
+    out.certain.push({ text: 'No penalty: you leave the way the paper said you could', tone: 'good' });
+    out.certain.push({ text: 'The network writes your character a last episode', tone: 'plain' });
+    return out;
+  }
+  // The second no after the director's meeting, and an option still running, are two separate costs
+  // and both apply when both are true (stories.js burns the bridge; declineOffer breaks the paper).
+  out.meeting = o.story === 'recast' && !!st;
+  out.option = continuation && optionRunning(o);
+  if (out.meeting) {
+    Object.assign(out, { path: 'meeting', standing: -BURN_STANDING, confirm: true, heading: 'Say no again?', leave: 'Say no again',
+      body: `This is the paper ${st.data.director || 'the director'} moved for you after the meeting. A second no is the end of it.` });
+    out.certain.push({ text: `Standing −${BURN_STANDING}`, tone: 'bad' });
+    out.certain.push({ text: `${st.data.director || 'The director'} never works with you again`, tone: 'bad' });
+  }
+  if (out.option) {
+    Object.assign(out, { path: out.meeting ? 'meeting' : 'option', standing: out.standing - OPTION_STANDING, breach: true, confirm: true,
+      heading: out.meeting ? out.heading : 'Break the contract?', leave: out.meeting ? out.leave : 'Break the contract and leave',
+      body: (out.meeting ? out.body + ' ' : '') + (o.kind === 'renewal' ? `The network holds an option on season ${o.season} of "${show}". Refusing it is breaking your contract.`
+        : `You signed an option for "${title}". Refusing it is breaking your contract.`) });
+    out.certain.push({ text: `Standing −${OPTION_STANDING} · contract breach`, tone: 'bad' });
+  }
+  if (out.meeting || out.option) { /* the costs are above */ } else if (o.kind === 'thaw') {
+    Object.assign(out, { path: 'thaw', standing: -THAW_STANDING, confirm: true, heading: `Walk away from "${title}"?`, leave: 'Walk away from it',
+      body: 'They held your part open for years and finally found the money to finish it.' });
+    out.certain.push({ text: `Standing −${THAW_STANDING}`, tone: 'bad' });
+  } else if (continuation) {
+    Object.assign(out, { path: 'continuation', confirm: true, heading: o.kind === 'renewal' ? `Pass on season ${o.season} of "${show}"?` : `Pass on "${title}"?`, leave: 'Pass on it',
+      body: o.kind === 'renewal' ? 'The show goes on. Your part goes to somebody else, or is written out.' : 'The film goes ahead. Your part goes to somebody else.' });
+  }
+  if (continuation) {
+    out.certain.push({ text: o.kind === 'renewal' ? `It stays on your record: season ${o.season} of "${show}", and what it did without you`
+      : `It stays on your record: "${title}", and what it did without you`, tone: 'plain' });
+    // The fans and the letter are readings, not promises: other stories and how the thing did decide them.
+    const how = o.story === 'recast' ? 'meeting' : out.option ? 'option' : 'passed';
+    const mood = fanMood(o, how, sourceCredit(s, o));
+    if (mood === 'furious') out.maybe.push(`The fans may be furious — the ${o.kind === 'renewal' ? 'show' : 'film'} meant a lot to them`);
+    else if (mood === 'sorry') out.maybe.push('Some fans may be sorry to see you go');
+    if (out.path === 'continuation' && lead) out.maybe.push('The director may ask to meet before they recast');
+  } else if (out.path === 'ordinary' && lead && o.via !== 'casting' && /feature|blockbuster|prestige/.test(o.scale || '')) {
+    // noteRefusal: a lead in a real picture, offered rather than read for — the director keeps a list.
+    out.confirm = true;
+    out.certain.push({ text: `${o.director || 'The director'} will remember the no, and will not call for a while`, tone: 'bad' });
+    out.maybe.push('The picture opens without you, and the trades will say how it did');
+  }
+  for (const id of refusalLoosens(s, o)) out.certain.push({ text: `Saying no to your type loosens it: ${labelInfo(id).label}`, tone: 'good' });
+  return out;
+}
 export function declineOffer(s, id) {
   const o = (s.offers || []).find((x) => x.id === id);
+  // The rules, before the offer leaves the list (the director's meeting is read off the stories).
+  const c = o ? declineConsequences(s, o) : null;
   s.offers = (s.offers || []).filter((x) => x.id !== id);
   s.inbox = (s.inbox || []).filter((m) => m.offerId !== id);
   if (!o) return s;
@@ -332,16 +418,15 @@ export function declineOffer(s, id) {
   // or the season that goes ahead without you.
   // Leaving by the exit clause (contract.js): after the season it names, with notice, and
   // nobody's lawyer and nobody's fans have a word to say.
-  const byExit = o.kind === 'renewal' && (o.exitAfter || 0) > 0 && (o.season || 0) > o.exitAfter;
-  if (byExit) {
+  if (c.path === 'exit') {
     loseContinuation(s, o, 'exit');
     s.lastEvent = `You left "${o.seriesTitle || title}" after season ${(o.season || 1) - 1}, the way the paper said you could. The network wrote a graceful exit and the fans got a last episode.`;
     addTimeline(s, `Left ${o.seriesTitle || title} by the exit clause. A last episode, and no hard feelings.`);
     return s;
   }
   // Your own season or sequel: written down on its credit, the ledger and the fans (continuation.js).
-  // Walking out of an option is its own thing, below.
-  if (o.kind === 'sequel' || o.kind === 'renewal') loseContinuation(s, o, o.story === 'recast' ? 'meeting' : o.optioned ? 'option' : 'passed');
+  // An option walked out of is an option only while it is running (optionRunning).
+  if (o.kind === 'sequel' || o.kind === 'renewal') loseContinuation(s, o, o.story === 'recast' ? 'meeting' : c.option ? 'option' : 'passed');
   else {
     if (o.tier !== 'supporting' && o.via !== 'casting') noteRefusal(s, o);
     // Kept for good, whatever the stories above make of it (meta/passed.js).
@@ -349,24 +434,19 @@ export function declineOffer(s, id) {
   }
   // And saying no to the box is how you get out of it — see meta/typecast.js refusedOnType.
   refusedOnType(s, o);
-  // Walking out of a season the network holds an option on is walking out of a contract.
-  if (o.kind === 'renewal' && o.optioned) {
-    setRespect(s, (s.respect || 0) - 6);
-    s.lastEvent = `You passed on season ${o.season} of "${o.seriesTitle || title}". The network holds an option on it, and their lawyers have read it more recently than you have.`;
-    addTimeline(s, `Walked out of the option on ${o.seriesTitle || title}. The business remembers a contract.`, true);
+  // Walking out of an option that is still running is walking out of a contract.
+  if (c.option) {
+    setRespect(s, (s.respect || 0) - OPTION_STANDING);
+    s.lastEvent = o.kind === 'renewal'
+      ? `You passed on season ${o.season} of "${o.seriesTitle || title}". The network holds an option on it, and their lawyers have read it more recently than you have.`
+      : `You passed on "${title}". You signed an option for it years ago, and the studio's lawyers have read it more recently than you have.`;
+    addTimeline(s, `Walked out of the option on ${o.kind === 'renewal' ? (o.seriesTitle || title) : title}. The business remembers a contract.`, true);
     return s;
   }
   // Turning down an ordinary offer is your business. Turning down the one they finally
   // found the money to finish, after holding your part open for years, is not.
-  // And walking out of an option you signed is walking out of a contract.
-  if (o.kind === 'sequel' && o.optioned && (o.part || 2) <= (o.optionParts || 3)) {
-    setRespect(s, (s.respect || 0) - 6);
-    s.lastEvent = `You passed on "${title}". You signed an option for it years ago, and the studio's lawyers have read it more recently than you have.`;
-    addTimeline(s, `Walked out of the option on ${title}. The business remembers a contract.`, true);
-    return s;
-  }
-  if (o.kind === 'thaw') {
-    setRespect(s, (s.respect || 0) - 5);
+  if (c.path === 'thaw') {
+    setRespect(s, (s.respect || 0) - THAW_STANDING);
     s.lastEvent = `You said no to finishing "${title}". They waited a long time for that answer.`;
     addTimeline(s, `Refused to go back and finish ${title}. People noticed.`, true);
     return s;

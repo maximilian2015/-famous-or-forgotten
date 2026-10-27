@@ -26,6 +26,7 @@ import { ambitionOf } from './ambition.js';
 import { notePassedOutcome } from './passed.js';
 import { loseContinuation, recordForTitle, ensureResult, withoutYouLine, returned } from '../career/continuation.js';
 import { slotNorm } from '../career/franchise.js';
+import { COVER } from '../career/cover.js';
 
 const clamp = (v, a = 0, b = 100) => Math.max(a, Math.min(b, v));
 const stamp = (s) => (s.year || 0) * 12 + (s.month || 0);
@@ -50,6 +51,10 @@ const SAY = {
 };
 
 export function stories(s) { return s.stories || (s.stories = []); }
+// The ones this build can tell. A save that a newer build touched can carry a story this one
+// has never heard of; it is kept, untouched, for the build that knows it, and skipped here —
+// before this, one unknown id stopped every month and the story list from drawing.
+const known = (s) => stories(s).filter((st) => CHAINS[st.id] && CHAINS[st.id].beats);
 export function storyOf(s, id) { return stories(s).find((x) => x.id === id) || null; }
 function onCooldown(s, id, months) { const last = ((s._storyLog || {})[id] || []).slice(-1)[0]; return last != null && stamp(s) - last < months; }
 function end(s, st) {
@@ -339,6 +344,8 @@ export const CHAINS = {
             choices: [{ label: 'On', shows: { fx: { fame: -1 } }, apply: () => { setFame(s, (s.fame || 0) - 1); addTimeline(s, `${tv ? `Season ${n}` : `Part ${n}`} of "${st.data.title.replace(/\s+(II|III|IV|V|VI)$/, '')}" — without you, again.`, true); return { reply: 'On.', end: true }; } }] }; } },
     },
   },
+  // 8. Covering for a co-star (career/cover.js): started from the on-set ask, never by a roll.
+  cover: COVER,
 };
 export const CHAIN_ORDER = ['scandal', 'refused', 'recast', 'comeback', 'ageing', 'agent', 'rival'];
 
@@ -375,11 +382,14 @@ function wentBack(s, st) {
   return sets.some(mine) || (s.releases || []).some(mine) || (s.filmography || []).some((c) => mine(c) && (c.year || 0) >= (s.year || 0) - 2) || (s.offers || []).some((o) => o.story === 'recast' && o.signed);
 }
 // The second no. Very expensive, and the director is gone for good.
-function burnShows(st) { return { fx: { respect: -8, scandal: 4 }, more: [{ t: `${first(st.data.director)} never works with you again`, good: false }] }; }
+// What the second no costs — one number, read by the choice that shows it, by the bridge that burns
+// and by the warning on Pass (career/offers.js declineConsequences).
+export const BURN_STANDING = 8, BURN_SCANDAL = 4;
+function burnShows(st) { return { fx: { respect: -BURN_STANDING, scandal: BURN_SCANDAL }, more: [{ t: `${first(st.data.director)} never works with you again`, good: false }] }; }
 function burnTheBridge(s, st) {
   st.data.burned = true;
-  setRespect(s, (s.respect || 0) - 8);
-  s.scandal = clamp((s.scandal || 0) + 4);
+  setRespect(s, (s.respect || 0) - BURN_STANDING);
+  s.scandal = clamp((s.scandal || 0) + BURN_SCANDAL);
   (s.grudges = s.grudges || []).push({ who: st.data.director, title: st.data.title, scale: st.data.scale, since: stamp(s), due: stamp(s) + 9999, until: stamp(s) + 9999, hit: false, gross: 0, opened: true });
   const p = (s.people || []).find((x) => x.name === st.data.director); if (p) { p.cold = true; p.relationship = Math.min(p.relationship || 0, 5); }
   addTimeline(s, `${st.data.director} will not work with you again. Not a rumour: they said it to the trades.`, true);
@@ -424,6 +434,8 @@ export function noteSequelLoss(s, o, how, rec = null, src = null) {
   }
   stories(s).push({ id: 'recast', beat: 'meeting', due: stamp(s) + 2, since: stamp(s), data });
 }
+// What the fans would make of it, asked before it happens (the warning on Pass): a reading, not a promise.
+export function fanMood(o, how, src) { return o && o.tier !== 'supporting' ? fansOf(o, how, src) : 'quiet'; }
 // How much the show or the film meant to the people watching it, and whose doing the loss looks like.
 function fansOf(o, how, src) {
   if (!src) return 'quiet';
@@ -465,7 +477,7 @@ function recordFor(s, st) {
 
 // ── the engine ───────────────────────────────────────────────────────────────────
 function present(s, st) {
-  const chain = CHAINS[st.id]; const beat = chain.beats[st.beat]; if (!beat) { end(s, st); return; }
+  const chain = CHAINS[st.id]; if (!chain) return; const beat = chain.beats[st.beat]; if (!beat) { end(s, st); return; }
   const built = beat.build(s, st); if (!built) return;
   s.pendingArc = { story: st.id, beat: st.beat, speaker: built.speaker, text: built.text, choices: built.choices.map((c) => ({ label: c.label, hint: c.hint || null, shows: c.shows || null })) };
   st.shown = stamp(s);
@@ -474,11 +486,11 @@ export function storiesTick(s) {
   if (!inCareer(s)) return s;
   const now = stamp(s);
   // beats that are due, one a month, and only when nothing else is on the screen
-  for (const st of stories(s)) {
+  for (const st of known(s)) {
     if (st.due != null && st.due <= now && !s.pendingArc) { present(s, st); break; }
   }
   // a new chain: one a month, two at a time, never the same one twice in its cooldown
-  if (stories(s).length < 2) {
+  if (known(s).length < 2) {
     for (const id of CHAIN_ORDER) {
       const chain = CHAINS[id];
       if (storyOf(s, id) || (chain.cooldown && onCooldown(s, id, chain.cooldown))) continue;
@@ -496,7 +508,7 @@ export function storiesTick(s) {
 }
 // resolveArc (arcs.js) hands a story beat back here.
 export function resolveStory(s, arc, i) {
-  const st = storyOf(s, arc.story); if (!st) { s.pendingArc = null; return s; }
+  const st = storyOf(s, arc.story); if (!st || !CHAINS[st.id]) { s.pendingArc = null; return s; }
   const chain = CHAINS[st.id]; const beat = chain.beats[arc.beat];
   const built = beat.build(s, st); if (!built) { s.pendingArc = null; return s; }
   const c = built.choices[i]; if (!c) return s;
@@ -516,7 +528,7 @@ export function resolveStory(s, arc, i) {
 export const QUIET_AFTER = 3;
 export function activeStories(s) {
   const now = stamp(s);
-  return stories(s).map((st) => {
+  return known(s).map((st) => {
     const chain = CHAINS[st.id]; let line = '';
     try { line = chain.status(s, st); } catch (e) { line = ''; }
     const next = st.due != null ? Math.max(now, st.due) : null;

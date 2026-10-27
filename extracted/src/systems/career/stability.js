@@ -153,7 +153,7 @@ export function freezeProject(s, p) {
     title: p.title, role: p.role, type: p.type, genre: p.genre, scale: p.scale, tier: p.tier,
     // A rescue resumes THIS script and THIS part. Omitting them made dressOffers
     // invent a stranger and a new premise in every one of 300 thawed projects.
-    character: p.character || null, premise: p.premise || null,
+    character: p.character || null, premise: p.premise || null, plot: p.plot || null,
     seriesTitle: p.seriesTitle || '', potential: p.potential || null,
     ...tvTermsOf(p),
     genrePrestige: p.prestigeScore, prestigeScore: p.prestigeScore,
@@ -241,7 +241,7 @@ export function frozenTick(s) {
       (s.offers = s.offers || []).push({
         id: uid(s, 'thaw'),
         kind: 'thaw', projectTitle: f.title, role: f.role, type: f.type, genre: f.genre, projectId: f.projectId || null,
-        character: f.character || null, premise: f.premise || null,
+        character: f.character || null, premise: f.premise || null, plot: f.plot || null,
         seriesTitle: f.seriesTitle || '', potential: f.potential || null,
         ...tvTermsOf(f),
         scale: f.scale, tier: f.tier, prestigeScore: f.prestigeScore,

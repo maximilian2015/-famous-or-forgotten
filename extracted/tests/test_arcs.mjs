@@ -125,6 +125,17 @@ add('recast', 'answer', 'recast', () => life(), RECAST);
 add('recast', 'answer', 'recast, already burned', () => life(), { ...RECAST, burned: true });
 for (const hit of [true, false]) add('recast', 'without', hit ? 'it did fine' : 'it sank', () => life(), { ...RECAST, hit, other: 'Someone Else', gross: 1e8 });
 add('recast', 'again', '', () => life(), RECAST);
+// The cover (career/cover.js): every beat, every kind of director, the second time, and the way back.
+const COVERD = (trait, times = 1) => ({ setId: 'p1', title: 'Vanished Margo', scale: 'feature', dir: { key: 'p:dir1', name: 'Ulrich Beaumont', trait, g: 'm' }, co: { key: 'p:co1', name: 'Mara Vance' }, times });
+const withDir = (over = {}) => life({ people: [{ id: 'dir1', name: 'Ulrich Beaumont', role: 'Film Director', relationship: 40, industryWeight: 70 }, { id: 'co1', name: 'Mara Vance', role: 'Fellow Actor', relationship: 50 }], ...over });
+add('cover', 'straight', '', () => withDir(), COVERD('chill'));
+add('cover', 'again', '', () => withDir(), COVERD('perfectionist'));
+for (const t of ['perfectionist', 'difficult', 'diva', 'chill']) add('cover', 'found', t, () => withDir(), COVERD(t));
+add('cover', 'found', 'perfectionist, the second time', () => withDir(), COVERD('perfectionist', 2));
+add('cover', 'quiet', '', () => withDir(), COVERD('chill'));
+add('cover', 'amends', 'nobody to vouch', () => withDir({ grudges: [{ who: 'Ulrich Beaumont', title: 'Vanished Margo', since: 0, until: 99999, opened: true, why: 'x' }] }), COVERD('perfectionist', 2));
+add('cover', 'amends', 'a heavyweight to vouch', () => withDir({ grudges: [{ who: 'Ulrich Beaumont', title: 'Vanished Margo', since: 0, until: 99999, opened: true, why: 'x' }],
+  people: [{ id: 'dir1', name: 'Ulrich Beaumont', role: 'Film Director', relationship: 20 }, { id: 'big', name: 'Hedda Morn', role: 'Film Director', relationship: 80, industryWeight: 92 }] }), COVERD('perfectionist', 2));
 
 const realRandom = Math.random;
 let ran = 0, rolls = 0; const bad = [];

@@ -17,6 +17,7 @@ import { addTimeline } from '../../engine/timeline.js';
 import { sets } from './production.js';
 import { setById } from '../../engine/sets.js';
 import { skillCap } from './actions.js';
+import { pageAt } from './plot/sheet.js';
 
 const clamp = (v, a = 0, b = 100) => Math.max(a, Math.min(b, v));
 const stamp = (s) => (s.year || 0) * 12 + (s.month || 0);
@@ -355,9 +356,14 @@ export function maybeScene(s) {
     p._sceneMonth = stamp(s);
     (p._scenes = p._scenes || []).push(id);
     const sc = SCENES[id];
+    // Which page of the film's own story this day is (career/plot): the start, the middle, the
+    // scene where it comes out — by how far through the shoot it falls. A film without a story
+    // (an old save, a sequel) has no page and the day reads as it always did.
+    const progress = 1 - Math.max(0, p.monthsLeft || 0) / Math.max(1, p.months || 1);
+    const page = p.plot ? pageAt(p.plot, progress) : null;
     s.scene = { setId: p.id, id, game: sc.game, label: sc.label, hint: sc.hint,
       title: p.title, role: p.role, genre: p.genre, director: lead(p).name || 'the director',
-      line: sc.line(p), difficulty: difficulty(s, p, id) };
+      line: sc.line(p), page: page ? page.text : null, phase: page ? page.phase : null, storyMoment: page ? page.moment : null, difficulty: difficulty(s, p, id) };
     return s;
   }
   return s;
@@ -388,7 +394,7 @@ export function resolveScene(s, quality) {
   const sc = SCENES[sc0.id] || SCENES.mark;
   const q = clamp(quality);
   if (!p) return s;
-  (p._sceneLog = p._sceneLog || []).push({ id: sc0.id, label: sc.label, q: Math.round(q) });
+  (p._sceneLog = p._sceneLog || []).push({ id: sc0.id, label: sc.label, q: Math.round(q), phase: sc0.phase || null });
   const d = lead(p);
   // The picture. A good day is worth more than a month of turning up; a bad one costs.
   const ap = APPROACHES[sc0.approach] || APPROACHES.written;
@@ -425,6 +431,8 @@ export function resolveScene(s, quality) {
   // Going bigger is how a take ends up in a trailer, and it is the only way the bar comes down.
   if (q >= momentAt(ap)) {
     moment = MOMENT[sc0.id] ? MOMENT[sc0.id](sc0) : `the ${sc.label.toLowerCase()}`;
+    // and which scene of the film's own story it was, so the review can name it (never the twist)
+    if (sc0.storyMoment) moment = MOMENT[sc0.id] ? `${moment}, in ${sc0.storyMoment}` : sc0.storyMoment;
     (p.moments = p.moments || []).push(moment);
     addTimeline(s, `${sc.label}: you got it in one, and the set went quiet. ${d.name || 'The director'} watched it twice on the monitor.`);
   } else if (q < 25) {

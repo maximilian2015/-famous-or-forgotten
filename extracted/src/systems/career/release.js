@@ -32,7 +32,7 @@ import { addHype, flopHype, hype, hypeSource } from '../meta/hype.js';
 import { ensureBudget } from './budget.js';
 import { projectOutcome, isSmash, isProfitable, isBomb, isWatched, isSeen } from './outcome.js';
 import { boxOfficeFor, breakEvenFor, budgetFor, campaignOf, campaignSpend, previousPart, studioCampaign,
-  windowWord } from './release/theatrical.js';
+  windowWord, usualCampaign, ORDINARY_DATE, CAMPAIGN } from './release/theatrical.js';
 export { viewersFor } from './release/television.js';
 export { againstYou, agentCost, answerFestival, answerFestMail, APPEAL, asOldTrackSawIt, boxOfficeFor,
   breakEvenFor, budgetFor, budgetM, CAMPAIGN, campaignOf, campaignSpend, castDraw, demandCore,
@@ -194,6 +194,10 @@ export function splitLine(rating, audience, home = false) {
 // read off the same fields demandFor and openingFor read. Nothing invented: no screen counts, no
 // forecast, and no money at all. The money is the next weeks, and that is the point.
 // Anything an old save does not have is left out rather than guessed.
+// And only what is out of the ordinary (Maxi/ChatGPT, 23 Oct): "a normal campaign, the usual",
+// "an ordinary date", "nothing big opened against it" and "people are talking" were three lines
+// in four saying nothing is happening. A line is here when it helps or costs this film more than
+// a picture this size usually gets, or when it was your own decision (the tour, the reminder).
 export function premiereCard(s, rel, talk) {
   // A platform's film has no campaign of the studio's, no date and nothing opening against it.
   const film = isFilm(rel.scale) && !rel.streaming;
@@ -202,20 +206,21 @@ export function premiereCard(s, rel, talk) {
   const card = { type: rel.type || null, genre: rel.genre || null, role: rel.role || null,
     you: s.name || null, character, director: rel.director || null, with: rel.with || null, withIcon: !!rel.withIcon,
     tonight: [], sequel: null };
-  if (film && rel.campaignTier) {
-    const c = campaignOf(rel);
+  if (film && rel.campaignTier && rel.campaignTier !== usualCampaign(rel.scale)) {
+    const c = campaignOf(rel), less = c.share < CAMPAIGN[usualCampaign(rel.scale)].share;
     // Not "the studio's": a festival picture is sold by whoever bought it.
-    card.tonight.push({ k: 'campaign', t: `Selling it: ${c.label.toLowerCase()} — ${c.word}.` });
+    card.tonight.push({ k: 'campaign', t: `Selling it: ${c.label.toLowerCase()}, ${less ? 'less' : 'more'} than a picture this size usually gets.` });
   }
-  if (film && rel._window != null) card.tonight.push({ k: 'date', t: `The date: ${windowWord(s.month || 0)}.` });
-  if (film && rel._against != null) card.tonight.push({ k: 'against', t: rel._against < 1 ? 'Something enormous opened the same weekend.' : 'Nothing big opened against it.' });
+  if (film && rel._window != null && windowWord(s.month || 0) !== ORDINARY_DATE) card.tonight.push({ k: 'date', t: `The date: ${windowWord(s.month || 0)}.` });
+  if (film && rel._against != null && rel._against < 1) card.tonight.push({ k: 'against', t: 'Something enormous opened the same weekend.' });
   if (film && rel.tour) card.tonight.push({ k: 'tour', t: 'You did the press tour.' });
   else if (film && rel.tourSkipped) card.tonight.push({ k: 'tour', t: 'You skipped the press tour.' });
   if (film && reminderOf(rel)) card.tonight.push({ k: 'remind', t: `${reminderOf(rel).label}, paid for.` });
-  if (film && talk) {
-    const h = talk.hype || 0;
+  // The talk: a scandal (which sells nothing) or a month everybody is talking. Anything quieter
+  // is what most films open into.
+  if (film && talk && (talk.source === 'scandal' || (talk.hype || 0) >= 45)) {
     card.tonight.push({ k: 'talk', t: talk.source === 'scandal' ? 'The talk about you this month is a scandal. That does not sell a ticket.'
-      : h >= 45 ? 'Everybody is talking about you this month.' : h >= 20 ? 'People are talking about you this month.' : 'Nobody much is talking about you this month.' });
+      : 'Everybody is talking about you this month.' });
   }
   // A sequel, from the part before it and nothing else: which part, how long ago, how the room took it.
   const prev = film ? previousPart(s, rel) : null;
@@ -310,7 +315,7 @@ export function scheduleRelease(s, credit, p) {
     // Who was on the poster with you, if it was somebody. See production.js makeCrew.
     with: p.with || null, withId: p.withId || null, withFame: p.withFame || 0, withIcon: !!p.withIcon,
     // What the version you shot does to the box office, and the line it was pitched on.
-    appealMod: appealShift(p) * dirAppeal(p), premise: p.premise || credit.premise || null, take: credit.take || null,
+    appealMod: appealShift(p) * dirAppeal(p), premise: p.premise || credit.premise || null, plot: p.plot || credit.plot || null, take: credit.take || null,
     // What the studio is spending to sell it, decided when it is booked — see CAMPAIGN above.
     campaignTier: p.campaignTier || studioCampaign(p.scale || 'feature'),
     // What the script was before anybody argued it somewhere else (career/story.js).
@@ -346,7 +351,7 @@ export function scheduleRelease(s, credit, p) {
       // and the next part are built from this object and nothing else — leaving these out
       // meant season four was about a stranger with a new name, under a brief that said
       // "is back". See career/script.js and career/chapter.js.
-      character: p.character || null, premise: p.premise || null, direction: p.direction || null,
+      character: p.character || null, premise: p.premise || null, plot: p.plot || null, direction: p.direction || null,
       prestigeScore: p.prestigeScore, optioned: !!p.optioned, optionParts: p.optionParts || 0,
       // Whether there is a part two IN it at all — rolled when it was made (franchise.js).
       potential: p.potential || null,
@@ -450,7 +455,7 @@ function open(s, rel) {
     verdict: 'in cinemas', score: null,
     // Carried for the Asker season: what kind of thing it was, and whether it was pushed.
     scale: rel.scale, tier: rel.tier, prestigeScore: rel.prestigeScore, director: rel.director || null,
-    premise: rel.premise || null, take: rel.take || null, potential: rel.potential || null,
+    premise: rel.premise || null, plot: rel.plot || null, take: rel.take || null, potential: rel.potential || null,
     campaignShare: rel.campaign ? 0.65 : 0,
     exceptional: !!rel.exceptional,
     with: rel.with || null, withId: rel.withId || null, withIcon: !!rel.withIcon, withFame: rel.withFame || 0,
