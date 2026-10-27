@@ -3,6 +3,7 @@ import { inCareer } from '../../engine/stage.js';
 import { agentCut } from '../../systems/career/agent.js';
 import { hostName } from '../../systems/life/dating.js';
 import { strainBand, unreliable, depressed } from '../../systems/life/strain.js';
+import { monthName } from '../../systems/life/burnout.js';
 import { monthsIn } from '../../systems/life/depression.js';
 import { theme } from '../theme.js';
 import { allSets, money } from '../helpers.js';
@@ -22,14 +23,15 @@ export function LifeCard({ g }) {
     {row('Living', g.homeless ? 'Nowhere — on the street' : hostName(g) ? `At ${hostName(g)}'s · no rent` : g.inheritedHome ? `${HOUSING[g.housing || 'room'].label} · yours outright` : g.hasApartment ? HOUSING[g.housing || 'room'].label : "At your parents'")}
     {g.hasApartment && row('Eating', `${DIET[g.diet || 'cook'].label}${g.gym ? ' · gym' : ''}`)}
     {row('Work', g.job ? `${g.job.title} · ${g.job.employer}` : (inCareer(g) ? 'No job' : '—'), g.job ? theme.text : theme.muted)}
-    {allSets(g).map((p, i) => row(i ? '' : 'Filming', `${p.title} · ${p.prepLeft > 0 ? `preparing, ${p.prepLeft} mo` : `${p.monthsLeft} mo left`}`, theme.gold))}
+    {allSets(g).map((p, i) => row(i ? '' : 'Filming', `${p.title} · ${p.cutShort ? 'finishing without you' : (p.heldUntil || 0) > (g.year || 0) * 12 + (g.month || 0) ? `waiting for you, ${monthName(p.heldUntil)}` : p.prepLeft > 0 ? `preparing, ${p.prepLeft} mo` : `${p.monthsLeft} mo left${p.light ? ' · lighter' : ''}`}`, theme.gold))}
     {/* The number your agent says out loud. It only means anything if you can see it. */}
     {(g.quote || 0) > 0 && row('Your quote', money(g.quote), theme.gold)}
     {/* What the work is costing you. Only shown once it is worth knowing about. */}
-    {g.burnout ? row('Signed off', `${g.burnout.left} month${g.burnout.left === 1 ? '' : 's'} left`, theme.bad)
+    {g.onBreak ? row('Away', `until ${monthName(g.onBreak.until)}`, theme.good)
+      : g.burnout ? row('Signed off', `${g.burnout.left} month${g.burnout.left === 1 ? '' : 's'} left`, theme.bad)
       : (g.strain || 0) >= 34 && row('Workload', strainBand(g.strain).label, (g.strain || 0) >= 82 ? theme.bad : (g.strain || 0) >= 60 ? theme.gold : theme.muted)}
-    {/* Once you have shut down three sets, that is a thing about you. */}
-    {unreliable(g) && row('Insurers', `${g.burnouts} shoots stopped because of you`, theme.bad)}
+    {/* A medical stop in the last three years is on the bond companies' file. It fades. */}
+    {unreliable(g) && row('Insurers', 'a recent medical stop on file', theme.gold)}
     {depressed(g) && row('Carrying', `${monthsIn(g)} month${monthsIn(g) === 1 ? '' : 's'} of it`, theme.bad)}
     {!depressed(g) && (g.scarred || 0) > 0 && row('It kept', `${g.scarred} hour${g.scarred === 1 ? '' : 's'} a month`, theme.bad)}
     {g.hasApartment && row('Out each month', `€${c.total.toLocaleString()}`, theme.bad)}

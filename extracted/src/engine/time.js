@@ -41,6 +41,7 @@ import { maybeYoungOffer } from '../systems/career/youngblood.js';
 import { agingNote } from '../systems/career/age.js';
 import { iconTick, quoteTick } from '../systems/meta/status.js';
 import { strainTick } from '../systems/life/strain.js';
+import { breakSummary, takeBreak } from '../systems/life/burnout.js';
 import { slotsLost, rehabTick } from '../systems/life/depression.js';
 import { drinkTick } from '../systems/life/drink.js';
 import { addTimeline } from './timeline.js';
@@ -123,6 +124,30 @@ export function liveUntilSomething(state, cap = SKIP_CAP) {
   }
   s = { ...s, _skipped: { months, why } };
   return s;
+}
+// A break, lived in one step (life/burnout.js). The months run on their own; the premieres,
+// the money and the news are gathered into one summary instead of stopping the clock, and the
+// clock stops only for something that wants a decision. Maxi: "not dozens of empty clicks."
+export function stepAway(state) {
+  let s = state;
+  if (!s.onBreak) return s;
+  const before = { credits: (s.filmography || []).length, strain: s.strain || 0, mental: s.mental || 0, fame: s.fame || 0, cash: s.cash || 0 };
+  const notes = [];
+  for (let i = 0; i < 25 && s.onBreak && s.alive; i++) {
+    s = advanceMonth(s);
+    for (const m of [s.bigMoment, ...(s.moments || [])].filter(Boolean)) if (m.title && m.id !== 'breakSummary') notes.push(m.title + (m.lines && m.lines[0] ? ` — ${m.lines[0]}` : ''));
+    s.bigMoment = null; s.moments = [];
+    if (s.pendingArc || s.scene) break;
+  }
+  const done = !s.onBreak;
+  const lines = breakSummary(s, before, notes);
+  s.bigMoment = { id: 'breakSummary', kind: 'good', title: done ? 'Back' : 'While you were away', body: lines.join('\n') };
+  return s;
+}
+// The Step away buttons: begin the break and live it.
+export function goAway(state, months) {
+  takeBreak(state, months);
+  return state.onBreak ? stepAway(state) : state;
 }
 // What the button is allowed to say before it is pressed. Nothing to skip THROUGH while a
 // day on set is waiting or something is already on screen.
