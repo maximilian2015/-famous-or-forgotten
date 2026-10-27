@@ -338,7 +338,7 @@ export function difficulty(s, p, id) { return dayFactors(s, p, id).d; }
 export function maybeScene(s) {
   if (s.scene) return s;   // one day at a time; everything else queues behind it (App.jsx)
   for (const p of sets(s)) {
-    if ((p.prepLeft || 0) > 0 || p.paused) continue;
+    if ((p.prepLeft || 0) > 0 || p.paused || p.cutShort) continue;
     const done = (p._scenes || []).length;
     const cap = (p.months || 4) >= 6 ? 3 : (p.months || 4) >= 3 ? 2 : 1;
     if (done >= cap) continue;

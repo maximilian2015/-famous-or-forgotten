@@ -82,7 +82,7 @@ export function loadTick(s) {
   s._topMonths = st >= 95 ? (s._topMonths || 0) + 1 : st < 88 ? 0 : (s._topMonths || 0);
   // The body keeps the score, mildly: running on empty on a set wears you down a little each
   // month. The illness that follows is the existing one (life/health.js reads health).
-  if (active(s).length && st >= 82) s.health = clamp((s.health || 0) - (st >= 95 ? 0.5 : 0.25));
+  if (active(s).length && st >= 82) s.health = clamp((s.health || 0) - (st >= 95 ? 1 : 0.4));
   maybeDoctor(s);
   maybeFifthTake(s);
 }
@@ -93,7 +93,7 @@ export function loadTick(s) {
 export function forcedStopOdds(s) {
   const st = s.strain || 0;
   const red = s._redMonths || 0;
-  if (st < 82 || red < 6) return 0;
+  if (st < 82 || red < 6 || !active(s).length) return 0;   // it is the work that stops you, not the rest after it
   if (now(s) < (s._burntUntil || 0)) return 0;
   let r = 0.3 + Math.max(0, st - 88) * 0.08 + Math.min(1.5, Math.max(0, red - 6) * 0.03);
   const top = s._topMonths || 0;
@@ -249,8 +249,8 @@ export function healthBeat(s, arc) {
         { label: `Take the medical pause — ${months} months`, hint: 'Every production decides whether to wait, shoot around you, or go on without you. Early, more of them wait.',
           shows: { more: [say(`signed off ${months} months`), say('the load comes down fast', true)] },
           apply: () => { const l = medicalPause(s, months); return `Signed off for ${months} months.${l.length ? '\n\n' + l.join('\n') : ''}`; } },
-        heavy && { label: `Ask "${heavy.title}" for a lighter schedule`, hint: `${ask}% — ${first((heavy.crew || [])[0] && heavy.crew[0].name) || 'the director'} decides. The shoot runs longer.`,
-          shows: { odds: ask, more: [say('if yes: less wear, more months', true), say('if no: the director remembers you asked', false)] },
+        heavy && { label: `Ask "${heavy.title}" for a lighter schedule`, hint: `${first((heavy.crew || [])[0] && heavy.crew[0].name) || 'The director'} decides. A yes gives up the schedule bonus, if the paper has one.`,
+          shows: { odds: ask, good: { more: [say('less wear each month', true), say('the shoot runs longer')] }, bad: { more: [say(`${first((heavy.crew || [])[0] && heavy.crew[0].name) || 'the director'} trusts you less`, false), say('you carry on as you are', false)] } },
           apply: () => askProduction(s, heavy.id, 'lighter').say },
         { label: 'Carry on — finish what you are on', hint: `The chance your body stops you this month is about ${odds}%, and it doubles for a year once you have been told.`,
           shows: { more: [say('nothing changes today'), say('a forced stop gets likelier every month', false)] },
@@ -389,7 +389,9 @@ export function canTakeBreak(s) {
 }
 export function takeBreak(s, months) {
   const can = canTakeBreak(s); if (!can.ok) { s.lastEvent = can.why; return s; }
-  s.onBreak = { since: now(s), until: now(s) + months, months, seen: [] };
+  // `from`: where you were the day you left, so the summary at the end covers the whole break.
+  s.onBreak = { since: now(s), until: now(s) + months, months, seen: [],
+    from: { strain: s.strain || 0, mental: s.mental || 0, fame: s.fame || 0, cash: s.cash || 0 } };
   addTimeline(s, `Stepped away for ${months} months. Nobody is getting a call back before ${monthName(s.onBreak.until)}.`, true);
   s.lastEvent = `You are away until ${monthName(s.onBreak.until)}. Films you made still come out; people still call; the bills still come.`;
   return s;
@@ -417,6 +419,7 @@ export function breakTick(s, ending = false) {
   // And a name that steps away and comes back is news. Not for nobody; for somebody.
   const big = (s.fame || 0) >= 40 && months >= 6;
   if (big) addHype(s, months >= 12 ? 14 : 8, 'press');
+  s._cameBack = { months, news: big };   // read once by breakSummary
   const line = big ? `Back after ${months} months. The trades noticed: "${s.name} is working again."` : `Back after ${months} months away.`;
   addTimeline(s, line, true);
   s.lastEvent = line;
@@ -424,10 +427,11 @@ export function breakTick(s, ending = false) {
 }
 // What the break did, said once at the end (time.js stepAway gathers it).
 export function breakSummary(s, before, notes) {
-  const credits = (s.filmography || []).length - before.credits;
   const lines = [];
-  if (credits > 0) lines.push(`${credits} of your film${credits === 1 ? '' : 's'} came out while you were away.`);
   for (const n of notes.slice(0, 6)) lines.push(n);
+  if (!notes.length) lines.push('Nothing of yours came out. The months were yours.');
+  if (s._cameBack && s._cameBack.news) lines.push('The trades noticed you are back: "working again", and the phone with it.');
+  s._cameBack = null;
   lines.push(`Workload ${Math.round(before.strain)} → ${Math.round(s.strain || 0)}. Mental ${Math.round(before.mental)} → ${Math.round(s.mental || 0)}.`);
   const fame = Math.round((s.fame || 0) - before.fame);
   lines.push(fame >= 0 ? `Fame ${fame ? '+' + fame : 'held'}.` : `Fame ${fame} — the business kept moving.`);

@@ -33,7 +33,7 @@ export const RISKS = {
     level: (s) => (drinkLevel(s) >= 45 ? 2 : drinkLevel(s) >= 18 ? 1 : 0),
     line: (s, l) => (l === 2 ? 'The drinking is a thing people say about you now. A night that ends at a police station is one bad decision away.' : 'The drinking has been noticed. Nothing has happened yet; that is the word to hold on to.') },
   norest: { label: 'No month off', fix: 'A month with nothing on the calendar.',
-    level: (s) => ((s.strain || 0) >= 82 ? 2 : (s.strain || 0) >= 60 ? 1 : 0),
+    level: (s) => (s.onBreak || (s.burnout && s.burnout.left > 0) ? 0 : (s.strain || 0) >= 82 ? 2 : (s.strain || 0) >= 60 ? 1 : 0),   // off work is the month off
     line: (s, l) => (l === 2 ? 'Running on empty. The next set is where you stop, whether you decide to or not.' : 'Tired, and it shows on the set. One month off would fix it; two more without would not.') },
   flops: { label: 'The last one bombed', fix: 'A smaller part that works. Not another swing.',
     level: (s) => { const n = within(s, s.bombs, 24); return n >= 2 ? 2 : n >= 1 ? 1 : 0; },

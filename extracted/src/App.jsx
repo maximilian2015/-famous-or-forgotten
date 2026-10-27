@@ -8,6 +8,7 @@ import { seeDoctor, treatmentCost, pushThrough, PILLS, usePills, infectionOdds }
 import { resolveArc, arcCard } from './systems/life/arcs.js';
 import { arrivalBonus } from './systems/life/money.js';
 import { strainBand } from './systems/life/strain.js';
+import { monthName as returnMonth } from './systems/life/burnout.js';
 import { memoryLines, needCards, openNeed } from './systems/life/needs.js';
 import { computeLegacy, getHall } from './systems/meta/legacy.js';
 import { fameTier, FAME_TIERS, fameCeiling, ladderBlurb, isForgotten } from './systems/meta/status.js';
@@ -1565,6 +1566,13 @@ function StageBody({ g }) {
 // Ordered by what is most pressingly true, not by what is nicest to say.
 function careerNow(g) {
   const p = g.production;
+  // Off work comes first (life/burnout.js): the set is not where anything is decided this month.
+  if (g.onBreak) return `You are away until ${returnMonth(g.onBreak.until)}. Your films still come out and people still call — the Mental screen has the rest.`;
+  if (g.burnout && g.burnout.left > 0) {
+    const held = (g.productions || []).filter((x) => !x.cutShort).map((x) => `"${x.title}"`);
+    return `You are signed off — ${count(g.burnout.left, 'month')} left. ${held.length ? `${held.join(' and ')} ${held.length > 1 ? 'are' : 'is'} waiting for you. ` : ''}`
+      + `Offers still come; you can sign one that starts when you are back.`;
+  }
   if (p) {
     const left = Math.max(0, p.monthsLeft || 0);
     return `You are on ${p.title}. ${left <= 1 ? 'Last month of the shoot.' : `${count(left, 'month')} of shooting left.`} `

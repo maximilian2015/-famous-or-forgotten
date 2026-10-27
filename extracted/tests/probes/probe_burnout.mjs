@@ -131,5 +131,22 @@ const cols = [
 ];
 console.log('strategy  ' + cols.map((c) => c[0].padStart(13)).join(''));
 for (const [k, rows] of Object.entries(out)) console.log(k.padEnd(10) + cols.map(([, f, agg]) => agg(rows.map(f)).toFixed(1).padStart(13)).join(''));
+// Alex Moon (saves/, April 2079, strain 100, 0 burnouts), loaded the way the game loads it and lived
+// ten more years by each strategy: the save Maxi looked at and asked why nothing happens.
+import fs from 'node:fs';
+const SAVE = new URL('../../../saves/famous-Alex-Moon-53-2079.json', import.meta.url);
+if (fs.existsSync(SAVE)) {
+  const raw = fs.readFileSync(SAVE, 'utf8');
+  globalThis.localStorage = { getItem: (k) => (k === 'fof_react_save' ? raw : null), setItem() {}, removeItem() {} };
+  const { getState } = await import(P + 'state/store.js');
+  console.log('\nAlex Moon, ten more years from strain ' + Math.round(getState().strain || 0) + ':');
+  for (const strat of Object.keys(STRATS)) {
+    let t = JSON.parse(JSON.stringify(getState()));
+    const r = { months: 0, red: 0, top: 0, off: 0, collapses: 0, breaks: 0, peakFame: 0, doctor: 0, meter: 0, wraps: 0 };
+    const c0 = (t.filmography || []).length, cash0 = t.cash || 0;
+    for (let m = 0; m < 120 && t.alive !== false; m++) { try { t = month(t, STRATS[strat], r); } catch (e) { r.threw = e.message; break; } }
+    console.log(`  ${strat.padEnd(10)} at 95+ ${Math.round((100 * r.top) / r.months)}% · doctor ${r.doctor} · forced stops ${r.collapses} · pauses ${(t.medical || []).filter((x) => !x.forced).length} · breaks ${r.breaks} · lost ${(t.lostToHealth || []).length} · credits +${(t.filmography || []).length - c0} · €${Math.round(((t.cash || 0) - cash0) / 1e6)}m · health ${Math.round(t.health)} · fame ${Math.round(t.fame)}${r.threw ? ' · THREW ' + r.threw : ''}`);
+  }
+}
 const threw = Object.values(out).flat().filter((r) => r.threw);
 if (threw.length) { console.log('\nTHREW:', threw.length, threw[0].threw); process.exit(1); }
