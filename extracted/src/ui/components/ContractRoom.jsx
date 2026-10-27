@@ -2,7 +2,8 @@ import { useState } from 'react';
 import { theme } from '../theme.js';
 import { FONT, FONT_DISPLAY } from '../chrome.js';
 import { dispatch } from '../../state/store.js';
-import { contractFor, markClause, sendContract, signContract, passContract, openTalks, proposeStart, earliestStart, askChance, askRound, theShowIsYou, openAsks } from '../../systems/career/contract.js';
+import { PassControl } from './PassControl.jsx';
+import { contractFor, markClause, sendContract, signContract, openTalks, proposeStart, earliestStart, askChance, askRound, theShowIsYou, openAsks } from '../../systems/career/contract.js';
 import { STUDIOS } from '../../systems/world/names.js';
 import { Diary } from './Diary.jsx';
 
@@ -166,8 +167,9 @@ export function ContractRoom({ g, onClose }) {
         </>}
         <button onClick={() => setCal(!cal)} style={{ border: `1px solid ${P.line}`, borderRadius: 4, padding: '10px', fontSize: 12.5, fontWeight: 800, cursor: 'pointer', background: 'transparent', color: P.ink }}>{cal ? 'Hide the calendar' : 'See the calendar first'}</button>
         {cal && <div style={{ background: theme.bg, borderRadius: 12, padding: 10 }}><Diary g={g} /></div>}
-        {!signed && <button onClick={() => { if (window.confirm('Pass on "' + title + '"? They will cast somebody else.')) { dispatch(passContract, o.id); onClose(); } }}
-          style={{ border: `1px solid ${P.line}`, borderRadius: 4, padding: '9px', fontSize: 12, fontWeight: 700, cursor: 'pointer', background: 'transparent', color: P.muted }}>Pass on it</button>}
+        {/* What a no does, said before it is done — the same answer the offer card gives (ui/components/PassControl.jsx). */}
+        {!signed && <PassControl g={g} o={o} onPassed={onClose} label="Pass on it" palette={{ ink: P.ink, muted: P.muted, bad: P.accent, good: P.green, line: P.line, panel: P.shade }}
+          buttonStyle={{ border: `1px solid ${P.line}`, borderRadius: 4, padding: '9px', fontSize: 12, fontWeight: 700, cursor: 'pointer', background: 'transparent', color: P.muted }} />}
       </div>
     </div>
   </div>);

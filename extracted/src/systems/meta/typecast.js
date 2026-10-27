@@ -88,16 +88,20 @@ export function typecastBump(s, id, by) { bump(s, id, by); relabel(s); return s;
 // So a refusal that is ON your type wears the label down, and a refusal that is against it
 // does nothing, because turning down the one part that would have got you out is not a
 // stand, it is a mistake.
-export function refusedOnType(s, o) {
-  if (!o || o.tier === 'supporting') return s;
+// The labels a no to this part would loosen — on type, a lead, and a label it is on. Asked by the warning
+// on Pass (career/offers.js declineConsequences) and by refusedOnType itself, so the two cannot differ.
+export function refusalLoosens(s, o) {
+  if (!o || o.tier === 'supporting') return [];
   const fit = typeFit(s, { genre: o.genre, scale: o.scale, type: o.type, perEpisode: !!o.perEpisode });
-  if (fit < 0.5) return s;
+  if (fit < 0.5) return [];
+  return activeLabels(s).filter((id) => { const g = genreOf(id); return (g ? g === o.genre : true) && scoreOf(s, id) > 0; });
+}
+export function refusedOnType(s, o) {
+  const ids = refusalLoosens(s, o);
+  if (!ids.length) return s;
   const t = typecastOf(s);
   let moved = null;
-  for (const id of activeLabels(s)) {
-    const g = genreOf(id);
-    const onIt = g ? g === o.genre : true;
-    if (!onIt) continue;
+  for (const id of ids) {
     const was = scoreOf(s, id);
     t.scores[id] = Math.max(0, was - 0.9);
     if (t.scores[id] < was) moved = id;

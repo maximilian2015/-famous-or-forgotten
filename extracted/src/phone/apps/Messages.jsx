@@ -6,7 +6,8 @@ import { smsReply, smsReadAll } from '../../systems/social/sms.js';
 import { dispatch } from '../../state/store.js';
 import { canTakeSet } from '../../engine/sets.js';
 import { phoneGone } from '../../systems/social/night.js';
-import { acceptOffer, declineOffer } from '../../systems/career/offers.js';
+import { acceptOffer } from '../../systems/career/offers.js';
+import { PassControl } from '../../ui/components/PassControl.jsx';
 import { clauseBlocks } from '../../systems/career/endorsement.js';
 import { contractStatus } from '../../systems/career/standoff.js';
 import { hotGenre } from '../../systems/meta/news.js';
@@ -166,11 +167,12 @@ export function Messages({ g }) {
           </div>);
         })()}
         {big && <div style={{ fontSize: 10.5, color: theme.muted, marginTop: 8 }}>This one shoots — {o.months} months on a set, with real choices on it.</div>}
-        <div style={{ display: 'flex', gap: 7, marginTop: 9 }}>
+        <div style={{ display: 'flex', flexWrap: 'wrap', gap: 7, marginTop: 9 }}>
           {big
             ? <button onClick={() => dispatch(openContract, o.id)} disabled={!fit.ok} style={{ ...btn('pri'), opacity: !fit.ok ? .45 : 1 }}>{o.signed ? 'Signed — see the paper' : o.contract && o.contract.sent ? 'With them — see the paper' : o.contract && o.contract.round ? 'The paper came back' : 'Open the contract'}</button>
             : <button onClick={() => dispatch(acceptOffer, o.id)} disabled={!fit.ok} style={{ ...btn('pri'), opacity: !fit.ok ? .45 : 1 }}>Accept</button>}
-          {!o.signed && <button onClick={() => dispatch(declineOffer, o.id)} style={btn('dan')}>Pass</button>}
+          {/* What a no does is said before it is done (ui/components/PassControl.jsx). */}
+          {!o.signed && <PassControl g={g} o={o} buttonStyle={btn('dan')} />}
         </div>
       </div>); })}
   </div>);

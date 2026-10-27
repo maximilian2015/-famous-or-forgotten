@@ -375,11 +375,14 @@ function wentBack(s, st) {
   return sets.some(mine) || (s.releases || []).some(mine) || (s.filmography || []).some((c) => mine(c) && (c.year || 0) >= (s.year || 0) - 2) || (s.offers || []).some((o) => o.story === 'recast' && o.signed);
 }
 // The second no. Very expensive, and the director is gone for good.
-function burnShows(st) { return { fx: { respect: -8, scandal: 4 }, more: [{ t: `${first(st.data.director)} never works with you again`, good: false }] }; }
+// What the second no costs — one number, read by the choice that shows it, by the bridge that burns
+// and by the warning on Pass (career/offers.js declineConsequences).
+export const BURN_STANDING = 8, BURN_SCANDAL = 4;
+function burnShows(st) { return { fx: { respect: -BURN_STANDING, scandal: BURN_SCANDAL }, more: [{ t: `${first(st.data.director)} never works with you again`, good: false }] }; }
 function burnTheBridge(s, st) {
   st.data.burned = true;
-  setRespect(s, (s.respect || 0) - 8);
-  s.scandal = clamp((s.scandal || 0) + 4);
+  setRespect(s, (s.respect || 0) - BURN_STANDING);
+  s.scandal = clamp((s.scandal || 0) + BURN_SCANDAL);
   (s.grudges = s.grudges || []).push({ who: st.data.director, title: st.data.title, scale: st.data.scale, since: stamp(s), due: stamp(s) + 9999, until: stamp(s) + 9999, hit: false, gross: 0, opened: true });
   const p = (s.people || []).find((x) => x.name === st.data.director); if (p) { p.cold = true; p.relationship = Math.min(p.relationship || 0, 5); }
   addTimeline(s, `${st.data.director} will not work with you again. Not a rumour: they said it to the trades.`, true);
@@ -424,6 +427,8 @@ export function noteSequelLoss(s, o, how, rec = null, src = null) {
   }
   stories(s).push({ id: 'recast', beat: 'meeting', due: stamp(s) + 2, since: stamp(s), data });
 }
+// What the fans would make of it, asked before it happens (the warning on Pass): a reading, not a promise.
+export function fanMood(o, how, src) { return o && o.tier !== 'supporting' ? fansOf(o, how, src) : 'quiet'; }
 // How much the show or the film meant to the people watching it, and whose doing the loss looks like.
 function fansOf(o, how, src) {
   if (!src) return 'quiet';
