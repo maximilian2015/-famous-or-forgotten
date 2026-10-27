@@ -117,8 +117,10 @@ Each step: scope · existing systems used · done when · tests · how it ships.
   - two long features at once priced in the open;
   - a chosen break of 3–24 months, lived in one step;
   - recovering by working less;
-  - illness never counted as unreliability.
-- **Uses:** life/strain.js, engine/sets.js, the agent, decline.js (comeback), stability.js (pause, never cancel a safe studio film).
+  - illness never counted as unreliability;
+  - **overexposure:** a star's releases in the last 12 months lower the draw of her name — the audience's side of working too much (Maxi, 27 Oct).
+- **Before code:** a balance on three careers — careful, always busy, overloading on purpose — over 10–20 years, so that no strategy is automatically best (audit §9–10).
+- **Uses:** life/strain.js, engine/sets.js, meta/market.js (the existing genre glut is the pattern for overexposure), the agent, decline.js (comeback), stability.js (pause, never cancel a safe studio film).
 - **Done when:**
   - an ordinary player is no longer in the red for most of a career (today 62% of months, 46% at the ceiling);
   - every overload is visible before signing;

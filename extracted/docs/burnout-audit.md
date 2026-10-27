@@ -120,3 +120,37 @@ After the on-set minigames (Step 3) and before relationships: **Step 3b — Burn
   - every overload is said before signing;
   - illness never lowers insurability;
   - the stability guarantee holds (test_stability).
+
+## 9. Accepted, with principles (Maxi/ChatGPT, 27 Oct) — no code before Step 3b
+
+1. Decades at the ceiling with nothing to show for it must not be possible.
+2. The last months count, and recovery counts too: work five years ago does not punish forever.
+3. Several shoots at once stay. They are a strategy, not a bug. The overlap of long shoots costs something real and is shown on the offer before signing: the months that overlap, and the risk.
+4. Light work lets you recover slowly; not only a fully empty month.
+5. A break of 3, 6, 12 or 24 months is a real career decision. The world, the family, the films and the career go on during it, lived in one step with a summary of what mattered.
+6. A break does not wipe a famous actor's fame: films already shot, prestige and coming releases keep it.
+7. No automatic penalty for age; a young actor can burn out too.
+8. Illness and a lawful refusal of overload are not unprofessional. Medical and production risk are kept apart from blame. Insurability can recover.
+9. Recovery is never a compulsory year off after N films. Several strategies must be viable.
+10. **Before building, balance on three careers** — the careful actor, the always-busy star, the one who overloads on purpose. Show 10–20 years of consequences, and check that no strategy is automatically best.
+
+## 10. The audience's side of working too much — overexposure (Maxi, 27 Oct)
+
+Alex Moon has five releases in 2080. Even if they were shot at different times, the audience sees the same face five times in a year. The game has no such effect.
+
+**What already exists:**
+- genre glut: too many horrors this year (`meta/market.js fatigueOf`);
+- franchise fatigue: the fifth instalment (`theatrical.js`);
+- a streaming show's season fatigue (`streaming.js`).
+
+**What does not:** the actor's own overexposure. A star's fifth film of the year draws the same crowd as her first.
+
+**Proposal** — the same kind as the existing glut, no new scale:
+- A star's **releases in the last 12 months** (by release date, not shooting) lower the draw her name adds to each new one.
+- **What it touches:** the cinema demand, a streaming opening, hype.
+- **What it does not touch:** critics or quality. A great film is still great; people are just tired of the poster.
+- **The lead counts most:** a supporting part or a cameo counts little, a TV season apart from cinema.
+- **It recovers by itself.** A year with one release restores it.
+- **It is said on the offer:** "Three of your films already open this year".
+
+It belongs to Step 3b because it is the same decision as burnout — how much work to take — seen from the audience. The three-career balance above has to include it. Otherwise the always-busy star pays only in body and never in box office.
