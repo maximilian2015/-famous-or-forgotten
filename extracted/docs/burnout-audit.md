@@ -1,0 +1,122 @@
+# Burnout & Recovery — audit (no code changed)
+
+Read from the code and measured on 27 Oct 2026.
+- Question: Alex Moon, 54, an A-lister working every year, shows no accumulated tiredness, and the calendar for June 2080 starts two eight-month shoots at once.
+
+## 1. What already exists — and what it really changes
+
+There is **one** tiredness scale, and it is the right one: **`s.strain`** (life/strain.js), 0–100, shown as Rested / Working hard / Tired / Running on empty. A second scale is not needed.
+
+| Mechanism | What it does now |
+|---|---|
+| **Strain grows on a set** | Each month on a set adds wear, more when you are already tired (a feature at strain 60 adds ~9 a month). A second and third set add 0.7× each. Low mental or low health add more. |
+| **Strain falls off a set** | −3.5 a month doing nothing, −5.5 with "Rest & recover". Each past burnout makes recovery slower. |
+| **What high strain changes** | Scene days: from 55 up, −0.25 quality per point (at 100: −11), and harder ("you are worn out"). Energy refill −20 a month above 60. Mental drains every month above 60. You look a year older above 75. The risk card "No month off" warns at 60 and 82. |
+| **What it does NOT change** | Health, illness odds, the film's overall performance meter, production trouble. Illness reads health, diet, the gym and age (+5 from 55, +8 from 70), not strain. |
+| **Burnout (collapse)** | After 6 months at 82+, a chance each month: 0.4% + 0.09% per point over 88 (at 100: ~1.5%). The shoots freeze, 2–5 months off (longer each time), then a 24-month shield. |
+| **What a burnout counts as** | `s.burnouts` +1, **forever**. From the second, insurability falls (×0.86 each, floor 0.45), which multiplies casting and tentpole odds. "Three shoots have stopped because of you" — the risk card "Difficult" lights from 2. |
+| **Age** | The health ceiling falls slowly with age: −0.6 a year after 25, about −17 at 54. Illness odds +5 at 55. Strain itself is not age-dependent. |
+
+## 2. The 12–36 months question
+
+Strain is a stock, so it does carry the last months in it. But it **saturates**: once at 100 it cannot say "four years without a break" any differently from "four months".
+
+Measured, 20 careers × 30 years, a player who takes the next film as soon as one ends and never presses Rest:
+
+| | in the red (82+) | at 99–100 | longest red run (median) | burnouts in 30 years |
+|---|---|---|---|---|
+| one set at a time | **62% of months** | **46%** | **105 months** | 3.1 |
+| up to three sets | 73% | 60% | 128 months | 2.7 |
+
+So the bar sits at the ceiling for years and very little happens — exactly what Maxi saw on Alex Moon.
+- Alex's save in `saves/` (April 2079): **strain 100, burnouts 0**.
+- The collapse needs six red months and then a ~1.5% monthly roll.
+- Strain's own comment says "a normal career of one project a year never comes near it". But a normal player takes the next offer the month the last one wraps, and that is two a year, not one.
+
+## 3. Two long shoots in the same months — not a bug, a rule that needs a second look
+
+`engine/sets.js`:
+- up to **three sets at once** (Maxi's own rule: "actors shoot three pictures at once");
+- a second long set opens at Standing 25, a third at 50;
+- a short job (≤2 months) is always allowed beside one set;
+- an exclusive contract takes all three.
+
+Alex is at Standing 29, so two long shoots are allowed.
+
+The likely picture for June 2080:
+- both offers were signed while busy, and they wait (`laterOffers`, "starts when a set frees up");
+- both start in the first month a slot is free;
+- Standing allows two, so both start at once.
+
+That is the rule working as written, not a scheduling bug. I could not open the April 2080 save itself — the file in `saves/` is April 2079 — so this is read from the rule, not from that save.
+
+**What is wrong with it:**
+- Two eight-month **features** at once costs only +70% wear, and nothing on the offer says so before you sign.
+- A real actor can stack a guest spot or a TV season on a film. Two location features in the same eight months is rare and should be expensive and said out loud.
+
+## 4. Absence — what a break does today
+
+- **There is no break of 3–24 months as a decision.** The pieces are:
+  - "Rest & recover" — one month, energy;
+  - "A month out of sight" — one month, for scandal;
+  - "Take the month off" — from the risk card;
+  - "▶▶ Live until something happens" — skips quiet months, but nothing calls them a break.
+- **While you do not work:**
+  - fame drifts (relevance);
+  - Standing slips without recent work;
+  - hype decays;
+  - the board thins;
+  - films already shot keep coming out on their dates.
+- **People:** contacts drift if you do not call, faster the more famous you are.
+- **The game reads a break as "idle".** It walks the decline states — cooling → fading → former → forgotten — and opens the declining market (conventions, cheap sequels, the rare great script from a first-time director). A chosen sabbatical and being forgotten are the same thing to the code. A legend's year off cannot raise interest.
+
+## 5. Recovering without stopping
+
+Today: no. Strain only falls in a month with **no** set. A light year — one short job a quarter — still never lets it fall, because any set month adds and does not subtract.
+
+## 6. Illness vs unprofessional — the line is crossed today
+
+- **A burnout is counted against you as unreliability:** permanent `burnouts`, insurability, "three shoots have stopped because of you", the "Difficult" risk. That breaks the rule agreed for reputation: illness is not a breach.
+- **An illness that freezes work** (`illness.freezes`) does not count against you. That part is right.
+- **Refusing overload is already free:** saying no to six-day weeks or night shoots costs the film something, not your standing (`demands.js`). Keep that.
+
+## 7. Proposed model — one scale, made to mean something
+
+All on `s.strain`, no second scale.
+
+1. **Load, not just level.**
+   - Keep a 36-month **load record**: months on set weighted by scale and overlap. It is the thing that makes "four years without a break" different from "a hard spring".
+   - Strain's ceiling behaviour reads it: past a load line, recovery slows and the red band does more.
+   - The record is lazy, so old saves start with their last 36 months read off the filmography.
+2. **Four states with distinct effects:** tired, overloaded, burnt out, exhausted.
+   - **Tired** (60+): energy, mood. This exists.
+   - **Overloaded** (82+): scene days worse (exists); new, a small monthly drag on the shoot's meter, said on the set card.
+   - **Burnt out:** motivation and conflicts — the director's patience is shorter, through the existing bond.
+   - **Exhausted:** a doctor's stop. The production **pauses**, never cancels a safely financed studio film (the stability rule holds).
+3. **The risk before you sign.**
+   - The offer card says what this does to you: "With Light and Rain III this would be two eight-month shoots at once — your load goes from heavy to dangerous."
+   - The agent says it in words, using the existing agent.
+   - Two long features at once: allowed, priced in the open, and the second one's wear raised from 0.7.
+4. **A break as a decision:**
+   - "Step away for 3 / 6 / 12 / 24 months" — one choice, the months pass in one go with a summary, not by clicking.
+   - Films keep releasing; contacts get a note; strain and load recover fast.
+   - The decline states read a **chosen** break apart from being forgotten. For a big name, the return is an event — the comeback offer, interest, the press — through the existing decline/comeback machinery.
+5. **Recovering by working less:** a month with only a short job counts as half a rest; a TV season at low intensity as light work. Strain can fall slowly while you keep a hand in.
+6. **Illness is not a breach.**
+   - A burnout is recorded as what it is — health — and kept apart from reliability.
+   - Insurability reads **recent** reliability deeds (the reputation ledger), not a permanent count of collapses.
+   - "Three shoots stopped because of you" becomes true only for shoots stopped by choices: walking off, drink.
+7. **Age is not a penalty.** Wear and recovery read load, sleep, health and housing, not age. The existing slow health ceiling stays; nothing new by age.
+8. **The A-list test** Maxi describes — the hardest skill at the top is saying no — falls out of 3 and 4. The offer says what it costs you; the break is a real option with a real return.
+
+## 8. Place in the roadmap
+
+After the on-set minigames (Step 3) and before relationships: **Step 3b — Burnout & Recovery**.
+- It shares the set calendar with Step 3.
+- Its "illness is not a breach" piece is the precondition for Step 4's insurability.
+- **Done when:**
+  - the measured share of red months for an ordinary player falls to an honest minority;
+  - a 30-year career has a real reason to take breaks;
+  - every overload is said before signing;
+  - illness never lowers insurability;
+  - the stability guarantee holds (test_stability).

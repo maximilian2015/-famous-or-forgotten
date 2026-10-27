@@ -108,6 +108,23 @@ Each step: scope · existing systems used · done when · tests · how it ships.
 - **Tests:** solvability probes for the boards (the FrameCheck probe found 10–46% ambiguous boards), and the rules text written off the component.
 - **Ships:** one mechanic per branch, each played in the browser.
 
+### Step 3b — Burnout & Recovery (audit: `docs/burnout-audit.md`)
+
+- **Scope:**
+  - one scale (`s.strain`), made to mean something: a 36-month load record;
+  - four states with distinct effects;
+  - the overload said on the offer before signing;
+  - two long features at once priced in the open;
+  - a chosen break of 3–24 months, lived in one step;
+  - recovering by working less;
+  - illness never counted as unreliability.
+- **Uses:** life/strain.js, engine/sets.js, the agent, decline.js (comeback), stability.js (pause, never cancel a safe studio film).
+- **Done when:**
+  - an ordinary player is no longer in the red for most of a career (today 62% of months, 46% at the ceiling);
+  - every overload is visible before signing;
+  - illness never lowers insurability;
+  - age alone changes nothing new.
+
 ### Step 4 — Relationships and professional reputation
 
 - **Scope:**
@@ -150,6 +167,9 @@ Each step: scope · existing systems used · done when · tests · how it ships.
 Only once stories are a permanent part of films. Start from the paused brief (`docs/handoffs/2026-10-23-posters-paused.md`): several real art languages, large faces, an embedded image library, no repeats across a filmography, franchise style kept.
 
 ## Backlog (not now)
+
+- **Career Ambitions** — goals the player chooses (work with a director, become the horror star, shed the comedy image, come back after scandal), built on the existing childhood ambition and goals board; after Step 4.
+- **AI dialogue experiment** — one director conversation, rules vs AI, compared; later, in JavaScript.
 
 - **From the reputation discussion:** a star's manager, charity as an action.
 - **Television and the world:** TV movies; the shared universe (heirs, U1–U4); Icon for a television legend.
