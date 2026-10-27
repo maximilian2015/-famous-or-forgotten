@@ -164,13 +164,28 @@ It belongs to Step 3b because it is the same decision as burnout — how much wo
 
 The life card also shows **"Energy 85/85"** a few lines away. That is the monthly action energy (`ap`), a different thing, so two different "Energy" sit side by side.
 
-**Proposal:**
-1. **A home-screen tile** beside HEALTH and MENTAL: **LOAD 77** with a bar and the state word (rested / overworked / burning out / exhausted). Tapping it shows:
-   - what the load does now;
+**Decided (Maxi, 27 Oct): the load lives in the Mental screen, not a new tile.**
+
+1. **The MENTAL tile.** It stays, and gains a second line when the load is high: *"MENTAL 53 · running on empty"*. It is seen from the home screen without a tap.
+2. **The Mental screen ("Your head")**, which already has *What is pulling you down*, *What is holding you up* and *What you can do this month*, gets a **Load** block at the top:
+   - the bar 0–100 and the state word;
+   - what it is doing now;
    - the last 36 months of work;
    - the two ways down: work less, or step away.
-2. **The offer and the contract** — the place the decision is made. One forecast line: *"Load 62 → 88 if you sign. Two months overlap with Light and Rain III."*
-3. **The set card:** one line under "Your performance" when it matters ("You are running on empty — scene days are harder").
-4. **Rename the life card's strain row** from "Energy" to "Load", so it is never confused with action energy.
+3. **The offer and the contract:** the forecast line, *"Load 62 → 88 if you sign. Two months overlap with Light and Rain III."*
+4. **The set card:** one line when it matters.
+5. **Rename the life card's strain row** from "Energy" to "Load", apart from action energy.
+
+**How burnout shows (the plan for Step 3b; "exists" marks today's behaviour):**
+
+| State | What the player feels |
+|---|---|
+| Rested (to ~33) | Nothing; full strength. |
+| Busy (34–59) | Almost nothing. |
+| Overworked (60–81) | Action energy −20 a month (exists); scene days harder and worse (exists); mood drains (exists); the agent warns on every new offer (new). |
+| Burning out (82–94) | Your work on set grows more slowly, and the film's meter suffers. The director's patience is shorter after a bad day. Incidents on set: a forgotten line, a snap at the AD. Health slips and illness risk rises. |
+| Exhausted (95–100, sustained) | A doctor's event with a choice: finish and rest after, pause the shoot now (a pause, never a cancellation), or ignore it. Ignoring raises the chance of a forced break every month, by how long you have been there — not today's flat ~1.5%. |
+
+Every state is recorded as health, never as unprofessionalism. Refusing overload stays free.
 
 Nowhere else. The passport keeps its word.
