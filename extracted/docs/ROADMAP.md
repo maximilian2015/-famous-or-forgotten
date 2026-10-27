@@ -110,6 +110,12 @@ Each step: scope · existing systems used · done when · tests · how it ships.
 
 ### Step 3b — Burnout & Recovery (audit: `docs/burnout-audit.md`)
 
+Order inside the step (Maxi/ChatGPT, 27 Oct). Nothing replaces anything; burnout matters most.
+1. **Burnout** — the existing strain made to matter over years: worse work, exhaustion, illness risk, a forced pause; never a random "you are ill", never a charge of unprofessionalism.
+2. **Recovery** — lighter work, and a break of 3 / 6 / 12 / 24 months while life, people, premieres and the business go on.
+3. **Audience overexposure** — frequent big releases tire the audience, even when the actor feels fine; counted by release date, so it can grow during a rest.
+4. **Balance** — three strategies over 10–20 years, once both are in, so neither work nor rest is automatically best.
+
 - **Scope:**
   - one scale (`s.strain`), made to mean something: a 36-month load record;
   - four states with distinct effects;
