@@ -105,6 +105,14 @@ Each step: scope · existing systems used · done when · tests · how it ships.
     - The burnout count no longer drives insurability, the "Difficult" risk or the "shoots stopped because of you" line.
     - Depression no longer starts automatically on the fourth burnout.
     - A temporary limit on the biggest productions after a medical stop is allowed. It lifts with recovery and good work.
+- **Story continuity must hold** (Maxi, 27 Oct).
+  - A freeze, cut scenes, a recast or an absence from a series must not break the film's story, the character's identity or the save.
+  - A recast lead in part 3 keeps the role's history: the plot and the character stay on the film, and `continuation.js` and the role record say who played it and why it changed.
+  - No expansion of the story generator here. Use the data that exists and the smallest links needed.
+- **A lawful, agreed exit is not a breach.**
+  - Leaving by the exit clause already costs no Standing (`offers.js` path `exit`). Keep it that way.
+  - Any new "leave by agreement" or "finish early by agreement" outcome must be the same.
+  - Only walking off, or walking out of a running option, is charged.
 - **Not in Burnout Core:**
   - audience overexposure (moved to Step 6);
   - money liabilities, clawback, intrigues (Step 5b, after Step 4).
@@ -126,6 +134,13 @@ Each step: scope · existing systems used · done when · tests · how it ships.
   3. a medical absence never wipes professional merit (Standing, fame, prestige);
   4. the player can recover and build a successful career again.
   - **The test:** a $40m offer arrives. The player sees the load, the obligations already signed and the other chances at risk, and really thinks before signing.
+  - **Judged by three stories, not by the test count** (Maxi, 27 Oct). Each is a played-through career, shown as a story:
+    1. a star who rested in time;
+    2. a star who took the risk and got through;
+    3. a star who drove herself into a crisis, lost chances, and came back.
+
+    If all three paths are interesting, the mechanic works.
+- **Order of work:** finish Step 1, then the three-career simulation, then code.
 - **Tests:**
   - test_stability: the safe-studio guarantee;
   - illness never lowers Standing or insurability;
