@@ -305,29 +305,33 @@ function PremiereHero({ moment, accent }) {
   const c = moment.card;
   const tint = GENRE_TINT[moment.genre] || accent;
   const kind = [c.type, c.genre, c.role].filter(Boolean).join(' · ');
+  // The poster beside the credits, not above them (Maxi/ChatGPT, 23 Oct: on a phone the night was
+  // a tall picture, the title again, and a scroll to reach the one button).
   return (<div>
-    <div style={{ position: 'relative', height: 214, margin: '-4px -6px 0', borderRadius: 14, overflow: 'hidden',
-      background: `radial-gradient(ellipse at 50% 38%, ${tint}55, ${tint}10 55%, transparent 75%)` }}>
+    <div style={{ position: 'relative', display: 'flex', gap: 14, alignItems: 'center', textAlign: 'left', margin: '-4px -6px 12px', padding: 10, borderRadius: 14, overflow: 'hidden',
+      background: `radial-gradient(ellipse at 22% 50%, ${tint}55, ${tint}10 55%, transparent 80%)` }}>
       {/* Searchlights and a carpet for a night that has them. Television goes out on a screen in
           a kitchen ("no carpet, no room"), so it gets the glow and nothing else. */}
-      {!moment.tv && <svg viewBox="0 0 200 120" preserveAspectRatio="none" style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', opacity: .22 }}>
-        <path d="M10 120 L58 0 L74 0 Z" fill={theme.gold} /><path d="M190 120 L142 0 L126 0 Z" fill={theme.gold} />
+      {!moment.tv && <svg viewBox="0 0 200 120" preserveAspectRatio="none" style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', opacity: .16 }}>
+        <path d="M4 120 L30 0 L42 0 Z" fill={theme.gold} /><path d="M198 120 L180 0 L170 0 Z" fill={theme.gold} />
       </svg>}
-      {!moment.tv && <div style={{ position: 'absolute', left: 0, right: 0, bottom: 0, height: 26, background: 'linear-gradient(180deg, transparent, #8a345966)' }} />}
-      <div style={{ position: 'absolute', left: '50%', top: 12, transform: 'translateX(-50%)', boxShadow: `0 0 34px -6px ${tint}` }}>
-        <Poster title={moment.title} type={c.type} genre={moment.genre} director={c.director} scale={moment.scale} tall size={126} />
+      {!moment.tv && <div style={{ position: 'absolute', left: 0, right: 0, bottom: 0, height: 18, background: 'linear-gradient(180deg, transparent, #8a345955)' }} />}
+      <div style={{ position: 'relative', flex: 'none', boxShadow: `0 0 28px -6px ${tint}` }}>
+        <Poster title={moment.title} type={c.type} genre={moment.genre} director={c.director} scale={moment.scale} tall size={96} />
       </div>
-    </div>
-    <div style={{ fontFamily: FONT_DISPLAY, fontSize: 25, fontWeight: 700, lineHeight: 1.15, margin: '14px 0 4px' }}>{moment.title}</div>
-    {kind && <div style={{ fontSize: 11, fontWeight: 800, letterSpacing: '.08em', textTransform: 'uppercase', color: tint, marginBottom: 6 }}>{kind}</div>}
-    {/* A festival night has a result, and the old marquee said it (LAURELS, SOLD, UNSOLD). */}
-    {moment.festival && moment.verdict && <div style={{ display: 'inline-block', fontSize: 11, fontWeight: 900, letterSpacing: '.12em', textTransform: 'uppercase', margin: '0 0 8px', padding: '4px 10px', borderRadius: 20,
-      color: moment.result === 'unsold' ? theme.bad : theme.gold, border: `1px solid ${moment.result === 'unsold' ? theme.bad : theme.gold}66` }}>
-      {moment.result === 'prize' ? '🏆 ' : ''}{moment.verdict}</div>}
-    <div style={{ fontSize: 12.5, color: theme.muted, lineHeight: 1.55, marginBottom: 12 }}>
-      {c.you && c.character && <div><span style={{ color: theme.text, fontWeight: 700 }}>{c.you}</span> as <span style={{ color: theme.text, fontWeight: 700 }}>{c.character}</span></div>}
-      {c.with && <div>with <span style={{ color: c.withIcon ? theme.gold : theme.text, fontWeight: 700 }}>{c.with}</span></div>}
-      {c.director && <div>Directed by <span style={{ color: theme.text, fontWeight: 700 }}>{c.director}</span></div>}
+      <div style={{ position: 'relative', minWidth: 0 }}>
+        <div style={{ fontFamily: FONT_DISPLAY, fontSize: 22, fontWeight: 700, lineHeight: 1.15, marginBottom: 5, overflowWrap: 'anywhere' }}>{moment.title}</div>
+        {kind && <div style={{ fontSize: 10.5, fontWeight: 800, letterSpacing: '.08em', textTransform: 'uppercase', color: tint, marginBottom: 6 }}>{kind}</div>}
+        {/* A festival night has a result, and the old marquee said it (LAURELS, SOLD, UNSOLD). */}
+        {moment.festival && moment.verdict && <div style={{ display: 'inline-block', fontSize: 10.5, fontWeight: 900, letterSpacing: '.12em', textTransform: 'uppercase', margin: '0 0 6px', padding: '3px 9px', borderRadius: 20,
+          color: moment.result === 'unsold' ? theme.bad : theme.gold, border: `1px solid ${moment.result === 'unsold' ? theme.bad : theme.gold}66` }}>
+          {moment.result === 'prize' ? '🏆 ' : ''}{moment.verdict}</div>}
+        <div style={{ fontSize: 12.5, color: theme.muted, lineHeight: 1.5 }}>
+          {c.you && c.character && <div><span style={{ color: theme.text, fontWeight: 700 }}>{c.you}</span> as <span style={{ color: theme.text, fontWeight: 700 }}>{c.character}</span></div>}
+          {c.with && <div>with <span style={{ color: c.withIcon ? theme.gold : theme.text, fontWeight: 700 }}>{c.with}</span></div>}
+          {c.director && <div>Directed by <span style={{ color: theme.text, fontWeight: 700 }}>{c.director}</span></div>}
+        </div>
+      </div>
     </div>
     {c.sequel && <div style={{ fontSize: 12, lineHeight: 1.5, margin: '0 0 10px', padding: '8px 11px', borderRadius: 9, background: theme.panel2, border: `1px solid ${theme.gold}44`, color: theme.gold, textAlign: 'left' }}>{c.sequel}</div>}
     {c.tonight.length > 0 && <div style={{ textAlign: 'left', margin: '0 0 12px', padding: '9px 12px', borderRadius: 10, background: theme.panel2, border: `1px solid ${theme.line}` }}>

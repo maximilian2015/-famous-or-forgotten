@@ -87,12 +87,15 @@ export const CAMPAIGN = {
 };
 // Who decides: the studio, by what the picture is. A player’s hand on this dial is its own
 // feature and the data is ready for it — rel.campaignTier is only ever a string.
+// [usual, the other way the roll can go, odds of the usual]. One table, read by the roll and by
+// opening night, which mentions the campaign only when a picture did not get its usual one.
+const STUDIO_CAMPAIGN = { blockbuster: ['event', 'major', 70], feature: ['major', 'standard', 55],
+  indie: ['standard', 'minimal', 65], prestige: ['standard', 'minimal', 65] };
 export function studioCampaign(scale) {
-  if (scale === 'blockbuster') return chance(70) ? 'event' : 'major';
-  if (scale === 'feature') return chance(55) ? 'major' : 'standard';
-  if (scale === 'indie' || scale === 'prestige') return chance(65) ? 'standard' : 'minimal';
-  return 'minimal';
+  const t = STUDIO_CAMPAIGN[scale];
+  return t ? (chance(t[2]) ? t[0] : t[1]) : 'minimal';
 }
+export function usualCampaign(scale) { const t = STUDIO_CAMPAIGN[scale]; return t ? t[0] : 'minimal'; }
 export function campaignOf(rel) { return CAMPAIGN[rel && rel.campaignTier] || CAMPAIGN.standard; }
 // The production budget in millions: the project's own when it carries one (Budget V2), and the
 // scale's single number otherwise — which is every film made before it, so nothing moves until
@@ -354,10 +357,12 @@ export function grossFor({ scale, rating, genre, fame = 0, withFame = 0, trend =
 // everybody in the business knows it when the date is announced.
 const WINDOW = [0.82, 0.88, 0.96, 1.0, 1.08, 1.18, 1.2, 1.14, 0.84, 0.94, 1.06, 1.22];
 export function windowFor(month) { return WINDOW[((month % 12) + 12) % 12] || 1; }
+// The date that neither helps nor costs. Opening night does not mention it.
+export const ORDINARY_DATE = 'an ordinary date';
 export function windowWord(month) {
   const w = windowFor(month);
   return w >= 1.15 ? 'the best weekend of the year to open' : w >= 1.04 ? 'a good date'
-    : w >= 0.95 ? 'an ordinary date' : w >= 0.86 ? 'a quiet month' : 'the month they send things to die';
+    : w >= 0.95 ? ORDINARY_DATE : w >= 0.86 ? 'a quiet month' : 'the month they send things to die';
 }
 // And somebody else opening on top of you, which is nobody’s fault and costs you the same.
 export function againstYou(scale) {
