@@ -7,6 +7,7 @@ import { computeAccess } from './systems/career/access.js';
 import { seeDoctor, treatmentCost, pushThrough, PILLS, usePills, infectionOdds } from './systems/life/health.js';
 import { resolveArc, arcCard } from './systems/life/arcs.js';
 import { arrivalBonus } from './systems/life/money.js';
+import { strainBand } from './systems/life/strain.js';
 import { memoryLines, needCards, openNeed } from './systems/life/needs.js';
 import { computeLegacy, getHall } from './systems/meta/legacy.js';
 import { fameTier, FAME_TIERS, fameCeiling, ladderBlurb, isForgotten } from './systems/meta/status.js';
@@ -222,7 +223,9 @@ export default function App() {
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10, marginBottom: 14 }}>
           <Stat label="Cash" value={g.cash} money />
           <Stat vital label="Health" value={g.health} sub={g.illness ? `🤒 ${g.illness.name} ›` : 'tap ›'} onClick={() => setShowHealth(true)} />
-          <Stat vital label="Mental" value={g.mental} sub="tap ›" onClick={() => setShowMental(true)} />
+          {/* The workload lives behind this tile (MentalScreen); said on it once it is high, by name,
+              so the mood number is never read as the workload. */}
+          <Stat vital label="Mental" value={g.mental} sub={(g.strain || 0) >= 60 ? `Workload: ${strainBand(g.strain).id === 'burning' ? 'on empty' : 'tired'} ›` : 'tap ›'} onClick={() => setShowMental(true)} />
           <Stat label="Fame" value={g.fame} sub={fameSub(g)} onClick={() => setShowFame(true)} />
           <Stat label={g.dream === 'singer' ? 'Singing' : 'Acting'} value={g.dream === 'singer' ? g.singing : g.acting}
             sub={inCareer(g) ? 'tap for genres ›' : undefined} onClick={inCareer(g) ? () => setShowGenres(true) : undefined} />

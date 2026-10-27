@@ -2,7 +2,7 @@ import { dispatch } from '../../state/store.js';
 import { count } from '../../engine/text.js';
 import { COST, canAfford } from '../../engine/energy.js';
 import { mentalReport, canCall, canGetAway, closestPerson, callSomebody, getAway } from '../../systems/life/mood.js';
-import { seeSomebody } from '../../systems/life/strain.js';
+import { seeSomebody, strainBand } from '../../systems/life/strain.js';
 import { usePills } from '../../systems/life/health.js';
 import { theme } from '../theme.js';
 import { FONT, FONT_DISPLAY } from '../chrome.js';
@@ -37,7 +37,27 @@ export function MentalScreen({ g, onBack }) {
       <div style={{ fontSize: 16, fontWeight: 900 }}>Your head</div>
     </div>
 
+    {/* What the work has built up in you (life/strain.js), shown as it is. It is not this screen's
+        mood number: an actor can be cheerful and running on empty, or rested and low. Only the
+        existing strain and its existing bands — what it will do to you is Step 3b's. */}
+    {(() => {
+      const w = Math.round(g.strain || 0), wb = strainBand(g.strain || 0);
+      const col = w >= 82 ? '#ff5a72' : w >= 60 ? '#f0b429' : w >= 34 ? theme.muted : '#4fc07f';
+      return (<Card style={{ marginBottom: 14 }}>
+        <div style={{ fontSize: 11, fontWeight: 900, letterSpacing: '.09em', textTransform: 'uppercase', color: theme.muted }}>Workload</div>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', marginTop: 2 }}>
+          <div style={{ fontSize: 13.5, fontWeight: 800, color: col }}>{g.burnout ? `Signed off · ${count(g.burnout.left, 'month')} left` : wb.label}</div>
+          <div style={{ fontFamily: FONT_DISPLAY, fontSize: 22, fontWeight: 700, color: col }}>{w}<span style={{ fontSize: 13, color: theme.muted }}>/100</span></div>
+        </div>
+        <div style={{ height: 9, background: 'rgba(255,255,255,.08)', borderRadius: 5, margin: '8px 0 7px', overflow: 'hidden' }}>
+          <div style={{ width: w + '%', height: '100%', background: col, borderRadius: 5, transition: 'width .5s' }} />
+        </div>
+        <div style={{ fontSize: 12, color: theme.muted, lineHeight: 1.5 }}>{wb.note}</div>
+      </Card>);
+    })()}
+
     <Card style={{ marginBottom: 14 }}>
+      <div style={{ fontSize: 11, fontWeight: 900, letterSpacing: '.09em', textTransform: 'uppercase', color: theme.muted }}>Mental health</div>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline' }}>
         <div style={{ fontFamily: FONT_DISPLAY, fontSize: 30, fontWeight: 700 }}>{m}</div>
         <div style={{ fontSize: 12.5, fontWeight: 800, color: band[1] }}>{band[0]}</div>

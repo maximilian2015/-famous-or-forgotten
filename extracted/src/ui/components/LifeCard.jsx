@@ -27,7 +27,7 @@ export function LifeCard({ g }) {
     {(g.quote || 0) > 0 && row('Your quote', money(g.quote), theme.gold)}
     {/* What the work is costing you. Only shown once it is worth knowing about. */}
     {g.burnout ? row('Signed off', `${g.burnout.left} month${g.burnout.left === 1 ? '' : 's'} left`, theme.bad)
-      : (g.strain || 0) >= 34 && row('Energy', strainBand(g.strain).label, (g.strain || 0) >= 82 ? theme.bad : (g.strain || 0) >= 60 ? theme.gold : theme.muted)}
+      : (g.strain || 0) >= 34 && row('Workload', strainBand(g.strain).label, (g.strain || 0) >= 82 ? theme.bad : (g.strain || 0) >= 60 ? theme.gold : theme.muted)}
     {/* Once you have shut down three sets, that is a thing about you. */}
     {unreliable(g) && row('Insurers', `${g.burnouts} shoots stopped because of you`, theme.bad)}
     {depressed(g) && row('Carrying', `${monthsIn(g)} month${monthsIn(g) === 1 ? '' : 's'} of it`, theme.bad)}
