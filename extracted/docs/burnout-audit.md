@@ -383,3 +383,8 @@ Maxi and ChatGPT looked at Alex Moon still shooting at strain 100 and Mental 33.
 **Proposal, awaiting Maxi's word:** move 3b part 1 (Burnout: the §12 path plus 13.2-A items 1–5) **ahead of Step 3** (the minigames).
 - It touches scene days only through the existing quality penalty, so the minigame rework does not block it.
 - Recovery, overexposure and the balance pass keep their order after it.
+
+**Decided (Maxi/ChatGPT, 27 Oct).** Burnout, recovery and the production crises become **Step 1b, Burnout Core**. It comes right after Step 1, before the stories and the minigames. "Step 3b" in this document now means Burnout Core.
+- **Moved out:** audience overexposure, to Step 6.
+- **Fixed already in Step 1, main `a24cbdd`:** the Standing charge for a film that a burnout stopped.
+- **Also agreed:** the 52-month patience goes. The studio decides by the circumstances (§13.2-A item 1).

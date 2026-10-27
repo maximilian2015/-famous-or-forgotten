@@ -77,6 +77,61 @@ Each step: scope · existing systems used · done when · tests · how it ships.
 - **Tests:** full suite and a played-through life after each merge; one test per loose end.
 - **Ships:** one merge per step, game.html after the last.
 - **Note:** rep-cover can wait until Step 4 if Maxi prefers it reviewed with the rest of relationships. It merges cleanly either way.
+- **Done 27 Oct:** all four merged into main; the workload bar on the Mental screen; **a film that a burnout stopped no longer costs Standing** (it was −6, or −9 past the window), main `a24cbdd`.
+
+### Step 1b — Burnout Core (moved ahead of stories and minigames, Maxi/ChatGPT 27 Oct; audit `docs/burnout-audit.md` §7–13)
+
+**Why first:** today working without end pays off. Alex Moon shot for years at strain 100 with Mental 33. Better minigames would not change that; Burnout changes the strategy of a career, and then the choice in a scene ("one more take, or stop") means something.
+
+- **Scope:**
+  - **Load over time.** `s.strain` plus a 36-month load record, so years at 100 differ from a hard spring. There are four states with distinct effects (§11–12).
+  - **Exhaustion leads to a real crisis.** 95+ for months brings a doctor's event with a choice. Ignoring it raises the chance of a forced stop with every month spent there. On set, an incident is an event with choices (The Fifth Take), and the cost runs as one chain: your scene, then the film. There are no three separate penalties.
+  - **The studio decides by circumstances, not by fame alone.**
+    - The inputs: lead or supporting, how much is shot, whether you are the franchise face, the budget and the contract.
+    - The outcomes: reschedule, freeze your part, cut or rewrite, or recast.
+    - Today's patience of up to 52 months goes. With 90% of a blockbuster shot, they wait for a legend; when the shoot has barely started, they decide much sooner.
+    - A safely financed studio film is always finished, with another actor if need be. An indie may not survive.
+  - **`replacementThreat`** also opens from sustained exhaustion. Quest B, the Studio's Ultimatum, comes from it. The next crisis remembers the choice made before it.
+  - **Negotiating the shoot** (§12): finish early, postpone, a lighter schedule, a medical pause. Two contract clauses: a schedule bonus and postponement terms.
+  - **Medical pause and recovery:**
+    - a chosen break of 3 / 6 / 12 / 24 months, lived in one step;
+    - recovering by working less;
+    - films keep releasing and life goes on.
+  - **Paper while signed off:** you can sign work that starts after you return. The agent can ask for a later start, a lighter schedule or an exception from exclusivity. No set starts before you are cleared.
+  - **The agent at 60 / 82 / 95.** It speaks only when it matters and never signs for you.
+  - **The forecast on the offer:** "≈62 → 88", and two long features at once are priced in the open.
+  - **A series can go on without you.** The season can be delayed or shortened, or the character written out for a while (`writeOut`). If the show does better without you, the next season offers fewer episodes (quest C).
+  - **Illness is never unreliability.**
+    - The burnout count no longer drives insurability, the "Difficult" risk or the "shoots stopped because of you" line.
+    - Depression no longer starts automatically on the fourth burnout.
+    - A temporary limit on the biggest productions after a medical stop is allowed. It lifts with recovery and good work.
+- **Not in Burnout Core:**
+  - audience overexposure (moved to Step 6);
+  - money liabilities, clawback, intrigues (Step 5b, after Step 4).
+- **Uses:**
+  - `life/strain.js`, `engine/sets.js`;
+  - `stability.js` freeze, and its pause-never-cancel rule for safe studio films;
+  - `arcs.js` replacementThreat, `contract.js` clauses, `standoff.js writeOut`, `continuation.js`;
+  - the agent, `decline.js` (the comeback), `life/depression.js`, the `s.memory` ledger.
+  - No new scale and no second contract system.
+- **Before code:** the three-career balance (careful, ambitious, never stops), 10–20 years. Count:
+  - money, fame, Standing and film quality;
+  - months overloaded, crises and medical pauses;
+  - roles lost, replacements and offers missed.
+  
+  Then Alex Moon's save.
+- **Done when (Maxi's acceptance):**
+  1. Alex Moon cannot stay at 100 for decades without consequences she feels;
+  2. studios sometimes wait, sometimes rebuild the schedule, sometimes recast;
+  3. a medical absence never wipes professional merit (Standing, fame, prestige);
+  4. the player can recover and build a successful career again.
+  - **The test:** a $40m offer arrives. The player sees the load, the obligations already signed and the other chances at risk, and really thinks before signing.
+- **Tests:**
+  - test_stability: the safe-studio guarantee;
+  - illness never lowers Standing or insurability;
+  - the studio's decision by circumstance;
+  - old saves load;
+  - a probe of red months against today's 62%.
 
 ### Step 2 — Stories for films, sequels and series
 
@@ -107,43 +162,6 @@ Each step: scope · existing systems used · done when · tests · how it ships.
 - **Done when:** no scene is pure guessing; every remembered day can name its scene; the 8 scenes without a MOMENT line have one.
 - **Tests:** solvability probes for the boards (the FrameCheck probe found 10–46% ambiguous boards), and the rules text written off the component.
 - **Ships:** one mechanic per branch, each played in the browser.
-
-### Step 3b — Burnout & Recovery (audit: `docs/burnout-audit.md`)
-
-Order inside the step (Maxi/ChatGPT, 27 Oct). Nothing replaces anything; burnout matters most.
-1. **Burnout** — the existing strain made to matter over years: worse work, exhaustion, illness risk, a forced pause; never a random "you are ill", never a charge of unprofessionalism.
-2. **Recovery** — lighter work, and a break of 3 / 6 / 12 / 24 months while life, people, premieres and the business go on.
-3. **Audience overexposure** — frequent big releases tire the audience, even when the actor feels fine; counted by release date, so it can grow during a rest.
-4. **Balance** — three strategies over 10–20 years, once both are in, so neither work nor rest is automatically best.
-
-**Added 27 Oct** (audit §13: high-stakes contracts, matched against the code). These are in 3b too:
-- **The studio decides when you stop:** reschedule, freeze, cut, or recast. It reads the role, how much is shot, whether you are the franchise face, and the contract.
-- **A burnout-frozen film that dies no longer costs Standing.** Today it costs −6 or −9.
-- **While signed off you can still sign work that starts after you return.**
-- **`replacementThreat` also opens from sustained exhaustion,** and the next crisis remembers the choice before it.
-- **A series can go on without you,** and can come back with fewer episodes.
-- **Two contract clauses:** a schedule bonus and postponement terms.
-
-**Not in 3b:** liability, clawback and NPC intrigue. They go after Step 4, to Hollywood Intrigues.
-
-**Proposed, awaiting Maxi:** move part 1 (Burnout) ahead of Step 3.
-
-- **Scope:**
-  - one scale (`s.strain`), made to mean something: a 36-month load record;
-  - four states with distinct effects;
-  - the overload said on the offer before signing;
-  - two long features at once priced in the open;
-  - a chosen break of 3–24 months, lived in one step;
-  - recovering by working less;
-  - illness never counted as unreliability;
-  - **overexposure:** a star's releases in the last 12 months lower the draw of her name — the audience's side of working too much (Maxi, 27 Oct).
-- **Before code:** a balance on three careers — careful, always busy, overloading on purpose — over 10–20 years, so that no strategy is automatically best (audit §9–10).
-- **Uses:** life/strain.js, engine/sets.js, meta/market.js (the existing genre glut is the pattern for overexposure), the agent, decline.js (comeback), stability.js (pause, never cancel a safe studio film).
-- **Done when:**
-  - an ordinary player is no longer in the red for most of a career (today 62% of months, 46% at the ceiling);
-  - every overload is visible before signing;
-  - illness never lowers insurability;
-  - age alone changes nothing new.
 
 ### Step 4 — Relationships and professional reputation
 
@@ -187,6 +205,12 @@ Order inside the step (Maxi/ChatGPT, 27 Oct). Nothing replaces anything; burnout
 - **Needs first:** Step 4 (the four categories, recoverable insurability).
 
 ### Step 6 — Media and markets
+
+- **Audience overexposure** (moved here from the old Step 3b; audit §10):
+  - a star's releases in the last 12 months lower the draw of her name;
+  - the lead counts most;
+  - it never touches quality or Standing;
+  - it is said on the offer.
 
 - **Scope:**
   - **press:** a set conflict → a possible leak → the press reaction → consequences, using the existing setPieces, rumour, scandal and hype;
