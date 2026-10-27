@@ -7,6 +7,7 @@ import { canSmooth, smoothOver, canUse, FAVOURS, costOf } from '../../systems/ca
 import { theme } from '../theme.js';
 import { Card } from './Card.jsx';
 import { TitleLine } from './TitleLine.jsx';
+import { sheetOf } from '../../systems/career/plot/sheet.js';
 
 // What this month on set needs from you, and how the director feels about you — on the
 // home screen, where the month actually gets lived.
@@ -65,6 +66,26 @@ function DemandRow({ g, p }) {
     </div>
   </div>);
 }
+// The script, once the paper is signed (career/plot/sheet.js): who you play, what the hero wants,
+// who else is in it, what happens, and the twist — which the actor reads and the trailer never
+// says. Folded, so a phone screen is not a page of text until you ask for it.
+function ScriptBlock({ p }) {
+  const sh = sheetOf(p.plot, p.character, p.tier);
+  if (!sh) return null;
+  const row = (k, v) => (<div style={{ fontSize: 11.5, lineHeight: 1.5, marginTop: 4 }}><span style={{ color: theme.muted }}>{k} </span>{v}</div>);
+  return (<details style={{ marginBottom: 10, padding: '8px 10px', borderRadius: 10, background: 'rgba(255,255,255,.04)', border: `1px solid ${theme.line}` }}>
+    <summary style={{ cursor: 'pointer', fontSize: 11, fontWeight: 900, letterSpacing: '.08em', textTransform: 'uppercase', color: theme.gold }}>Your part — the script</summary>
+    {row('You:', `${sh.name ? sh.name + ' — ' : ''}${sh.you}`)}
+    {!sh.lead && row('Opposite:', `${sh.heroName ? sh.heroName + ', ' : ''}${sh.hero.replace(/^./, (c) => c.toLowerCase())}`)}
+    {sh.wants && row(sh.lead ? 'You want' : 'The hero wants', sh.wants + '.')}
+    {!!sh.people.length && row('Around you:', sh.people.join('; ') + '.')}
+    {row('What happens:', sh.happens)}
+    <div style={{ fontSize: 11.5, lineHeight: 1.5, marginTop: 6, padding: '6px 8px', borderRadius: 8, background: 'rgba(158,116,255,.10)' }}>
+      <span style={{ color: theme.accent, fontWeight: 800 }}>In the script, never in the trailer: </span>{sh.secret}
+      <div style={{ color: theme.muted, marginTop: 3 }}>{sh.learns}</div>
+    </div>
+  </details>);
+}
 export function ProductionCard({ g, p }) {
   const tier = meterTier(p.meter); const noEnergy = !canAfford(g, COST.rehearse);
   const actBtn = (danger) => ({ flex: 1, border: 'none', borderRadius: 10, padding: '9px', fontSize: 12.5, fontWeight: 800, cursor: noEnergy ? 'default' : 'pointer', background: noEnergy ? 'rgba(120,110,150,.15)' : danger ? 'rgba(255,209,102,.18)' : `linear-gradient(135deg,${theme.accent2},${theme.accent})`, color: noEnergy ? '#6b6390' : danger ? theme.gold : '#fff' });
@@ -72,6 +93,7 @@ export function ProductionCard({ g, p }) {
     <div style={{ fontSize: 11, fontWeight: 900, letterSpacing: '.08em', textTransform: 'uppercase', color: theme.gold, marginBottom: 6 }}>🎬 {p.prepLeft > 0 ? `Preparing · ${p.prepLeft} mo before the first day` : `On set · ${p.monthsLeft} mo left`}</div>
     <TitleLine g={g} kind="set" id={p.id} title={p.title} />
     <div style={{ fontSize: 11.5, color: theme.muted, margin: '3px 0 8px' }}>{p.role} · {p.type}</div>
+    {p.plot && <ScriptBlock p={p} />}
     <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 11.5, color: theme.muted, marginBottom: 4 }}><span>Your performance</span><span>{tier.label} · {Math.round(p.meter)}</span></div>
     <div style={{ height: 7, background: 'rgba(255,255,255,.08)', borderRadius: 4, marginBottom: 8 }}><div style={{ width: p.meter + '%', height: '100%', background: theme.gold, borderRadius: 4 }} /></div>
     {/* The other three, in words. A set is a story, not a progress bar. */}

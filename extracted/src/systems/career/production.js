@@ -163,6 +163,8 @@ export function startProduction(s, offer) {
     // (career/script.js), so you are not signing a genre and a fee — and kept, so season
     // four is about the same person as season one.
     premise: offer.premise || makePremise(offer.genre), character: offer.character || null, take: null, takeWon: false,
+    // The whole story it was offered with (career/plot), twist and all — kept, never re-told.
+    plot: offer.plot || null,
     // Where you said it should go, and whether anybody was paid to remind people it exists.
     direction: offer.direction || null, remind: offer.remind || null,
     // Whose first film this is. The payoff is not the review — it is the phone call years
@@ -680,7 +682,7 @@ function wrapProduction(s, p) {
   // The credit does NOT land here. It goes into post and opens months from now —
   // fame, box office and the score all arrive on premiere night, not on the last
   // day of shooting. See systems/career/release.js.
-  credit.premise = p.premise; credit.take = p.takeWon ? p.take : null;
+  credit.premise = p.premise; credit.plot = p.plot || null; credit.take = p.takeWon ? p.take : null;
   // ── what happened on set ────────────────────────────────────────────────────
   // The test a relayed note proposed, and it is a good one: when a picture wraps, can the player
   // say what it WAS? The old answer was "the film where I pressed Rehearse four times". All of

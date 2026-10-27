@@ -10,6 +10,9 @@
 import { pick } from '../../engine/rng.js';
 import { makePremise } from './story.js';
 import { FIRST_F, FIRST_M, LAST } from '../world/names.js';
+import { storyFor, SHAPES } from './plot/plot.js';
+
+const PLOT_GENRES = new Set(SHAPES.map((x) => x.genre));
 
 // Who you would be. The genre tables are what that kind of picture is actually about; the
 // last table is everything, because a person is not only their genre.
@@ -64,11 +67,46 @@ export function dressOffers(s) {
   for (const list of lists) {
     for (const o of (list || [])) {
       if (!o || o.kind === 'brand') continue;                 // a brand is not a part
+      // A new film gets its whole story (career/plot): the premise is its synopsis, the part is
+      // its hero or one of its people, and the twist is kept on it and shown nowhere. Only an
+      // offer that has not been dressed yet — one already on the table in an old save keeps
+      // what it said — and only a first film: sequels and seasons come later.
+      if (!o.premise && !o.plot && takesPlot(o)) {
+        const plot = plotFor(s, o);
+        if (plot) {
+          o.plot = plot;
+          o.premise = plot.synopsis;
+          if (!o.character) o.character = { name: castName(s), what: plot.part.replace(/^./, (c) => c.toLowerCase()), tier: o.tier || 'lead' };
+        }
+      }
       if (!o.premise) o.premise = makePremise(o.genre);
       if (!o.character) o.character = makeCharacter(s, o.genre, o.tier);
     }
   }
   return s;
+}
+// A first film in a genre the stories know. Not a sequel, a season, a renewal or a series: those
+// continue something, and telling them from a new story would be the copied premise again.
+function takesPlot(o) {
+  if (['sequel', 'renewal', 'season'].includes(o.kind)) return false;
+  if ((o.part || 1) > 1 || o.episodes || o.season || o.seriesTitle) return false;
+  return PLOT_GENRES.has(o.genre);
+}
+// The player's earlier stories, oldest first — what the next one should not repeat.
+function recentPlots(s) {
+  return [...(s.filmography || []), ...(s.releases || []), ...(s.productions || []), ...(s.offers || []), ...(s.laterOffers || []).map((x) => x.offer)]
+    .map((x) => x && x.plot).filter(Boolean).slice(-12);
+}
+function plotFor(s, o) {
+  const lead = o.tier === 'lead' || o.tier === 'tentpole' || (!o.tier && o.role === 'Lead');
+  const gender = s.gender === 'female' ? 'f' : 'm';
+  const st = storyFor({ title: o.projectTitle || o.title || '', genre: o.genre, gender, lead, recent: recentPlots(s) });
+  if (!st) return null;
+  // What is kept: enough to tell it, hide its twist, and continue it. Not the title words it matched.
+  const { v, shape, g, hero, place, traits, motif, logline, synopsis, twist, tagline, part, used, parts, spark, block } = st;
+  // A supporting part plays opposite somebody, and the set calls that somebody by name.
+  const heroName = lead ? null : `${pick(g === 'f' ? FIRST_F : FIRST_M)} ${pick(LAST)}`;
+  return { v, shape, g, hero, heroName, place, traits, motif, logline, synopsis, twist, tagline, part, lead, used, parts, spark, block };
 }
 // A season or a part that continues something keeps the same person. Rolling a new name for
 // season four of the show you have been on for three years was the kind of thing that made
