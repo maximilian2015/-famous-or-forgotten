@@ -1,4 +1,3 @@
-import { setRespect } from '../meta/status.js';
 import { paid } from './agent.js';
 import { count } from '../../engine/text.js';
 import { uid } from '../../engine/id.js';
@@ -261,19 +260,16 @@ export function frozenTick(s) {
     if (chance(deathOdds(f, now))) {
       const waited = now - (f.since ?? now);
       const ranOut = waited > (f.patience ?? 30);
-      // A film that dies with your name on it costs you something — IF it was you who walked
-      // off it. When the money fell through, that is the financier's failure, not yours, and
-      // it used to charge you anyway: −3 for the death and −6 with the line "they held it
-      // open and you never went back", when a way back is only ever offered a few per cent
-      // of months and usually never. Measured on a perfect player: dozens of these across a
-      // career, and the single biggest reason standing sat below zero for a decade.
-      const cost = f.byYou ? 6 + (ranOut ? 3 : 0) : 0;
-      if (cost) setRespect(s, (s.respect || 0) - cost);
+      // A film that dies here costs you the film, never Standing. `byYou` is set only by a
+      // burnout (life/strain.js), and illness is not a breach (burnout-audit §6, §13): it used
+      // to take −6, or −9 once the window had run out, for being signed off. Walking off a set
+      // is a choice and is charged where it happens (production.js walkOffSet), not here. When
+      // the money fell through it is the financier's failure, and that never cost you either.
       if (f.byYou && ranOut) {
-        addTimeline(s, `"${f.title}" was recast. They held it open ${Math.round(waited / 12)} year${waited >= 24 ? 's' : ''} and you never went back for it.`, true);
+        addTimeline(s, `"${f.title}" was recast. They held it open ${Math.round(waited / 12)} year${waited >= 24 ? 's' : ''}, and you were not well enough to go back for it.`, true);
         s.lastEvent = `They recast "${f.title}". It waited as long as anyone was going to wait.`;
       } else if (f.byYou) {
-        addTimeline(s, `"${f.title}" was formally abandoned. It stopped because of you, and it never started again.`, true);
+        addTimeline(s, `"${f.title}" was formally abandoned. It stopped when you were signed off, and it never started again.`, true);
         s.lastEvent = `"${f.title}" will never be finished. They have written it off.`;
       } else {
         addTimeline(s, `"${f.title}" was written off. The money never came back — ${count(waited, 'month')} in the freezer, and nobody blames you for it.`);
