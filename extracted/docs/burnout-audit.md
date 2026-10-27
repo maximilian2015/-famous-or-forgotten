@@ -189,3 +189,53 @@ The life card also shows **"Energy 85/85"** a few lines away. That is the monthl
 Every state is recorded as health, never as unprofessionalism. Refusing overload stays free.
 
 Nowhere else. The passport keeps its word.
+
+## 12. Final refinements — design closed until Step 3b (Maxi/ChatGPT, 27 Oct)
+
+**Four corrections:**
+1. **The MENTAL tile's second line says "Load: running on empty",** never "MENTAL 53 · …". The two numbers are different things.
+2. **The agent speaks only when it matters:** a contract that raises the load a lot, or creates a dangerous overlap. *"You're already filming two projects. Taking this one means six months without a break. I'm concerned."* The forecast line stays on every offer, marked approximate: *"≈62 → 88"*.
+3. **Incidents on set are events with choices,** not silent point losses.
+   - *The Fifth Take*: try again / ask for a short recovery break / tell the director you are exhausted.
+   - The director's reaction reads his trait and the schedule.
+   - Illness itself never makes you unprofessional; an insult you choose to throw is a personal matter with that person.
+4. **One chain of consequence, never three penalties.** High load → a good scene is harder to play → your contribution to the film is lower → the reviews and the result follow from that. No separate penalty on each.
+
+**Negotiating the shoot** — not a new system; strain, the calendar, the contract, the director's trait, the producers, insurability. It opens only at high load or a medical crisis.
+
+| Choice | What it buys | What it costs |
+|---|---|---|
+| Carry on | the short-term gain | the load keeps building |
+| Finish your scenes early | out sooner | needs the production's yes; more load for weeks, fewer takes; a perfectionist may refuse; easier for a supporting part than for the lead of an 8-month film |
+| Postpone your scenes 1–2 months | time to recover | schedule, a possible later release, some goodwill or a bonus |
+| A lighter schedule | less risk to health | the shoot runs longer |
+| A medical pause | the doctor's call, always possible | — health is never traded for reputation |
+
+- **A postponement is a request, not a right.** The studio says yes more readily the first time and asks more the second. A third serious stop opens the production crisis below.
+- **Money:** never a fine for illness.
+  - Contract penalties only for knowingly broken obligations (incompatible contracts signed on purpose).
+  - A requested easier schedule can cost a bonus, by agreement.
+
+**Forced recovery — the rare climax of sustained overload, not a separate system.**
+
+The path: 82+ first real effects → 95+ for months, the doctor advises → you carry on → the chance of a forced stop rises with how long → **production crisis** → recovery and a comeback.
+
+**The studio decides by how much is shot and how big your part is:**
+- **freeze your scenes** 1–3 months, if they can wait;
+- **rewrite and finish without some scenes**, if most is shot;
+- **replace you**, if it is early or nobody can wait.
+
+The existing `replacementThreat` event is the starting point for this. A safely financed studio film is still finished — in the extreme case, with another actor.
+
+**What follows:**
+- **Health:** a forced pause, no new shoots for a while, a slow recovery.
+- **Production:** the schedule broken, costs, other films delayed, perhaps the role lost.
+- **Insurability:** temporary limits on big projects, which lift after recovery and good work.
+- **Standing:** illness never lowers it. One producer's trust can change through the real production risk.
+- **Money:** losing an €8m lead is the consequence. Nothing else is taken.
+
+**The screen:** a greyed, muted look while it lasts. Temporary, and it can be switched off. Time keeps running, with the doctor, the production news and the decisions — **the game is never locked**.
+
+**Depression is not burnout.** It exists (`life/depression.js`: therapy, medication) and today it **starts automatically on the fourth burnout** (`strain.js`, `DEPRESSION_AT = 4`). That automatic rule goes. A long exhaustion can *sometimes* meet the existing depression; it never equals it.
+
+**The test for Step 3b:** on Alex Moon, does the player get a real reason to say *"they offer ten million for this one, and I will turn it down"*?
