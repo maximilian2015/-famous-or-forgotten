@@ -51,6 +51,10 @@ const SAY = {
 };
 
 export function stories(s) { return s.stories || (s.stories = []); }
+// The ones this build can tell. A save that a newer build touched can carry a story this one
+// has never heard of; it is kept, untouched, for the build that knows it, and skipped here —
+// before this, one unknown id stopped every month and the story list from drawing.
+const known = (s) => stories(s).filter((st) => CHAINS[st.id] && CHAINS[st.id].beats);
 export function storyOf(s, id) { return stories(s).find((x) => x.id === id) || null; }
 function onCooldown(s, id, months) { const last = ((s._storyLog || {})[id] || []).slice(-1)[0]; return last != null && stamp(s) - last < months; }
 function end(s, st) {
@@ -473,7 +477,7 @@ function recordFor(s, st) {
 
 // ── the engine ───────────────────────────────────────────────────────────────────
 function present(s, st) {
-  const chain = CHAINS[st.id]; const beat = chain.beats[st.beat]; if (!beat) { end(s, st); return; }
+  const chain = CHAINS[st.id]; if (!chain) return; const beat = chain.beats[st.beat]; if (!beat) { end(s, st); return; }
   const built = beat.build(s, st); if (!built) return;
   s.pendingArc = { story: st.id, beat: st.beat, speaker: built.speaker, text: built.text, choices: built.choices.map((c) => ({ label: c.label, hint: c.hint || null, shows: c.shows || null })) };
   st.shown = stamp(s);
@@ -482,11 +486,11 @@ export function storiesTick(s) {
   if (!inCareer(s)) return s;
   const now = stamp(s);
   // beats that are due, one a month, and only when nothing else is on the screen
-  for (const st of stories(s)) {
+  for (const st of known(s)) {
     if (st.due != null && st.due <= now && !s.pendingArc) { present(s, st); break; }
   }
   // a new chain: one a month, two at a time, never the same one twice in its cooldown
-  if (stories(s).length < 2) {
+  if (known(s).length < 2) {
     for (const id of CHAIN_ORDER) {
       const chain = CHAINS[id];
       if (storyOf(s, id) || (chain.cooldown && onCooldown(s, id, chain.cooldown))) continue;
@@ -504,7 +508,7 @@ export function storiesTick(s) {
 }
 // resolveArc (arcs.js) hands a story beat back here.
 export function resolveStory(s, arc, i) {
-  const st = storyOf(s, arc.story); if (!st) { s.pendingArc = null; return s; }
+  const st = storyOf(s, arc.story); if (!st || !CHAINS[st.id]) { s.pendingArc = null; return s; }
   const chain = CHAINS[st.id]; const beat = chain.beats[arc.beat];
   const built = beat.build(s, st); if (!built) { s.pendingArc = null; return s; }
   const c = built.choices[i]; if (!c) return s;
@@ -524,7 +528,7 @@ export function resolveStory(s, arc, i) {
 export const QUIET_AFTER = 3;
 export function activeStories(s) {
   const now = stamp(s);
-  return stories(s).map((st) => {
+  return known(s).map((st) => {
     const chain = CHAINS[st.id]; let line = '';
     try { line = chain.status(s, st); } catch (e) { line = ''; }
     const next = st.due != null ? Math.max(now, st.due) : null;
