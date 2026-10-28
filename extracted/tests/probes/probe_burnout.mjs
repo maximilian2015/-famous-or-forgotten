@@ -30,8 +30,11 @@ const STRATS = {
   careful: { sets: 1, signBelow: 45, rest: true, doctor: 'rest' },
   ambitious: { sets: 2, signBelow: 60, rest: true, doctor: 'mixed' },
   nonstop: { sets: 3, signBelow: 101, rest: false, doctor: 'ignore' },
+  // nonstop until the first forced stop; then a year away, and the ambitious life after it
+  comeback: { sets: 3, signBelow: 101, rest: false, doctor: 'ignore', reform: true },
 };
 
+const STORY_RE = /doctor|signed off|Signed off|stopped|wait for you|shoot around|without your last|written out|wrote your character|recast|Stepped away|Back after|Cleared|lighter schedule|moved your scenes|scenes first|said no. |schedule bonus|Running on empty|tired in a way|: (Hit|Flop|Smash|Well-received)|opened|Asker|Emmet|took it|You won|grossed|verdict/;
 function answer(t, how, r) {
   for (let k = 0; k < 4 && t.pendingArc; k++) {
     const arc = t.pendingArc; const ch = arc.choices || []; const n = ch.length || 1;
@@ -45,12 +48,18 @@ function answer(t, how, r) {
       else if (how === 'ignore' && push >= 0) i = push;
       else if (how === 'mixed') i = Math.random() < 0.5 && rest >= 0 ? rest : push >= 0 ? push : i;
     }
+    if (r.log && (arc.health || arc.id === 'burnout')) r.log.push(`${['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'][t.month]} ${t.year}  [${arc.speaker}] → ${(ch[i] || {}).label}`);
     A.resolveArc(t, i);
     if (t.pendingArc === arc) { t.pendingArc = null; break; }
   }
 }
 
-function month(t, st, r) {
+function month(t, st0, r) {
+  let st = st0;
+  if (st0.reform && (t.burnouts || 0) >= 1) {
+    st = STRATS.ambitious;
+    if (!r.reformed && BO.canTakeBreak(t).ok) { r.reformed = true; BO.takeBreak(t, 12); r.breaks++; if (r.log) r.log.push('   (the player steps away for a year)'); }
+  }
   t.bigMoment = null;
   answer(t, st.doctor, r);
   if (t.scene) SC.resolveScene(t, 40 + Math.random() * 55);
@@ -77,7 +86,12 @@ function month(t, st, r) {
   if (st.rest && !(t.productions || []).length && (t.ap || 0) >= 10) AC.runAction(t, 'rest');
   for (const p of t.productions || []) if ((p.monthsLeft || 0) === 1 && !p.paused) { r.meter += p.meter || 0; r.wraps++; }
   const before = { cash: t.cash, burnouts: t.burnouts || 0, frozen: (t.frozen || []).length };
+  const mark = (t.timeline || [])[0];
   t = advanceMonth(t);
+  if (r.log) {
+    for (const e of t.timeline || []) { if (e === mark) break; if (STORY_RE.test(e.text)) r.log.push(`${e.when}  ${e.text}`); }
+    if (t.month === 0) r.log.push(`— ${t.year}: age ${t.ageY}, fame ${Math.round(t.fame)}, standing ${Math.round(t.respect || 0)}, workload ${Math.round(t.strain || 0)}, health ${Math.round(t.health)}, €${(t.cash / 1e6).toFixed(1)}m, ${(t.filmography || []).filter((c) => !c.minor).length} credits`);
+  }
   const L = (t.inbox || []).find((x) => x.tag === 'agent'); if (L) EM.emailAct(t, L.id, 0);
   // the reading
   r.months++;
@@ -89,12 +103,12 @@ function month(t, st, r) {
   return t;
 }
 
-function career(strat, life) {
+function career(strat, life, story = false) {
   const st = STRATS[strat];
   let t = createInitialState({ name: strat + life, dream: 'actor', created: true, gender: life % 2 ? 'female' : 'male' });
   beginLife(t);
   Object.assign(t, { stage: 'career', ageY: 22, year: 2050, month: 0, hasApartment: true, housing: 'room', cash: 9000, alive: true, ap: 100, apMax: 100, apMaxEff: 100, fame: 0, peakFame: 0 });
-  const r = { months: 0, red: 0, top: 0, off: 0, collapses: 0, breaks: 0, peakFame: 0, doctor: 0, meter: 0, wraps: 0 };
+  const r = { months: 0, red: 0, top: 0, off: 0, collapses: 0, breaks: 0, peakFame: 0, doctor: 0, meter: 0, wraps: 0, log: story ? [] : null };
   for (let m = 0; m < YEARS * 12 && t.alive !== false; m++) {
     try { t = month(t, st, r); } catch (e) { r.threw = e.message + ' ' + (e.stack || '').split('\n')[1]; break; }
     if (m % 24 === 23) t = JSON.parse(JSON.stringify(t));
@@ -113,6 +127,15 @@ function career(strat, life) {
   return r;
 }
 
+// STORY=nonstop:3 node tests/probes/probe_burnout.mjs 1 20 — one career, told as it happened.
+if (process.env.STORY) {
+  const [strat, idx] = process.env.STORY.split(':');
+  const r0 = career(strat, +idx || 0, true);
+  console.log(r0.log.join(String.fromCharCode(10)));
+  console.log(`
+end: credits ${r0.credits}, fame ${Math.round(r0.fame)} (peak ${Math.round(r0.peakFame)}), standing ${Math.round(r0.standing)}, €${(r0.cash / 1e6).toFixed(1)}m, health ${Math.round(r0.health)}, forced stops ${r0.collapses}, pauses ${r0.pauses}, breaks ${r0.breaks}, lost ${r0.lost}`);
+  process.exit(0);
+}
 const t0 = Date.now();
 const out = {};
 for (const strat of Object.keys(STRATS)) {
