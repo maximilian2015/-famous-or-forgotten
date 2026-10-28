@@ -266,6 +266,7 @@ Only once stories are a permanent part of films. Start from the paused brief (`d
 
 ## Debt to watch
 
+- **surpriseBill** (`life/money.js`): household bills are 2–7% of the whole fortune, so a car repair costs €8m and a cousin borrows €28m. Not a Burnout matter; the first economy fix after Burnout Core merges (see Step 1).
 - `release.js` 880 lines, `castings.js` 932 (near 1000), `awards.js` 841.
 - `open` (~185 lines) and `closeRun` (~240) in release.js are past the line.
 - The film-story data adds ~114 KB to game.html.
