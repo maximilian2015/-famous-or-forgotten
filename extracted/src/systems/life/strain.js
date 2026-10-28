@@ -1,6 +1,5 @@
 import { COST as ENERGY_COST, canAfford, spend, tooTired } from '../../engine/energy.js';
 import { inCareer } from '../../engine/stage.js';
-import { uid } from '../../engine/id.js';
 // Nothing stopped you shooting one film straight into the next for sixty years. Measured
 // over two hundred careers the average actor finished with two hundred and sixteen
 // credits; a real one manages thirty to sixty. There was no cost to never stopping, so
@@ -11,7 +10,7 @@ import { uid } from '../../engine/id.js';
 // project a year never comes near it. It exists to make the grind end somewhere.
 import { rint, chance } from '../../engine/rng.js';
 import { addTimeline, showMoment } from '../../engine/timeline.js';
-import { patienceFor } from '../career/stability.js';
+import { loadTick, forcedStopOdds, forcedStop, lightWork, recoveryDrag, breakTick, medicalDrag, recentStops, active } from './burnout.js';
 import { depressionTick, creditTherapy, therapyProgress, THERAPY_FOR_A_SLOT, inRehab } from './depression.js';
 import { level as drinkLevel } from './drink.js';
 import { healing } from './face.js';
@@ -50,8 +49,9 @@ export function strainBand(v) {
 // A production will take a chance on someone who broke down once. Nobody is bonding the
 // actor who has done it four times.
 export function insurability(s) {
-  const n = Math.max(0, (s.burnouts || 0) - 1);
-  let v = Math.max(0.45, 1 - n * 0.14);
+  // Read off RECENT medical stops and it comes back (life/burnout.js medicalDrag): illness is
+  // not a breach (burnout-audit §6). It was a permanent count of collapses, ×0.86 each for life.
+  let v = medicalDrag(s);
   // The colder wall. If there is nobody close enough to sit you down, nothing personal ever
   // stops you — so what stops you is the phone going quiet. A completion bond on somebody
   // the crew has started talking about is not something a studio wants to buy.
@@ -60,20 +60,14 @@ export function insurability(s) {
   else if (lv >= 45) v *= 0.72;
   return v;
 }
-export function unreliable(s) { return (s.burnouts || 0) >= 3; }
-export function reputationNote(s) {
-  const n = s.burnouts || 0;
-  if (n === 3) return 'Three shoots have stopped because of you now. It is the kind of thing that gets said about people, and it has started being said about you.';
-  if (n === 5) return 'Nobody says it to your face, but the insurance on you costs more than the crew. The parts that come now are the ones nobody else wanted.';
-  return null;
-}
+// A medical stop in the last three years, which the bond companies still have on file. Not
+// "unreliable": the old line counted collapses as "shoots stopped because of you".
+export function unreliable(s) { return recentStops(s) > 0 && medicalDrag(s) < 0.95; }
 
-// ── the fourth time ─── the state itself lives in systems/life/depression.js ──
-// Ignore it four times and it stops being about the work. This does not lock you out of
-// the game — a state you cannot act on is not a consequence, it is a wall — but it is
-// long, it is slow, and it does not go away because a counter ran out. What moves it is
-// resting, seeing somebody about it, and having somebody left who is close to you.
-export const DEPRESSION_AT = 4;
+// ── depression ─── the state itself lives in systems/life/depression.js ──
+// It is not burnout (audit §12). It used to start on the fourth collapse, by count. Now a long
+// exhaustion can sometimes meet it, when the head is already at the bottom (burnout.js
+// forcedStop) — and it is long, it is slow, and it does not go away because a counter ran out.
 export function depressed(s) { return !!s.depression; }
 
 // One hour a month, every month, for as long as it lasts. Therapy is the same act whether
@@ -112,6 +106,9 @@ export function burnedOut(s) { return !!(s.burnout && s.burnout.left > 0); }
 export function canWork(s) {
   if (inRehab(s)) {
     return { ok: false, why: `You are in a clinic. ${s.rehab.left} more month${s.rehab.left === 1 ? '' : 's'}, and nobody there is going to let you take a job.` };
+  }
+  if (s.onBreak) {
+    return { ok: false, why: `You are away until the break ends. A shoot can be signed to start when you are back.` };
   }
   if (burnedOut(s)) {
     return { ok: false, why: `You are signed off. ${s.burnout.left} more month${s.burnout.left === 1 ? '' : 's'} before anyone will insure you on a set.` };
@@ -162,25 +159,34 @@ export function strainTick(s) {
 
   if (burnedOut(s)) {
     s.burnout.left -= 1;
-    s.strain = Math.max(0, (s.strain || 0) - 14);
+    s.strain = Math.max(0, (s.strain || 0) - 14 / Math.max(1, recoveryDrag(s) * 0.7));
+    loadTick(s);
     s.mental = clamp((s.mental || 0) + 3);
     if (s.burnout.left <= 0) {
       s.burnout = null;
-      s.strain = Math.min(s.strain || 0, 30);
+      // No reset to 30 on the day you are cleared: the months off took off what they took, at the
+      // pace the 36-month load allows (recoveryDrag). Two months off after three years flat out
+      // used to wipe it all, and the doctor's pause was a better rest than a year away.
       s.lastEvent = 'You are cleared to work again. Whatever that was, it has passed — mostly.';
       addTimeline(s, 'Cleared to work again after time off.');
+      for (const p of s.productions || []) if (p.heldFor === 'health') p.heldUntil = 0;   // your held parts start again
     }
     return s;
   }
+  if (s.onBreak) { breakTick(s); loadTick(s); s._rested = false; return s; }
 
   const before = s.strain || 0;
-  const all = s.productions && s.productions.length ? s.productions : (s.production ? [s.production] : []);
-  if (all.length && !(s.illness && s.illness.freezes)) {
+  const all = active(s);
+  if (all.length && lightWork(s) && before > 35 && !(s.illness && s.illness.freezes)) {
+    // Light work: short jobs, episodes, small parts, a lighter schedule. You keep a hand in and
+    // the load still comes down, slowly (audit §7.5).
+    s.strain = clamp(before - IDLE_GAIN * 0.5 / recoveryDrag(s));
+  } else if (all.length && !(s.illness && s.illness.freezes)) {
     // Every set you are on wears you. The second and third at seven-tenths each — the days
     // overlap, the tiredness does not quite — so three features at once is two and a half
     // times the wear of one, and a burnout inside a season. Maxi: "take too many and the
     // energy goes, then the illnesses."
-    let up = all.reduce((n, p, i) => n + monthlyStrain(p, before) * (i ? 0.7 : 1), 0);
+    let up = all.reduce((n, p, i) => n + monthlyStrain(p, before) * (p.light ? 0.6 : 1) * (i ? 0.7 : 1), 0);
     if ((s.mental || 50) < 35) up += 1.5;            // running down makes everything cost more
     if ((s.health || 50) < 40) up += 1.5;
     s.strain = clamp(before + up);
@@ -190,7 +196,8 @@ export function strainTick(s) {
     // little less able to recover — burnout is not a save point you reload from, and
     // without this the whole thing was a speed bump: two hundred careers averaged thirty
     // collapses each and still finished with a hundred and seventy-five credits.
-    const worn = 1 + Math.min(2.0, (s.burnouts || 0) * 0.4);
+    // And three years flat out come back slower than a hard spring (burnout.js recoveryDrag).
+    const worn = (1 + Math.min(2.0, (s.burnouts || 0) * 0.4)) * recoveryDrag(s);
     s.strain = clamp(before - (s._rested ? REST_GAIN : IDLE_GAIN) / worn);
   }
   s._rested = false;
@@ -210,16 +217,15 @@ export function strainTick(s) {
   // the line and rose to thirty-five, which gave a hard-working actor twenty-eight
   // collapses in a career. You now have to sit in the red for months on end, ignoring
   // two warnings, before your body makes the decision for you.
-  const shielded = ((s.year || 0) * 12 + (s.month || 0)) < (s._burntUntil || 0);
+  // The odds now grow with the months at the top and the three years behind them, and double
+  // for a year once the doctor has told you (burnout.js forcedStopOdds).
   if ((s.strain || 0) >= 82) {
     s._redMonths = (s._redMonths || 0) + 1;
-    if (s._redMonths >= 6 && !shielded) {
-      const risk = 0.4 + Math.max(0, (s.strain || 0) - 88) * 0.09;
-      if (chance(risk)) collapse(s);
-    }
   } else if ((s.strain || 0) < 70) {
     s._redMonths = 0;
   }
+  loadTick(s);
+  if (chance(forcedStopOdds(s))) collapse(s);
   return s;
 }
 
@@ -227,78 +233,18 @@ export function strainTick(s) {
 export function markRested(s) { s._rested = true; s.strain = clamp((s.strain || 0) - 3); return s; }
 
 function collapse(s) {
-  s.burnouts = (s.burnouts || 0) + 1;
-  // Each one takes longer to come back from than the last.
-  const months = rint(2, 5) + Math.min(4, s.burnouts - 1);
-  const all = s.productions && s.productions.length ? s.productions : (s.production ? [s.production] : []);
-  const wasShooting = all.length > 0;
-  const title = all.map((p) => p.title).join('" and "');
-  s.burnout = { left: months, since: (s.year || 0) * 12 + (s.month || 0) };
-  s._redMonths = 0;
-  // You do not do this to yourself twice in a row. People who go through it restructure
-  // something, and a game where it recurs every other year is not modelling burnout, it
-  // is modelling a chronic illness.
-  s._burntUntil = (s.year || 0) * 12 + (s.month || 0) + months + 24;
-  // What this costs is TIME and your head — not your body. Stacking a compounding health
-  // hit on top of the months lost and the mental hit killed the simulated population at
-  // twenty-eight: everyone was dead before their career started, which is not a limit on
-  // the grind, it is a bug wearing one as a hat.
-  s.mental = clamp((s.mental || 0) - 16);
-  s.health = clamp((s.health || 0) - 4);
-  // A shoot you walk off does not wait for you. It goes into the freezer with everything
-  // else that stopped — see systems/career/stability.js.
-  for (const p of all) {
-    (s.frozen = s.frozen || []).push({
-      id: uid(s, 'frz'),
-      title: p.title, role: p.role, type: p.type, genre: p.genre, scale: p.scale, tier: p.tier,
-      prestigeScore: p.prestigeScore, monthsLeft: Math.max(1, p.monthsLeft || 1),
-      episodes: p.episodes || 0, episodeFee: p.episodeFee || 0, season: p.season || 0, part: p.part || 1,
-      optioned: !!p.optioned, optionParts: p.optionParts || 0, stability: p.stability,
-      since: (s.year || 0) * 12 + (s.month || 0),
-      // They will hold it for a name and recast an unknown — and this one stopped because
-      // of you, which costs more if it never gets made.
-      patience: patienceFor(s.fame || 0), byYou: true,
-      // The same script and the same part when it thaws — the freeze in career/stability.js
-      // learned this; this one did not, so a rescued shoot came back as a different film with a
-      // stranger in your part.
-      character: p.character || null, premise: p.premise || null, plot: p.plot || null,
-      seriesTitle: p.seriesTitle || '', potential: p.potential || null,
-      owed: Math.max(0, (p.salary || 0) - (p.paid || 0)), paid: p.paid || 0, salary: p.salary || 0,
-      why: 'you could not carry on and the production shut down around you',
-    });
-  }
-  s.productions = []; s.production = null;
-  addTimeline(s, wasShooting
-    ? `You stopped. "${title}" shut down around you and the doctor signed you off for ${months} months.`
-    : `You stopped. The doctor signed you off for ${months} months.`, true);
-  const rep = reputationNote(s);
-  if (rep) addTimeline(s, rep, true);
-
-  // The fourth time it stops being about the work.
-  if (s.burnouts >= DEPRESSION_AT && !s.depression) {
+  const out = forcedStop(s);
+  // Depression is not burnout: only when the head is already at the bottom, sometimes.
+  if (out.meetsDepression) {
     s.depression = { since: (s.year || 0) * 12 + (s.month || 0), sessions: 0, checks: 0, passed: 0,
       windowMonths: 0, windowSessions: 0, windowRests: 0, medMonths: 0, medsThisMonth: false, pending: null };
-    s.mental = clamp((s.mental || 0) - 10);
-    addTimeline(s, 'This one did not lift when the months were up. It has stopped being about the work.', true);
+    addTimeline(s, 'This one did not lift with the months. It has stopped being about the work.', true);
     showMoment(s, {
       id: 'depression', kind: 'bad', title: 'It did not lift',
-      body: 'The four months came and went and you are still not up. It is not the schedule any more and it is not '
+      body: 'You were already low before you stopped, and the stop did not let it up. It is not the schedule any more and it is not '
         + 'a part you can put down — it followed you home and it has stayed. This is going to take a long time. '
         + 'It starts with medication, and then it is one hard month at a time. Nothing else works until you are on them.',
       slots: 2,
     });
-    s.lastEvent = 'The months were up and you did not get up with them.';
-    return;
   }
-  s.lastEvent = wasShooting
-    ? `You could not do it any more. "${title}" has been shut down and you are signed off for ${months} months.`
-    : `You could not do it any more. Signed off for ${months} months.`;
-  showMoment(s, {
-    id: 'burnout', kind: 'bad', title: 'You stopped', months, work: title,
-    body: wasShooting
-      ? `It was not a decision. You did not get up, and by the afternoon "${title}" had been shut down around you. `
-        + `${months} months before anyone will insure you on a set again — and the film is sitting in a freezer waiting for you.`
-      : `It was not a decision. You did not get up, and you have not really got up since. `
-        + `${months} months before you are cleared to work, and the phone will not remember you the whole time.`,
-  });
 }

@@ -15,6 +15,7 @@ import { hotGenre } from '../../systems/meta/news.js';
 import { agentLine, fireAgent } from '../../systems/career/agent.js';
 import { agentDropped } from '../../systems/meta/standing.js';
 import { canWork } from '../../systems/life/strain.js';
+import { forecast, off, returnAt, signLaterOdds, monthName } from '../../systems/life/burnout.js';
 import { openContract } from '../../systems/career/contract.js';
 export function Messages({ g }) {
   if (phoneGone(g)) return (<div style={{ fontSize: 13, color: theme.muted, textAlign: 'center', padding: '40px 18px', lineHeight: 1.6 }}>📵 No phone.<br />It went somewhere on a night you do not remember. A new one next month — and not every number is coming back.</div>);
@@ -170,10 +171,26 @@ export function Messages({ g }) {
           </div>);
         })()}
         {big && <div style={{ fontSize: 10.5, color: theme.muted, marginTop: 8 }}>This one shoots — {o.months} months on a set, with real choices on it.</div>}
+        {/* What it would do to you, before you sign (life/burnout.js forecast; approximate, and
+            marked so). The agent speaks only when it matters: a big jump or a long overlap. */}
+        {!o.signed && (o.tier !== 'supporting' || (o.months || 0) >= 2) && (() => {
+          const f = forecast(g, o); const col = f.to >= 82 ? theme.bad : f.to >= 60 ? theme.gold : theme.muted;
+          return (<>
+            <div style={{ fontSize: 11, color: col, marginTop: 6, fontWeight: 700 }}>Workload ≈{f.from} → {f.to} if you sign{f.overlap ? ` · ${f.overlap} month${f.overlap === 1 ? '' : 's'} alongside what you are on` : ''}</div>
+            {f.danger && al && <div style={{ fontSize: 11.5, color: theme.gold, marginTop: 4, lineHeight: 1.45 }}>{al.name.split(' ')[0]}: “{f.overlap
+              ? `You'd be on two sets for ${f.overlap} months. That is where people stop — I've seen it. Your call.`
+              : f.already ? `You're already running on empty. This keeps you there for ${o.months || 1} more months. If it's the one, take it — but take something off first.`
+              : `This takes you to the edge. I'll get it for you if you want it — I just want you to know what it costs.`}”</div>}
+          </>); })()}
         <div style={{ display: 'flex', flexWrap: 'wrap', gap: 7, marginTop: 9 }}>
           {big
             ? <button onClick={() => dispatch(openContract, o.id)} disabled={!fit.ok} style={{ ...btn('pri'), opacity: !fit.ok ? .45 : 1 }}>{o.signed ? 'Signed — see the paper' : o.contract && o.contract.sent ? 'With them — see the paper' : o.contract && o.contract.round ? 'The paper came back' : 'Open the contract'}</button>
             : <button onClick={() => dispatch(acceptOffer, o.id)} disabled={!fit.ok} style={{ ...btn('pri'), opacity: !fit.ok ? .45 : 1 }}>Accept</button>}
+          {/* Off work: a shoot can still be signed, to start the month you are back. The odds are
+              theirs, and on the button before it is pressed. life/burnout.js signLater */}
+          {!fit.ok && off(g) && !o.signed && (o.tier !== 'supporting' || (o.months || 0) >= 2) && (
+            <button onClick={() => dispatch(acceptOffer, o.id)} disabled={!!o._askedLater} style={{ ...btn(''), opacity: o._askedLater ? .45 : 1 }}>
+              {o._askedLater ? 'They could not wait' : `Sign to start in ${monthName(returnAt(g))} · ${signLaterOdds(g, o)}%`}</button>)}
           {/* What a no does is said before it is done (ui/components/PassControl.jsx). */}
           {!o.signed && <PassControl g={g} o={o} buttonStyle={btn('dan')} />}
         </div>

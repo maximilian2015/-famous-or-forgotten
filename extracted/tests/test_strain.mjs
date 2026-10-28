@@ -65,7 +65,11 @@ function avgCareer(years, gap, runs = 120) {
 }
 const grind = avgCareer(30, 0);
 ok('shooting back to back does', grind.collapses > 1.5, `${grind.collapses.toFixed(1)} collapses in thirty years`);
-ok('but only three or four times, the way it goes in life', grind.collapses < 6,
+// Burnout Core (27 Oct): never once stopping for thirty years, never resting and never
+// answering the doctor, is the extreme the step exists for — every few years, not every year,
+// and each one now costs parts as well as months (life/burnout.js). With the Rest action and a
+// break it is none (tests/probes/probe_burnout.mjs, "ambitious").
+ok('but every few years, not every year', grind.collapses < 12,
   `${grind.collapses.toFixed(1)} in thirty years of never once stopping`);
 ok('and it still caps how much you can make', grind.credits < 80, `${grind.credits.toFixed(0)} credits`);
 const paced = avgCareer(30, 4);
@@ -89,29 +93,36 @@ for (let attempt = 0; attempt < 12; attempt++) {
 }
 ok('it eventually stops you', burnedOut(burnt), `after ${guard} months at the top`);
 ok('for months, not weeks', burnt.burnout.left >= 2, String(burnt.burnout.left));
-ok('the shoot you were on is shut down', burnt.production === null && burnt.frozen.length === 1);
-ok('and it goes into the freezer, not the bin', burnt.frozen[0].monthsLeft >= 1 && burnt.frozen[0].owed > 0,
-  JSON.stringify({ left: burnt.frozen[0].monthsLeft, owed: burnt.frozen[0].owed }));
-ok('it says what happened', /shut down around you/.test(burnt.frozen[0].why), burnt.frozen[0].why);
-ok('it stops the game', burnt.bigMoment && burnt.bigMoment.id === 'burnout');
+// Burnout Core (life/burnout.js): no freezer and no endless wait. The production decides on the
+// day — a well-funded lead with a name is held for a while, or finished without your last scenes,
+// or recast — and the decision is said at once.
+ok('nothing goes into the freezer', (burnt.frozen || []).length === 0, JSON.stringify(burnt.frozen));
+ok('the production decided, and it is on the screen', burnt.bigMoment && burnt.bigMoment.id === 'burnout'
+  && /wait for you|shoot around you|without your last scenes|recast/.test(burnt.bigMoment.body), burnt.bigMoment && burnt.bigMoment.body);
 ok('and it costs you', burnt.mental < 78 && burnt.health < 85);
+ok('but never your standing — illness is not a breach', burnt.respect === 65, String(burnt.respect));
+const heldSet = (burnt.productions || [])[0];
 
 // ── and you cannot work while signed off ──────────────────────────────────────
 ok('you are told you cannot work', !canWork(burnt).ok && /signed off/.test(canWork(burnt).why), canWork(burnt).why);
 burnt.ap = 3; burnt.castingPool = [];
 refreshCastingPool(burnt, true);
-const before = burnt.ap;
+const before = burnt.ap, setsBefore = (burnt.productions || []).length;
 auditionFor(burnt, burnt.castingPool[0].id, 90);
-ok('auditioning is refused without spending the month', !burnt.production && burnt.ap === before, burnt.lastEvent);
+ok('auditioning is refused without spending the month', (burnt.productions || []).length === setsBefore && burnt.ap === before, burnt.lastEvent);
 ok('and the refusal explains itself', /signed off/.test(burnt.lastEvent), burnt.lastEvent);
 
 // ── it ends, and you come back ────────────────────────────────────────────────
 let months = 0;
 while (burnedOut(burnt) && months++ < 24) strainTick(burnt);
 ok('the time off runs out', !burnedOut(burnt), `${months} months`);
-ok('and you come back rested, not where you left off', (burnt.strain || 0) <= 30, burnt.strain.toFixed(0));
+// Rested, out of the red — but not wiped to 30 on the day you are cleared: the months off take off
+// what they take at the pace the 36-month load allows (28 Oct; the reset made a two-month pause a
+// better rest than a year away).
+ok('and you come back out of the red, not where you left off', (burnt.strain || 0) < 82, burnt.strain.toFixed(0));
 ok('you can work again', canWork(burnt).ok);
 ok('and the game says so', /cleared to work/i.test(burnt.lastEvent), burnt.lastEvent);
+if (heldSet) ok('a part they held for you starts again when you are cleared', !((heldSet.heldUntil || 0) > burnt.year * 12 + burnt.month), String(heldSet.heldUntil));
 
 // ── you do not go through it twice in a row ───────────────────────────────────
 // Same roll, same retry — see above.
@@ -126,7 +137,7 @@ const when = (twice.year || 0) * 12 + (twice.month || 0);
 // The risk roll is a roll: 300 red months usually collapse somebody but are not obliged to.
 // Without this line the shield assertion below quietly measured a character who never did.
 ok('three hundred red months do collapse you', burnedOut(twice), `still standing after ${first}`);
-ok('a collapse leaves you shielded for a while afterwards', (twice._burntUntil || 0) > when + 20,
+ok('a collapse leaves you shielded for a while afterwards', (twice._burntUntil || 0) > when + 12,
   `${(twice._burntUntil || 0) - when} months of cover`);
 let second = 0;
 while (burnedOut(twice) && second++ < 30) strainTick(twice);
@@ -145,22 +156,27 @@ ok('the bands climb', strainBand(10).id === 'rested' && strainBand(45).id === 'w
   && strainBand(70).id === 'tired' && strainBand(90).id === 'burning');
 
 
-// ── and what happens if you keep doing it ─────────────────────────────────────
-// Maxi: "а что будет если человек всё время перерабатывает?" Before this, nothing —
-// the fourth collapse was the same event as the first. Now the people who insure films
-// stop taking the risk.
-import { insurability, unreliable, reputationNote } from '../src/systems/life/strain.js';
+// ── and what the insurers do with it ──────────────────────────────────────────
+// It was a permanent count of collapses: ×0.86 each for life, "three shoots stopped because of
+// you", the Difficult risk. Illness is not a breach (burnout-audit §6, §13): a RECENT medical stop
+// costs the biggest rooms some confidence, a forced one more than a chosen one, and it fades.
+import { insurability, unreliable } from '../src/systems/life/strain.js';
 import { castingChance as cc } from '../src/systems/career/castings.js';
 import { naturalCeiling } from '../src/systems/life/health.js';
-ok('one collapse is forgiven', insurability(st({ burnouts: 1 })) === 1);
-ok('three is a reputation', unreliable(st({ burnouts: 3 })) && !unreliable(st({ burnouts: 2 })));
-ok('and it costs you the room', cc(st({ burnouts: 5 }), { role: 'Lead' }) < cc(st({ burnouts: 0 }), { role: 'Lead' }) * 0.8,
-  );
-ok('but it never shuts you out completely', insurability(st({ burnouts: 20 })) >= 0.45, insurability(st({ burnouts: 20 })).toFixed(2));
-ok('and the body keeps a little of it forever', naturalCeiling(st({ ageY: 40, burnouts: 4 })) < naturalCeiling(st({ ageY: 40, burnouts: 0 })),
-  );
-ok('the game says it out loud at the third', /said about you/.test(reputationNote(st({ burnouts: 3 })) || ''));
-console.log('      casting odds — ' + [0,1,2,3,4,5,6].map(n => n + ': ' + cc(st({ burnouts: n }), { role: 'Lead' }) + '%').join(', '));
+const at = 2060 * 12;
+ok('a count of old collapses alone costs nothing', insurability(st({ burnouts: 5 })) === 1);
+ok('a forced stop this year costs some confidence', insurability(st({ medical: [{ at, forced: true }] })) < 0.92,
+  insurability(st({ medical: [{ at, forced: true }] })).toFixed(2));
+ok('a pause you chose costs less', insurability(st({ medical: [{ at, forced: false }] })) > insurability(st({ medical: [{ at, forced: true }] })));
+ok('and three years later it is gone', insurability(st({ medical: [{ at: at - 37, forced: true }] })) === 1);
+ok('even three stops in three years never shut you out', insurability(st({ medical: [0, 1, 2].map((k) => ({ at: at - k, forced: true })) })) >= 0.7);
+ok('the life card says "on file", not "because of you"', unreliable(st({ medical: [{ at, forced: true }] })) && !unreliable(st({ burnouts: 4 })));
+ok('it shows in the room while it lasts', cc(st({ medical: [{ at, forced: true }, { at: at - 2, forced: true }] }), { role: 'Lead' }) < cc(st(), { role: 'Lead' }));
+ok('and the body keeps a little of it forever', naturalCeiling(st({ ageY: 40, burnouts: 4 })) < naturalCeiling(st({ ageY: 40, burnouts: 0 })));
+// Depression is not burnout: it does not start because a counter reached four.
+const fourth = st({ strain: 100, burnouts: 3, mental: 70, _redMonths: 40 }); shoot(fourth);
+for (let k = 0; k < 400 && !burnedOut(fourth); k++) { fourth.strain = 100; fourth.mental = 70; strainTick(fourth); }
+ok('a fourth collapse with your head above water is not depression', burnedOut(fourth) && !fourth.depression);
 
 console.log(fails ? `\n${fails} FAILED` : '\nall passed');
 process.exit(fails ? 1 : 0);

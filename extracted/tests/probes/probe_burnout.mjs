@@ -1,0 +1,190 @@
+// Three ways to live a career, side by side: `node tests/probes/probe_burnout.mjs [careers] [years]`.
+//
+//   careful    one set at a time, signs only when the load is low, rests whenever it is free
+//   ambitious  up to two sets, signs while below "tired", rests between jobs
+//   nonstop    every set the rules allow, signs everything, never rests, ignores the doctor
+//
+// Burnout Core is judged on these (ROADMAP Step 1b): no strategy should be automatically best,
+// and nonstop must not sit at 100 for decades for free. Seeded, so a change can be compared run
+// to run. What it counts is what the game did, read off the state — not what it was told to do.
+import '../helpers/seeded.mjs';
+const P = new URL('../../src/', import.meta.url).href;
+const { createInitialState } = await import(P + 'state/initialState.js');
+const { beginLife } = await import(P + 'systems/life/origin.js');
+const { advanceMonth } = await import(P + 'engine/time.js');
+const K = await import(P + 'systems/career/castings.js');
+const PR = await import(P + 'systems/career/production.js');
+const ST = await import(P + 'systems/career/story.js');
+const W = await import(P + 'systems/life/work.js');
+const EM = await import(P + 'systems/meta/email.js');
+const D = await import(P + 'systems/career/demands.js');
+const SC = await import(P + 'systems/career/scenes.js');
+const A = await import(P + 'systems/life/arcs.js');
+const AC = await import(P + 'systems/career/actions.js');
+const SL = await import(P + 'systems/life/strain.js');
+const BO = await import(P + 'systems/life/burnout.js').catch(() => null);   // Burnout Core, once it exists
+
+const CAREERS = +process.argv[2] || 12, YEARS = +process.argv[3] || 20;
+const pick = (a) => a[Math.floor(Math.random() * a.length)];
+const STRATS = {
+  careful: { sets: 1, signBelow: 45, rest: true, doctor: 'rest' },
+  ambitious: { sets: 2, signBelow: 60, rest: true, doctor: 'mixed' },
+  nonstop: { sets: 3, signBelow: 101, rest: false, doctor: 'ignore' },
+  // nonstop until the first forced stop; then a year away, and the ambitious life after it
+  comeback: { sets: 3, signBelow: 101, rest: false, doctor: 'ignore', reform: true },
+  // works like nonstop, but asks every set for a lighter schedule once the load is 60+, and tells
+  // the doctor the same: what the ask costs when offers keep coming (Maxi, 28 Oct)
+  lighter: { sets: 3, signBelow: 101, rest: false, doctor: 'lighter', ask: true },
+};
+
+const STORY_RE = /doctor|signed off|Signed off|stopped|wait for you|shoot around|without your last|written out|wrote your character|recast|Stepped away|Back after|Cleared|lighter schedule|moved your scenes|scenes first|said no. |schedule bonus|Running on empty|tired in a way|: (Hit|Flop|Smash|Well-received)|opened|Asker|Emmet|took it|You won|grossed|verdict/;
+function answer(t, how, r) {
+  for (let k = 0; k < 4 && t.pendingArc; k++) {
+    const arc = t.pendingArc; const ch = arc.choices || []; const n = ch.length || 1;
+    let i = Math.floor(Math.random() * n);
+    // The doctor and the studio: each strategy answers them in character.
+    if (arc.health === 'doctor') r.doctor++;
+    if (arc.health) {
+      const idx = (re) => ch.findIndex((c) => re.test(c.id || c.label || ''));
+      const rest = idx(/pause|rest|stop|doctor|sign off|break/i), push = idx(/carry|push|keep|ignore|again|finish/i);
+      if (how === 'rest' && rest >= 0) i = rest;
+      else if (how === 'ignore' && push >= 0) i = push;
+      else if (how === 'lighter' && idx(/lighter/i) >= 0) i = idx(/lighter/i);
+      else if (how === 'mixed') i = Math.random() < 0.5 && rest >= 0 ? rest : push >= 0 ? push : i;
+    }
+    if (r.log && (arc.health || arc.id === 'burnout')) r.log.push(`${['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'][t.month]} ${t.year}  [${arc.speaker}] → ${(ch[i] || {}).label}`);
+    A.resolveArc(t, i);
+    if (t.pendingArc === arc) { t.pendingArc = null; break; }
+  }
+}
+
+function month(t, st0, r) {
+  let st = st0;
+  if (st0.reform && (t.burnouts || 0) >= 1) {
+    st = STRATS.ambitious;
+    if (!r.reformed && BO.canTakeBreak(t).ok) { r.reformed = true; BO.takeBreak(t, 12); r.breaks++; if (r.log) r.log.push('   (the player steps away for a year)'); }
+  }
+  t.bigMoment = null;
+  answer(t, st.doctor, r);
+  if (t.scene) SC.resolveScene(t, 40 + Math.random() * 55);
+  for (const p of t.productions || []) {
+    if (!p.demand) continue;
+    const opts = D.optionsFor(t, p); if (opts.length) D.answerDemand(t, p.id, pick(opts).id);
+  }
+  for (const p of t.productions || []) if (!p.take) { const opts = ST.takesFor(p); if (opts.length) ST.pushTake(t, pick(opts)); }
+  if (!t.job && (t.fame || 0) < 20) { const j = W.availableJobs(t)[0]; if (j) W.takeJob(t, j.id); }
+  if (t.job && (t.fame || 0) > 35) W.quitJob(t);
+  // A career break, where the game offers one and the strategy wants one.
+  if (BO && BO.canTakeBreak && st.rest && (t.strain || 0) >= (st.sets === 1 ? 70 : 88) && BO.canTakeBreak(t).ok) {
+    BO.takeBreak(t, st.sets === 1 ? 3 : 6); r.breaks++;
+  }
+  if (st.ask && (t.strain || 0) >= 60) for (const p of BO.active(t)) if (BO.asksFor(t, p).some((a) => a.id === 'lighter' && !a.asked)) { const q = BO.askProduction(t, p.id, 'lighter'); if (q.ok) { r.yes = (r.yes || 0) + 1; r.extra = (r.extra || 0) + Math.ceil(((p.monthsLeft || 0) / 1.4) * 0.4); } else r.no = (r.no || 0) + 1; }
+  const load = t.strain || 0;
+  const n = (t.productions || []).length;
+  K.refreshCastingPool(t);
+  if (n < 1 && (t.ap || 0) >= 30 && (t.castingPool || []).length && load < st.signBelow) {
+    const c = pick(t.castingPool); if (Math.random() < 0.4) K.prepareFor(t, c.id); K.auditionFor(t, c.id, 45 + Math.random() * 40);
+  }
+  if ((t.offers || []).length && n < st.sets && load < st.signBelow && SL.canWork(t).ok) {
+    const o = t.offers[0]; PR.startProduction(t, o); t.offers = t.offers.filter((x) => x.id !== o.id);
+  }
+  if (st.rest && !(t.productions || []).length && (t.ap || 0) >= 10) AC.runAction(t, 'rest');
+  for (const p of t.productions || []) if ((p.monthsLeft || 0) === 1 && !p.paused) { r.meter += p.meter || 0; r.wraps++; }
+  const before = { cash: t.cash, burnouts: t.burnouts || 0, frozen: (t.frozen || []).length };
+  const mark = (t.timeline || [])[0];
+  t = advanceMonth(t);
+  if (r.log) {
+    for (const e of t.timeline || []) { if (e === mark) break; if (STORY_RE.test(e.text)) r.log.push(`${e.when}  ${e.text}`); }
+    if (t.month === 0) r.log.push(`— ${t.year}: age ${t.ageY}, fame ${Math.round(t.fame)}, standing ${Math.round(t.respect || 0)}, workload ${Math.round(t.strain || 0)}, health ${Math.round(t.health)}, €${(t.cash / 1e6).toFixed(1)}m, ${(t.filmography || []).filter((c) => !c.minor).length} credits`);
+  }
+  const L = (t.inbox || []).find((x) => x.tag === 'agent'); if (L) EM.emailAct(t, L.id, 0);
+  // the reading
+  r.months++;
+  if ((t.strain || 0) >= 82) r.red++;
+  if ((t.strain || 0) >= 95) r.top++;
+  if (SL.burnedOut(t)) r.off++;
+  if ((t.burnouts || 0) > before.burnouts) r.collapses++;
+  r.peakFame = Math.max(r.peakFame, t.fame || 0);
+  return t;
+}
+
+function career(strat, life, story = false) {
+  const st = STRATS[strat];
+  let t = createInitialState({ name: strat + life, dream: 'actor', created: true, gender: life % 2 ? 'female' : 'male' });
+  beginLife(t);
+  Object.assign(t, { stage: 'career', ageY: 22, year: 2050, month: 0, hasApartment: true, housing: 'room', cash: 9000, alive: true, ap: 100, apMax: 100, apMaxEff: 100, fame: 0, peakFame: 0 });
+  const r = { months: 0, red: 0, top: 0, off: 0, collapses: 0, breaks: 0, peakFame: 0, doctor: 0, meter: 0, wraps: 0, log: story ? [] : null };
+  for (let m = 0; m < YEARS * 12 && t.alive !== false; m++) {
+    try { t = month(t, st, r); } catch (e) { r.threw = e.message + ' ' + (e.stack || '').split('\n')[1]; break; }
+    if (m % 24 === 23) t = JSON.parse(JSON.stringify(t));
+  }
+  const credits = (t.filmography || []).filter((c) => !c.minor);
+  const tl = JSON.stringify(t.timeline || []);
+  Object.assign(r, {
+    cash: t.cash || 0, fame: t.fame || 0, standing: t.respect || 0, credits: credits.length,
+    rating: credits.length ? credits.reduce((a, c) => a + (c.rating || 0), 0) / credits.length : 0,
+    pauses: (t.medical || []).filter((m) => !m.forced).length,
+    held: (JSON.stringify(t.timeline || []).match(/will wait for you|shoot around you/g) || []).length,
+    cut: (JSON.stringify(t.timeline || []).match(/finish without your last scenes|wrote your character out/g) || []).length,
+    lost: (t.lostToHealth || []).length + (tl.match(/was recast\. They held it open|formally abandoned\. It stopped when you/g) || []).length,
+    missed: (tl.match(/They stopped waiting on/g) || []).length, yes: r.yes || 0, no: r.no || 0, extra: r.extra || 0,
+    depression: t.depression ? 1 : 0, health: t.health || 0, alive: t.alive !== false ? 1 : 0,
+  });
+  return r;
+}
+
+// STORY=nonstop:3 node tests/probes/probe_burnout.mjs 1 20 — one career, told as it happened.
+if (process.env.STORY) {
+  const [strat, idx] = process.env.STORY.split(':');
+  const r0 = career(strat, +idx || 0, true);
+  console.log(r0.log.join(String.fromCharCode(10)));
+  console.log(`
+end: credits ${r0.credits}, fame ${Math.round(r0.fame)} (peak ${Math.round(r0.peakFame)}), standing ${Math.round(r0.standing)}, €${(r0.cash / 1e6).toFixed(1)}m, health ${Math.round(r0.health)}, forced stops ${r0.collapses}, pauses ${r0.pauses}, breaks ${r0.breaks}, lost ${r0.lost}`);
+  process.exit(0);
+}
+const t0 = Date.now();
+const out = {};
+for (const strat of Object.keys(STRATS)) {
+  const rows = []; for (let i = 0; i < CAREERS; i++) rows.push(career(strat, i));
+  out[strat] = rows;
+}
+const med = (a) => { const b = [...a].sort((x, y) => x - y); return b[Math.floor(b.length / 2)]; };
+const avg = (a) => a.reduce((x, y) => x + y, 0) / (a.length || 1);
+console.log(`${CAREERS} careers × ${YEARS} years per strategy — ${Math.round((Date.now() - t0) / 1000)} s${BO ? '' : ' (no burnout.js yet: baseline)'}\n`);
+const cols = [
+  ['red 82+ %', (r) => (100 * r.red) / r.months, avg], ['at 95+ %', (r) => (100 * r.top) / r.months, avg],
+  ['collapses', (r) => r.collapses, avg], ['signed off mo', (r) => r.off, avg], ['breaks', (r) => r.breaks, avg],
+  ['held', (r) => r.held, avg], ['cut', (r) => r.cut, avg], ['films lost', (r) => r.lost, avg], ['doctor', (r) => r.doctor, avg], ['pauses', (r) => r.pauses, avg], ['credits', (r) => r.credits, med], ['meter@wrap', (r) => r.meter / (r.wraps || 1), avg], ['avg rating', (r) => r.rating, avg],
+  ['peak fame', (r) => r.peakFame, med], ['Standing', (r) => r.standing, med], ['cash €m', (r) => r.cash / 1e6, med],
+  ['health', (r) => r.health, avg], ['depressed', (r) => r.depression, avg],
+  ['offers missed', (r) => r.missed, avg], ['asks yes', (r) => r.yes, avg], ['asks no', (r) => r.no, avg], ['extra set mo', (r) => r.extra, avg],
+];
+console.log('strategy  ' + cols.map((c) => c[0].padStart(13)).join(''));
+for (const [k, rows] of Object.entries(out)) console.log(k.padEnd(10) + cols.map(([, f, agg]) => agg(rows.map(f)).toFixed(1).padStart(13)).join(''));
+// Alex Moon (saves/, April 2079, strain 100, 0 burnouts), loaded the way the game loads it and lived
+// ten more years by each strategy: the save Maxi looked at and asked why nothing happens.
+import fs from 'node:fs';
+const SAVE = new URL('../../../saves/famous-Alex-Moon-53-2079.json', import.meta.url);
+if (fs.existsSync(SAVE)) {
+  const raw = fs.readFileSync(SAVE, 'utf8');
+  globalThis.localStorage = { getItem: (k) => (k === 'fof_react_save' ? raw : null), setItem() {}, removeItem() {} };
+  const { getState } = await import(P + 'state/store.js');
+  console.log('\nAlex Moon, ten more years from strain ' + Math.round(getState().strain || 0) + ':');
+  for (const strat of Object.keys(STRATS)) {
+    let t = JSON.parse(JSON.stringify(getState()));
+    const r = { months: 0, red: 0, top: 0, off: 0, collapses: 0, breaks: 0, peakFame: 0, doctor: 0, meter: 0, wraps: 0 };
+    const c0 = (t.filmography || []).length, cash0 = t.cash || 0;
+    // MONEY=1: where a single ten-year run's money came from — the months that moved it most, and
+    // what the timeline said in each. The spread between runs is the question, not the mean.
+    const swings = [];
+    for (let m = 0; m < 120 && t.alive !== false; m++) {
+      const c = t.cash || 0, head = (t.timeline || [])[0];
+      try { t = month(t, STRATS[strat], r); } catch (e) { r.threw = e.message; break; }
+      if (process.env.MONEY) { const tl = t.timeline || []; const k = tl.indexOf(head); swings.push({ d: (t.cash || 0) - c, at: `${t.year}/${t.month + 1}`, why: tl.slice(0, k < 0 ? 4 : k).map((x) => String(x.text || x.t || x).slice(0, 90)) }); }
+    }
+    if (process.env.MONEY) for (const w of swings.sort((a, b) => Math.abs(b.d) - Math.abs(a.d)).slice(0, 4)) console.log(`    ${w.d >= 0 ? '+' : '−'}€${Math.round(Math.abs(w.d) / 1e6)}m ${w.at}: ${w.why.filter((x) => /€|\$|gross|paid|levy|tax|bought|sold|lost/i.test(x)).slice(0, 3).join(' | ')}`);
+    console.log(`  ${strat.padEnd(10)} at 95+ ${Math.round((100 * r.top) / r.months)}% · doctor ${r.doctor} · forced stops ${r.collapses} · pauses ${(t.medical || []).filter((x) => !x.forced).length} · breaks ${r.breaks} · lost ${(t.lostToHealth || []).length} · credits +${(t.filmography || []).length - c0} · €${Math.round(((t.cash || 0) - cash0) / 1e6)}m · health ${Math.round(t.health)} · fame ${Math.round(t.fame)}${r.threw ? ' · THREW ' + r.threw : ''}`);
+  }
+}
+const threw = Object.values(out).flat().filter((r) => r.threw);
+if (threw.length) { console.log('\nTHREW:', threw.length, threw[0].threw); process.exit(1); }

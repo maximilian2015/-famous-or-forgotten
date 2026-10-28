@@ -41,6 +41,7 @@ import { maybeYoungOffer } from '../systems/career/youngblood.js';
 import { agingNote } from '../systems/career/age.js';
 import { iconTick, quoteTick } from '../systems/meta/status.js';
 import { strainTick } from '../systems/life/strain.js';
+import { breakSummary, takeBreak } from '../systems/life/burnout.js';
 import { slotsLost, rehabTick } from '../systems/life/depression.js';
 import { drinkTick } from '../systems/life/drink.js';
 import { addTimeline } from './timeline.js';
@@ -123,6 +124,42 @@ export function liveUntilSomething(state, cap = SKIP_CAP) {
   }
   s = { ...s, _skipped: { months, why } };
   return s;
+}
+// A break, lived in one step (life/burnout.js). The months run on their own; the premieres,
+// the money and the news are gathered into one summary instead of stopping the clock, and the
+// clock stops only for something that wants a decision. Maxi: "not dozens of empty clicks."
+const AWAY_NEWS = ['baby', 'wedding', 'divorce', 'inheritance', 'theyleft', 'evicted', 'contract', 'shutdown', 'billion', 'adopted'];
+export function stepAway(state) {
+  let s = state;
+  if (!s.onBreak) return s;
+  const before = s.onBreak.from || { strain: s.strain || 0, mental: s.mental || 0, fame: s.fame || 0, cash: s.cash || 0 };
+  const notes = s.onBreak.seen || (s.onBreak.seen = []);
+  for (let i = 0; i < 25 && s.onBreak && s.alive; i++) {
+    s = advanceMonth(s);
+    // Only what is about you: your films, your lists. Somebody else's nominations are not news.
+    for (const m of [s.bigMoment, ...(s.moments || [])].filter(Boolean)) {
+      const first = String(m.body || '').split(/(?<=[.!?])\s/)[0].slice(0, 110);
+      const say = m.id === 'premiere' ? `"${m.title}" came out.` : m.id === 'verdict' ? `"${m.title}" — the verdict is in.`
+        : m.id === 'nomination' ? `${m.title}: your name is on the list.`
+        : m.id === 'nominations' ? (m.kind === 'good' ? `${m.title}: your name is on the list.` : null)
+        // A quiet ceremony is the world's night, not yours (career/awards.js).
+        : m.id === 'ceremony' && !m.quiet ? (m.title === 'You won' ? `The ${m.award}: you won.` : `The ${m.award}: ${m.title} took it.`)
+        : AWAY_NEWS.includes(m.id) && m.title ? `${m.title}${first ? ' — ' + first : ''}` : null;
+      if (say && !notes.includes(say)) notes.push(say);
+    }
+    if (s.onBreak) s.onBreak.seen = notes;   // kept across a stop for a decision
+    s.bigMoment = null; s.moments = [];
+    if (s.pendingArc || s.scene) break;
+  }
+  const done = !s.onBreak;
+  const lines = breakSummary(s, before, notes);
+  s.bigMoment = { id: 'breakSummary', kind: 'good', title: done ? 'Back' : 'While you were away', body: lines.join('\n') };
+  return s;
+}
+// The Step away buttons: begin the break and live it.
+export function goAway(state, months) {
+  takeBreak(state, months);
+  return state.onBreak ? stepAway(state) : state;
 }
 // What the button is allowed to say before it is pressed. Nothing to skip THROUGH while a
 // day on set is waiting or something is already on screen.

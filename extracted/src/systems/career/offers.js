@@ -9,6 +9,7 @@ import { GENRES } from '../meta/news.js';
 import { startProduction } from './production.js';
 import { rollStability } from './stability.js';
 import { canWork } from '../life/strain.js';
+import { off, signLater } from '../life/burnout.js';
 import { newTitle } from '../world/titles.js';
 import { refusedOnType, refusalLoosens, labelInfo } from '../meta/typecast.js';
 import { storyOfferFactor, noteRefusal, holdsAGrudge, storyOf, fanMood, BURN_STANDING } from '../meta/stories.js';
@@ -142,6 +143,7 @@ export function offersTick(s) {
     // reason a deadline is on the card.
     if (o.kind === 'thaw') addTimeline(s, `${title} finally went ahead without you.`, true);
     else addTimeline(s, `They stopped waiting on ${title} and cast someone else.`, true);
+    if (s.onBreak) (s.onBreak.lapsed = s.onBreak.lapsed || []).push(title);   // the break's summary says what it cost (life/burnout.js)
     // Your own season or sequel: written down on its credit whatever else is going on (continuation.js).
     // A paper that had been argued over did not lapse — the deal was never closed.
     const lapsed = o.story === 'recast' ? 'meeting' : o.contract && (o.contract.round || 0) > 0 ? 'talks' : 'expired';
@@ -296,8 +298,13 @@ export function acceptOffer(s, id) {
   // Anything with a real schedule becomes a shoot you live through — same rule as a
   // casting. Only a day's work resolves in the same click.
   const fit = canWork(s);
+  const shoot = o.tier !== 'supporting' || (o.months || 0) >= 2;
+  // Signed off, or on a break: a shoot can still be signed, to start the month you are back
+  // (life/burnout.js). The agent asks; they may not wait. A paper already signed to a later
+  // date just keeps waiting (contract.js startSigned).
+  if (!fit.ok && shoot && off(s) && !o.signed) { const r = signLater(s, o); s.lastEvent = r.say; if (!r.ok) { s.offers = (s.offers || []).filter((x) => x.id !== id); recordPassed(s, o, 'health'); } return s; }
   if (!fit.ok) { s.lastEvent = fit.why; return s; }
-  if (o.tier !== 'supporting' || (o.months || 0) >= 2) {
+  if (shoot) {
     const room = canTakeSet(s, o);
     if (!room.ok) { s.lastEvent = room.why; return s; }
     s.offers = (s.offers || []).filter((x) => x.id !== id);

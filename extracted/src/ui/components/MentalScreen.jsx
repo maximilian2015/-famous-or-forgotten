@@ -3,6 +3,9 @@ import { count } from '../../engine/text.js';
 import { COST, canAfford } from '../../engine/energy.js';
 import { mentalReport, canCall, canGetAway, closestPerson, callSomebody, getAway } from '../../systems/life/mood.js';
 import { seeSomebody, strainBand } from '../../systems/life/strain.js';
+import { loadWords, forcedStopOdds, asksFor, askProduction, medicalPause, canTakeBreak, BREAKS, endBreakEarly, monthName } from '../../systems/life/burnout.js';
+import { goAway, stepAway } from '../../engine/time.js';
+import { sets } from '../../engine/sets.js';
 import { usePills } from '../../systems/life/health.js';
 import { theme } from '../theme.js';
 import { FONT, FONT_DISPLAY } from '../chrome.js';
@@ -37,9 +40,9 @@ export function MentalScreen({ g, onBack }) {
       <div style={{ fontSize: 16, fontWeight: 900 }}>Your head</div>
     </div>
 
-    {/* What the work has built up in you (life/strain.js), shown as it is. It is not this screen's
-        mood number: an actor can be cheerful and running on empty, or rested and low. Only the
-        existing strain and its existing bands — what it will do to you is Step 3b's. */}
+    {/* What the work has built up in you (life/strain.js), and the ways out of it (life/burnout.js).
+        It is not this screen's mood number: an actor can be cheerful and running on empty, or
+        rested and low. Every ask shows its odds before it is pressed. */}
     {(() => {
       const w = Math.round(g.strain || 0), wb = strainBand(g.strain || 0);
       const col = w >= 82 ? '#ff5a72' : w >= 60 ? '#f0b429' : w >= 34 ? theme.muted : '#4fc07f';
@@ -52,7 +55,10 @@ export function MentalScreen({ g, onBack }) {
         <div style={{ height: 9, background: 'rgba(255,255,255,.08)', borderRadius: 5, margin: '8px 0 7px', overflow: 'hidden' }}>
           <div style={{ width: w + '%', height: '100%', background: col, borderRadius: 5, transition: 'width .5s' }} />
         </div>
-        <div style={{ fontSize: 12, color: theme.muted, lineHeight: 1.5 }}>{wb.note}</div>
+        <div style={{ fontSize: 12, color: theme.muted, lineHeight: 1.5 }}>{g.onBreak ? `Away until ${monthName(g.onBreak.until)}. The load comes down fast; films you made still come out.` : wb.note}</div>
+        <div style={{ fontSize: 11.5, color: theme.muted, marginTop: 6 }}>The last three years: <b style={{ color: theme.text }}>{loadWords(g)}</b>.</div>
+        {forcedStopOdds(g) > 0 && <div style={{ fontSize: 12, color: '#ff5a72', marginTop: 6, fontWeight: 700 }}>
+          The chance your body stops you this month: about {forcedStopOdds(g)}%. It grows every month you stay here.</div>}
       </Card>);
     })()}
 
@@ -97,6 +103,8 @@ export function MentalScreen({ g, onBack }) {
       <Card style={{ marginBottom: 14, padding: '4px 14px' }}>{rep.up.map((l) => row(l))}</Card>
     </>)}
 
+    <WorkloadActions g={g} />
+
     <div style={{ fontSize: 11, fontWeight: 900, letterSpacing: '.09em', textTransform: 'uppercase', color: theme.muted, marginBottom: 8 }}>What you can do this month</div>
     <div style={{ display: 'grid', gap: 8 }}>
       <ActRow label={call.ok ? `Ring ${(closestPerson(g) || {}).name?.split(' ')[0] || 'somebody'}` : 'Ring somebody'}
@@ -121,10 +129,47 @@ export function MentalScreen({ g, onBack }) {
       <DrinkButton g={g} />
     </div>
     <div style={{ fontSize: 11.5, color: theme.muted, textAlign: 'center', padding: '16px 10px', lineHeight: 1.6 }}>
-      Resting properly is under Home, and the pills and the bottles are in the Shop. A month
-      off is the only thing that pulls the strain down faster than time does.
+      Resting properly is under Home, and the pills and the bottles are in the Shop. A month off,
+      light work or a break pulls the workload down; a set only ever adds to it.
     </div>
   </div>);
+}
+// The ways out of the load: ask a production, take the doctor's pause, step away. Each one says
+// what it does and its odds before it is pressed (CLAUDE.md: a button that refuses says why).
+function WorkloadActions({ g }) {
+  const head = (t) => <div style={{ fontSize: 11, fontWeight: 900, letterSpacing: '.09em', textTransform: 'uppercase', color: theme.muted, marginBottom: 8 }}>{t}</div>;
+  if (g.onBreak) return (<>
+    {head('Your break')}
+    <div style={{ display: 'grid', gap: 8, marginBottom: 14 }}>
+      <ActRow label={`Stay away until ${monthName(g.onBreak.until)}`} blurb="The months pass in one go. You are stopped only for something that needs a decision, and told the rest at the end."
+        cost="" onClick={() => dispatch(stepAway)} />
+      <ActRow label="Come back now" blurb="The break ends this month. Whatever you have recovered, you keep." cost="" onClick={() => dispatch(endBreakEarly)} />
+    </div>
+  </>);
+  const working = sets(g).filter((p) => asksFor(g, p).length);
+  const pause = (g.strain || 0) >= 82 && sets(g).length > 0 && !(g.burnout && g.burnout.left > 0);
+  const brk = canTakeBreak(g);
+  if (!working.length && !pause && (g.strain || 0) < 34 && !brk.ok) return null;
+  return (<>
+    {(working.length > 0 || pause) && head('Talk to the production')}
+    {(working.length > 0 || pause) && <div style={{ display: 'grid', gap: 8, marginBottom: 14 }}>
+      {working.map((p) => asksFor(g, p).map((a) => (
+        <ActRow key={p.id + a.id} label={`${a.label} · "${p.title}"`} blurb={`${a.does} They decide; it is not a right.`}
+          cost={`${a.odds}%`} disabled={a.asked} why="You have already asked them this month."
+          onClick={() => dispatch((s) => { askProduction(s, p.id, a.id); return s; })} />)))}
+      {pause && <ActRow label="Medical pause — 2 months" blurb="The doctor's call, always yours to make. Each production decides whether to wait, shoot around you, or go on without some of your scenes."
+        cost="always possible" onClick={() => dispatch((s) => { medicalPause(s, 2); return s; })} />}
+    </div>}
+    {head('Step away')}
+    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 6, marginBottom: brk.ok ? 6 : 4 }}>
+      {BREAKS.map((m) => <button key={m} disabled={!brk.ok} onClick={() => dispatch(goAway, m)} data-sfx={brk.ok ? 'nav' : 'denied'}
+        style={{ background: theme.panel, border: `1px solid ${theme.line}`, borderRadius: 10, padding: '10px 0', color: theme.text, fontFamily: 'inherit',
+          fontSize: 13, fontWeight: 800, cursor: brk.ok ? 'pointer' : 'default', opacity: brk.ok ? 1 : 0.5 }}>{m} mo</button>)}
+    </div>
+    <div style={{ fontSize: 11.5, color: theme.muted, lineHeight: 1.5, marginBottom: 16 }}>
+      {brk.ok ? 'A break is lived in one step. Your films still come out, the bills still come, people still call. You can sign a shoot that starts when you are back. A year or more resets a body that has stopped before.' : brk.why}
+    </div>
+  </>);
 }
 function ActRow({ label, blurb, cost, disabled, why, onClick }) {
   return (<button onClick={disabled ? undefined : onClick} disabled={disabled}

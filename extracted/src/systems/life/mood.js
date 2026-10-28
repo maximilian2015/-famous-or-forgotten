@@ -56,7 +56,7 @@ export function mentalReport(s) {
     }, 0);
     push(line('shoot', all.length > 1 ? `${all.length} sets at once` : `Shooting ${s.production.title}`, -Math.round(cost * 10) / 10,
       `The hours and the waiting. It is also filling the other meter at ${Math.round(fills * 10) / 10} a month — `
-      + `you are ${band.label.toLowerCase()}, and that one ends in a collapse that costs sixteen at once.`));
+      + `you are ${band.label.toLowerCase()}, and that one ends in a forced stop that costs fourteen at once.`));
   } else {
     push(line('off', 'Nothing on the calendar', 1.1, 'A month that is yours. It is the only thing that puts it back without a doctor.'));
   }

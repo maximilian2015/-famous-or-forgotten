@@ -489,7 +489,7 @@ export function BigMoment({ moment, look, onClose }) {
           <Figure label={moment.frozen ? 'Still to shoot' : 'Months gone'} value={`${moment.months} mo`} accent={accent} />
         </div>
       )}
-      <div style={{ fontSize: 13.5, color: theme.muted, lineHeight: 1.6, marginBottom: 20 }}>{moment.body}</div>
+      <div style={{ fontSize: 13.5, color: theme.muted, lineHeight: 1.6, marginBottom: 20, whiteSpace: 'pre-line' }}>{moment.body}</div>
       <button onClick={onClose} style={{ width: '100%', border: 'none', borderRadius: 12, padding: '13px', fontSize: 14, fontWeight: 800, cursor: 'pointer',
         background: `linear-gradient(160deg,${theme.accent},${theme.accent2})`, color: theme.warm ? '#1a1206' : '#fff' }}>
         {moment.id === 'premiere' && moment.tv ? 'Switch it off' : moment.id === 'premiere' && moment.festival ? (moment.result === 'unsold' ? 'Fly home' : 'Take the call') : CTA[moment.id] || (good ? 'Take it in' : 'Face it')}

@@ -154,7 +154,7 @@ export function startProduction(s, offer) {
     story: offer.story || null,   // a career story this shoot belongs to (stories.js)
     // The kinds of paper (contract.js): the network's options and your exit, pay-or-play,
     // a share of the toys. Carried season to season by franchise.js.
-    optionSeasons: offer.optionSeasons || 0, optionFrom: offer.optionFrom || (offer.optionSeasons ? (offer.season || 1) : 0), exitAfter: offer.exitAfter || 0, payOrPlay: !!offer.payOrPlay, merch: offer.merch || 0,
+    scheduleBonus: offer.scheduleBonus || 0, optionSeasons: offer.optionSeasons || 0, optionFrom: offer.optionFrom || (offer.optionSeasons ? (offer.season || 1) : 0), exitAfter: offer.exitAfter || 0, payOrPlay: !!offer.payOrPlay, merch: offer.merch || 0,
     // How solid the money is. Decides whether this shoot ever reaches its last day, and
     // how wildly the finished thing can turn out. See systems/career/stability.js.
     stability: offer.stability ?? rollStability(offer.scale || 'feature'),
@@ -290,7 +290,7 @@ export function rehearsalsThisMonth(s, id) { const p = setById(s, id); return p 
 export function shootTick(s) {
   expireDemands(s);
   for (const p of sets(s)) {
-    if ((p.prepLeft || 0) > 0 || p.paused) continue;
+    if ((p.prepLeft || 0) > 0 || p.paused || p.cutShort) continue;
     // What a month of competent work is worth: your craft, and whether the person directing
     // it is getting anything out of you. Nobody is charged for this and nobody chooses it.
     const lead = (p.crew || [])[0];
@@ -316,7 +316,11 @@ export function shootTick(s) {
     // and a short feature were paying exactly the same and the difference only appeared at three.
     const spread = over * 1.6 * demanding;
     p.spreadThin = spread;
-    p.meter = clamp(p.meter + Math.max(1, rint(3, 6) + craft + warmth - spread));
+    // Running on empty is less of you in the work: from 75 your month's contribution shrinks,
+    // up to five points at 100. It is the one chain (burnout-audit §12.4) — the meter is your
+    // contribution, the rating reads it at wrap, nothing else is charged for the same tiredness.
+    const empty = Math.max(0, (s.strain || 0) - 75) / 5;
+    p.meter = clamp(p.meter + Math.max(empty > 0 ? 0 : 1, rint(3, 6) + craft + warmth - spread - empty));
     // `_workedMonth` is NOT set here, although the first version of this set it. Turning up is
     // not putting something into the picture, and the director is meant to notice the actor who
     // only turns up. A scene day sets it (career/scenes.js) and so does answering them when
@@ -423,9 +427,12 @@ function tickSet(s, p) {
     return;
   }
   // A serious illness stops the shoot dead — the schedule waits for you.
-  if ((s.illness && s.illness.freezes) || (s.burnout && s.burnout.rest && s.burnout.left > 0)) {
+  // A part the studio decided to finish without you (life/burnout.js `cutShort`) wraps on its
+  // own; one they hold, or one whose scenes you got moved, waits for its date.
+  const held = (p.heldUntil || 0) > (s.year || 0) * 12 + (s.month || 0);
+  if (!p.cutShort && (held || (s.illness && s.illness.freezes) || (s.burnout && s.burnout.rest && s.burnout.left > 0))) {
     p.paused = (p.paused || 0) + 1;
-    if (p.paused === 1) addTimeline(s, `${p.title} is on hold while you recover.`, true);
+    if (p.paused === 1 && p.heldFor !== 'postponed') addTimeline(s, `${p.title} is on hold while you recover.`, true);
     return;
   }
   p.paused = 0;
@@ -453,7 +460,7 @@ function tickSet(s, p) {
   // Reading the meter alone instead was worse, and test_scales said so — a picture starts at
   // 20, so nobody is above 55 in month two and every director cooled on every actor for doing
   // nothing wrong at all.
-  if (lead && p._workedMonth !== stamp - 1 && (p.months - p.monthsLeft) >= 1 && (p.meter || 0) < 55) {
+  if (lead && !p.cutShort && p._workedMonth !== stamp - 1 && (p.months - p.monthsLeft) >= 1 && (p.meter || 0) < 55) {
     p._winged = (p._winged || 0) + 1;
     // A pattern, not a bad week. The first month everybody gets; the second they notice; from
     // the third it is who you are on this set. A flat penalty from month one put an
@@ -508,7 +515,10 @@ function tickSet(s, p) {
   p.monthsLeft -= 1;
   // You are paid while you work. A fourteen-month blockbuster that only paid on wrap
   // would starve you out of your flat long before the premiere.
-  const perMonth = Math.round((p.salary || 0) / Math.max(1, p.months || 1));
+  // The fee is for the picture. A lighter schedule (life/burnout.js) stretches the same money over
+  // the longer shoot — it used to pay every extra month on top, so asking for less work paid more.
+  const perMonth = p.light ? Math.round(Math.max(0, (p.salary || 0) - (p.paid || 0)) / Math.max(1, p.monthsLeft + 1))
+    : Math.round((p.salary || 0) / Math.max(1, p.months || 1));
   p.paid = (p.paid || 0) + perMonth;
   if (perMonth > 0) paid(s, perMonth, `"${p.title}" — month ${(p.months - p.monthsLeft)}`);
   if (p.monthsLeft > 0) {
@@ -517,6 +527,12 @@ function tickSet(s, p) {
     // meant a shoot that stopped in month one left you with literally nothing.
     productionTrouble(s, p);
     return;
+  }
+  // The schedule bonus (contract.js): on the agreed dates, paid; a lighter schedule or a moved
+  // date gave it up (life/burnout.js askProduction). A medical stop alone does not.
+  if ((p.scheduleBonus || 0) > 0) {
+    if (!p.lostBonus) paid(s, p.scheduleBonus, `"${p.title}" — schedule bonus`);
+    else addTimeline(s, `"${p.title}" wrapped. The schedule bonus went with the dates you moved.`);
   }
   wrapProduction(s, p);
 }

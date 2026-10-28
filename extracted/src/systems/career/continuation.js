@@ -57,6 +57,7 @@ export const WHY = {
   talks: 'the deal was never closed', schedule: 'you were on another set', meeting: 'you said no again after the meeting',
   writtenOut: 'the show went on without your character', network: 'the network decided the show was better without the character',
   notMade: 'the money could not be agreed, and the season was not made', option: 'they held an option on it',
+  health: 'you were signed off, and they could not wait',   // life/burnout.js: illness, never a breach
 };
 // `how` is the desk's word for it (passed.js); the status is what it means for you.
 function youFor(how, exit) {

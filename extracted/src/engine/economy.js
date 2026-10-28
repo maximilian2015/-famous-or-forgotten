@@ -158,7 +158,10 @@ export function relevanceDrift(s) {
   // what that kind of year actually does to somebody. career/decline.js is where they come
   // from; they carry a prestige in the teens and a real picture does not.
   const noticed = !!s.production && (s.production.prestigeScore || 0) >= 30;
-  if (noticed) { s._idleMonths = 0; } else { s._idleMonths = (s._idleMonths || 0) + 1; }
+  // A break you chose, or a medical stop, is not being forgotten (burnout-audit §4): the name
+  // goes quiet at half the speed of an actor nobody is hiring. life/burnout.js
+  const away = !!s.onBreak || !!(s.burnout && s.burnout.left > 0);
+  if (noticed) { s._idleMonths = 0; } else { s._idleMonths = (s._idleMonths || 0) + (away ? 0.5 : 1); }
   // Old news fades whether you like it or not.
   // A publicist is the difference between a bad week and a bad year.
   // A scandal sticks to the face — famous and unrespected — for longer than to anyone else.
