@@ -241,6 +241,14 @@ Only once stories are a permanent part of films. Start from the paused brief (`d
 ## Backlog (not now)
 
 - **Career Ambitions** — goals the player chooses (work with a director, become the horror star, shed the comedy image, come back after scandal), built on the existing childhood ambition and goals board; after Step 4.
+  - **Awards Outlook and career relevance on the offer** (Maxi/ChatGPT, 28 Oct; accepted, not built). The game already knows a contender — `awards.js` `awardStrength` = rating above 70 × genre × scale × `prestigeScore` — and says almost none of it before signing. **Goal:** a €2m festival drama can honestly look more tempting than a €40m blockbuster, and the choice is hard.
+    1. **An awards outlook on the offer, in words.** Use the existing formula with the rating unknown: material, genre, scale, director band, backing (`stability`). No win odds, no percentages, no promise.
+    2. **Rename the material badge.** In `Messages.jsx` the badge reads A-list / Solid / Small, off `prestigeScore` ≥70 / ≥45. It reads like star level. Change it to Exceptional / Promising / Modest material, and keep budget, format and the size of the part separate.
+    3. **Check the personal acting awards.** As of 28 Oct there is no separate performance score. A performance nomination and a picture nomination are rolled off the same `awardStrength`. Your performance (skill, `meter`) reaches the award only through the film's rating (`production.js` `craft`). A great lead in a 65 film can never be nominated. **Decide:** should the performance count apart from the film?
+    4. **Career relevance off the filmography.** Compute it from genres played, scale and size of past leads, nominations and wins: "You've never had a part like this before." Never a random "role of a lifetime"; whether it becomes one is known only after the release and the awards.
+    5. **Genre and scale weights.** Today a festival drama is 1.40 × 1.35 = 1.89 and a horror blockbuster is 0.55 × 0.60 = 0.33, a gap of 5.7×. Keep drama ahead, but leave a very strong horror or commercial film a real, small chance.
+    6. **The agent can be wrong.** Strong material still falls apart on set or in the edit (`fellApart`, the swing). A surprise can become a breakthrough (the `exceptional` roll, which has no name on screen yet).
+    - **Rules:** no new awards system. Reuse `prestigeScore`, directors, parts, ratings and the career history.
 - **AI dialogue experiment** — one director conversation, rules vs AI, compared; later, in JavaScript.
 
 - **From the reputation discussion:** a star's manager, charity as an action.
