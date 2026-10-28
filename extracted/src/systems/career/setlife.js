@@ -62,7 +62,7 @@ const pickQuiet = (p) => {
 const co = (p) => ((p && p.crew) || [])[1] || null;
 
 // Each one: a line, and what it costs or gives. `keep` is what the wrap remembers.
-const DAYS = [
+export const DAYS = [
   // ── the ordinary friction ───────────────────────────────────────────────────
   { id: 'weather', w: 5, line: (p) => `Four days of rain they did not have. "${p.title}" is behind and everybody knows whose fault it is not.`,
     fx: () => {},

@@ -93,6 +93,18 @@ test('a set they held open for years: "Standing −5", and five', () => {
   assert.ok(c.path === 'thaw' && c.confirm && c.standing === -5, JSON.stringify(c));
   assert.equal(lost, 5);
 });
+test('a thawed set that comes back while you are on somebody else\'s picture: no penalty, and the card says so', () => {
+  const s = life();
+  s.production = { id: 'p-other', title: 'Other Picture', months: 6, monthsLeft: 4 };
+  const { c, lost } = pass(s, { id: 't2', kind: 'thaw', projectTitle: 'The Long Field', role: 'Lead', tier: 'lead', type: 'Feature Film', genre: 'Drama', scale: 'feature', salary: 1e6, months: 3, deadline: 3, frozenFor: 4 });
+  assert.ok(c.path === 'thaw' && c.standing === 0 && lost === 0, JSON.stringify({ c, lost }));
+  assert.ok(c.certain.some((x) => /No penalty/.test(x.text)) && !c.certain.some((x) => /Standing/.test(x.text)));
+});
+test('a freeze that ran past a year: no penalty for a no, even with nothing else on', () => {
+  const s = life();
+  const { c, lost } = pass(s, { id: 't3', kind: 'thaw', projectTitle: 'The Long Field', role: 'Lead', tier: 'lead', type: 'Feature Film', genre: 'Drama', scale: 'feature', salary: 1e6, months: 3, deadline: 3, frozenFor: 36 });
+  assert.ok(c.standing === 0 && lost === 0 && /3 years ago/.test(c.body), JSON.stringify({ c, lost }));
+});
 test('no again after the director\'s meeting: "Standing −8", the director gone for good — and eight', () => {
   const s = life({ filmography: [{ ...FILM }] });
   s.stories = [{ id: 'recast', beat: 'answer', due: 99999, since: 0, data: { title: 'North Water II', root: 'North Water', kind: 'sequel', part: 2, director: 'Ivo Kessler', how: 'passed' } }];
