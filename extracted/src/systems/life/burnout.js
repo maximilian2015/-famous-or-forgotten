@@ -65,6 +65,9 @@ function monthWeight(s) {
 // you keep a hand in (audit §7.5) — before, any month on any set only ever added.
 export function lightWork(s) {
   const a = active(s);
+  // A lighter schedule counts, a lead's too: the load comes down slowly while the shoot runs 40%
+  // longer for the same fee (production.js). Tried without it on 28 Oct: at the edge a lighter
+  // schedule then did worse than carrying on — longer on set, still climbing.
   return a.length > 0 && a.every((p) => isShort(p) || p.scale === 'oneoff' || p.scale === 'small' || p.scale === 'episode' || p.light);
 }
 // How much harder it is to come back the longer you have been at it: 1 for half the time on a

@@ -2,7 +2,7 @@
 // The balance — three strategies over twenty years and Alex Moon's save — is tests/probes/probe_burnout.mjs.
 import assert from 'node:assert/strict';
 import { career, withSeed, roundTrip } from './helpers/contracts.mjs';
-import { startProduction } from '../src/systems/career/production.js';
+import { startProduction, productionTick } from '../src/systems/career/production.js';
 import { strainTick, canWork, insurability } from '../src/systems/life/strain.js';
 import { decide, holdFor, medicalPause, forcedStop, askOdds, askProduction, asksFor, forecast, loadOf,
   signLater, signLaterOdds, takeBreak, canTakeBreak, forcedStopOdds, resolveHealth, healthBeat, recoveryDrag } from '../src/systems/life/burnout.js';
@@ -218,6 +218,20 @@ test('the break summary says which offers went to somebody else', () => {
   s.offers = [film({ deadline: 1, projectTitle: 'The Missed One' })];
   const r = goAway(s, 3); const body = (r.bigMoment || {}).body || '';
   assert.ok(/went to somebody else while you were away: "The Missed One"/.test(body), body);
+});
+
+// ── the lighter schedule has a price, and the pause is not a reset (28 Oct) ──
+test('a lighter schedule stretches the same fee over the longer shoot', () => {
+  const s = career({ strain: 70, fame: 80, filmography: [] }); const p = onSet(s, { months: 6, salary: 6e6 }); p.monthsLeft = 5;
+  always(() => askProduction(s, p.id, 'lighter'));
+  assert.ok(p.light && p.monthsLeft === 7, String(p.monthsLeft));
+  let guard = 0; while (s.productions.includes(p) && guard++ < 20) { p.heldUntil = 0; productionTick(s); }
+  assert.ok(Math.abs(p.paid - 6e6) < 10, String(p.paid));
+});
+test("the doctor's two months take off what they take, not everything", () => {
+  const s = career({ strain: 100, filmography: [] }); s.loadLog = Array(36).fill(1.6);
+  medicalPause(s, 2); strainTick(s); strainTick(s);
+  assert.ok(!s.burnout && s.strain > 45, String(s.strain));
 });
 
 if (failed) { console.log(`\n${failed} failed`); process.exit(1); }

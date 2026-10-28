@@ -164,7 +164,9 @@ export function strainTick(s) {
     s.mental = clamp((s.mental || 0) + 3);
     if (s.burnout.left <= 0) {
       s.burnout = null;
-      s.strain = Math.min(s.strain || 0, 30);
+      // No reset to 30 on the day you are cleared: the months off took off what they took, at the
+      // pace the 36-month load allows (recoveryDrag). Two months off after three years flat out
+      // used to wipe it all, and the doctor's pause was a better rest than a year away.
       s.lastEvent = 'You are cleared to work again. Whatever that was, it has passed — mostly.';
       addTimeline(s, 'Cleared to work again after time off.');
       for (const p of s.productions || []) if (p.heldFor === 'health') p.heldUntil = 0;   // your held parts start again
