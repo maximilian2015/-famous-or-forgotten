@@ -2,6 +2,8 @@
 
 Written 25 Oct 2026, from the branches and the handoff notes, not from memory. No code was changed for it.
 
+**Direction (Maxi/ChatGPT, 28 Oct):** from a game where an actor collects a filmography to one where every film has its own production story — what happened to you while you made it, and the people it happened with.
+
 **Rules (Maxi/ChatGPT, 25 Oct):**
 - No new features until the core systems are finished.
 - A new idea goes into a section of this plan, not into a new task.
@@ -177,6 +179,18 @@ Each step: scope · existing systems used · done when · tests · how it ships.
   - "Out of order" rebuilt from the film's own scenes;
   - Stunt Minefield (logic-solvable boards), Crack the Character, a reworked Find Your Light — replacing weak ones, not added on top;
   - the per-scene approaches, so choices stop feeling generic.
+- **From Maxi's playtest of "Light and Rain III"** (28 Oct; design 6/10, look 8/10; accepted, not built). Today `scenes.js` APPROACHES change only the window size and the multipliers, and the FrameCheck board is the same whatever you chose:
+  1. every puzzle has a believable reason in the story that belongs to the actor's work (why is the actor solving the camera crew's problem?);
+  2. the approach changes how the situation develops, not only difficulty and reward;
+  3. a high workload is felt in the scene's events and choices, through the existing Burnout state (`strain`, `burnout.js`), never by charging the same penalty a second time;
+  4. choice texts read as what the actor does and thinks, not as the formula ("a bigger win if it lands").
+- **Principle: a shoot makes stories you remember.** Ten years on, the player remembers the people as well as the rating: the fight with the director, the co-star who fell ill, the rain week, the romance. Events on one film lead into each other; not every event is a choice, but the important ones leave a mark in the calendar, the relationships and the filmography. The first 5–8 situation types are a starting set, not a ceiling: the same type should tell different stories by people, genre and what already happened. Situations to draw on later: illness and recasting, director conflicts, weather, delays, flights, production accidents, paparazzi, unexpected triumphs and disasters. Already there to build on: `setlife.js` (small reported events in the months between scenes, read at wrap by `production.js` onSetStory) and production-scoped arcs in `life/arcs.js`.
+- **Production Suspension & Revival** (Maxi/ChatGPT, 28 Oct; accepted, not built). A shoot can stop for a few months or, rarely, for years: illness or death of someone in it, weather, an emergency, a conflict, money, a location. **What exists — extend it, do not build a second system:**
+  - `career/stability.js`: `freezeProject` → `s.frozen`; `frozenTick` thaws it into a `kind: 'thaw'` offer for THIS script and THIS part (same `projectId`, character, plot), the owed fee for the months left; patience 14–52 months by fame; or it dies (`deathOdds`). Walking away from a thaw costs Standing (`offers.js` THAW_STANDING) and the timeline says "finally went ahead without you". Reasons today are only money.
+  - `life/burnout.js`: the studio waits, reshoots around you or recasts when YOU are ill.
+  - **To add later:** reasons that are not money and not your illness; how much was already shot; resuming against the contracts you signed in the meantime (move the dates, renegotiate the fee, walk away, risk the new contract); the studio's answers — wait, reschedule, recast, rewrite, cancel. Shot material, cast, parts and the production story are kept while it is paused, and fees or scene results are never paid twice. Long freezes stay rare so each one is an event.
+  - **Years later → Role Memory (Step 2):** the film that went ahead without you comes out, and whoever replaced you can win for it — or the studio waited and it became your part.
+- **Later, not now: the On Set Hub** — one screen for the production: the set, the trailer, cast and crew, the schedule and where it shoots. It uses the existing actions, people and calendar. It is not a studio simulator and not a world map. Cities, travel, hotels and trailers as a status symbol are in the Backlog.
 - **Uses:** scenes.js, scenework.js, SceneLogic.jsx, the story pages from Step 2.
 - **Done when:** no scene is pure guessing; every remembered day can name its scene; the 8 scenes without a MOMENT line have one.
 - **Tests:** solvability probes for the boards (the FrameCheck probe found 10–46% ambiguous boards), and the rules text written off the component.
@@ -191,7 +205,9 @@ Each step: scope · existing systems used · done when · tests · how it ships.
   - refusal reasons on every shut door;
   - insurability that recovers through recent behaviour, not a permanent count;
   - the four categories kept apart: broken obligations, creative disputes, personal feeling, public accusations;
-  - Reputation Consequences for departures (The Last Woman slice).
+  - Reputation Consequences for departures (The Last Woman slice);
+  - the people of a production: talk, friendship, rivalry and romance between cast and crew, remembered past the wrap;
+  - **the cold-director penalty** (`production.js` ~759: bond ≤25 and ≥12 below where it started, meter < 45 → −3 Standing at wrap plus a rumour). A number crossing a line should not by itself become a public matter. Tie it to what the actor actually did on that film, why the director is hurt, and how the industry heard. Check when the memory ledger lands.
 - **Uses:** the grudges, rumour, insurability, standing rungs, people, industryWeight. No new scale.
 - **Done when:**
   - one event moves Standing at most once;
@@ -261,7 +277,9 @@ Only once stories are a permanent part of films. Start from the paused brief (`d
   1. the A-list advisor;
   2. decisions → a unique life story / biography;
   3. a shareable career card;
-  4. hard decisions and consequences — the last one is largely Steps 4–5.
+  4. hard decisions and consequences — the last one is largely Steps 4–5;
+  5. life on set — the parts accepted on 28 Oct are in Steps 3 and 4.
+- **Shoot locations and travel** — a base location per project, extra locations, travel against family and overlapping shoots, hotels on location, the trailer as a sign of standing. Only after the calendar can carry it; no world map and no flight simulation.
 - **Unsolved oddity:** the declined-film "refused" story still rolls its outcome at refusal.
 
 ## Debt to watch
