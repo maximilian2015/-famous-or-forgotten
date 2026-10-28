@@ -78,6 +78,10 @@ Each step: scope · existing systems used · done when · tests · how it ships.
 - **Ships:** one merge per step, game.html after the last.
 - **Note:** rep-cover can wait until Step 4 if Maxi prefers it reviewed with the rest of relationships. It merges cleanly either way.
 - **Done 27 Oct:** all four merged into main; the workload bar on the Mental screen; **a film that a burnout stopped no longer costs Standing** (it was −6, or −9 past the window), main `a24cbdd`.
+- **Next economy fix, right after Burnout Core merges** (found 28 Oct; not in the Burnout branch):
+  - **The bug:** surprise bills grow with the fortune. `life/money.js` `surpriseBill` fires at 7% a month and charges 2–7% of all cash. With €150m that is a car repair at €8m and a cousin's loan at €28m.
+  - **The fix:** the bill depends on the thing or the event — the car you own, the home you live in, the size of the family — not on the balance. An expensive lifestyle may raise it through what you own (`THINGS`, housing, staff).
+  - **The rest of the money spread** comes from the divorce settlement (half the fortune), the wealth levy and one blockbuster's back end. They are real swings; look at them with `MONEY=1 node tests/probes/probe_burnout.mjs 1 1` after the fix.
 
 ### Step 1b — Burnout Core (moved ahead of stories and minigames, Maxi/ChatGPT 27 Oct; audit `docs/burnout-audit.md` §7–13)
 
