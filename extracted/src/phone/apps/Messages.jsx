@@ -179,6 +179,7 @@ export function Messages({ g }) {
             <div style={{ fontSize: 11, color: col, marginTop: 6, fontWeight: 700 }}>Workload ≈{f.from} → {f.to} if you sign{f.overlap ? ` · ${f.overlap} month${f.overlap === 1 ? '' : 's'} alongside what you are on` : ''}</div>
             {f.danger && al && <div style={{ fontSize: 11.5, color: theme.gold, marginTop: 4, lineHeight: 1.45 }}>{al.name.split(' ')[0]}: “{f.overlap
               ? `You'd be on two sets for ${f.overlap} months. That is where people stop — I've seen it. Your call.`
+              : f.already ? `You're already running on empty. This keeps you there for ${o.months || 1} more months. If it's the one, take it — but take something off first.`
               : `This takes you to the edge. I'll get it for you if you want it — I just want you to know what it costs.`}”</div>}
           </>); })()}
         <div style={{ display: 'flex', flexWrap: 'wrap', gap: 7, marginTop: 9 }}>

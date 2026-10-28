@@ -5,7 +5,7 @@ import { setFame, setRespect } from '../meta/status.js';
 import { takeJob, JOBS } from './work.js';
 import { resolveStory, CHAINS } from '../meta/stories.js';
 import { resolveNeed } from './needs.js';
-import { resolveHealth, healthBeat, medicalPause } from './burnout.js';
+import { resolveHealth, healthBeat, medicalPause, off, active } from './burnout.js';
 import { STAT, fxWords, showWords, softenLoss } from './choiceWords.js';
 const clamp = (v) => Math.max(0, Math.min(100, v));
 export const ARCS = [
@@ -75,7 +75,8 @@ export function maybeStartArc(s) {
   const done = s._arcsDone || [];
   const eligible = ARCS.filter((a) => {
     // On-set incidents repeat across productions but only once per shoot.
-    if (a.scope === 'production') { if (!s.production) return false; if ((s.production._incidents || []).includes(a.id)) return false; }
+    // And only when you are actually on it: not signed off, not on a set that is held or finishing without you.
+    if (a.scope === 'production') { if (!s.production || off(s) || !active(s).some((p) => p === s.production || (p.id != null && p.id === s.production.id))) return false; if ((s.production._incidents || []).includes(a.id)) return false; }
     else if (a.once && done.includes(a.id)) return false;
     try { return a.when(s); } catch (e) { return false; }
   });

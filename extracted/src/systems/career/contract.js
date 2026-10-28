@@ -41,7 +41,9 @@ const SCALE_RANK = { oneoff: 0, small: 1, episode: 1, indie: 2, recurring: 3, pr
 // It is not status, it is structure. A film can recast and shoot in March. A show that is
 // about you shoots when you are free or it does not shoot.
 export function theShowIsYou(o) {
-  return !!o && o.kind === 'renewal' && (o.tier === 'lead' || o.tier === 'tentpole');
+  // Not once the room has built a season around somebody else (franchise.js builtAround): then it
+  // shoots without you as easily as with you, and the paper knows it.
+  return !!o && o.kind === 'renewal' && !o.builtAround && (o.tier === 'lead' || o.tier === 'tentpole');
 }
 function holdOdds(wait, s, o) {
   // Nearly always, and for nearly as long as you like — they have nobody else to call.
@@ -234,6 +236,13 @@ export function draftContract(s, o) {
     fee.options = [];
   }
   clauses.push(fee);
+  // A season the room built around somebody else while you were off (franchise.js builtAround).
+  // The letter says "argue for more"; this is where you can.
+  if (o.builtAround && (o.fullEpisodes || 0) > (o.episodes || 0)) {
+    clauses.push({ id: 'episodes', label: 'Episodes', value: o.episodes,
+      text: `${o.episodes} episodes, not ${o.fullEpisodes} — the room built the season around somebody else`,
+      options: [{ id: 'full', label: `Argue for all ${o.fullEpisodes} episodes back`, value: o.fullEpisodes, odds: Math.min(60, 25 + tierIdx(s) * 7) }] });
+  }
   // The dates — scheduleClause above. The exclusivity is rolled here because the dates depend on it.
   const ex = big && exclusiveFor(o);
   const sched = scheduleClause(s, o, big, ex);
@@ -663,6 +672,9 @@ export function signContract(s, id) {
     if (c.id === 'scheduleBonus') o.scheduleBonus = c.value || 0;
     if (c.id === 'points' && c.value) { o.salary = Math.round((o.salary || 0) * 0.6); o.backend = Math.max(o.backend || 0, c.value); o.points = true; }
   }
+  // The episodes last: the dates and the fee above were drawn for the shorter season.
+  const ep = k.clauses.find((c) => c.id === 'episodes');
+  if (ep && ep.value !== o.episodes) { o.months = Math.max(1, Math.round((o.months || 1) * ep.value / Math.max(1, o.episodes))); o.episodes = ep.value; o.salary = (o.episodeFee || 0) * ep.value; }
   o.signed = true;
   const now = (s.year || 0) * 12 + (s.month || 0);
   const title = String(o.projectTitle || 'it').replace('⭐ ', '');

@@ -143,6 +143,7 @@ export function offersTick(s) {
     // reason a deadline is on the card.
     if (o.kind === 'thaw') addTimeline(s, `${title} finally went ahead without you.`, true);
     else addTimeline(s, `They stopped waiting on ${title} and cast someone else.`, true);
+    if (s.onBreak) (s.onBreak.lapsed = s.onBreak.lapsed || []).push(title);   // the break's summary says what it cost (life/burnout.js)
     // Your own season or sequel: written down on its credit whatever else is going on (continuation.js).
     // A paper that had been argued over did not lapse — the deal was never closed.
     const lapsed = o.story === 'recast' ? 'meeting' : o.contract && (o.contract.round || 0) > 0 ? 'talks' : 'expired';

@@ -50,6 +50,7 @@ export function ContractRoom({ g, onClose }) {
   const talks = openTalks(o);
   // A schedule they have not answered: no set for it, and no signature until they say how.
   const must = k.clauses.some((c) => c.must && c.result !== 'agreed' && c.stance !== 'talk');
+  const mustNo = String(k.clauses.findIndex((c) => c.must && c.result !== 'agreed' && c.stance !== 'talk') + 1).padStart(2, '0');   // the number on the paper, not a guess
   const withThem = !!k.sent;
   const signed = !!o.signed;
   const now = (g.year || 0) * 12 + (g.month || 0);
@@ -156,7 +157,7 @@ export function ContractRoom({ g, onClose }) {
         {withThem && <div style={{ fontSize: 12, color: P.muted, textAlign: 'center', lineHeight: 1.5, padding: '4px 6px' }}>It is with them. They answer next month; the offer does not expire while they read it.</div>}
         {signed && <div style={{ fontSize: 12, color: P.green, textAlign: 'center', lineHeight: 1.5, padding: '4px 6px', fontWeight: 700 }}>{o.waitsForWrap ? 'Signed. It starts the month a set frees up.' : 'Signed.'}</div>}
         {!withThem && !signed && <>
-          {must && <div style={{ fontSize: 12.5, lineHeight: 1.5, color: P.ink, background: 'rgba(139,67,47,.08)', border: `1px solid ${P.accent}55`, borderRadius: 6, padding: '10px 12px', fontWeight: 700 }}>No signature yet — you are on another set. On clause 02, choose: they hold the part until you wrap, you propose your own month in the calendar, or you walk off what you are on — then send it back.</div>}
+          {must && <div style={{ fontSize: 12.5, lineHeight: 1.5, color: P.ink, background: 'rgba(139,67,47,.08)', border: `1px solid ${P.accent}55`, borderRadius: 6, padding: '10px 12px', fontWeight: 700 }}>No signature yet — you are on another set. On clause {mustNo}, choose: they hold the part until you wrap, you propose your own month in the calendar, or you walk off what you are on — then send it back.</div>}
           {!must && <button onClick={() => { dispatch(signContract, o.id); if (!talks.length) onClose(); }} disabled={talks.length > 0}
             style={{ border: 'none', borderRadius: 4, padding: '13px', fontSize: 14, fontWeight: 800, cursor: talks.length ? 'default' : 'pointer', background: talks.length ? '#c9b89a' : P.accent, color: P.paper }}>
             {talks.length ? `Sign — first settle ${talks.length} open point${talks.length === 1 ? '' : 's'}` : 'Sign it'}

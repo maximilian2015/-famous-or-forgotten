@@ -293,7 +293,7 @@ export function resolveHealth(s, arc, i) {
   if (!b) return s;
   const c = b.choices[i]; if (!c) return s;
   s.lastEvent = `${arc.speaker}\n\n${c.apply()}`;
-  addTimeline(s, `${arc.speaker}: ${c.label.toLowerCase()}.`);
+  addTimeline(s, `${arc.kicker || arc.speaker}: you chose “${c.label}”.`);
   return s;
 }
 
@@ -419,7 +419,7 @@ export function breakTick(s, ending = false) {
   // And a name that steps away and comes back is news. Not for nobody; for somebody.
   const big = (s.fame || 0) >= 40 && months >= 6;
   if (big) addHype(s, months >= 12 ? 14 : 8, 'press');
-  s._cameBack = { months, news: big };   // read once by breakSummary
+  s._cameBack = { months, news: big, lapsed: b.lapsed || [] };   // read once by breakSummary
   const line = big ? `Back after ${months} months. The trades noticed: "${s.name} is working again."` : `Back after ${months} months away.`;
   addTimeline(s, line, true);
   s.lastEvent = line;
@@ -430,6 +430,9 @@ export function breakSummary(s, before, notes) {
   const lines = [];
   for (const n of notes.slice(0, 6)) lines.push(n);
   if (!notes.length) lines.push('Nothing of yours came out. The months were yours.');
+  // What the months cost: the parts that went to somebody else while you were not answering.
+  const lapsed = (s._cameBack && s._cameBack.lapsed) || (s.onBreak && s.onBreak.lapsed) || [];
+  if (lapsed.length) lines.push(`${lapsed.length === 1 ? 'One offer' : lapsed.length + ' offers'} went to somebody else while you were away: ${lapsed.slice(0, 3).map((t) => `"${t}"`).join(', ')}${lapsed.length > 3 ? '…' : ''}.`);
   if (s._cameBack && s._cameBack.news) lines.push('The trades noticed you are back: "working again", and the phone with it.');
   s._cameBack = null;
   lines.push(`Workload ${Math.round(before.strain)} → ${Math.round(s.strain || 0)}. Mental ${Math.round(before.mental)} → ${Math.round(s.mental || 0)}.`);
@@ -463,7 +466,10 @@ export function recentStops(s) { return (s.medical || []).filter((m) => now(s) -
 export function forecast(s, o) {
   const months = Math.max(1, Math.min(18, o.months || 1));
   const cur = active(s);
-  let st = s.strain || 0, peak = st;
+  // Signed while off, it starts the month you are back: the months off come first.
+  const wait = off(s) ? Math.max(0, returnAt(s) - now(s)) : 0;
+  let st = clamp((s.strain || 0) - wait * 10 / recoveryDrag(s)), peak = st;
+  const from = st;
   const COST = { blockbuster: 8, prestige: 7, feature: 6.5, recurring: 6, indie: 5.5, episode: 4.5, small: 4, oneoff: 2.5 };   // life/strain.js COST, duplicated: strain.js imports this file
   const runs = cur.map((p) => ({ scale: p.scale, left: p.monthsLeft || 0, light: p.light }));
   runs.push({ scale: o.scale || 'feature', left: months, light: false, new: true });
@@ -474,5 +480,8 @@ export function forecast(s, o) {
     const up = on.reduce((n, r, i) => n + (COST[r.scale] || 6) * (0.55 + st / 68) * (r.light ? 0.6 : 1) * (i ? 0.7 : 1), 0);
     st = clamp(st + up); peak = Math.max(peak, st);
   }
-  return { from: Math.round(s.strain || 0), to: Math.round(peak), overlap, danger: peak >= 82 && (peak - (s.strain || 0) >= 15 || overlap >= 3) };
+  // Danger: a big jump into the red, a long double, or already at the edge and this keeps you there
+  // (the case the jump alone never saw: 90 → 100 is ten points and four more months on empty).
+  const already = from >= 82 && peak >= 90;
+  return { from: Math.round(from), to: Math.round(peak), overlap, already, danger: peak >= 82 && (peak - from >= 15 || overlap >= 3 || already) };
 }

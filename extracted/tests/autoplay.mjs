@@ -97,6 +97,11 @@ async function live(seed) {
     W.URL.createObjectURL = () => 'blob:stub';
     W.URL.revokeObjectURL = () => {};
   }
+  // And the download itself: jsdom treats a click on <a download> as navigating away and
+  // reports "navigation to another Document" — the one throw in twenty lives on 28 Oct, and
+  // most likely the unexplained 0/1 of the day before. A browser saves the file.
+  const aClick = W.HTMLAnchorElement.prototype.click;
+  W.HTMLAnchorElement.prototype.click = function () { if (this.download) return; return aClick.call(this); };
   W.onerror = (msg) => errors.push('window.onerror: ' + String(msg).slice(0, 200));
   W.addEventListener('unhandledrejection', (e) => errors.push('unhandled: ' + String(e.reason).slice(0, 200)));
   // A fresh life every time, not whatever the last run left behind.

@@ -167,7 +167,15 @@ if (fs.existsSync(SAVE)) {
     let t = JSON.parse(JSON.stringify(getState()));
     const r = { months: 0, red: 0, top: 0, off: 0, collapses: 0, breaks: 0, peakFame: 0, doctor: 0, meter: 0, wraps: 0 };
     const c0 = (t.filmography || []).length, cash0 = t.cash || 0;
-    for (let m = 0; m < 120 && t.alive !== false; m++) { try { t = month(t, STRATS[strat], r); } catch (e) { r.threw = e.message; break; } }
+    // MONEY=1: where a single ten-year run's money came from — the months that moved it most, and
+    // what the timeline said in each. The spread between runs is the question, not the mean.
+    const swings = [];
+    for (let m = 0; m < 120 && t.alive !== false; m++) {
+      const c = t.cash || 0, head = (t.timeline || [])[0];
+      try { t = month(t, STRATS[strat], r); } catch (e) { r.threw = e.message; break; }
+      if (process.env.MONEY) { const tl = t.timeline || []; const k = tl.indexOf(head); swings.push({ d: (t.cash || 0) - c, at: `${t.year}/${t.month + 1}`, why: tl.slice(0, k < 0 ? 4 : k).map((x) => String(x.text || x.t || x).slice(0, 90)) }); }
+    }
+    if (process.env.MONEY) for (const w of swings.sort((a, b) => Math.abs(b.d) - Math.abs(a.d)).slice(0, 4)) console.log(`    ${w.d >= 0 ? '+' : '−'}€${Math.round(Math.abs(w.d) / 1e6)}m ${w.at}: ${w.why.filter((x) => /€|\$|gross|paid|levy|tax|bought|sold|lost/i.test(x)).slice(0, 3).join(' | ')}`);
     console.log(`  ${strat.padEnd(10)} at 95+ ${Math.round((100 * r.top) / r.months)}% · doctor ${r.doctor} · forced stops ${r.collapses} · pauses ${(t.medical || []).filter((x) => !x.forced).length} · breaks ${r.breaks} · lost ${(t.lostToHealth || []).length} · credits +${(t.filmography || []).length - c0} · €${Math.round(((t.cash || 0) - cash0) / 1e6)}m · health ${Math.round(t.health)} · fame ${Math.round(t.fame)}${r.threw ? ' · THREW ' + r.threw : ''}`);
   }
 }

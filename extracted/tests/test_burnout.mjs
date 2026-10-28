@@ -7,7 +7,8 @@ import { strainTick, canWork, insurability } from '../src/systems/life/strain.js
 import { decide, holdFor, medicalPause, forcedStop, askOdds, askProduction, asksFor, forecast, loadOf,
   signLater, signLaterOdds, takeBreak, canTakeBreak, forcedStopOdds, resolveHealth, healthBeat, recoveryDrag } from '../src/systems/life/burnout.js';
 import { acceptOffer } from '../src/systems/career/offers.js';
-import { draftContract } from '../src/systems/career/contract.js';
+import { draftContract, signContract } from '../src/systems/career/contract.js';
+import { maybeStartArc } from '../src/systems/life/arcs.js';
 import { goAway, stepAway } from '../src/engine/time.js';
 
 let failed = 0;
@@ -186,6 +187,37 @@ test('a lead in a feature carries a schedule bonus and the postponement terms on
   const bonus = k.clauses.find((c) => c.id === 'scheduleBonus');
   assert.ok(bonus && bonus.value === 500000, JSON.stringify(bonus));
   assert.ok(k.clauses.some((c) => c.id === 'postpone'));
+});
+
+// ── the final check before merging (28 Oct) ──────────────────────────────────
+test('already at the edge, a film that keeps you there: the agent speaks', () => {
+  const s = career({ strain: 92, filmography: [] });
+  const f = forecast(s, film({ months: 4 }));
+  assert.ok(f.already && f.danger, JSON.stringify(f));
+});
+test('signed while off, the forecast starts from the rested load', () => {
+  const s = career({ strain: 92, filmography: [] }); medicalPause(s, 3);
+  assert.ok(forecast(s, film({ months: 2 })).from < 92);
+});
+test('no on-set incident while you are signed off', () => {
+  const s = career({ fame: 60, filmography: [] }); onSet(s, {}); s.production.monthsLeft = 3; s.production.meter = 10;
+  medicalPause(s, 2);
+  for (let i = 0; i < 20; i++) { s.pendingArc = null; always(() => maybeStartArc(s)); assert.ok(!['directorCracks', 'costarWrecked', 'scriptLeak', 'droneOverSet', 'replacementThreat'].includes((s.pendingArc || {}).id), (s.pendingArc || {}).id); }
+});
+test('a season built around somebody else: the paper lets you argue for the episodes back', () => {
+  const s = career({ fame: 60, filmography: [] });
+  const o = film({ kind: 'renewal', perEpisode: true, episodes: 5, episodeFee: 200000, salary: 1e6, fullEpisodes: 10, builtAround: true, scale: 'recurring', type: 'Network Drama', months: 3 });
+  s.offers = [o];
+  const c = draftContract(s, o).clauses.find((x) => x.id === 'episodes');
+  assert.ok(c && c.options[0].value === 10, JSON.stringify(c));
+  c.value = 10; signContract(s, o.id);
+  assert.equal(o.episodes, 10); assert.equal(o.salary, 2e6); assert.equal(o.months, 6);
+});
+test('the break summary says which offers went to somebody else', () => {
+  const s = career({ fame: 50, filmography: [] });
+  s.offers = [film({ deadline: 1, projectTitle: 'The Missed One' })];
+  const r = goAway(s, 3); const body = (r.bigMoment || {}).body || '';
+  assert.ok(/went to somebody else while you were away: "The Missed One"/.test(body), body);
 });
 
 if (failed) { console.log(`\n${failed} failed`); process.exit(1); }
