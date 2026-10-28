@@ -343,7 +343,10 @@ export function askProduction(s, setId, id) {
   p._askedMonth = now(s); p._asks = (p._asks || 0) + 1;
   const dir = (p.crew || [])[0];
   if (!chance(odds)) {
-    if (dir) dir.bond = clamp((dir.bond || 45) - 3);
+    // The first ask on a set is a medical request and costs nothing even when the answer is no; it
+    // is asking again after a no that wears on the director (and a cold director can cost Standing
+    // at wrap, production.js) — Maxi, 28 Oct.
+    if (dir && p._asks > 1) dir.bond = clamp((dir.bond || 45) - 3);
     const no = { lighter: 'They cannot carry a longer shoot.', early: 'They will not reshuffle the schedule for one actor.', postpone: 'The dates are the dates.' }[id];
     const out = `"${p.title}" said no. ${no}`;
     addTimeline(s, out); s.lastEvent = out; return { ok: false, say: out };

@@ -81,14 +81,16 @@ test('a second postponement is much harder than the first', () => {
   const first = askOdds(s, p, 'postpone'); p._postponed = 1; p._asks = 1;
   assert.ok(askOdds(s, p, 'postpone') < first - 20);
 });
-test('a yes moves the dates and gives up the schedule bonus; a no costs the director a little', () => {
+test('a yes moves the dates and gives up the schedule bonus; a first no costs nothing, asking again does', () => {
   const s = career({ strain: 90, filmography: [] }); const p = onSet(s, {}); p.crew = [{ name: 'Ada Wren', bond: 50, trait: 'chill' }];
   always(() => askProduction(s, p.id, 'postpone'));
   assert.ok(p.heldUntil > now(s) && p.lostBonus);
   const q = onSet(s, { projectTitle: 'Second' }); q.crew = [{ name: 'Bo Hale', bond: 50, trait: 'perfectionist' }];
   never(() => askProduction(s, q.id, 'lighter'));
-  assert.ok(q.crew[0].bond < 50 && !q.light);
+  assert.ok(q.crew[0].bond === 50 && !q.light, 'the first, medical ask is free');
   assert.equal(askProduction(s, q.id, 'lighter').ok, false, 'asked twice in a month');
+  s.month += 1; never(() => askProduction(s, q.id, 'lighter'));
+  assert.ok(q.crew[0].bond < 50, 'asking again after a no wears on them');
 });
 
 // ── the doctor ────────────────────────────────────────────────────────────────
