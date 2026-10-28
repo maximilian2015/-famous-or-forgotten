@@ -32,6 +32,9 @@ const STRATS = {
   nonstop: { sets: 3, signBelow: 101, rest: false, doctor: 'ignore' },
   // nonstop until the first forced stop; then a year away, and the ambitious life after it
   comeback: { sets: 3, signBelow: 101, rest: false, doctor: 'ignore', reform: true },
+  // works like nonstop, but asks every set for a lighter schedule once the load is 60+, and tells
+  // the doctor the same: what the ask costs when offers keep coming (Maxi, 28 Oct)
+  lighter: { sets: 3, signBelow: 101, rest: false, doctor: 'lighter', ask: true },
 };
 
 const STORY_RE = /doctor|signed off|Signed off|stopped|wait for you|shoot around|without your last|written out|wrote your character|recast|Stepped away|Back after|Cleared|lighter schedule|moved your scenes|scenes first|said no. |schedule bonus|Running on empty|tired in a way|: (Hit|Flop|Smash|Well-received)|opened|Asker|Emmet|took it|You won|grossed|verdict/;
@@ -46,6 +49,7 @@ function answer(t, how, r) {
       const rest = idx(/pause|rest|stop|doctor|sign off|break/i), push = idx(/carry|push|keep|ignore|again|finish/i);
       if (how === 'rest' && rest >= 0) i = rest;
       else if (how === 'ignore' && push >= 0) i = push;
+      else if (how === 'lighter' && idx(/lighter/i) >= 0) i = idx(/lighter/i);
       else if (how === 'mixed') i = Math.random() < 0.5 && rest >= 0 ? rest : push >= 0 ? push : i;
     }
     if (r.log && (arc.health || arc.id === 'burnout')) r.log.push(`${['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'][t.month]} ${t.year}  [${arc.speaker}] → ${(ch[i] || {}).label}`);
@@ -74,6 +78,7 @@ function month(t, st0, r) {
   if (BO && BO.canTakeBreak && st.rest && (t.strain || 0) >= (st.sets === 1 ? 70 : 88) && BO.canTakeBreak(t).ok) {
     BO.takeBreak(t, st.sets === 1 ? 3 : 6); r.breaks++;
   }
+  if (st.ask && (t.strain || 0) >= 60) for (const p of BO.active(t)) if (BO.asksFor(t, p).some((a) => a.id === 'lighter' && !a.asked)) { const q = BO.askProduction(t, p.id, 'lighter'); if (q.ok) { r.yes = (r.yes || 0) + 1; r.extra = (r.extra || 0) + Math.ceil(((p.monthsLeft || 0) / 1.4) * 0.4); } else r.no = (r.no || 0) + 1; }
   const load = t.strain || 0;
   const n = (t.productions || []).length;
   K.refreshCastingPool(t);
@@ -122,6 +127,7 @@ function career(strat, life, story = false) {
     held: (JSON.stringify(t.timeline || []).match(/will wait for you|shoot around you/g) || []).length,
     cut: (JSON.stringify(t.timeline || []).match(/finish without your last scenes|wrote your character out/g) || []).length,
     lost: (t.lostToHealth || []).length + (tl.match(/was recast\. They held it open|formally abandoned\. It stopped when you/g) || []).length,
+    missed: (tl.match(/They stopped waiting on/g) || []).length, yes: r.yes || 0, no: r.no || 0, extra: r.extra || 0,
     depression: t.depression ? 1 : 0, health: t.health || 0, alive: t.alive !== false ? 1 : 0,
   });
   return r;
@@ -151,6 +157,7 @@ const cols = [
   ['held', (r) => r.held, avg], ['cut', (r) => r.cut, avg], ['films lost', (r) => r.lost, avg], ['doctor', (r) => r.doctor, avg], ['pauses', (r) => r.pauses, avg], ['credits', (r) => r.credits, med], ['meter@wrap', (r) => r.meter / (r.wraps || 1), avg], ['avg rating', (r) => r.rating, avg],
   ['peak fame', (r) => r.peakFame, med], ['Standing', (r) => r.standing, med], ['cash €m', (r) => r.cash / 1e6, med],
   ['health', (r) => r.health, avg], ['depressed', (r) => r.depression, avg],
+  ['offers missed', (r) => r.missed, avg], ['asks yes', (r) => r.yes, avg], ['asks no', (r) => r.no, avg], ['extra set mo', (r) => r.extra, avg],
 ];
 console.log('strategy  ' + cols.map((c) => c[0].padStart(13)).join(''));
 for (const [k, rows] of Object.entries(out)) console.log(k.padEnd(10) + cols.map(([, f, agg]) => agg(rows.map(f)).toFixed(1).padStart(13)).join(''));

@@ -234,5 +234,13 @@ test("the doctor's two months take off what they take, not everything", () => {
   assert.ok(!s.burnout && s.strain > 45, String(s.strain));
 });
 
+test('every warning ignored weighs more, and a year at the edge lifts the ceiling', () => {
+  const s = career({ strain: 100, filmography: [] }); onSet(s, {}); s.productions[0].monthsLeft = 6;
+  s._redMonths = 30; s._topMonths = 30; s.loadLog = Array(36).fill(1.6);
+  s._doctorIgnored = now(s) - 1; s._ignoredN = 1; const once = forcedStopOdds(s);
+  s._ignoredN = 3; const thrice = forcedStopOdds(s);
+  assert.ok(once > 6 && thrice > once && thrice <= 15, once + ' / ' + thrice);
+});
+
 if (failed) { console.log(`\n${failed} failed`); process.exit(1); }
 console.log('\nall passed');

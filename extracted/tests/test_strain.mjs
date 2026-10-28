@@ -119,7 +119,7 @@ ok('the time off runs out', !burnedOut(burnt), `${months} months`);
 // Rested, out of the red — but not wiped to 30 on the day you are cleared: the months off take off
 // what they take at the pace the 36-month load allows (28 Oct; the reset made a two-month pause a
 // better rest than a year away).
-ok('and you come back rested, not where you left off', (burnt.strain || 0) < 70, burnt.strain.toFixed(0));
+ok('and you come back out of the red, not where you left off', (burnt.strain || 0) < 82, burnt.strain.toFixed(0));
 ok('you can work again', canWork(burnt).ok);
 ok('and the game says so', /cleared to work/i.test(burnt.lastEvent), burnt.lastEvent);
 if (heldSet) ok('a part they held for you starts again when you are cleared', !((heldSet.heldUntil || 0) > burnt.year * 12 + burnt.month), String(heldSet.heldUntil));

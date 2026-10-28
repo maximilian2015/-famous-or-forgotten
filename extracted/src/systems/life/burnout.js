@@ -102,8 +102,13 @@ export function forcedStopOdds(s) {
   const top = s._topMonths || 0;
   if (top >= 3) r += Math.min(3.5, (top - 2) * 0.35);
   r *= 1 + loadOf(s) / 72;
-  if (now(s) - (s._doctorIgnored ?? -99) < 12) r *= 1.8;
-  return Math.min(6, Math.round(r * 10) / 10);
+  // Each warning ignored in the last two years weighs more than the one before, and a year past the
+  // first at the edge lifts the ceiling too: it was 6% a month however long it went on, and a
+  // career could sit at 100 for four years through five doctors (Maxi, 28 Oct).
+  const n = now(s) - (s._doctorIgnored ?? -99) < 12 ? (s._ignoredN || 1) : 0;
+  if (n) r *= 1.8 + 0.5 * (n - 1);
+  const cap = Math.min(15, 6 + 3 * Math.max(0, n - 1) + Math.max(0, top - 12) / 4);
+  return Math.min(cap, Math.round(r * 10) / 10);
 }
 
 // ── the studio's decision ─────────────────────────────────────────────────────
@@ -178,7 +183,7 @@ export function medicalPause(s, months = 2) {
   s.burnout = { left: months, since: now(s), rest: true, medical: true };
   (s.medical = s.medical || []).push({ at: now(s), months, forced: false });
   s.strain = clamp((s.strain || 0) - 10);
-  s._redMonths = 0; s._topMonths = 0; s._doctorIgnored = null;
+  s._redMonths = 0; s._topMonths = 0; s._doctorIgnored = null; s._ignoredN = 0;
   const lines = studiosDecide(s, months);
   addTimeline(s, `Signed off for ${months} months, on the doctor's word.`, true);
   s.lastEvent = `Signed off for ${months} months. ${lines.length ? lines[0] : 'Nothing was shooting.'}`;
@@ -191,7 +196,7 @@ export function forcedStop(s) {
   const shooting = sets(s).map((p) => p.title);
   s.burnout = { left: months, since: now(s), rest: true, forced: true };
   (s.medical = s.medical || []).push({ at: now(s), months, forced: true });
-  s._redMonths = 0; s._topMonths = 0; s._doctorIgnored = null;
+  s._redMonths = 0; s._topMonths = 0; s._doctorIgnored = null; s._ignoredN = 0;
   s._burntUntil = now(s) + months + 12;
   s.mental = clamp((s.mental || 0) - 14);
   s.health = clamp((s.health || 0) - 4);
@@ -257,7 +262,7 @@ export function healthBeat(s, arc) {
           apply: () => askProduction(s, heavy.id, 'lighter').say },
         { label: 'Carry on — finish what you are on', hint: `The chance your body stops you this month is about ${odds}%, and it doubles for a year once you have been told.`,
           shows: { more: [say('nothing changes today'), say('a forced stop gets likelier every month', false)] },
-          apply: () => { s._doctorIgnored = now(s); return 'You thank him and go back to work. He writes something down.'; } },
+          apply: () => { s._ignoredN = now(s) - (s._doctorIgnored ?? -99) < 24 ? (s._ignoredN || 0) + 1 : 1; s._doctorIgnored = now(s); return 'You thank him and go back to work. He writes something down.'; } },
       ].filter(Boolean),
     };
   }
