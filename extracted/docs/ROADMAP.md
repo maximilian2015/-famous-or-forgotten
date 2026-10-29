@@ -1,0 +1,290 @@
+# Famous or Forgotten — the one roadmap
+
+Written 25 Oct 2026, from the branches and the handoff notes, not from memory. No code was changed for it.
+
+**Direction (Maxi/ChatGPT, 28 Oct):** from a game where an actor collects a filmography to one where every film has its own production story — what happened to you while you made it, and the people it happened with.
+
+**Rules (Maxi/ChatGPT, 25 Oct):**
+- No new features until the core systems are finished.
+- A new idea goes into a section of this plan, not into a new task.
+- No new independent system where an existing one can be extended.
+- The next big step starts only when the last one is checked and accepted.
+
+## 0. Where everything is today
+
+### Branches not in main
+
+| Branch | What it is | State | Tests | Merges into main |
+|---|---|---|---|---|
+| `fix/decline-preview` | Pass/Decline says what it will do before it does it | done, verified by a side session | in suite | clean |
+| `premiere-tonight` | Opening night shows only what is out of the ordinary; fits a phone | done | in suite | clean |
+| `story-v1` (contains `story-audit`) | Film stories stages 1–2: story kept on the film, offer shows synopsis, script card, scene days know the page, "Out of order" from the film's secret, critics name the scene | done on the branch; four corrections asked (§2) | 18 story tests + generator checkers | clean |
+| `rep-cover` | Memory ledger + the cover chain: four outcomes, director traits, grudge with reason, way back, remembered years later | prototype, built end to end, shown in the UI | test_cover + test_arcs | clean |
+| `poster-prototype`, `poster-v2-1`, `poster-v3-directions` | Poster experiments | **paused** — prototypes in `tools/` only | — | do not merge |
+| `shared-universe-audit` | Streaming plan rev 4 and the shared-universe design (heirs, U1–U4) | docs only; the plan is built, the universe is parked | — | docs; can stay out |
+| `thoughts-aloud` | Maxi's four play-time ideas | docs only | — | docs |
+
+**Trial merge, 25 Oct.**
+- Order: main + decline-preview + premiere-tonight + story-v1 + rep-cover, in a separate folder.
+- Result: **no conflicts, the build passes, 99/99 tests.**
+- They touch some of the same files (Messages, stories.js, release.js, production.js, the set card), but the changes do not collide.
+
+### Done vs designed
+
+**In the game (main, 1d9be31):**
+- Media Ecosystem stages 1–3: one project identity, the outcome adapter, Series Awards (the Emmet), Streaming Series V1, Streaming Movies V1 (platform films, the festival buyers).
+- Lost continuations (a show or sequel's life without you).
+- Budget V2, Family V1, the Directors screen, the passed-parts ledger.
+
+**Built on branches (above):** decline preview, premiere card, film stories 1–2, the cover chain.
+
+**Designed only, no code:**
+- reputation architecture (`docs/reputation-architecture.md`);
+- the minigame audit (artifact 5uXZd4…: keep 8, redesign 5, two become story choices, remove 1);
+- titles from the story (audited, `docs/plot-integration.md` §1b);
+- Media Ecosystem stages 4–6;
+- Reputation Consequences for departures (The Last Woman slice);
+- Role Memory.
+
+## Streaming, series and the media ecosystem — what we started and did not finish
+
+Media Ecosystem V1 was planned in six stages; **1–3 are shipped, 4–6 are not.**
+
+| Item | Status | Goes to |
+|---|---|---|
+| **Stage 4: market values** — what your fame is worth in cinema / TV / streaming, a platform's memory of you after a flop, market-specific casting doors, the TV legend's road to Icon | designed, not built | Step 6 |
+| **Stage 5:** per-medium appetite, the world's own streaming releases and lists | designed, not built | Step 6 |
+| **Stage 6:** theatrical bankability read by demand; the Billion Club question | designed, not built | Step 6 |
+| **Small streaming loose ends:** the shelf ignores the typecast turn-away; Known For does not count a Breakout or a platform hit unless rated 7.5+; a streaming show cannot be pushed with a favour; the home line says "in post" while two platforms bid; a co-star's career does not record a platform film; Heat counts a platform film's rating and no gross | known, small | **Step 1** |
+| **Sequels of platform films** run as world films in the continuation code | known gap | Step 2 |
+| **Series Roles V2** — supporting in a series rarely reaches the award floor; TV "lead" parts | backlog since 20 Oct | Step 2 |
+| **"Without you" stories** run one at a time; the card reads "recast" between the meeting and the new paper | known, small | Step 1 |
+| **Pay cut to save a show** | backlog ("right after V1") | Step 6 (needs market values) |
+| **TV movies** | not built | Backlog |
+| **The world has no television** (world actors carry no TV credits) | known gap | Step 6 |
+| **Shared universe** (heirs, a new actor in an old world) | parked by Maxi | Backlog |
+
+## The plan
+
+Each step: scope · existing systems used · done when · tests · how it ships.
+
+### Step 1 — Stabilise and merge what is ready
+
+- **Scope:**
+  - merge decline-preview → premiere-tonight → story-v1 → rep-cover into main, one merge at a time;
+  - close the small loose ends marked "Step 1" above;
+  - fix the story-v1 corrections that are bugs, not features: story chronology vs shooting order; the meter effect explained.
+- **Uses:** what exists; no new system.
+- **Done when:** all four are in main; game.html rebuilt and copied; an old save (Alex Moon) loads and plays a year; full suite green after each merge.
+- **Tests:** full suite and a played-through life after each merge; one test per loose end.
+- **Ships:** one merge per step, game.html after the last.
+- **Note:** rep-cover can wait until Step 4 if Maxi prefers it reviewed with the rest of relationships. It merges cleanly either way.
+- **Done 27 Oct:** all four merged into main; the workload bar on the Mental screen; **a film that a burnout stopped no longer costs Standing** (it was −6, or −9 past the window), main `a24cbdd`.
+- **Next economy fix, right after Burnout Core merges** (found 28 Oct; not in the Burnout branch):
+  - **The bug:** surprise bills grow with the fortune. `life/money.js` `surpriseBill` fires at 7% a month and charges 2–7% of all cash. With €150m that is a car repair at €8m and a cousin's loan at €28m.
+  - **The fix:** the bill depends on the thing or the event — the car you own, the home you live in, the size of the family — not on the balance. An expensive lifestyle may raise it through what you own (`THINGS`, housing, staff).
+  - **The rest of the money spread** comes from the divorce settlement (half the fortune), the wealth levy and one blockbuster's back end. They are real swings; look at them with `MONEY=1 node tests/probes/probe_burnout.mjs 1 1` after the fix.
+
+### Step 1b — Burnout Core (moved ahead of stories and minigames, Maxi/ChatGPT 27 Oct; audit `docs/burnout-audit.md` §7–13)
+
+**Why first:** today working without end pays off. Alex Moon shot for years at strain 100 with Mental 33. Better minigames would not change that; Burnout changes the strategy of a career, and then the choice in a scene ("one more take, or stop") means something.
+
+- **Scope:**
+  - **Load over time.** `s.strain` plus a 36-month load record, so years at 100 differ from a hard spring. There are four states with distinct effects (§11–12).
+  - **Exhaustion leads to a real crisis.** 95+ for months brings a doctor's event with a choice. Ignoring it raises the chance of a forced stop with every month spent there. On set, an incident is an event with choices (The Fifth Take), and the cost runs as one chain: your scene, then the film. There are no three separate penalties.
+  - **The studio decides by circumstances, not by fame alone.**
+    - The inputs: lead or supporting, how much is shot, whether you are the franchise face, the budget and the contract.
+    - The outcomes: reschedule, freeze your part, cut or rewrite, or recast.
+    - Today's patience of up to 52 months goes. With 90% of a blockbuster shot, they wait for a legend; when the shoot has barely started, they decide much sooner.
+    - A safely financed studio film is always finished, with another actor if need be. An indie may not survive.
+  - **`replacementThreat`** also opens from sustained exhaustion. Quest B, the Studio's Ultimatum, comes from it. The next crisis remembers the choice made before it.
+  - **Negotiating the shoot** (§12): finish early, postpone, a lighter schedule, a medical pause. Two contract clauses: a schedule bonus and postponement terms.
+  - **Medical pause and recovery:**
+    - a chosen break of 3 / 6 / 12 / 24 months, lived in one step;
+    - recovering by working less;
+    - films keep releasing and life goes on.
+  - **Paper while signed off:** you can sign work that starts after you return. The agent can ask for a later start, a lighter schedule or an exception from exclusivity. No set starts before you are cleared.
+  - **The agent at 60 / 82 / 95.** It speaks only when it matters and never signs for you.
+  - **The forecast on the offer:** "≈62 → 88", and two long features at once are priced in the open.
+  - **A series can go on without you.** The season can be delayed or shortened, or the character written out for a while (`writeOut`). If the show does better without you, the next season offers fewer episodes (quest C).
+  - **Illness is never unreliability.**
+    - The burnout count no longer drives insurability, the "Difficult" risk or the "shoots stopped because of you" line.
+    - Depression no longer starts automatically on the fourth burnout.
+    - A temporary limit on the biggest productions after a medical stop is allowed. It lifts with recovery and good work.
+- **Story continuity must hold** (Maxi, 27 Oct).
+  - A freeze, cut scenes, a recast or an absence from a series must not break the film's story, the character's identity or the save.
+  - A recast lead in part 3 keeps the role's history: the plot and the character stay on the film, and `continuation.js` and the role record say who played it and why it changed.
+  - No expansion of the story generator here. Use the data that exists and the smallest links needed.
+- **A lawful, agreed exit is not a breach.**
+  - Leaving by the exit clause already costs no Standing (`offers.js` path `exit`). Keep it that way.
+  - Any new "leave by agreement" or "finish early by agreement" outcome must be the same.
+  - Only walking off, or walking out of a running option, is charged.
+- **Not in Burnout Core:**
+  - audience overexposure (moved to Step 6);
+  - money liabilities, clawback, intrigues (Step 5b, after Step 4).
+- **Uses:**
+  - `life/strain.js`, `engine/sets.js`;
+  - `stability.js` freeze, and its pause-never-cancel rule for safe studio films;
+  - `arcs.js` replacementThreat, `contract.js` clauses, `standoff.js writeOut`, `continuation.js`;
+  - the agent, `decline.js` (the comeback), `life/depression.js`, the `s.memory` ledger.
+  - No new scale and no second contract system.
+- **Before code:** the three-career balance (careful, ambitious, never stops), 10–20 years. Count:
+  - money, fame, Standing and film quality;
+  - months overloaded, crises and medical pauses;
+  - roles lost, replacements and offers missed.
+  
+  Then Alex Moon's save.
+- **Done when (Maxi's acceptance):**
+  1. Alex Moon cannot stay at 100 for decades without consequences she feels;
+  2. studios sometimes wait, sometimes rebuild the schedule, sometimes recast;
+  3. a medical absence never wipes professional merit (Standing, fame, prestige);
+  4. the player can recover and build a successful career again.
+  - **The test:** a $40m offer arrives. The player sees the load, the obligations already signed and the other chances at risk, and really thinks before signing.
+  - **Judged by three stories, not by the test count** (Maxi, 27 Oct). Each is a played-through career, shown as a story:
+    1. a star who rested in time;
+    2. a star who took the risk and got through;
+    3. a star who drove herself into a crisis, lost chances, and came back.
+
+    If all three paths are interesting, the mechanic works.
+- **Order of work:** finish Step 1, then the three-career simulation, then code.
+- **Tests:**
+  - test_stability: the safe-studio guarantee;
+  - illness never lowers Standing or insurability;
+  - the studio's decision by circumstance;
+  - old saves load;
+  - a probe of red months against today's 62%.
+
+### Step 2 — Stories for films, sequels and series
+
+- **Scope:**
+  - titles from the story where a title is born unseen (offers, youngblood, collab, scripted offers; castings and the board at the listing);
+  - a supporting part's own want and conflict (~190 roles);
+  - sequels from part one's stored story (`sequelFor`), platform-film sequels included;
+  - series: the story across seasons, characters who leave and come back (with lost continuations);
+  - Series Roles V2;
+  - Role Memory (who you played, kept across a franchise).
+- **Uses:** career/plot, continuation.js, franchise.js, the renewal path, naming.js.
+- **Done when:**
+  - a new film's title answers its story;
+  - part two keeps part one's hero, place and twist;
+  - season 4 is about the same people as season 1, or says who left and why;
+  - old films and old sequels are not rewritten.
+- **Tests:** the generator checkers (`tools/story-proto`) and test_plot extended to sequels and seasons, plus save-compatibility tests.
+- **Ships:** each piece its own branch.
+
+### Step 3 — The on-set minigames
+
+- **Scope:**
+  - act on the audit: keep 8, redesign 5, two to story choices, remove 1;
+  - "Out of order" rebuilt from the film's own scenes;
+  - Stunt Minefield (logic-solvable boards), Crack the Character, a reworked Find Your Light — replacing weak ones, not added on top;
+  - the per-scene approaches, so choices stop feeling generic.
+- **From Maxi's playtest of "Light and Rain III"** (28 Oct; design 6/10, look 8/10; accepted, not built). Today `scenes.js` APPROACHES change only the window size and the multipliers, and the FrameCheck board is the same whatever you chose:
+  1. every puzzle has a believable reason in the story that belongs to the actor's work (why is the actor solving the camera crew's problem?);
+  2. the approach changes how the situation develops, not only difficulty and reward;
+  3. a high workload is felt in the scene's events and choices, through the existing Burnout state (`strain`, `burnout.js`), never by charging the same penalty a second time;
+  4. choice texts read as what the actor does and thinks, not as the formula ("a bigger win if it lands").
+- **Principle: a shoot makes stories you remember.** Ten years on, the player remembers the people as well as the rating: the fight with the director, the co-star who fell ill, the rain week, the romance. Events on one film lead into each other; not every event is a choice, but the important ones leave a mark in the calendar, the relationships and the filmography. The first 5–8 situation types are a starting set, not a ceiling: the same type should tell different stories by people, genre and what already happened. Situations to draw on later: illness and recasting, director conflicts, weather, delays, flights, production accidents, paparazzi, unexpected triumphs and disasters. Already there to build on: `setlife.js` (small reported events in the months between scenes, read at wrap by `production.js` onSetStory) and production-scoped arcs in `life/arcs.js`.
+- **Production Suspension & Revival** (Maxi/ChatGPT, 28 Oct; accepted, not built). A shoot can stop for a few months or, rarely, for years: illness or death of someone in it, weather, an emergency, a conflict, money, a location. **What exists — extend it, do not build a second system:**
+  - `career/stability.js`: `freezeProject` → `s.frozen`; `frozenTick` thaws it into a `kind: 'thaw'` offer for THIS script and THIS part (same `projectId`, character, plot), the owed fee for the months left; patience 14–52 months by fame; or it dies (`deathOdds`). Walking away from a thaw costs Standing (`offers.js` THAW_STANDING) and the timeline says "finally went ahead without you". Reasons today are only money.
+  - `life/burnout.js`: the studio waits, reshoots around you or recasts when YOU are ill.
+  - **To add later:** reasons that are not money and not your illness; how much was already shot; resuming against the contracts you signed in the meantime (move the dates, renegotiate the fee, walk away, risk the new contract); the studio's answers — wait, reschedule, recast, rewrite, cancel. Shot material, cast, parts and the production story are kept while it is paused, and fees or scene results are never paid twice. Long freezes stay rare so each one is an event.
+  - **Years later → Role Memory (Step 2):** the film that went ahead without you comes out, and whoever replaced you can win for it — or the studio waited and it became your part.
+- **Later, not now: the On Set Hub** — one screen for the production: the set, the trailer, cast and crew, the schedule and where it shoots. It uses the existing actions, people and calendar. It is not a studio simulator and not a world map. Cities, travel, hotels and trailers as a status symbol are in the Backlog.
+- **Uses:** scenes.js, scenework.js, SceneLogic.jsx, the story pages from Step 2.
+- **Done when:** no scene is pure guessing; every remembered day can name its scene; the 8 scenes without a MOMENT line have one.
+- **Tests:** solvability probes for the boards (the FrameCheck probe found 10–46% ambiguous boards), and the rules text written off the component.
+- **Ships:** one mechanic per branch, each played in the browser.
+
+### Step 4 — Relationships and professional reputation
+
+- **Scope:**
+  - the memory ledger (from rep-cover) for every on-set ask;
+  - director traits read everywhere;
+  - co-stars' long memory;
+  - refusal reasons on every shut door;
+  - insurability that recovers through recent behaviour, not a permanent count;
+  - the four categories kept apart: broken obligations, creative disputes, personal feeling, public accusations;
+  - Reputation Consequences for departures (The Last Woman slice);
+  - the people of a production: talk, friendship, rivalry and romance between cast and crew, remembered past the wrap;
+  - **the cold-director penalty** (`production.js` ~759: bond ≤25 and ≥12 below where it started, meter < 45 → −3 Standing at wrap plus a rumour). A number crossing a line should not by itself become a public matter. Tie it to what the actor actually did on that film, why the director is hurt, and how the industry heard. Check when the memory ledger lands.
+- **Uses:** the grudges, rumour, insurability, standing rungs, people, industryWeight. No new scale.
+- **Done when:**
+  - one event moves Standing at most once;
+  - keeping your contract never counts as unreliability;
+  - every closed door says why;
+  - every path has a way back through action.
+- **Tests:** test_cover extended per ask; double-punishment checks; old saves.
+
+### Step 5 — On-set events as chains
+
+- **Scope:**
+  - `shorter` (the money wants a week) and `stunt`, as chains after `cover`;
+  - "Save the movie" as the answer to an existing freeze, only on shaky productions;
+  - at most one crisis a film, many films none.
+- **Uses:** the career-story mechanism, stability.js freeze/collapse, demands.js.
+- **Done when:** a choice can come back in a month and in years; the safe-money guarantee still holds (test_stability).
+- **Tests:** test_arcs (says what it does), frequency probe.
+
+### Step 5b — Hollywood Intrigues (audit §13.2-C)
+
+- **Scope:**
+  - real dilemmas between two things the player wants. Example, quest A "The Offer of a Lifetime": a $40m franchise against the dream director.
+  - NPCs who push: a rival producer's offer at the worst moment, a clashing reshoot, an agent working for another client, blame-shifting, a false rumour about reliability;
+  - contract liability for a **proven, chosen** breach (capped, with a per-month figure), clawback of an advance, and limits on conflicting projects. All of these are on the paper before signing.
+- **Rules:**
+  - no quest where one answer is safe and free;
+  - an NPC's malice never becomes the player's proven fault;
+  - illness is never a breach.
+- **Uses:** career-story chains, the memory ledger, director traits, `contract.js` clauses, rumour and press. No second contract system.
+- **Needs first:** Step 4 (the four categories, recoverable insurability).
+
+### Step 6 — Media and markets
+
+- **Audience overexposure** (moved here from the old Step 3b; audit §10):
+  - a star's releases in the last 12 months lower the draw of her name;
+  - the lead counts most;
+  - it never touches quality or Standing;
+  - it is said on the offer.
+
+- **Scope:**
+  - **press:** a set conflict → a possible leak → the press reaction → consequences, using the existing setPieces, rumour, scandal and hype;
+  - **markets:** Media Ecosystem stages 4–6 (market values, a platform's memory, appetite and world streaming lists, theatrical bankability);
+  - pay cut to save a show; the world's television.
+- **Uses:** press.js, trouble.js, hype.js, factions, the outcome adapter, streaming.js.
+- **Done when:** the media knows only public events; a market value is learned from real credits.
+
+### Step 7 — Posters V4
+
+Only once stories are a permanent part of films. Start from the paused brief (`docs/handoffs/2026-10-23-posters-paused.md`): several real art languages, large faces, an embedded image library, no repeats across a filmography, franchise style kept.
+
+## Backlog (not now)
+
+- **Career Ambitions** — goals the player chooses (work with a director, become the horror star, shed the comedy image, come back after scandal), built on the existing childhood ambition and goals board; after Step 4.
+  - **Awards Outlook and career relevance on the offer** (Maxi/ChatGPT, 28 Oct; accepted, not built). The game already knows a contender — `awards.js` `awardStrength` = rating above 70 × genre × scale × `prestigeScore` — and says almost none of it before signing. **Goal:** a €2m festival drama can honestly look more tempting than a €40m blockbuster, and the choice is hard.
+    1. **An awards outlook on the offer, in words.** Use the existing formula with the rating unknown: material, genre, scale, director band, backing (`stability`). No win odds, no percentages, no promise.
+    2. **Rename the material badge.** In `Messages.jsx` the badge reads A-list / Solid / Small, off `prestigeScore` ≥70 / ≥45. It reads like star level. Change it to Exceptional / Promising / Modest material, and keep budget, format and the size of the part separate.
+    3. **Check the personal acting awards.** As of 28 Oct there is no separate performance score. A performance nomination and a picture nomination are rolled off the same `awardStrength`. Your performance (skill, `meter`) reaches the award only through the film's rating (`production.js` `craft`). A great lead in a 65 film can never be nominated. **Decide:** should the performance count apart from the film?
+    4. **Career relevance off the filmography.** Compute it from genres played, scale and size of past leads, nominations and wins: "You've never had a part like this before." Never a random "role of a lifetime"; whether it becomes one is known only after the release and the awards.
+    5. **Genre and scale weights.** Today a festival drama is 1.40 × 1.35 = 1.89 and a horror blockbuster is 0.55 × 0.60 = 0.33, a gap of 5.7×. Keep drama ahead, but leave a very strong horror or commercial film a real, small chance.
+    6. **The agent can be wrong.** Strong material still falls apart on set or in the edit (`fellApart`, the swing). A surprise can become a breakthrough (the `exceptional` roll, which has no name on screen yet).
+    - **Rules:** no new awards system. Reuse `prestigeScore`, directors, parts, ratings and the career history.
+- **AI dialogue experiment** — one director conversation, rules vs AI, compared; later, in JavaScript.
+
+- **From the reputation discussion:** a star's manager, charity as an action.
+- **Television and the world:** TV movies; the shared universe (heirs, U1–U4); Icon for a television legend.
+- **Thoughts aloud:**
+  1. the A-list advisor;
+  2. decisions → a unique life story / biography;
+  3. a shareable career card;
+  4. hard decisions and consequences — the last one is largely Steps 4–5;
+  5. life on set — the parts accepted on 28 Oct are in Steps 3 and 4.
+- **Shoot locations and travel** — a base location per project, extra locations, travel against family and overlapping shoots, hotels on location, the trailer as a sign of standing. Only after the calendar can carry it; no world map and no flight simulation.
+- **Unsolved oddity:** the declined-film "refused" story still rolls its outcome at refusal.
+
+## Debt to watch
+
+- **surpriseBill** (`life/money.js`): household bills are 2–7% of the whole fortune, so a car repair costs €8m and a cousin borrows €28m. Not a Burnout matter; the first economy fix after Burnout Core merges (see Step 1).
+- `release.js` 880 lines, `castings.js` 932 (near 1000), `awards.js` 841.
+- `open` (~185 lines) and `closeRun` (~240) in release.js are past the line.
+- The film-story data adds ~114 KB to game.html.
