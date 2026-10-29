@@ -1,9 +1,13 @@
 # Famous or Forgotten — for Codex
 
-Read `CLAUDE.md` first. Its rules are this project's rules, whoever is writing the code: the
-architecture boundaries, the single write points, old saves that must keep loading, and the
-lessons under "Rules that cost something to learn". This file only adds how two agents share one
-repository.
+Read three files, in this order:
+1. `CODEX.md`, the brief: what the game is, how to run it, where things are. Its test counts are old: the suite is now 101 files.
+2. `CLAUDE.md`, the rules, whoever writes the code: the architecture boundaries, the single write points, old saves that must keep loading, and "Rules that cost something to learn".
+3. `extracted/docs/ROADMAP.md`, the plan and what comes next.
+
+This file only adds how two agents share one repository.
+
+**GitHub is behind on purpose.** Maxi allows each push himself, so the local `main` is often a few commits ahead of `origin/main`. The local repository is the truth. `burnout-core` is an old, merged branch, not the current one.
 
 ## Sharing the repository with Claude
 
