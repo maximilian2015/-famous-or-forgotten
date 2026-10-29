@@ -100,6 +100,24 @@ test('a thawed set that comes back while you are on somebody else\'s picture: no
   assert.ok(c.path === 'thaw' && c.standing === 0 && lost === 0, JSON.stringify({ c, lost }));
   assert.ok(c.certain.some((x) => /No penalty/.test(x.text)) && !c.certain.some((x) => /Standing/.test(x.text)));
 });
+test('free this month but signed for a film that starts inside the thaw\'s months: no penalty', () => {
+  const s = life();
+  const now = s.year * 12 + s.month;
+  const signed = { id: 'sg1', signed: true, startAt: now + 1, projectTitle: 'Next Picture', months: 5 };
+  s.offers = [signed];
+  const o = { id: 't4', kind: 'thaw', projectTitle: 'The Long Field', role: 'Lead', tier: 'lead', type: 'Feature Film', genre: 'Drama', scale: 'feature', salary: 1e6, months: 3, deadline: 3, frozenFor: 4 };
+  s.offers.push(o);
+  const c = declineConsequences(s, o); const r0 = s.respect; declineOffer(s, o.id);
+  assert.ok(c.standing === 0 && s.respect === r0, JSON.stringify(c));
+});
+test('a paper signed for long after the thaw would wrap is no excuse: the five stands', () => {
+  const s = life();
+  const now = s.year * 12 + s.month;
+  s.offers = [{ id: 'sg2', signed: true, startAt: now + 12, projectTitle: 'Much Later', months: 5 }];
+  const o = { id: 't5', kind: 'thaw', projectTitle: 'The Long Field', role: 'Lead', tier: 'lead', type: 'Feature Film', genre: 'Drama', scale: 'feature', salary: 1e6, months: 3, deadline: 3, frozenFor: 4 };
+  s.offers.push(o);
+  assert.equal(declineConsequences(s, o).standing, -5);
+});
 test('a freeze that ran past a year: no penalty for a no, even with nothing else on', () => {
   const s = life();
   const { c, lost } = pass(s, { id: 't3', kind: 'thaw', projectTitle: 'The Long Field', role: 'Lead', tier: 'lead', type: 'Feature Film', genre: 'Drama', scale: 'feature', salary: 1e6, months: 3, deadline: 3, frozenFor: 36 });

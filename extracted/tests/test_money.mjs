@@ -91,5 +91,21 @@ const st = (over) => Object.assign(born(), {
     ok('and what it costs scales with what you have', M.supportCost(st({ cash: 40000000 })) > M.supportCost(st({ cash: 400000 })));
   } else ok('a mother exists to give money to', false);
 }
+// ── the bill nobody warned you about ──
+// It was 2–7% of the whole fortune: a car repair at €8m. Now it is the price of the thing, scaled
+// by the life you lead, and at most a quarter of what is there. Rolled at the top of every range.
+{
+  const top = (s) => Math.max(...M.BILLS.map((b) => M.surpriseBillAmount(s, b, 1)));
+  const poor = st({ housing: 'room', cash: 3000 });
+  const mid = st({ housing: 'flat', cash: 200000 });
+  const rich = st({ housing: 'penthouse', cash: 50000000 });
+  const richer = st({ housing: 'penthouse', cash: 500000000 });
+  ok('a poor actor: never more than a quarter of what is there', top(poor) <= 750, String(top(poor)));
+  ok('a middling one: a real bill, in thousands', top(mid) >= 10000 && top(mid) <= 40000, String(top(mid)));
+  ok('a very rich one: dearer, but tens of thousands, not millions', top(rich) >= 30000 && top(rich) <= 100000, String(top(rich)));
+  ok('and ten times the money is not ten times the bill', top(richer) === top(rich), `${top(rich)} vs ${top(richer)}`);
+  const car = M.BILLS.find((b) => b.who === 'the car');
+  ok('a fast car you own costs more to fix than an ordinary one', M.surpriseBillAmount(st({ things: { car: true } }), car, 0.5) > M.surpriseBillAmount(st(), car, 0.5));
+}
 console.log(fails ? `\n${fails} FAILED` : '\nall passed');
 process.exit(fails ? 1 : 0);

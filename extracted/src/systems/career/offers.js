@@ -348,11 +348,14 @@ export const OPTION_STANDING = 6, THAW_STANDING = 5;
 // Walking away from a thawed set costs standing only when the walking away is yours. The studio
 // stopped, not you: if you are already working on somebody else's picture when it comes back, or
 // the freeze ran past a year and took the old schedule with it, nobody in the business holds a
-// no against you (Maxi/ChatGPT, 28 Oct). Offers from before the wait was kept say nothing about
-// it, and are read as a short one.
+// no against you (Maxi/ChatGPT, 28 Oct). A paper already signed for a date inside the months they
+// now want is the same thing as a set: free this month, but promised (contract.js startSigned).
+// Offers from before the wait was kept say nothing about it, and are read as a short one.
 export const THAW_GRACE = 12;
 export function thawExcused(s, o) {
   if (sets(s).length) return 'busy';
+  const now = (s.year || 0) * 12 + (s.month || 0), until = now + Math.max(1, o.months || 1);
+  if ((s.offers || []).some((x) => x.signed && x.id !== o.id && (x.startAt || 0) < until)) return 'busy';
   if ((o.frozenFor || 0) >= THAW_GRACE) return 'late';
   return null;
 }
