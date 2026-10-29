@@ -3,7 +3,8 @@
 // Maxi, six months into a picture: "оно ж скучно." It was: the month is a stance chosen once,
 // the big days are one to three scenes across the whole film, and everything between was a
 // progress bar with a tick beside it. These are the ordinary weeks, reported and not decided.
-import { setLife } from '../src/systems/career/setlife.js';
+import './helpers/seeded.mjs';   // the same months every run: the rates below were failing one run in fifty by luck
+import { setLife, DAYS } from '../src/systems/career/setlife.js';
 
 let fails = 0;
 const ok = (n, c, e = '') => { if (!c) { fails++; console.log('FAIL  ' + n + (e ? ' :: ' + e : '')); } else console.log('ok    ' + n); };
@@ -61,9 +62,18 @@ ok('but not on all of them — the quiet weeks are what make the others land', n
   // > 3 of 800, not > 10: the only event that can cool the director is w3 of about 44, fires
   // on roughly half of months, and goes down three times in ten — an expected nine. A threshold
   // sitting on its own mean fails one run in two or three and says nothing when it does.
+  // Seeded (helpers/seeded.mjs), so this is the same 800 months every run; the expected nine
+  // came out 2 one run in about fifty while it was not (28 Oct).
   ok('and can cool', cooler > 3, String(cooler));
   ok('but the picture itself is never touched', meterMoved === 0, String(meterMoved));
   ok('and neither is whether it gets finished', stabilityMoved === 0, String(stabilityMoved));
+}
+// The condition itself, without the dice: the one week that can cool the director does, on a low roll.
+{
+  const watching = DAYS.find((d) => d.id === 'watching');
+  const p = shoot(), random = Math.random;
+  try { Math.random = () => 0; watching.fx(st(), p); } finally { Math.random = random; }
+  ok('the week the director starts watching your takes twice can cool them', p.crew[0].bond < 45, String(p.crew[0].bond));
 }
 
 // ── it leaves something for the wrap to remember ──────────────────────────────

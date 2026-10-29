@@ -22,7 +22,7 @@ import { socialBrandLift } from '../social/posting.js';
 import { signEndorsement, clauseTaken } from './endorsement.js';
 import { laterOutcome } from './decline.js';
 import { isStrong } from '../meta/typecast.js';
-import { canTakeSet } from '../../engine/sets.js';
+import { canTakeSet, sets } from '../../engine/sets.js';
 import { adoptProject } from './project.js';
 import { streamingOfferFor, reach } from './castings.js';
 import { STREAMING } from './streaming.js';
@@ -345,6 +345,17 @@ export function acceptOffer(s, id) {
 // An option is running when the paper still binds you to this season or this part: a renewal's offer
 // knows (franchise.js underOption, from the real term); a sequel's option covers the parts it named.
 export const OPTION_STANDING = 6, THAW_STANDING = 5;
+// Walking away from a thawed set costs standing only when the walking away is yours. The studio
+// stopped, not you: if you are already working on somebody else's picture when it comes back, or
+// the freeze ran past a year and took the old schedule with it, nobody in the business holds a
+// no against you (Maxi/ChatGPT, 28 Oct). Offers from before the wait was kept say nothing about
+// it, and are read as a short one.
+export const THAW_GRACE = 12;
+export function thawExcused(s, o) {
+  if (sets(s).length) return 'busy';
+  if ((o.frozenFor || 0) >= THAW_GRACE) return 'late';
+  return null;
+}
 export function optionRunning(o) {
   if (!o || !o.optioned) return false;
   if (o.kind === 'renewal') return true;
@@ -388,9 +399,14 @@ export function declineConsequences(s, o) {
     out.certain.push({ text: `Standing −${OPTION_STANDING} · contract breach`, tone: 'bad' });
   }
   if (out.meeting || out.option) { /* the costs are above */ } else if (o.kind === 'thaw') {
-    Object.assign(out, { path: 'thaw', standing: -THAW_STANDING, confirm: true, heading: `Walk away from "${title}"?`, leave: 'Walk away from it',
-      body: 'They held your part open for years and finally found the money to finish it.' });
-    out.certain.push({ text: `Standing −${THAW_STANDING}`, tone: 'bad' });
+    const excused = thawExcused(s, o);
+    const years = Math.round((o.frozenFor || 0) / 12);
+    Object.assign(out, { path: 'thaw', standing: excused ? 0 : -THAW_STANDING, confirm: true, heading: `Walk away from "${title}"?`, leave: 'Walk away from it',
+      body: excused === 'busy' ? 'They stopped, and you went to work for somebody else. That is what anybody would have done.'
+        : excused === 'late' ? `They stopped ${years <= 1 ? 'a year' : `${years} years`} ago. The schedule you signed for is long gone.`
+        : 'They held your part open and finally found the money to finish it.' });
+    out.certain.push(excused ? { text: 'No penalty: they stopped, not you', tone: 'good' } : { text: `Standing −${THAW_STANDING}`, tone: 'bad' });
+    out.certain.push({ text: 'They finish it with somebody else in your part', tone: 'plain' });
   } else if (continuation) {
     Object.assign(out, { path: 'continuation', confirm: true, heading: o.kind === 'renewal' ? `Pass on season ${o.season} of "${show}"?` : `Pass on "${title}"?`, leave: 'Pass on it',
       body: o.kind === 'renewal' ? 'The show goes on. Your part goes to somebody else, or is written out.' : 'The film goes ahead. Your part goes to somebody else.' });
@@ -453,9 +469,14 @@ export function declineOffer(s, id) {
   // Turning down an ordinary offer is your business. Turning down the one they finally
   // found the money to finish, after holding your part open for years, is not.
   if (c.path === 'thaw') {
-    setRespect(s, (s.respect || 0) - THAW_STANDING);
-    s.lastEvent = `You said no to finishing "${title}". They waited a long time for that answer.`;
-    addTimeline(s, `Refused to go back and finish ${title}. People noticed.`, true);
+    if (c.standing) {
+      setRespect(s, (s.respect || 0) + c.standing);
+      s.lastEvent = `You said no to finishing "${title}". They had held your part open for it.`;
+      addTimeline(s, `Refused to go back and finish ${title}. People noticed.`, true);
+    } else {
+      s.lastEvent = `You said no to finishing "${title}". They will finish it with somebody else.`;
+      addTimeline(s, `Did not go back to finish ${title}. They had stopped first.`);
+    }
     return s;
   }
   s.lastEvent = `You passed on "${title}".`;

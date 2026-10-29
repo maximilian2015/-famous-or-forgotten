@@ -249,6 +249,7 @@ export function frozenTick(s) {
         // Whoever rescued it has real money, or they could not have rescued it.
         stability: Math.min(95, (f.stability || 50) + rint(12, 26)),
         fame: f.tier === 'tentpole' ? 9 : 5, deadline: rint(2, 3),
+        frozenFor: waited,                                   // how long they kept you waiting (offers.js thawExcused)
         note: waited >= 12
           ? `Somebody found the money. After ${years} year${years === 1 ? '' : 's'} they want to finish it — €${f.owed.toLocaleString()} for the ${f.monthsLeft} month${f.monthsLeft === 1 ? '' : 's'} still owed.`
           : `The money came back. They want to finish it — €${f.owed.toLocaleString()} for the ${f.monthsLeft} month${f.monthsLeft === 1 ? '' : 's'} still owed.`,

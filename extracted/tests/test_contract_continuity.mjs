@@ -263,6 +263,9 @@ test('a showrunner who is not in your phone still runs it, by name', () => {
   startProduction(s, renewal({ showrunner: 'Piet Voss' }));
   assert.equal(s.productions[0].crew[0].name, 'Piet Voss');
 });
+test('thaw says how long they kept you waiting, for the Pass rule', () => {
+  assert.equal(thawed().o.frozenFor, 2);
+});
 test('thaw keeps the same character rather than generating another one', () => {
   assert.deepEqual(thawed().o.character, { name: 'Ethan Cole', what: 'the son who stayed', tier: 'lead' });
 });
