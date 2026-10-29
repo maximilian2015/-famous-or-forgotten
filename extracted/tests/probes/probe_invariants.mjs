@@ -2,6 +2,7 @@
 // happens that never should. Every month of every life is checked against the rules the
 // rest of the code assumes, and the first violation of each kind is printed with the month
 // it happened in, so it can be reproduced.
+import "../helpers/seeded.mjs";   // the same lives every run, so a violation can be reproduced
 const P = new URL('../../src/', import.meta.url).href;
 const { createInitialState } = await import(P + 'state/initialState.js');
 const { beginLife } = await import(P + 'systems/life/origin.js');
@@ -98,7 +99,25 @@ function check(s, where) {
   }
   if (s.lastEvent && /undefined|NaN|\[object/.test(s.lastEvent)) fail('a screen message with a hole in it', where, String(s.lastEvent).slice(0, 90));
   for (const p of s.people || []) if (!p.name) fail('a person with no name', where, JSON.stringify(p.id));
+  // A freeze holds a project the player is no longer on. It must not be on set and in the
+  // freezer at once, nor come back as a thaw for something already made (career/stability.js).
+  const pid = (x) => x && (x.projectId || null);
+  const shooting = new Set(SETS.sets(s).map(pid).filter(Boolean));
+  const made = new Set([...(s.filmography || []), ...(s.discography || [])].map(pid).filter(Boolean));
+  for (const f of s.frozen || []) {
+    if (pid(f) && shooting.has(pid(f))) fail('a frozen project also being shot', where, f.title);
+    if (pid(f) && made.has(pid(f))) fail('a frozen project already made', where, f.title);
+    if (!finite(f.owed) || (f.owed || 0) < 0) fail('a frozen project with a broken fee', where, `${f.title} ${f.owed}`);
+  }
+  for (const o of s.offers || []) if (o.kind === 'thaw' && pid(o) && (shooting.has(pid(o)) || made.has(pid(o)))) fail('a thaw for a project already shot or made', where, o.projectTitle);
 }
+// The save is the state as JSON (state/store.js persist). A cycle or a function in it is a save
+// that silently stops being written.
+function saves(s, where) {
+  let txt; try { txt = JSON.stringify(s); } catch (e) { fail('a save that cannot be written', where, e.message); return; }
+  if (JSON.stringify(JSON.parse(txt)) !== txt) fail('a save that changes when read back', where, '');
+}
+const seen = { froze: 0, thawed: 0, thawTaken: 0, thawPassed: 0 };
 
 for (let i = 0; i < N; i++) {
   let t = createInitialState({ name: 'P', dream: 'actor', created: true, gender: i % 2 ? 'female' : 'male' }); beginLife(t);
@@ -108,8 +127,8 @@ for (let i = 0; i < N; i++) {
   for (let m = 0; m < YEARS * 12; m++) {
     const where = `life ${i} month ${m} (age ${t.ageY})`;
     t.bigMoment = null; t.night = null; t.openContract = null;
-    if (t.pendingArc && t.pendingArc.story) AR.resolveArc(t, Math.floor(Math.random() * t.pendingArc.choices.length));
-    t.pendingArc = null;
+    // Every question answered, the doctor's too — dropping one unanswered skipped Burnout entirely.
+    for (let k = 0; k < 4 && t.pendingArc; k++) { const a = t.pendingArc; AR.resolveArc(t, Math.floor(Math.random() * Math.max(1, (a.choices || []).length))); if (t.pendingArc === a) t.pendingArc = null; }
     for (const p of PR.sets(t)) if (!p.take) ST.pushTake(t, 'about');
     if (t.illness && (t.cash || 0) > H.treatmentCost(t, t.illness)) H.seeDoctor(t);
     if ((t.strain || 0) >= 80 && Math.random() < 0.6) A.runAction(t, 'rest');
@@ -121,6 +140,7 @@ for (let i = 0; i < N; i++) {
     K.refreshCastingPool(t);
     for (const o of [...(t.offers || [])]) {
       if (o.signed) continue;
+      if (o.kind === 'thaw' && !asked.has('t' + o.id)) { asked.add('t' + o.id); seen.thawed++; if (Math.random() < 0.5) { seen.thawPassed++; asked.add(o.id); OF.declineOffer(t, o.id); continue; } seen.thawTaken++; }
       if (!asked.has(o.id) && Math.random() < 0.15) { asked.add(o.id); OF.declineOffer(t, o.id); continue; }
       const k = C.draftContract(t, o);
       const sched = k.clauses.find((c) => c.id === 'schedule');
@@ -143,10 +163,13 @@ for (let i = 0; i < N; i++) {
     t = advanceMonth(t);
     for (const mail of [...(t.inbox || [])]) if (Math.random() < 0.5) EM.emailAct(t, mail.id, Math.floor(Math.random() * Math.max(1, (mail.cta || []).length)));
     check(t, where + ' [after the month]');
+    seen.froze = Math.max(seen.froze, 0) + (t.frozen || []).filter((f) => !f._seen && (f._seen = true)).length;
+    if (m % 12 === 11) saves(t, where);
     if (!t.alive) break;
   }
 }
 const rules = Object.keys(bad);
 console.log(`${N} lives, ${YEARS} years each, checked every month.`);
+console.log(`  freezes ${seen.froze} · thaw offers ${seen.thawed} (taken ${seen.thawTaken}, passed ${seen.thawPassed})`);
 if (!rules.length) console.log('no rule was broken.');
 else for (const r of rules.sort((a, b) => bad[b].n - bad[a].n)) console.log(`  ✗ ${r} — ${bad[r].n} times\n      first: ${bad[r].first}`);
