@@ -287,14 +287,37 @@ function lifestyleTick(s) {
   if (tier !== 'known' && chance(6)) { s.scandal = clamp((s.scandal || 0) + 3); addTimeline(s, 'A photographer outside your building. The piece is about the building.', true); }
 }
 // The odd bill. Money that only ever arrived was money nobody had to think about.
-const BILLS = [['the accountant', 'a tax bill nobody warned you about'], ['the car', 'a repair that cost what the car did'], ['a lawyer', 'a letter, a meeting, an invoice'], ['the flat', 'a flood, and the landlord’s idea of whose fault it was'], ['a cousin', 'a loan that will not come back']];
-function surpriseBill(s) {
-  if ((s.fame || 0) < 20 || (s.cash || 0) < 2000 || !chance(7)) return;
-  const [who, what] = BILLS[Math.floor(Math.random() * BILLS.length)];
-  const amt = Math.max(600, Math.round((s.cash || 0) * (0.02 + Math.random() * 0.05)));
-  s.cash -= amt; spent(s, 'trouble', amt);
-  addTimeline(s, `€${amt.toLocaleString()} to ${who} — ${what}.`, true);
+// A bill the month did not warn you about. It was 2–7% of everything you had, so a car repair
+// cost a rich actor €8m and a cousin borrowed €28m. A bill is the price of the THING — the car,
+// the home, the lawyer's hours — and a bigger life has dearer things, so it scales with where
+// you live and what you own, never with the balance. And it never takes more than a share of
+// what is there: a surprise, not a bankruptcy (ROADMAP, Debt to watch, 28 Oct).
+const BILLS = [
+  { who: 'the accountant', what: 'a tax bill nobody warned you about', lo: 1500, hi: 12000 },
+  { who: 'the car', what: 'a repair that cost more than anybody said it would', lo: 600, hi: 4000, owned: { car: [9000, 35000] } },
+  { who: 'a lawyer', what: 'a letter, a meeting, an invoice', lo: 1500, hi: 10000 },
+  { who: 'the landlord', what: 'a flood, and their idea of whose fault it was', lo: 800, hi: 6000,
+    yours: { who: 'the builders', what: 'a flood, and a ceiling that has to come down' } },   // when the home is your own
+  { who: 'a cousin', what: 'a loan that will not come back', lo: 1000, hi: 8000 },
+];
+export const BILL_SHARE = 0.25;
+export function surpriseBillAmount(s, bill, roll = Math.random()) {
+  const thing = bill.owned && Object.keys(bill.owned).find((id) => owns(s, id));
+  const [lo, hi] = thing ? bill.owned[thing] : [bill.lo, bill.hi];
+  const life = thing ? 1 : 1 + Math.max(0, HOUSING_ORDER.indexOf(s.housing || 'room'));   // a room ×1 … a penthouse ×5
+  const amt = Math.round((lo + (hi - lo) * roll) * life);
+  return Math.max(0, Math.min(amt, Math.round((s.cash || 0) * BILL_SHARE)));
 }
+export function surpriseBill(s) {
+  if ((s.fame || 0) < 20 || (s.cash || 0) < 2000 || !chance(7)) return;
+  const bill = BILLS[Math.floor(Math.random() * BILLS.length)];
+  const amt = surpriseBillAmount(s, bill);
+  if (!amt) return;
+  s.cash -= amt; spent(s, 'trouble', amt);
+  const say = bill.yours && s.owns && s.owns === (s.housing || 'room') ? bill.yours : bill;
+  addTimeline(s, `€${amt.toLocaleString()} to ${say.who} — ${say.what}.`, true);
+}
+export { BILLS };
 export function moneyTick(s) {
   if (!inCareer(s)) return;
   lifestyleTick(s);
