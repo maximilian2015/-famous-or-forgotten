@@ -80,7 +80,7 @@ Each step: scope · existing systems used · done when · tests · how it ships.
 - **Ships:** one merge per step, game.html after the last.
 - **Note:** rep-cover can wait until Step 4 if Maxi prefers it reviewed with the rest of relationships. It merges cleanly either way.
 - **Done 27 Oct:** all four merged into main; the workload bar on the Mental screen; **a film that a burnout stopped no longer costs Standing** (it was −6, or −9 past the window), main `a24cbdd`.
-- **Next economy fix, right after Burnout Core merges** (found 28 Oct; not in the Burnout branch):
+- **Done 29 Oct — the surprise-bill fix** (found 28 Oct), main `73ffa70`: a bill is the price of the thing, ×1 in a room to ×5 in a penthouse, a fast car of your own €9–35k, never more than a quarter of the cash; `test_money` checks a poor, a middling and a very rich actor. Surprise bills no longer appear among the biggest money swings. What it was:
   - **The bug:** surprise bills grow with the fortune. `life/money.js` `surpriseBill` fires at 7% a month and charges 2–7% of all cash. With €150m that is a car repair at €8m and a cousin's loan at €28m.
   - **The fix:** the bill depends on the thing or the event — the car you own, the home you live in, the size of the family — not on the balance. An expensive lifestyle may raise it through what you own (`THINGS`, housing, staff).
   - **The rest of the money spread** comes from the divorce settlement (half the fortune), the wealth levy and one blockbuster's back end. They are real swings; look at them with `MONEY=1 node tests/probes/probe_burnout.mjs 1 1` after the fix.
@@ -284,7 +284,6 @@ Only once stories are a permanent part of films. Start from the paused brief (`d
 
 ## Debt to watch
 
-- **surpriseBill** (`life/money.js`): household bills are 2–7% of the whole fortune, so a car repair costs €8m and a cousin borrows €28m. Not a Burnout matter; the first economy fix after Burnout Core merges (see Step 1).
 - `release.js` 880 lines, `castings.js` 932 (near 1000), `awards.js` 841.
 - `open` (~185 lines) and `closeRun` (~240) in release.js are past the line.
 - The film-story data adds ~114 KB to game.html.
