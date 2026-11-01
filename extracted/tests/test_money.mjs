@@ -93,19 +93,29 @@ const st = (over) => Object.assign(born(), {
 }
 // ── the bill nobody warned you about ──
 // It was 2–7% of the whole fortune: a car repair at €8m. Now it is the price of the thing, scaled
-// by the life you lead, and at most a quarter of what is there. Rolled at the top of every range.
+// by the life you lead, and at most a tenth of what is there. Rolled at the top of every range.
 {
   const top = (s) => Math.max(...M.BILLS.map((b) => M.surpriseBillAmount(s, b, 1)));
   const poor = st({ housing: 'room', cash: 3000 });
   const mid = st({ housing: 'flat', cash: 200000 });
   const rich = st({ housing: 'penthouse', cash: 50000000 });
   const richer = st({ housing: 'penthouse', cash: 500000000 });
-  ok('a poor actor: never more than a quarter of what is there', top(poor) <= 750, String(top(poor)));
-  ok('a middling one: a real bill, in thousands', top(mid) >= 10000 && top(mid) <= 40000, String(top(mid)));
+  ok('a poor actor: never more than a tenth of what is there', top(poor) <= 300, String(top(poor)));
+  ok('a middling one: a real bill, in thousands', top(mid) >= 10000 && top(mid) <= 20000, String(top(mid)));
   ok('a very rich one: dearer, but tens of thousands, not millions', top(rich) >= 30000 && top(rich) <= 100000, String(top(rich)));
   ok('and ten times the money is not ten times the bill', top(richer) === top(rich), `${top(rich)} vs ${top(richer)}`);
   const car = M.BILLS.find((b) => b.who === 'the car');
-  ok('a fast car you own costs more to fix than an ordinary one', M.surpriseBillAmount(st({ things: { car: true } }), car, 0.5) > M.surpriseBillAmount(st(), car, 0.5));
+  ok('no car, no car repair', M.surpriseBillAmount(st(), car, 1) === 0);
+  ok('the car you own can break, and it is not cheap', M.surpriseBillAmount(st({ things: { car: true } }), car, 0) >= 9000);
+  // The bill that actually arrives, a thousand times, for a poor actor without a car.
+  let worst = 0, cars = 0;
+  for (let i = 0; i < 1000; i++) {
+    const s = st({ housing: 'room', cash: 20000, fame: 30, things: {} }), before = s.cash, random = Math.random;
+    try { Math.random = () => (i % 100) / 100; M.surpriseBill(s); } finally { Math.random = random; }
+    worst = Math.max(worst, before - s.cash);
+    if (/the car/.test((s.timeline || [])[0]?.text || '')) cars++;
+  }
+  ok("a poor actor's worst surprise is a tenth of the money, and never a car", worst > 0 && worst <= 2000 && cars === 0, `worst €${worst}, car bills ${cars}`);
 }
 console.log(fails ? `\n${fails} FAILED` : '\nall passed');
 process.exit(fails ? 1 : 0);
