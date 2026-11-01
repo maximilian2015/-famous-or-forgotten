@@ -17,9 +17,7 @@
 // land acting parts. An audition is a minigame - auditionFor(id, quality), and the quality
 // comes from a timing bar - so a thing that clicks buttons fails them, the same way a bad
 // actor would. It therefore exercises everything up TO a career and almost nothing inside
-// one, which is exactly where this week has been finding bugs. Extending it to the career
-// half means either playing the minigames or a test-only way to pass them, and that is the
-// obvious next thing to build.
+// one. The career half is tests/autoplay_career.mjs, which plays the reads (29 Oct 2026).
 import { JSDOM, VirtualConsole } from 'jsdom';
 import fs from 'fs';
 import path from 'path';

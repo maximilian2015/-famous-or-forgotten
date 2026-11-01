@@ -55,4 +55,15 @@ const playBad = play.status !== 0 || /THINGS THAT THREW/.test(playOut);
 console.log(`${playBad ? 'FAIL' : 'PASS'}  autoplay`);
 if (playBad) console.log('      ' + playOut.split('\n').slice(-14).join('\n      '));
 
-process.exit(failed || lintBad || playBad ? 1 : 0);
+// ── and one career, through the same interface ───────────────────────────────
+// The life above never lands a part. This one starts in a rented room at twenty-two and has
+// to get a film all the way round — the read, the offer, the paper, the shoot, the premiere —
+// and start the next one. A fixed seed, so it is the same career every run. About half a minute;
+// `node tests/autoplay_career.mjs stress 5 1200` for random careers.
+const work = spawnSync(process.execPath, [path.join(here, 'autoplay_career.mjs')], { encoding: 'utf8', timeout: 240000 });
+const workOut = (work.stdout || '') + (work.stderr || '');
+const workBad = work.status !== 0;
+console.log(`${workBad ? 'FAIL' : 'PASS'}  autoplay career`);
+if (workBad) console.log('      ' + workOut.split('\n').slice(-10).join('\n      '));
+
+process.exit(failed || lintBad || playBad || workBad ? 1 : 0);
