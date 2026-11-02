@@ -430,7 +430,7 @@ export function resolveScene(s, quality) {
   let moment = null;
   // Going bigger is how a take ends up in a trailer, and it is the only way the bar comes down.
   if (q >= momentAt(ap)) {
-    moment = MOMENT[sc0.id] ? MOMENT[sc0.id](sc0) : `the ${sc.label.toLowerCase()}`;
+    moment = MOMENT[sc0.id] ? MOMENT[sc0.id](sc0) : ANY_MOMENT;
     // and which scene of the film's own story it was, so the review can name it (never the twist)
     if (sc0.storyMoment) moment = MOMENT[sc0.id] ? `${moment}, in ${sc0.storyMoment}` : sc0.storyMoment;
     (p.moments = p.moments || []).push(moment);
@@ -472,5 +472,34 @@ const MOMENT = {
   stunt: () => 'a stunt the actor plainly did themselves',
   improv: () => 'a line that was obviously not in the script',
   oner: () => 'a six-minute take with no cut in it',
-  night: () => 'a night sequence shot for real, in the rain',
+  night: () => 'a night sequence shot for real in the rain',
+  // The eight that had none, so a review said "there is the something in the shot in the middle
+  // of it" (audit, 23 Oct). Each is what the good day looks like from a seat in the cinema, and
+  // each has to read in every MOMENT_LINE (world/critics.js) and in "In the film now: …": one thing,
+  // singular, and no comma — a clause after a comma runs into whatever the critic says next.
+  order: () => 'a performance that never once forgets what the character already knows',
+  reading: () => 'an unwritten line that sounds as if it was always in the script',
+  why: () => 'a scene played on a reason nobody ever says out loud',
+  boom: () => 'a long clean shot that very nearly did not survive the day',
+  key: () => 'a close-up that finds its light and never loses it',
+  assembly: () => 'a scene that lives on the exact order of its cuts',
+  read: () => 'an ensemble scene in which every voice is unmistakably its own',
+  sheet: () => 'a scene stitched from twenty-five takes without a seam showing',
 };
+// A scene with no line of its own still gets a sentence, never its menu title.
+const ANY_MOMENT = 'a scene people will remember';
+// Saves from before the eight had lines carry "the something in the shot" on a set, a release or a
+// credit still in its run. Mended on load (state/store.js), so the review it has not been given yet
+// does not quote a menu title. Only strings exactly of that form are touched.
+export function settleMoments(s) {
+  const old = {};
+  for (const [id, sc] of Object.entries(SCENES)) old[`the ${sc.label.toLowerCase()}`] = MOMENT[id] ? MOMENT[id]() : ANY_MOMENT;
+  const mend = (list) => (Array.isArray(list) ? list.map((m) => (typeof m === 'string' && old[m] ? old[m] : m)) : list);
+  for (const p of s.productions || []) if (p && p.moments) p.moments = mend(p.moments);
+  if (s.production && s.production.moments) s.production.moments = mend(s.production.moments);
+  for (const r of s.releases || []) if (r && r.moments) r.moments = mend(r.moments);
+  for (const c of [...(s.filmography || []), ...(s.discography || [])]) if (c && c._rel && c._rel.moments) c._rel.moments = mend(c._rel.moments);
+  return s;
+}
+// The sentence a day of this scene leaves for the critics, for tests and for anything that needs to say it.
+export const momentFor = (id) => (MOMENT[id] ? MOMENT[id]() : ANY_MOMENT);
