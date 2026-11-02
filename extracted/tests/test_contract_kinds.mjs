@@ -1,3 +1,4 @@
+import './helpers/seeded.mjs';   // the same dice every run: the toys took a hit in twelve tries, and now and then twelve came up without one (2 Nov)
 import { draftContract, signContract } from '../src/systems/career/contract.js';
 import { declineOffer } from '../src/systems/career/offers.js';
 import { maybeContinue } from '../src/systems/career/franchise.js';
