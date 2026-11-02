@@ -10,6 +10,7 @@ import { settleProjects } from '../systems/career/project.js';
 import { settleSeriesAwards } from '../systems/career/awards.js';
 import { settlePress } from '../systems/meta/press.js';
 import { settleLostContinuations } from '../systems/career/continuation.js';
+import { settleMoments } from '../systems/career/scenes.js';
 const KEY = 'fof_react_save';
 const CURRENT_VERSION = 'r0.8b';
 
@@ -73,6 +74,7 @@ function normalize(saved) {
   settleSeriesAwards(merged);   // and a series that was up for an Asker is up for the series award. career/awards.js
   settlePress(merged);      // and what the papers said about each film, while the feed still has it. meta/press.js
   settleLostContinuations(merged);   // and a season or a sequel you lost, where the save says so outright. career/continuation.js
+  settleMoments(merged);    // and a day the critics will name is a sentence, not a scene's menu title. career/scenes.js
   return merged;
 }
 function sanitize(st) {
