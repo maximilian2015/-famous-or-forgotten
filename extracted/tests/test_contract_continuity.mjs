@@ -9,6 +9,7 @@ import { scheduleRelease, releaseTick, runTick } from '../src/systems/career/rel
 import { maybeContinue } from '../src/systems/career/franchise.js';
 import { freezeProject, frozenTick } from '../src/systems/career/stability.js';
 import { dressOffers } from '../src/systems/career/script.js';
+import { canTakeSet, monthsUntilFree } from '../src/engine/sets.js';
 
 let failed = 0;
 function test(name, fn) {
@@ -139,6 +140,57 @@ test('a held start keeps the agreed span, and the agreed dates are not reopened'
   const after = draftContract(s, o).clauses.find(c => c.id === 'schedule');
   assert.equal(after.value.months, 3); assert.equal(after.value.start, hold.value.start);
   assert.deepEqual(after.options, []);
+});
+test('a held contract waits for the last blocking set and walk-off removes the set that frees it', () => {
+  const s = career({ respect: 24 });
+  startProduction(s, renewal({ id: 'short', kind: undefined, projectTitle: 'Short Set', type: 'Studio Film',
+    scale: 'episode', perEpisode: false, episodes: 0, months: 1, exclusive: false }));
+  startProduction(s, renewal({ id: 'long', kind: undefined, projectTitle: 'Long Set', type: 'Studio Film',
+    scale: 'feature', perEpisode: false, episodes: 0, months: 6, exclusive: false }));
+  s.respect = 24;
+  const o = renewal({ id: 'held', kind: 'film', projectTitle: 'Held Feature', type: 'Studio Film',
+    scale: 'blockbuster', perEpisode: false, months: 4, exclusive: false });
+  const now = s.year * 12 + s.month;
+  assert.equal(canTakeSet(s, o).ok, false);
+  assert.equal(monthsUntilFree(s, o), 6);
+
+  s.offers = [o];
+  const random = Math.random; let schedule;
+  try { Math.random = () => 0.99; schedule = draftContract(s, o).clauses.find(c => c.id === 'schedule'); }
+  finally { Math.random = random; }
+  const hold = schedule.options.find(c => c.id === 'hold');
+  assert.equal(hold.value.start, now + 6);
+  assert.equal(hold.value.after, 'Long Set');
+  const walk = schedule.options.find(c => c.id === 'walk');
+  assert.equal(walk.value.walkOff, s.productions.find(x => x.title === 'Long Set').id);
+
+  const p = { ...s.productions.find(x => x.title === 'Long Set'), monthsLeft: 3 };
+  const waiting = career({ year: s.year, month: s.month + 3, respect: 24, production: p, productions: [p],
+    offers: [{ ...o, signed: true, waitsForWrap: true, startAt: hold.value.start }] });
+  contractsTick(waiting);
+  assert.equal(canTakeSet(waiting, o).ok, false);
+  assert.ok(waiting.offers.some(x => x.id === o.id), 'the held part must not recast before its promised start');
+
+  schedule.value = { ...walk.value }; schedule.result = 'agreed';
+  signContract(s, o.id);
+  assert.ok(s.productions.some(x => x.title === 'Short Set'), 'walking off must preserve the non-blocking short set');
+  assert.ok(s.productions.some(x => x.title === 'Held Feature'), 'the offered project should start after the blocking set is walked off');
+  assert.ok(!s.productions.some(x => x.title === 'Long Set'), 'the blocking long set must be the one walked off');
+});
+test('a walk-off is not offered when dropping one set still cannot open the slot', () => {
+  const s = career({ respect: 24 });
+  startProduction(s, renewal({ id: 'long-a', kind: undefined, projectTitle: 'Long A', type: 'Studio Film',
+    scale: 'feature', perEpisode: false, episodes: 0, months: 6, exclusive: false }));
+  startProduction(s, renewal({ id: 'long-b', kind: undefined, projectTitle: 'Long B', type: 'Studio Film',
+    scale: 'feature', perEpisode: false, episodes: 0, months: 6, exclusive: false }));
+  s.respect = 24;
+  const o = renewal({ id: 'held', kind: 'film', projectTitle: 'Held Blockbuster', type: 'Studio Film',
+    scale: 'blockbuster', perEpisode: false, months: 4, exclusive: false });
+  const random = Math.random; let schedule;
+  try { Math.random = () => 0.99; schedule = draftContract(s, o).clauses.find(c => c.id === 'schedule'); }
+  finally { Math.random = random; }
+  assert.ok(schedule.options.some(c => c.id === 'hold'));
+  assert.ok(!schedule.options.some(c => c.id === 'walk'));
 });
 test('asking for a held date cannot undo the shorter span settled in the room', () => {
   let { s, o, schedule, hold } = heldMeeting();

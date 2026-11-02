@@ -65,6 +65,30 @@ function shortest(all) { return all.slice().sort((a, b) => left(a) - left(b))[0]
 function longest(all) { return all.slice().sort((a, b) => left(b) - left(a))[0]; }
 // Months until a set frees up for `offer` — for the calendar and the contract.
 export function monthsUntilFree(s, offer) {
-  const r = canTakeSet(s, offer);
-  return r.ok ? 0 : left(r.until || sets(s)[0] || {});
+  const all = sets(s);
+  if (canTakeSet(s, offer).ok) return 0;
+  // A set can wrap without making room: after the short one ends, standing may still
+  // keep the next set out. Find the first wrap boundary at which the offer actually fits.
+  const boundaries = [...new Set(all.map(left))].sort((a, b) => a - b);
+  for (const wait of boundaries) {
+    const remaining = all.filter((p) => left(p) > wait);
+    const future = { ...s, productions: remaining, production: remaining[0] || null };
+    if (canTakeSet(future, offer).ok) return wait;
+  }
+  return Math.max(0, ...all.map(left));
+}
+
+export function setThatFrees(s, offer) {
+  const wait = monthsUntilFree(s, offer);
+  return sets(s).filter((p) => left(p) <= wait).sort((a, b) => left(b) - left(a))[0] || null;
+}
+
+export function setToWalkOff(s, offer) {
+  const all = sets(s);
+  for (const p of all) {
+    const remaining = all.filter((x) => x !== p);
+    const future = { ...s, productions: remaining, production: remaining[0] || null };
+    if (canTakeSet(future, offer).ok) return p;
+  }
+  return null;
 }
