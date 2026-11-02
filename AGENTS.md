@@ -12,10 +12,31 @@ This file only adds how two agents share one repository.
 ## Sharing the folder with Claude (Maxi, 2 Nov)
 
 One folder, `C:\Users\maximilian\Desktop\game`, and one order of work: **Claude changes the code
-and commits → you review that commit → Claude fixes what you found.**
+and commits → you review → Claude checks and integrates what you found or fixed.** Claude stays
+responsible for what goes into `main`.
 
-- **You review. You do not change code.** Read files, run the tests and the build, play the game.
-  Do not edit anything under `extracted/src/` or `extracted/tests/`.
+### Two modes (Maxi, 2 Nov). The task says which; if it does not, it is AUDIT ONLY.
+
+**AUDIT ONLY** — you change no code. Read, run the tests and the build, play, investigate, and
+propose fixes in the report. Do not edit anything under `extracted/src/` or `extracted/tests/`.
+
+**AUDIT + SMALL FIXES** — you may fix a bug yourself when all of these hold:
+- you reproduced it, and the report shows how;
+- the fix is small and local, and does not change a mechanic or the balance;
+- you add a regression test, and say whether it fails on the code before your fix;
+- you leave the change **uncommitted** in the working tree, with a report: the cause, the files
+  changed, the tests, and the risks;
+- you do not commit, merge or push, and you do not change the branch.
+Claude then checks it independently (reads the diff, runs your test against the old code, runs
+the suite) and only then commits it to `main`.
+
+**Always propose, never implement** — even in the second mode: architecture, a new mechanic, a
+change to the balance, contract rules, and anything about saves (what is stored, how old saves
+load). Write the proposal in the report.
+
+**One working tree, so one writer at a time.** Before you edit, `git status` must show no changes
+to tracked files: if it does, Claude is working — do not edit, report only. Claude does not start
+on code while your uncommitted fix is waiting; it reviews yours first.
 - **Your reports go in `codex-reports/`** at the repository root, one file per review, named by
   date and the commit you reviewed, e.g. `codex-reports/2026-11-02-ed86a87.md`. Name the commit
   at the top. For each finding give the file and line, what happens, and how you saw it. Claude
