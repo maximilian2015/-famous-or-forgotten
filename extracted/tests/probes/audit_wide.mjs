@@ -122,8 +122,15 @@ for (let i = 0; i < N; i++) {
         const who = (t.datingPool || [])[0];
         if (who) L.goOnDate(t, L.DATE_ORDER[Math.floor(Math.random() * 4)], who.id);
       }
+      // And keep seeing them. Without this the probe started 59 relationships in eight lives
+      // and never once spent an evening on one, so none got near enough to ask.
+      if (t.partner && r > 0.45 && r <= 0.72) L.goOnDate(t, L.DATE_ORDER[Math.floor(Math.random() * 3)]);
       if (t.partner && L.canMoveIn(t) && r > 0.9) L.moveInTogether(t);
-      if (t.partner && r > 0.93) L.proposeMarriage(t, Math.random() < 0.5 ? 'proper' : 'sold', false);
+      // All three weddings, not only the €60,000 one and the magazine: a probe that only ever
+      // asked for those reported "married 0 of 60" for a game where marriage works.
+      if (t.partner && r > 0.93) L.proposeMarriage(t, L.WEDDING_ORDER[Math.floor(Math.random() * 3)], false);
+      // A child needs a flat. Move up when the money is there, as a person planning one would.
+      if (C.spouseOf(t) && t.housing !== 'flat' && ['room', 'studio'].includes(t.housing) && (t.cash || 0) > 40000) S.setHousing(t, 'flat');
       if (r > 0.95 && C.tryForBaby) { try { C.tryForBaby(t); } catch (e) {} }
       if (r > 0.985 && C.applyToAdopt) { try { C.applyToAdopt(t); } catch (e) {} }
       if (r > 0.8) {
@@ -158,3 +165,7 @@ console.log('  married ' + stats.married + ' · children ' + stats.kids + ' · d
   + ' · widowed ' + stats.widowed + ' · second seasons ' + stats.seasons + ' · Askers ' + stats.askers + ' · died ' + stats.died);
 if (problems.length) { console.log('\n' + problems.length + ' PROBLEMS:'); for (const p of problems.slice(0, 12)) console.log('  ' + p); }
 else console.log('\nno life reached a state that could not happen');
+// The positive control. "Nothing impossible happened" means nothing if the lives never got as
+// far as the rules being checked: sixty lives with no marriage and no child is the probe, not
+// the game (tests/test_love.mjs and test_family_sweep.mjs prove both are reachable).
+if (!stats.married || !stats.kids) { console.log('PROBE NOT TRUSTWORTHY: no life reached marriage and a child, so the family rules above were never exercised.'); process.exitCode = 1; }
