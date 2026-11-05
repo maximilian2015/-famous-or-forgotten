@@ -32,7 +32,7 @@ The game is in English. The person who owns it writes in Russian; you do not nee
 ```bash
 cd extracted
 npm install
-node tests/run_all.mjs          # 56 test files, ~2 minutes. Must print "56/56 passed"
+node tests/run_all.mjs          # every test file, lint, a played life and career, ~5 minutes
 node build-singlefile.mjs       # writes dist/game.html
 ```
 
@@ -42,7 +42,7 @@ The build is Vite + React, bundled to a single IIFE with everything inlined.
 
 **The tests never parse `.jsx`.** They import from `src/systems/` and `src/engine/` only. A
 syntax error, a bad import or an undefined variable anywhere in `src/App.jsx`,
-`src/ui/**`, or `src/phone/**` will pass all 56 test files and then produce a blank screen.
+`src/ui/**`, or `src/phone/**` will pass every test file and then produce a blank screen.
 
 So: **run `node build-singlefile.mjs` after every change that touches a `.jsx` file.** If it
 builds, the JSX parses. If you changed UI behaviour, also open `dist/game.html` in a browser
@@ -150,25 +150,9 @@ Reading for it is slow. Measuring is fast. The method:
 
 ## Working with the other assistant on this repository
 
-Another assistant (Claude) works on this same repository from a different machine and a
-different clone. The two of you cannot see each other's conversations. **This repository is
-the only thing you share**, so anything you want looked at has to be in it.
-
-The protocol:
-
-1. Work on a branch. Name it for the task: `audit/ui-guards`, `fix/contract-option`.
-2. **Never push to `main`.** Everything gets read before it lands, including the findings —
-   the last audit had four real bugs in it and one of them was reported narrower than it
-   actually was, so the review is not a formality.
-3. Push the branch. If you have no credentials and no `gh`, say so plainly and write the
-   work as a patch file at the repo root instead (`git format-patch` or
-   `git diff > audit-ui-guards.patch`), commit **that** to a branch, or tell the owner the
-   exact command to run. Do not silently keep the work in a sandbox nobody else can reach:
-   a finding that only exists in your local copy does not exist.
-4. Put your probe in `extracted/tests/probes/` and commit it with the branch. A finding
-   without a reproduction that someone else can run is not a finding.
-5. In the branch's commit message, say what you changed, what you measured before and
-   after, and the result of `node tests/run_all.mjs` and `node build-singlefile.mjs`.
+The protocol is in `AGENTS.md`, and where this file and that one differ, `AGENTS.md` wins: no
+branches, no commits, no pushes, reports in `codex-reports/`. A finding without a reproduction
+that someone else can run is not a finding.
 
 Note on the test suite: `test_story`, `test_awards`, `test_franchise` and `test_health`
 sit on random thresholds and fail roughly one run in twenty. If one of those is your only

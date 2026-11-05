@@ -9,7 +9,7 @@ ships as a single HTML file.
 ```
 cd extracted
 node build-singlefile.mjs      # -> dist/game.html, then cp dist/game.html ../game.html
-node tests/run_all.mjs         # 60 test files + lint + a played-through life
+node tests/run_all.mjs         # every test file + lint + a played-through life and career
 npm run dev                    # vite on :5173
 node tests/autoplay.mjs 4 600  # four lives, 600 clicks each, through the real interface
 node tools/move-out.mjs ui/components/X.jsx X,Helper --dry   # move a piece out of App.jsx by AST
