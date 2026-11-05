@@ -83,7 +83,7 @@ export const STAFF = {
   household: { label: 'Trainer and a cook', cost: 18000, minFame: 25, health: 0.9, ill: -8,
     blurb: 'Two people whose entire job is that you are in shape on the day.',
     perk: 'Health goes up every month and you stop catching things.' },
-  publicist: { label: 'Publicist', cost: 40000, minFame: 45, scandal: 2.4,
+  publicist: { label: 'Publicist', cost: 40000, minFame: 45,   // how fast: engine/economy.js PUBLICIST_FADE
     blurb: 'A story is a story until somebody whose job it is gets on the phone.',
     perk: 'Bad press dies about three times as fast.' },
   security:  { label: 'Driver and security', cost: 75000, minFame: 62, safe: true,
@@ -126,8 +126,6 @@ export function staffEnergy(s) {
 }
 // Read by systems/life/health.js.
 export function staffIllness(s) { return hasStaff(s, 'household') ? STAFF.household.ill : 0; }
-// Read by engine/economy.js — a publicist is the difference between a bad week and a bad year.
-export function scandalRelief(s) { return hasStaff(s, 'publicist') ? STAFF.publicist.scandal : 1; }
 // Read by systems/social/events.js and party.js.
 export function protected_(s) { return hasStaff(s, 'security'); }
 

@@ -66,6 +66,9 @@ export const DIET = {
   fine: { label: 'Chef & restaurants', blurb: 'Someone else worries about the vegetables.', cost: 2200 },
 };
 export const GYM_COST = 90;
+// How many times faster bad press fades with a publicist. One number: it was written out as
+// 2.4 here, in meta/status.js and in life/money.js STAFF, and only this copy did anything.
+export const PUBLICIST_FADE = 2.4;
 // Mirrors INSURANCE in systems/life/health.js — kept here so monthlyCosts stays dependency-free.
 const INSURANCE_PREMIUM = { none: 0, basic: 140, full: 380 };
 export function setDiet(s, k) {
@@ -167,7 +170,7 @@ export function relevanceDrift(s) {
   // A scandal sticks to the face — famous and unrespected — for longer than to anyone else.
   // The press has decided you are a story. See systems/meta/standing.js.
   const sticky = comboOf(s) === 'face' || comboOf(s) === 'liability' ? 0.6 : 1;
-  if ((s.scandal || 0) > 0) s.scandal = Math.max(0, s.scandal - 0.4 * (s.staff && s.staff.publicist ? 2.4 : 1) * sticky);
+  if ((s.scandal || 0) > 0) s.scandal = Math.max(0, s.scandal - 0.4 * (s.staff && s.staff.publicist ? PUBLICIST_FADE : 1) * sticky);
   // Hype (`media`) decays in systems/meta/hype.js, by a tenth and a point a month.
   // The top is held, not kept. Above seventy the name slips every month whether you are
   // working or not — the business is busy making new ones — and only a hit puts it back.

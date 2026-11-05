@@ -32,14 +32,6 @@ export function makePerson(s, forceRole) {
     // What they think of your WORK, which dinner does not move. See life/regard.js.
     regard: startingRegard(s), unlocks: spec.unlocks, met: `${s.year}` };
 }
-export function meetPerson(s) {
-  const fameBonus = (s.fame || 0) >= 55;
-  const p = fameBonus && chance(45) ? makePerson(s, pick(['Film Director','Studio Producer','A-list Star','Music Producer'])) : makePerson(s);
-  (s.people = s.people || []).push(p);
-  s.lastEvent = `You met ${p.name} — ${p.role}. Could be nothing. Could be everything.`;
-  addTimeline(s, `Met ${p.name} (${p.role}).`);
-  return s;
-}
 // Getting genuinely close to someone powerful is slow work, and slower the further above
 // you they are. Flat gains made this a button you could just tap three times.
 export function bondGain(s, p) {

@@ -586,27 +586,6 @@ export function takeTheRoom(s) {
   return s;
 }
 
-// Go back once more. It works, or it costs you the room, or it costs the show.
-export function pushTheRoom(s) {
-  const k = standoff(s), o = standoffOffer(s);
-  const fit = canPush(s);
-  if (!fit.ok) { if (fit.why) s.lastEvent = fit.why; return s; }
-  if (!k || !o) { s.standoff = null; return s; }
-  spend(s, PUSH_COST);
-  k.rounds += 1;
-  const odds = clamp(k.pack.room - k.rounds * 14 + (tierIdx(s) >= 5 ? 12 : 0));
-  if (chance(odds)) {
-    k.pack = { ...k.pack, fee: Math.round(k.pack.fee * 1.16),
-      points: k.pack.points ? k.pack.points + rint(1, 2) : (tierIdx(s) >= 4 && chance(45) ? rint(2, 3) : 0) };
-    s.lastEvent = `They went out of the room for eleven minutes and came back with more. ${Math.round((k.pack.fee / k.pack.was - 1) * 100)}% an episode now${k.pack.points ? `, and ${k.pack.points}% of it` : ''}. Your agent has stopped writing things down, which is the tell.`;
-    return s;
-  }
-  // No. And on the second no, the people who can end it are already in the building.
-  if (k.rounds >= 2 && chance(42)) return closeTheShow(s, 'them');
-  s.lastEvent = `Nothing moved. ${k.pack.mood} The offer on the table is the offer on the table, and somebody has started looking at their phone.`;
-  return s;
-}
-
 // You end it. Nobody takes a show like this away from you — you leave it.
 // Maxi: walking out of a show you led, or a sequel, after they have come back to you twice,
 // ought to be ruinous — "последние в индустрии жесткие" — and the player has to be able to

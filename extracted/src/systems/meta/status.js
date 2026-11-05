@@ -1,7 +1,7 @@
 import { inCareer } from '../../engine/stage.js';
 import { an } from '../../engine/text.js';
 import { addTimeline } from '../../engine/timeline.js';
-import { HOUSING, HOUSING_ORDER } from '../../engine/economy.js';
+import { HOUSING, HOUSING_ORDER, PUBLICIST_FADE } from '../../engine/economy.js';
 import { hypePrice } from './hype.js';
 export const FAME_TIERS = [
   { id: 'unknown', label: 'Unknown', min: 0, housingMax: 'studio' },
@@ -318,7 +318,7 @@ export function scandalReport(s) {
   out.push({ id: 'drift', label: 'Being forgotten', why: `Bad press speeds the slide by ${(sc / 45).toFixed(2)} a month.` });
   // systems/life/children.js
   if (sc > 40) out.push({ id: 'adopt', label: 'An adoption board', why: 'They read the same papers as everyone else.' });
-  const relief = (s.staff && s.staff.publicist) ? 2.4 : 1;
+  const relief = (s.staff && s.staff.publicist) ? PUBLICIST_FADE : 1;
   out.push({ id: 'fade', label: 'How fast it goes', why: relief > 1
     ? `${(0.4 * relief).toFixed(1)} a month — your publicist is earning it.`
     : '0.4 a month on its own. A publicist makes that nearly three times faster.' });
