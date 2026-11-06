@@ -3,8 +3,10 @@
 // two cannot drift apart.
 //
 //   const g = await bootGame({ seed, save })   seed: dice inside the page; save: a state to start from
+//                                              frameMs: an exact refresh rate for requestAnimationFrame
 //   g.W, g.D           the window and document
-//   g.shot()           the screen as text
+//   g.shot()           the screen as text, and the bundle with it
+//   g.text()           what the game itself has drawn
 //   g.buttons()        every enabled button
 //   g.label(b)         a button's text, short
 //   g.click(el)        a real click event, bubbling
@@ -32,7 +34,7 @@ export function rng(seed) {
   };
 }
 
-export async function bootGame({ seed = null, save = null } = {}) {
+export async function bootGame({ seed = null, save = null, frameMs = 0 } = {}) {
   if (!fs.existsSync(HTML)) { console.log('No dist/game.html — run `node build-singlefile.mjs` first.'); process.exit(1); }
   const html = fs.readFileSync(HTML, 'utf8');
   const errors = [];
@@ -54,8 +56,20 @@ export async function bootGame({ seed = null, save = null } = {}) {
       // jsdom does not implement these. Left alone they surface as 'the game threw', which is
       // the harness blaming its subject for its own gaps: the arcade game uses rAF and the
       // save-to-file button uses createObjectURL, and both work in a real browser.
-      if (!W.requestAnimationFrame) {
-        W.requestAnimationFrame = (fn) => W.setTimeout(() => fn(Date.now()), 16);
+      if (frameMs) {
+        // A screen with an exact refresh rate. A timer cannot be one: on Windows setTimeout(7)
+        // lands wherever the clock tick does, so frames are stepped on their own timeline and
+        // caught up against the real one. This is how a 144Hz screen is measured on any machine.
+        let q = [], n = 0, t = W.performance.now();
+        W.requestAnimationFrame = (fn) => { q.push({ id: ++n, fn }); return n; };
+        W.cancelAnimationFrame = (id) => { q = q.filter((x) => x.id !== id); };
+        W.setInterval(() => {
+          const real = W.performance.now();
+          while (t + frameMs <= real) { t += frameMs; const run = q; q = []; for (const x of run) x.fn(t); }
+        }, 1);
+      } else if (!W.requestAnimationFrame) {
+        // performance.now(), which is what a browser passes: HoldZone compares the two.
+        W.requestAnimationFrame = (fn) => W.setTimeout(() => fn(W.performance.now()), 16);
         W.cancelAnimationFrame = (id) => W.clearTimeout(id);
       }
       // No confirm/alert/prompt either, and a game that asks 'are you sure?' would otherwise
@@ -75,6 +89,8 @@ export async function bootGame({ seed = null, save = null } = {}) {
   const g = {
     W, D, errors,
     shot: () => (D.body.textContent || '').replace(/\s+/g, ' '),
+    // Only the game. shot() has the whole inline bundle in it, so "undefined" is always there.
+    text: () => (D.getElementById('root').textContent || '').replace(/\s+/g, ' ').trim(),
     buttons: () => Array.from(D.querySelectorAll('button')).filter((b) => !b.disabled),
     label: (b) => (b.textContent || '').replace(/\s+/g, ' ').trim().slice(0, 60),
     click: (el) => el.dispatchEvent(new W.MouseEvent('click', { bubbles: true, cancelable: true })),

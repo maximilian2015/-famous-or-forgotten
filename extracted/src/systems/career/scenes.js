@@ -355,18 +355,23 @@ export function maybeScene(s) {
     const id = pick(pool);
     p._sceneMonth = stamp(s);
     (p._scenes = p._scenes || []).push(id);
-    const sc = SCENES[id];
-    // Which page of the film's own story this day is (career/plot): the start, the middle, the
-    // scene where it comes out — by how far through the shoot it falls. A film without a story
-    // (an old save, a sequel) has no page and the day reads as it always did.
-    const progress = 1 - Math.max(0, p.monthsLeft || 0) / Math.max(1, p.months || 1);
-    const page = p.plot ? pageAt(p.plot, progress) : null;
-    s.scene = { setId: p.id, id, game: sc.game, label: sc.label, hint: sc.hint,
-      title: p.title, role: p.role, genre: p.genre, director: lead(p).name || 'the director',
-      line: sc.line(p), page: page ? page.text : null, phase: page ? page.phase : null, storyMoment: page ? page.moment : null, difficulty: difficulty(s, p, id) };
+    s.scene = sceneDay(s, p, id);
     return s;
   }
   return s;
+}
+// One day on one set, as the modal reads it. tests/test_minigames.mjs builds every one of the
+// sixteen through this, so what it plays is what the shoot throws.
+export function sceneDay(s, p, id) {
+  const sc = SCENES[id];
+  // Which page of the film's own story this day is (career/plot): the start, the middle, the
+  // scene where it comes out — by how far through the shoot it falls. A film without a story
+  // (an old save, a sequel) has no page and the day reads as it always did.
+  const progress = 1 - Math.max(0, p.monthsLeft || 0) / Math.max(1, p.months || 1);
+  const page = p.plot ? pageAt(p.plot, progress) : null;
+  return { setId: p.id, id, game: sc.game, label: sc.label, hint: sc.hint,
+    title: p.title, role: p.role, genre: p.genre, director: lead(p).name || 'the director',
+    line: sc.line(p), page: page ? page.text : null, phase: page ? page.phase : null, storyMoment: page ? page.moment : null, difficulty: difficulty(s, p, id) };
 }
 // The day is done. quality is 0..100 — what the game gave back.
 // For the on-set card: how many days this shoot has thrown, how many it has left in it,

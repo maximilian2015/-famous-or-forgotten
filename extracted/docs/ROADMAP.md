@@ -194,7 +194,7 @@ Each step: scope · existing systems used · done when · tests · how it ships.
 - **Uses:** scenes.js, scenework.js, SceneLogic.jsx, the story pages from Step 2.
 - **Done when:** no scene is pure guessing; every remembered day can name its scene. (The 8 scenes without a MOMENT line got one on 2 Nov, main `ed86a87`, `test_moment_lines`.)
 - **The rule for the rework** (Maxi/ChatGPT, 2 Nov): what the actor does on a day leaves a mark in that film's own story — a review that names it, a line in the wrap, a director who remembers — not only +5 quality and +3 trust. The audit of 23 Oct (artifact 5uXZd4…) is the basis of this step; it is not repeated.
-- **Tests:** solvability probes for the boards (the FrameCheck probe found 10–46% ambiguous boards), and the rules text written off the component.
+- **Tests:** solvability probes for the boards (the FrameCheck probe found 10–46% ambiguous boards), and the rules text written off the component. `tests/test_minigames.mjs` plays all sixteen by hand: a reworked mechanic changes its hands there in the same branch.
 - **Ships:** one mechanic per branch, each played in the browser.
 
 ### Step 4 — Relationships and professional reputation

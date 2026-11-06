@@ -6,8 +6,8 @@
 //   node tests/run_all.mjs
 //   node tests/run_all.mjs --people
 //
-// test_scales is the slow one: about 100 seconds on its own and more under load, which is
-// why the per-file timeout is 300s. A file that reports FAIL with no message underneath it
+// test_scales and test_minigames are the slow ones: 100 seconds and three minutes on their own
+// and more under load, which is why the per-file timeout is 300s. A file that reports FAIL with no message underneath it
 // timed out rather than failed.
 import { readdirSync } from 'fs';
 import { spawnSync } from 'child_process';
