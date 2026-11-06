@@ -229,7 +229,9 @@ export function WhoSaysIt({ difficulty = 1, pairs = [], onResult }) {
   const [miss, setMiss] = useState(0);
   const [done, setDone] = useState(false);
   const flip = (i) => {
-    if (done || open.includes(i) || found[deck[i].k]) return;
+    // Two up means the last pair is still on its way back over. A third tap there read the same
+    // two cards again and charged the same mistake twice, on the player quick enough to try.
+    if (done || open.length >= 2 || open.includes(i) || found[deck[i].k]) return;
     const next = [...open, i];
     if (next.length < 2) { setOpen(next); return; }
     const [a, b] = next;
