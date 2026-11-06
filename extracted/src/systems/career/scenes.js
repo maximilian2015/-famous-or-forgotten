@@ -112,7 +112,7 @@ export const SCENES = {
   },
   assembly: {
     game: 'cut', label: 'In the cutting room',
-    line: (p) => `They have let you see the assembly. It is nearly right and two of the shots are the wrong way round, and everybody can feel it and nobody can say which.`,
+    line: (p) => `They have let you see the assembly. It is nearly right and some of the shots are the wrong way round, and everybody can feel it and nobody can say which.`,
     hint: 'Swap two at a time. You do not get many.',
     when: (s, p) => p.scale === 'prestige' || p.scale === 'indie' || p.scale === 'festival' || p.tier !== 'supporting', weight: 2,
   },
@@ -184,7 +184,7 @@ export const RULES = {
     'Stand somewhere and they tell you how close: warm is one square off, cool is two, dark is further.',
     'They never tell you which direction. A few goes, then they shoot it where you are standing.'],
   cut: ['The assembly, shot by shot, in the wrong order. Tap two shots to swap them.',
-    'Three or four swaps, and fewer is better — lock it as soon as it reads right.'],
+    'A few swaps, and the screen counts them. Fewer is better — lock it as soon as it reads right.'],
   pairs: ['Every line on the page and everybody at the table, face down.',
     'Turn over a line and then whoever says it. Wrong and they both turn back, and every wrong pair costs you.'],
   nono: ['Twenty-five takes in a grid, and the numbers are RUNS of good ones.',

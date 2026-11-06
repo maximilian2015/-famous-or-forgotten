@@ -6,7 +6,7 @@
 //
 //   frame   a boom in the shot, found the way a minesweeper is found
 //   light   where the light actually is, found the way a battleship is found
-//   cut     the assembly is nearly right and two shots are the wrong way round
+//   cut     the assembly is nearly right and some of the shots are the wrong way round
 //   pairs   which of them says which line, and two of the lines are almost the same
 //   nono    twenty takes, and the notes say how many good ones ran together
 //
@@ -156,7 +156,7 @@ export function FindTheLight({ difficulty = 1, onResult }) {
   </div>);
 }
 
-// ── CUT: two shots the wrong way round ────────────────────────────────────────
+// ── CUT: shots the wrong way round ────────────────────────────────────────────
 // The assembly is nearly right. Somebody has dropped two of them in the wrong order and
 // everybody can feel it and nobody can say which. Swapping costs time you do not have.
 export function TheAssembly({ difficulty = 1, shots = [], onResult }) {
