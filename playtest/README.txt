@@ -42,3 +42,28 @@ Alex Moon, 31 год, апрель 2071, €60 000. Подруга Maya Ortiz (F
 - Lend it → живи 12 месяцев → она вернёт деньги. People → Contact → Maya: блок «Between you».
 - Pay it → потом уйди в минус (потрать деньги) → Майя сама прикроет тебя: «My turn.»
 Загрузка — как выше: 💾 → «Load a life from a file» → playtest/maya-rent.json.
+
+────────────────────────────────────────────────────────────
+days/*.json — любой из 16 съёмочных дней, сразу, без ожидания
+
+Каждый файл открывает один день на съёмке («Paper Cousin», та же героиня). Загружается так же:
+💾 на Home → «Load a life from a file». Сначала сохрани свою жизнь, она заменится.
+
+  mark      Hit your mark              бегунок и зелёная полоса
+  night     The night shoot            то же, но сложнее
+  takes     Take after take            двенадцать дублей, можно остановиться
+  monologue The monologue              нажимай на каждую реплику, один раз
+  tears     Crying on cue              держи метку в золотой полосе
+  stunt     Doing it yourself          запомни последовательность
+  oner      The one-take               то же, но длиннее
+  improv    They changed the line      три секунды на выбор
+  order     Out of order               какие сцены после того, как она узнала
+  reading   Three lines are yours      три реплики одним голосом
+  why       Why does she do it         мотив и две сцены к нему
+  boom      Something in the shot      сапёр: найди испорченные кадры
+  key       Find your light            морской бой: найди свет
+  assembly  In the cutting room        расставь кадры по порядку
+  read      The table read             пары: реплика и кто её говорит
+  sheet     The take sheet             японский кроссворд
+
+Пересобрать: node extracted/tests/probes/probe_day_saves.mjs
