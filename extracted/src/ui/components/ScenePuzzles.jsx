@@ -294,6 +294,7 @@ export function TakeSheet({ difficulty = 1, onResult }) {
   const colClue = (c) => runs(Array.from({ length: N }, (_, r) => truth[r * N + c])).join(' ');
   const [on, setOn] = useState({});
   const [done, setDone] = useState(false);
+  const [solved, setSolved] = useState(false);
   const submit = () => {
     if (done) return;
     setDone(true);
@@ -311,6 +312,9 @@ export function TakeSheet({ difficulty = 1, onResult }) {
       if (runs(Array.from({ length: N }, (_, r) => mine[r * N + c])).join(' ') === colClue(c)) ok++;
     }
     const score = ok === lines ? 100 : clamp((ok / lines) * 100 - 26 - (difficulty - 1) * 6);
+    // And the squares say the same as the score: a different valid answer scored a hundred and
+    // was drawn with red squares against the sheet it was generated from.
+    setSolved(ok === lines);
     play(score >= 70 ? 'good' : 'bad');
     setTimeout(() => onResult(Math.round(score)), 800);
   };
@@ -327,12 +331,12 @@ export function TakeSheet({ difficulty = 1, onResult }) {
       {Array.from({ length: N }, (_, r) => ([
         <div key={'r' + r} style={{ fontSize: 9.5, color: theme.gold, fontWeight: 800, display: 'flex', alignItems: 'center', justifyContent: 'flex-end', paddingRight: 3 }}>{rowClue(r)}</div>,
         ...Array.from({ length: N }, (_, c) => {
-          const i = r * N + c, lit = !!on[i], wrong = done && (lit ? 1 : 0) !== truth[i];
+          const i = r * N + c, lit = !!on[i], missed = done && !solved && truth[i] && !lit, wrong = done && !solved && (lit ? 1 : 0) !== truth[i];
           return (<button key={i} disabled={done} onClick={() => setOn((p) => ({ ...p, [i]: !p[i] }))}
             style={{ ...cellBase, fontSize: 11,
               borderColor: done ? (wrong ? theme.bad : theme.line) : lit ? theme.accent : theme.line,
-              background: lit ? 'rgba(158,116,255,.22)' : done && truth[i] ? 'rgba(95,206,138,.10)' : 'transparent',
-              color: theme.muted }}>{done && truth[i] && !lit ? '·' : ''}</button>);
+              background: lit ? 'rgba(158,116,255,.22)' : missed ? 'rgba(95,206,138,.10)' : 'transparent',
+              color: theme.muted }}>{missed ? '·' : ''}</button>);
         }),
       ]))}
     </div>
