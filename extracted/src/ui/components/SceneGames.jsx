@@ -17,15 +17,16 @@ const box = { background: theme.bg, border: `1px solid ${theme.line}`, borderRad
 const bigBtn = (col) => ({ width: '100%', border: 'none', borderRadius: 12, padding: '15px 12px', fontSize: 15, fontWeight: 900, cursor: 'pointer', background: col || `linear-gradient(135deg,${theme.accent2},${theme.accent})`, color: '#fff' });
 
 // ── the monologue: tap each line as it lands ────────────────────────────────────
-// Eight beats at a steady tempo. Early is a rush, late is a drag, and the score is how
-// close to the beat you were, not how fast.
+// Eight beats at a steady tempo, one press for each. The score is how soon after the line
+// came you said it. A press on a line you have already said treads on it and halves it:
+// every press used to count, so hammering the button without reading a word scored 100.
 export function RhythmLine({ difficulty = 1, lines, onResult }) {
   const L = lines && lines.length ? lines : ['I was there.', 'You were not.', 'Say it again.', 'No — slower.', 'That is the part you left out.', 'I am not asking.', 'Look at me.', 'Now say it.'];
   const gap = Math.max(620, 1000 - difficulty * 180);
   const tol = Math.max(110, 260 - difficulty * 60);
   const [i, setI] = useState(-1);
   const [hits, setHits] = useState([]);
-  const at = useRef(0); const done = useRef(false);
+  const at = useRef(0); const done = useRef(false); const said = useRef([]);
   useEffect(() => {
     let n = -1; let timer = null;
     const step = () => {
@@ -37,22 +38,24 @@ export function RhythmLine({ difficulty = 1, lines, onResult }) {
     timer = setTimeout(step, 700);
     return () => clearTimeout(timer);
     function finish() {
-      setHits((h) => { const score = h.length ? clamp(Math.round(h.reduce((a, b) => a + b, 0) / L.length)) : 0; onResult(score); return h; });
+      onResult(clamp(Math.round(said.current.reduce((a, b) => a + (b || 0), 0) / L.length)));
     }
   }, []);
   const tap = () => {
     if (done.current || i < 0) return;
     const off = Math.abs(performance.now() - at.current);
-    const v = off <= tol * 0.35 ? 100 : off <= tol ? 100 - ((off - tol * 0.35) / (tol * 0.65)) * 55 : Math.max(0, 45 - (off - tol) / 8);
-    play(v >= 70 ? 'good' : 'denied');
-    setHits((h) => [...h, v]);
+    const first = said.current[i] == null;
+    const v = !first ? said.current[i] / 2 : off <= tol * 0.35 ? 100 : off <= tol ? 100 - ((off - tol * 0.35) / (tol * 0.65)) * 55 : Math.max(0, 45 - (off - tol) / 8);
+    play(first && v >= 70 ? 'good' : 'denied');
+    said.current[i] = v;
+    setHits([...said.current]);
   };
   return (<div style={box}>
     <div style={{ minHeight: 54, display: 'flex', alignItems: 'center', justifyContent: 'center', textAlign: 'center' }}>
       <div style={{ fontSize: 17, fontWeight: 800, color: i >= 0 ? theme.text : theme.muted, transition: 'opacity .12s' }}>{i >= 0 ? L[i] : 'and… action'}</div>
     </div>
     <div style={{ display: 'flex', gap: 4, justifyContent: 'center', margin: '8px 0 10px' }}>
-      {L.map((_, k) => (<div key={k} style={{ width: 9, height: 9, borderRadius: 5, background: k < hits.length ? (hits[k] >= 70 ? theme.good : hits[k] >= 40 ? theme.gold : theme.bad) : k === i ? theme.accent : 'rgba(255,255,255,.14)' }} />))}
+      {L.map((_, k) => (<div key={k} style={{ width: 9, height: 9, borderRadius: 5, background: hits[k] != null ? (hits[k] >= 70 ? theme.good : hits[k] >= 40 ? theme.gold : theme.bad) : k === i ? theme.accent : 'rgba(255,255,255,.14)' }} />))}
     </div>
     <button onClick={tap} data-sfx="none" style={bigBtn()}>Say it</button>
   </div>);

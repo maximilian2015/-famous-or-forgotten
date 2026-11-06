@@ -45,7 +45,7 @@ export const SCENES = {
   monologue: {
     game: 'rhythm', label: 'The monologue',
     line: (p) => `Four hundred words, no cuts, and the whole crew has stopped moving. It lives or dies on the rhythm.`,
-    hint: 'Tap each line as it lands. Rushing is worse than late.',
+    hint: 'Tap each line as it lands, once.',
     when: (s, p) => soft(p.genre) || p.scale === 'prestige' || /lead|matriarch|character/i.test(p.role || ''), weight: 4,
   },
   tears: {
@@ -163,7 +163,7 @@ export const RULES = {
     'The more that work, the better the scene — but one that falls flat and the whole thing is a zero.',
     'The first is always safe. After that you can stop and keep what you have at any point.'],
   rhythm: ['A line appears and you press Say it. Then the next one.',
-    'The sooner after it appears, the better it lands. A line you never press is a line you dropped.'],
+    'The sooner after it appears, the better it lands. A line you never press is a line you dropped, and pressing again before the next one treads on the one you just said.'],
   hold: ['Holding lifts the mark. Letting go lets it fall, and it drifts on its own besides.',
     'Keep it in the gold band. You are scored on how much of the take it spent in there, not on where it ends up.'],
   keys: ['The sequence plays once. Watch it, then tap it back in order.',
