@@ -72,7 +72,10 @@ export function HoldZone({ difficulty = 1, seconds = 6, onResult }) {
       const dt = Math.min(64, now - last) / 1000; last = now;
       const drift = (Math.sin(now / 420) + Math.sin(now / 173)) * 3.4 * difficulty;
       vel.current += (held.current ? 52 : -46) * dt + drift * dt;
-      vel.current *= 0.9;
+      // Per second, not per frame, the fix TimingBar already had. 0.9 a frame was calibrated on
+      // 60Hz and damped twice as hard at 120: the same thumb scored 91 at 60Hz, 67 at 120 and 57
+      // at 144, because the mark took half the take to climb to the band. At 60Hz this is 0.9.
+      vel.current *= Math.pow(0.9, dt * 60);
       pos.current = clamp(pos.current + vel.current * dt * 2.6);
       if (pos.current >= lo && pos.current <= hi) inZone.current += dt;
       setV(pos.current);
