@@ -100,7 +100,9 @@ export const DEMANDS = {
   },
   cover: {
     w: 5,
-    needs: (p) => !!co(p),
+    // Not on a set where the same co-star already turned up wrecked (life/arcs.js costarWrecked):
+    // one situation, told one way or the other, never both on one film.
+    needs: (p) => !!co(p) && !(p._incidents || []).includes('costarWrecked'),
     ask: (p) => `${coName(p)} has not been right for a fortnight. The unit knows, the AD knows, and nobody has said it out loud yet.`,
     options: [
       // What happens after is a story (career/cover.js): they straighten out, they ask again, it

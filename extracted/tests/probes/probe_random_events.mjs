@@ -14,7 +14,10 @@
 // the people they know, the doctor, the days on set played by autoQuality, every card answered
 // with a random choice so the chains go on to their next beat.
 //
-//   node tests/probes/probe_random_events.mjs [lives=20] [years=60]
+//   node tests/probes/probe_random_events.mjs [lives=20] [years=60] [careful]
+// `careful` is a player who rests: no new work while worn out or low, two months off when the
+// strain is high, and the burnout card answered with rest or help. Without it the player never
+// stops, which is the worst case and not how anybody plays.
 import '../helpers/seeded.mjs';
 const P = new URL('../../src/', import.meta.url).href;
 const { createInitialState } = await import(P + 'state/initialState.js');
@@ -30,6 +33,11 @@ const H = await import(P + 'systems/life/health.js');
 const E = await import(P + 'systems/meta/email.js');
 const A = await import(P + 'systems/life/arcs.js');
 const SC = await import(P + 'systems/career/scenes.js');
+const DM = await import(P + 'systems/career/demands.js');
+const W = await import(P + 'systems/world/world.js');
+const BO = await import(P + 'systems/life/burnout.js');
+const CAREFUL = process.argv[4] === 'careful';
+let rests = 0;
 
 const LIVES = Number(process.argv[2]) || 20;
 const YEARS = Number(process.argv[3]) || 60;
@@ -45,7 +53,11 @@ const shape = (t) => String(t || '')
 
 const tally = () => new Map();
 const bump = (m, k, life) => { const e = m.get(k) || { n: 0, lives: new Set() }; e.n++; e.lives.add(life); m.set(k, e); };
-const CARDS = tally(), MOMENTS = tally(), FEED = tally(), BADFEED = tally(), TEXTS = tally();
+const CARDS = tally(), MOMENTS = tally(), FEED = tally(), BADFEED = tally(), TEXTS = tally(), ASKS = tally();
+// The five on-set cards, per life, and whether what happened on one film is still there on the next.
+const ONSET = ['directorCracks', 'costarWrecked', 'scriptLeak', 'droneOverSet', 'replacementThreat'];
+const onsetLives = Object.fromEntries(ONSET.map((id) => [id, []]));
+const carry = { again: 0, wrecked: 0, worldCostars: 0, worldFameLost: 0, remembered: 0, coverChains: 0 };
 const perYear = { cards: 0, moments: 0, feed: 0, badFeed: 0, texts: 0, invites: 0, press: 0 };
 let years = 0, died = 0;
 const cardsInALife = [];
@@ -55,22 +67,29 @@ for (let life = 0; life < LIVES; life++) {
   beginLife(s);
   Object.assign(s, { stage: 'career', ageY: 20, year: 2050, month: 0, hasApartment: true,
     housing: 'room', cash: 12000, alive: true, ap: 100, apMax: 100, apMaxEff: 100, livingWith: 'own_place' });
-  let t = s; let cardsHere = 0;
+  let t = s; let cardsHere = 0; const onsetHere = Object.fromEntries(ONSET.map((id) => [id, 0]));
   for (let m = 0; m < YEARS * 12 && t.alive; m++) {
     const r = Math.random();
     // ── the player's month, as audit_wide plays it ──
-    if (t.pendingArc) { const n = (t.pendingArc.choices || []).length; A.resolveArc(t, Math.floor(Math.random() * Math.max(1, n))); t.pendingArc = null; }
+    if (t.pendingArc) {
+      const n = (t.pendingArc.choices || []).length;
+      const pickIt = CAREFUL && t.pendingArc.id === 'burnout' ? (r < 0.5 ? 0 : 2) : Math.floor(Math.random() * Math.max(1, n));
+      if (CAREFUL && t.pendingArc.id === 'burnout' && pickIt === 0) rests++;
+      A.resolveArc(t, pickIt); t.pendingArc = null;
+    }
+    const tired = CAREFUL && ((t.strain || 0) >= 55 || (t.mental || 0) < 35);
+    if (CAREFUL && !t.production && !t.onBreak && (t.strain || 0) >= 65) { BO.takeBreak(t, 2); }
     if (t.scene) SC.resolveScene(t, SC.autoQuality(t));
     t.bigMoment = null; t.moments = [];
     if (t.production && !t.production.take) { const o = ST.takesFor(t.production); ST.pushTake(t, o[Math.floor(Math.random() * o.length)]); }
     if (t.illness && (t.cash || 0) > H.treatmentCost(t, t.illness) && r < 0.7) H.seeDoctor(t);
     K.refreshCastingPool(t);
-    if (!t.production && (t.ap || 0) > 0 && (t.castingPool || []).length && r < 0.75) {
+    if (!tired && !t.production && (t.ap || 0) > 0 && (t.castingPool || []).length && r < 0.75) {
       const c = t.castingPool[Math.floor(Math.random() * t.castingPool.length)];
       if (r < 0.25) K.prepareFor(t, c.id);
       K.auditionFor(t, c.id, Math.round(Math.random() * 100));
     }
-    if ((t.offers || []).length && !t.production && r > 0.3) {
+    if (!tired && (t.offers || []).length && !t.production && r > 0.3) {
       const o = t.offers[Math.floor(Math.random() * t.offers.length)];
       try { PR.startProduction(t, o); } catch (e) { /* an offer the state refuses: skip it */ }
       t.offers = t.offers.filter((x) => x.id !== o.id);
@@ -89,6 +108,8 @@ for (let life = 0; life < LIVES; life++) {
       if (a && !a.locked) { try { I.interact(t, who.id, a.id); } catch (e) { /* */ } }
     }
     if (t.production && (t.ap || 0) > 0) PR.rehearse(t);
+    // What a production asks of you this month (career/demands.js), answered as any player might.
+    for (const p of t.productions || []) { if (!p.demand) continue; bump(ASKS, p.demand.id, life); const ops = DM.optionsFor(t, p); if (ops.length && r > 0.2) DM.answerDemand(t, p.id, ops[Math.floor(Math.random() * ops.length)].id); }
     // ── the month itself, and what came out of it ──
     const feedBefore = new Set(t.timeline || []), textsBefore = new Set(t.sms || []);
     const invBefore = (t.events || []).length, pressBefore = new Set(t.press || []);
@@ -98,6 +119,8 @@ for (let life = 0; life < LIVES; life++) {
       const a = t.pendingArc;
       const key = a.story ? `story ${a.story} · ${a.beat}` : a.need ? `ask ${a.need}` : a.health ? `doctor ${a.id || a.health}` : a.youth ? `youth ${a.id}` : `card ${a.id}`;
       bump(CARDS, key, life); perYear.cards++; cardsHere++;
+      if (ONSET.includes(a.id)) { onsetHere[a.id]++;
+        if (a.id === 'costarWrecked') { carry.wrecked++; if (/ again. On "/.test(a.text || '')) carry.again++; const co = t.production && t.production.crew[1]; if (co && co.worldId) carry.worldCostars++; } }
     }
     for (const mo of [t.bigMoment, ...(t.moments || [])].filter(Boolean)) { bump(MOMENTS, `${mo.id || mo.kind || '?'}${mo.kind ? ' (' + mo.kind + ')' : ''}`, life); perYear.moments++; }
     for (const x of (t.timeline || []).filter((x) => !feedBefore.has(x))) { bump(FEED, shape(x.text), life); perYear.feed++; if (x.bad) { bump(BADFEED, shape(x.text), life); perYear.badFeed++; } }
@@ -107,10 +130,15 @@ for (let life = 0; life < LIVES; life++) {
   }
   if (!t.alive) died++;
   cardsInALife.push(cardsHere);
+  for (const id of ONSET) onsetLives[id].push(onsetHere[id]);
+  for (const a of ((t.world && t.world.actors) || [])) for (const x of a.incidents || []) if (x.what === 'drink') carry.worldFameLost++;
+  carry.remembered += ((t.memory && t.memory.events) || []).filter((e) => ONSET.includes(e.act) || e.act === 'covered').length;
+  carry.coverChains += ((t._storyLog || {}).cover || []).length + ((t.stories || []).some((x) => x.id === 'cover') ? 1 : 0);
 }
 
 const per = (n) => (n / Math.max(1, years)).toFixed(2);
-console.log(`${LIVES} lives from 20, up to ${YEARS} years: ${years} lived years, ${died} died before the end`);
+console.log(`${LIVES} lives from 20, up to ${YEARS} years${CAREFUL ? ', a player who rests' : ', a player who never stops'}: ${years} lived years, ${died} died before the end`);
+if (CAREFUL) console.log(`burnout card answered with two months' rest ${rests} times`);
 console.log(`\nPER YEAR OF LIFE`);
 console.log(`  choice cards ${per(perYear.cards)} · big screens ${per(perYear.moments)} · feed lines ${per(perYear.feed)} (bad news ${per(perYear.badFeed)}) · texts ${per(perYear.texts)} · invitations ${per(perYear.invites)} · press ${per(perYear.press)}`);
 const show = (title, m, top = 40) => {
@@ -123,6 +151,11 @@ show('BIG SCREENS', MOMENTS, 50);
 show('BAD NEWS IN THE FEED (by shape)', BADFEED, 30);
 show('ALL FEED LINES (by shape)', FEED, 40);
 show('TEXTS', TEXTS, 20);
+show('ON-SET ASKS (career/demands.js)', ASKS, 20);
+console.log('\nTHE FIVE ON-SET CARDS, per life (min · median · max), and in how many lives at all');
+for (const id of ONSET) { const v = onsetLives[id].slice().sort((a, b) => a - b); console.log(`  ${id.padEnd(18)} ${v[0]} · ${v[Math.floor(v.length / 2)]} · ${v[v.length - 1]}   in ${v.filter((x) => x > 0).length}/${LIVES} lives, ${v.reduce((a, b) => a + b, 0)} in all`); }
+console.log(`  a co-star turned up wrecked ${carry.wrecked} times: ${carry.again} of them somebody who had done it on an earlier film of yours; ${carry.worldCostars} were stars of the world`);
+console.log(`  incidents left on world stars' own records: ${carry.worldFameLost} · things the people involved remember: ${carry.remembered}`);
 cardsInALife.sort((a, b) => a - b);
 console.log(`\nchoice cards in a whole life: min ${cardsInALife[0]}, median ${cardsInALife[Math.floor(LIVES / 2)]}, max ${cardsInALife[LIVES - 1]}`);
 // What never came up at all, from the cards the game has.

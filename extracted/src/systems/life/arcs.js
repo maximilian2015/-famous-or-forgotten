@@ -1,5 +1,5 @@
 import { inCareer } from '../../engine/stage.js';
-import { chance, pick } from '../../engine/rng.js';
+import { chance, pick, rint } from '../../engine/rng.js';
 import { addTimeline } from '../../engine/timeline.js';
 import { setFame, setRespect } from '../meta/status.js';
 import { takeJob, JOBS } from './work.js';
@@ -7,7 +7,48 @@ import { resolveStory, CHAINS } from '../meta/stories.js';
 import { resolveNeed } from './needs.js';
 import { resolveHealth, healthBeat, medicalPause, off, active } from './burnout.js';
 import { STAT, fxWords, showWords, softenLoss } from './choiceWords.js';
+import { actorById } from '../world/world.js';
+import { keyFor, remember } from '../meta/memory.js';
+import { startCover, coverRisk } from '../career/cover.js';
 const clamp = (v) => Math.max(0, Math.min(100, v));
+const stampOf = (s) => (s.year || 0) * 12 + (s.month || 0);
+
+// ── what people bring onto a set with them ──────────────────────────────────
+// The five cards on a set came round about twenty times a life each (tests/probes/
+// probe_random_events.mjs, 8 Nov): the co-star who turned up wrecked was a dice roll on every
+// picture, a different stranger every time, and nothing came of it for them. Maxi/ChatGPT: the
+// habit belongs to the person and goes with them — an actor of the world who drinks on the job
+// drinks on the next one too — and it costs THEM, on their own career, whatever you do about it.
+// Read off who they are, never rolled on the day: about one person in seven carries it. Kept on
+// the person once it has come out (`habit`, `incidents`), so an old save rolls nothing new.
+const HABIT_IN = 7;
+const hashOf = (t) => { let h = 7; for (const ch of String(t || '')) h = (h * 31 + ch.charCodeAt(0)) | 0; return Math.abs(h); };
+function whoIs(s, c) { return c ? (c.worldId ? actorById(s, c.worldId) : c.knownId ? (s.people || []).find((x) => x.id === c.knownId) : null) : null; }
+export function habitOf(s, c) {
+  if (!c) return null;
+  const x = whoIs(s, c) || c;
+  if (x.habit !== undefined) return x.habit;
+  return hashOf(x.id || x.name) % HABIT_IN === 0 ? 'drink' : null;
+}
+// The last time this person did it on somebody's set, if they have before.
+function lastIncident(s, c) { const x = whoIs(s, c) || c; const l = (x && x.incidents) || []; return l.length ? l[l.length - 1] : null; }
+// What it does to somebody's own name. An actor of the world loses fame; anybody else is somebody
+// you know now (meta/memory.js keyFor makes them a contact the moment there is something to
+// remember) and loses weight in the business. Never the player's numbers: those are on the card.
+function costsThem(s, c, p, by, what) {
+  if (!c || !p) return;
+  const rec = { year: s.year || 0, title: p.title, what };
+  const a = c.worldId ? actorById(s, c.worldId) : null;
+  if (a) { (a.incidents = a.incidents || []).push(rec); a.fame = Math.max(0, (a.fame || 0) - by); if (what === 'drink') a.habit = 'drink'; return; }
+  const key = keyFor(s, c, p);
+  const person = (s.people || []).find((x) => 'p:' + x.id === key);
+  if (person) { (person.incidents = person.incidents || []).push(rec); person.industryWeight = Math.max(5, (person.industryWeight || 40) - by); if (what === 'drink') person.habit = 'drink'; }
+  if (what === 'drink') c.habit = 'drink';
+}
+const crewOf = (p, who) => (p && p.crew ? p.crew[who === 'lead' ? 0 : 1] : null);
+// The share of shoots that have one of the on-set cards at all (maybeStartArc).
+const INCIDENT_FILMS = 40;
+const BIG = (p) => /blockbuster|feature|prestige/.test(p.scale || '') || p.tier === 'tentpole';
 export const ARCS = [
   { id: 'firstCredit', once: true, when: (s) => (s.filmography || []).length + (s.discography || []).length === 1 && s.fame < 20,
     build: () => ({ speaker: 'A quiet realization', text: `Your first credit is out in the world. It's small. Almost nobody saw it. But it exists now — proof you're not just dreaming. How do you carry this?`,
@@ -32,38 +73,76 @@ export const ARCS = [
     build: (s) => { const m = (s.people || []).find((p) => (p.industryWeight || 0) >= 70); return { speaker: m ? m.name : 'A veteran', text: `${m ? m.name : 'Someone established'} takes you aside: "You've got something. But this industry eats people who don't watch themselves. Let me give you one piece of advice — and you decide what to do with it."`,
       choices: [ { label: 'Listen and take it to heart', fx: { discipline: 5, confidence: 3, mental: 2 }, reply: 'You absorb every word. Having someone in your corner changes how the climb feels.' },
         { label: 'Thank them but trust your gut', fx: { confidence: 5, mental: -1 }, reply: "You nod politely and do it your way. Maybe that's brave. Maybe that's a mistake." } ] }; } },
-  { id: 'burnout', when: (s) => inCareer(s) && (s.mental || 0) < 25,
+  // Not every month the mood is down: once a year at most (it came 47 times a life in the probe).
+  { id: 'burnout', cooldown: 12, when: (s) => inCareer(s) && (s.mental || 0) < 25,
     build: () => ({ speaker: 'Your body, finally', text: `You can't sleep. You dread the work you used to love. Everything is heavy. This is burnout, and it won't fix itself. Something has to give.`,
       choices: [ { label: 'Step back and actually rest', act: 'rest', fx: { mental: 20, health: 10, fame: -3 }, reply: 'You cancel everything and disappear for two months. Whatever you were shooting waits. The industry moves on a little without you — and you come back whole.' },
         { label: 'Push through, ignore it', fx: { mental: -6, health: -8 }, reply: "You keep going. The work suffers, and so do you. This road ends badly if you don't turn off it." },
         { label: 'Get real help', fx: { mental: 15, cash: -3000 }, reply: "You find a professional. It costs money and pride. It's the best decision you've made in months." } ] }) },
   // ─── On set. scope:'production' — repeat across shoots, once per shoot. ───
-  { id: 'directorCracks', scope: 'production', when: (s) => s.production && s.production.monthsLeft < s.production.months,
-    build: (s) => { const d = s.production.crew[0]; return { speaker: d.name, text: `You find ${d.name} behind the set, hands shaking. The studio has been calling every night about the budget. "Don't tell them I'm like this," they say. "I can finish. I can."`,
-      choices: [ { label: 'Cover for them, carry the day', fx: { mental: -3, respect: 2 }, prod: { meter: -4, bondLead: 18 }, reply: `You keep the machine running while they pull themselves together. They will not forget this.` },
-        { label: 'Quietly tell the studio', fx: { respect: -2 }, prod: { meter: 10, bondLead: -25 }, reply: `The studio steps in and the schedule steadies. ${d.name} knows exactly who made the call.` },
+  // Each of these comes at most once a film, never the same one two films running, and the same
+  // card not again for three years (maybeStartArc, `cooldown` in months). Each has a reason to
+  // happen on THIS set, and two or three ways of happening, written from this film's people.
+  // `happen` is what the incident does whether or not you do anything about it; `mem` on a
+  // choice is who remembers what you did (meta/memory.js); `career` is what it costs them.
+  { id: 'directorCracks', scope: 'production', cooldown: 36,
+    // A shoot that is behind or going badly, or a director who was always going to take it hard.
+    when: (s) => { const p = s.production; return !!p && p.monthsLeft < p.months && !!p.crew[0]
+      && ((p.meter || 0) < 35 || (p.lostDays || 0) > 0 || (/perfectionist|difficult/.test(p.crew[0].trait || '') && (p.meter || 0) < 50)); },
+    happen: (s) => costsThem(s, crewOf(s.production, 'lead'), s.production, rint(1, 3), 'cracked'),
+    build: (s) => { const d = s.production.crew[0]; const t = pick([
+        `You find ${d.name} behind the set, hands shaking. The studio has been calling every night about the budget. "Don't tell them I'm like this," they say. "I can finish. I can."`,
+        `${d.name} has shot the same set-up thirty-one times and is calling for a thirty-second. The studio's man is on the phone outside. "Do not tell them," ${d.name} says to you, quietly. "Give me today."`,
+        `You find ${d.name} in a parked car with the engine running and nowhere to go. The money called again last night. "Give me a day," they say. "Do not let them see me like this."`]);
+      return { speaker: d.name, text: t,
+      choices: [ { label: 'Cover for them, carry the day', fx: { mental: -3, respect: 2 }, prod: { meter: -4, bondLead: 18 }, mem: [{ who: 'lead', felt: 2, why: 'that you covered for them when they cracked' }], reply: `You keep the machine running while they pull themselves together. They will not forget this.` },
+        { label: 'Quietly tell the studio', fx: { respect: -2 }, prod: { meter: 10, bondLead: -25 }, mem: [{ who: 'lead', felt: -3, why: 'that you were the one who called the studio' }], career: { who: 'lead', by: 6 }, reply: `The studio steps in and the schedule steadies. ${d.name} knows exactly who made the call.` },
         { label: 'Stay out of it', fx: { mental: -1 }, prod: { meter: -2 }, reply: `Not your circus. The days get sloppier, but your hands stay clean.` } ] }; } },
-  { id: 'costarWrecked', scope: 'production', when: (s) => s.production && s.production.crew.length > 1,
-    build: (s) => { const c = s.production.crew[1]; return { speaker: 'A problem on set', text: `${c.name} turns up two hours late, sunglasses on indoors, clearly wrecked. Forty people are standing around waiting. Someone has to do something.`,
-      choices: [ { label: 'Cover — run lines until they sober up', fx: { mental: -2 }, prod: { meter: -3, bondAll: 8 }, reply: `You stall, improvise, and buy them two hours. The crew clocks what you did.` },
+  { id: 'costarWrecked', scope: 'production', cooldown: 36,
+    // Only somebody who drinks on the job, and not on a set that already asked you to cover for them
+    // (career/demands.js 'cover' — the same situation told as an ask; one or the other, never both).
+    when: (s) => { const p = s.production; return !!p && p.crew.length > 1 && habitOf(s, p.crew[1]) === 'drink' && !(p._demandsAsked || []).includes('cover'); },
+    happen: (s) => costsThem(s, crewOf(s.production, 'co'), s.production, rint(2, 4), 'drink'),
+    build: (s) => { const p = s.production; const c = p.crew[1]; const before = lastIncident(s, c);
+      const t = before && before.title !== p.title
+        ? `${c.name} again. On "${before.title}" it was sunglasses indoors; here it is two hours late and the same smell of last night. Forty people are standing around waiting.`
+        : pick([`${c.name} turns up two hours late, sunglasses on indoors, clearly wrecked. Forty people are standing around waiting. Someone has to do something.`,
+          `${c.name} is asleep in the trailer at call time, and the bottle on the floor is not water. The first AD is looking at you, because you are the one they talk to.`,
+          `${c.name} slurs the first line of the night scene, then the second. The director has called a ten-minute break that is now forty.`]);
+      const d = p.crew[0];
+      return { speaker: 'A problem on set', text: t,
+      // Covering is the cover story (career/cover.js): it may straighten out, ask again, come out, or never be mentioned.
+      choices: [ { label: 'Cover — run lines until they sober up', act: 'cover', hint: d ? `If it comes out: ${coverRisk(d.name, d.trait, d.gender === 'female' ? 'f' : 'm')}` : null, fx: { mental: -2 }, prod: { meter: -3, bondAll: 8 }, reply: `You stall, improvise, and buy them two hours. The crew clocks what you did.` },
         { label: 'Call it out in front of everyone', check: { stat: 'confidence', diff: 55 },
-          good: { fx: { respect: 4 }, prod: { meter: 8, bondAll: -5 }, reply: `You say the thing nobody wants to say. It lands. They straighten up, and the shoot gets sharper.` },
-          bad: { fx: { respect: -3, mental: -3 }, prod: { meter: -6, bondAll: -12 }, reply: `It comes out shrill. Now there are two problems on set, and one of them is you.` } },
-        { label: 'Use it — take the scene from them', fx: { confidence: 4, respect: -2 }, prod: { meter: 6, bondAll: -8 }, reply: `You play off their mess and quietly own every frame. Good for you. Noted by everyone.` } ] }; } },
-  { id: 'scriptLeak', scope: 'production', when: (s) => s.production && (s.production.tier === 'tentpole' || (s.fame || 0) >= 40),
-    build: (s) => ({ speaker: 'The script leaked', text: `Half the script for "${s.production.title}" is on a forum, ending and all. The studio is hunting for who did it, and a few eyes have drifted toward you.`,
+          good: { fx: { respect: 4 }, prod: { meter: 8, bondAll: -5 }, mem: [{ who: 'co', felt: -2, why: 'that you called them out in front of everyone' }], career: { who: 'co', by: 3 }, reply: `You say the thing nobody wants to say. It lands. They straighten up, and the shoot gets sharper.` },
+          bad: { fx: { respect: -3, mental: -3 }, prod: { meter: -6, bondAll: -12 }, mem: [{ who: 'co', felt: -2, why: 'that you called them out in front of everyone' }], reply: `It comes out shrill. Now there are two problems on set, and one of them is you.` } },
+        { label: 'Use it — take the scene from them', fx: { confidence: 4, respect: -2 }, prod: { meter: 6, bondAll: -8 }, mem: [{ who: 'co', felt: -2, why: 'that you took the scene off them while they were down' }], reply: `You play off their mess and quietly own every frame. Good for you. Noted by everyone.` } ] }; } },
+  // Somebody leaks a script people want to read: a tentpole, or a big picture with a famous name in it.
+  { id: 'scriptLeak', scope: 'production', cooldown: 36, when: (s) => s.production && (s.production.tier === 'tentpole' || (BIG(s.production) && (s.fame || 0) >= 50)),
+    build: (s) => ({ speaker: 'The script leaked', text: pick([
+        `Half the script for "${s.production.title}" is on a forum, ending and all. The studio is hunting for who did it, and a few eyes have drifted toward you.`,
+        `Somebody photographed the last forty pages of "${s.production.title}" in a taxi, and the ending is everywhere by lunch. The studio wants a name, and a few people have started looking at you.`,
+        `A man with a podcast is reading the ending of "${s.production.title}" out loud to a million people. The studio is hunting for who sent it, and a few eyes have drifted toward you.`]),
       choices: [ { label: 'Say nothing, keep working', fx: { mental: -2 }, prod: { meter: -3 }, reply: `You keep your head down. The suspicion never quite lands, and never quite leaves.` },
         { label: 'Get ahead of it publicly', check: { stat: 'charisma', diff: 55 },
           good: { fx: { media: 6, respect: 3 }, prod: { meter: 5 }, reply: `You turn the leak into anticipation. The studio pretends that was the plan all along.` },
           bad: { fx: { scandal: 7, media: 4, mental: -2 }, prod: { meter: -5 }, reply: `Talking about it keeps it alive for another week. The studio is not grateful.` } },
         { label: 'Point at someone else', fx: { scandal: 4, respect: -5 }, prod: { bondAll: -18, meter: 3 }, reply: `The heat moves off you. The set gets very quiet whenever you walk in.` } ] }) },
-  { id: 'droneOverSet', scope: 'production', when: (s) => s.production && (s.fame || 0) >= 30,
-    build: () => ({ speaker: 'Paparazzi', text: `A drone hangs over the lot, filming everything. Security can't reach it. The crew is furious; the studio is worried about spoilers.`,
+  // The photographers come for a name on a picture people are waiting for.
+  { id: 'droneOverSet', scope: 'production', cooldown: 36, when: (s) => s.production && (s.fame || 0) >= 45 && BIG(s.production),
+    build: () => { const v = pick([
+        ['Paparazzi', `A drone hangs over the lot, filming everything. Security can't reach it. The crew is furious; the studio is worried about spoilers.`],
+        ['Paparazzi', `A long lens on a crane across the street has been on the set since dawn. Security can't touch it. The crew is furious; the studio is worried about spoilers.`],
+        ['A phone on set', `One of the extras has been filming everything on a phone, and it is online before lunch. The crew is furious; the studio is worried about spoilers.`]]);
+      return { speaker: v[0], text: v[1],
       choices: [ { label: 'Ignore it and keep shooting', fx: { mental: -1 }, prod: { meter: -2 }, reply: `You work through it. Half the takes have a buzzing in the background.` },
         { label: 'Make a scene about privacy', fx: { media: 5, scandal: 3, respect: 2 }, prod: { meter: -3, bondAll: 6 }, reply: `Your rant gets filmed too, and goes everywhere. The crew loves you for it.` },
-        { label: 'Play to the camera', fx: { fame: 3, media: 6, respect: -3 }, prod: { meter: -4 }, reply: `You give the drone a show. Free publicity, and a director who now trusts you slightly less.` } ] }) },
-  { id: 'replacementThreat', scope: 'production', when: (s) => s.production && s.production.meter < 25 && s.production.monthsLeft >= 1,
-    build: (s) => ({ speaker: 'The studio', text: `They fly someone in from the studio. The dailies are bad, the numbers are worse, and your name is in the middle of it. "We're looking at options for the role," they say. That is not a hypothetical.`,
+        { label: 'Play to the camera', fx: { fame: 3, media: 6, respect: -3 }, prod: { meter: -4 }, reply: `You give them a show. Free publicity, and a director who now trusts you slightly less.` } ] }; } },
+  { id: 'replacementThreat', scope: 'production', cooldown: 36, when: (s) => s.production && s.production.meter < 25 && s.production.monthsLeft >= 1,
+    build: (s) => ({ speaker: 'The studio', text: pick([
+        `They fly someone in from the studio. The dailies are bad, the numbers are worse, and your name is in the middle of it. "We're looking at options for the role," they say. That is not a hypothetical.`,
+        `The producer comes down with the numbers. There is an actor in the production office who is not in this film yet, and everybody has seen them. "We're looking at options for the role," the producer says.`,
+        `Your agent rings at midnight: the studio has asked another agency who is free next month — for your part. The dailies are bad, and your name is in the middle of it.`]),
       choices: [ { label: 'Promise to turn it around', fx: { mental: -4 }, prod: { meter: 14 }, reply: `You commit to fixing it, on the record. Everyone is watching now — which is its own kind of fuel.` },
         { label: 'Fight for the part', check: { stat: 'confidence', diff: 60 },
           good: { fx: { respect: 6, confidence: 4 }, prod: { meter: 20, bondAll: 10 }, reply: `You make the case for your version of the character, and you win the room. The set changes gear behind you.` },
@@ -73,11 +152,23 @@ export const ARCS = [
 export function maybeStartArc(s) {
   if (s.pendingArc || s.stage === 'child') return;
   const done = s._arcsDone || [];
+  const now = stampOf(s), last = s._arcAt || {};
   const eligible = ARCS.filter((a) => {
-    // On-set incidents repeat across productions but only once per shoot.
-    // And only when you are actually on it: not signed off, not on a set that is held or finishing without you.
-    if (a.scope === 'production') { if (!s.production || off(s) || !active(s).some((p) => p === s.production || (p.id != null && p.id === s.production.id))) return false; if ((s.production._incidents || []).includes(a.id)) return false; }
+    // On-set incidents: one a film at most, never the same one as on the film before, and only
+    // when you are actually on it: not signed off, not on a set that is held or finishing without you.
+    if (a.scope === 'production') {
+      if (!s.production || off(s) || !active(s).some((p) => p === s.production || (p.id != null && p.id === s.production.id))) return false;
+      if ((s.production._incidents || []).length) return false;
+      if (s._lastSetIncident === a.id) return false;
+      // Most shoots have none of these. Whether this one will is decided once, the first time it
+      // could, and kept: measured, a card a month at 35% put one on nearly every picture.
+      if (s.production._trouble == null) s.production._trouble = chance(INCIDENT_FILMS);
+      if (!s.production._trouble) return false;
+    }
     else if (a.once && done.includes(a.id)) return false;
+    // The same card, not again for a while (months). Only these old cards: two different people
+    // can still bring the same kind of trouble, through the stories that are about them.
+    if (a.cooldown && last[a.id] != null && now - last[a.id] < a.cooldown) return false;
     try { return a.when(s); } catch (e) { return false; }
   });
   if (!eligible.length) return;
@@ -87,8 +178,11 @@ export function maybeStartArc(s) {
   if (!chance(odds)) return;
   const arc = pick(eligible); const built = arc.build(s);
   s.pendingArc = { id: arc.id, speaker: built.speaker, text: built.text, choices: built.choices };
-  if (arc.scope === 'production') (s.production._incidents = s.production._incidents || []).push(arc.id);
+  if (arc.scope === 'production') { (s.production._incidents = s.production._incidents || []).push(arc.id); s._lastSetIncident = arc.id; }
   else (s._arcsDone = s._arcsDone || []).push(arc.id);
+  (s._arcAt = s._arcAt || {})[arc.id] = now;
+  // What it does to the people in it, whatever you go on to do about it.
+  if (arc.happen) { try { arc.happen(s); } catch (e) { /* a set without the person it needs: nothing to carry */ } }
 }
 export function resolveArc(s, i) {
   const arc = s.pendingArc; if (!arc) return s;
@@ -128,6 +222,15 @@ export function resolveArc(s, i) {
   // The same medical pause the doctor offers (burnout.js): every production decides whether
   // to wait, shoot around you, or go on without you.
   if (act === 'rest') { medicalPause(s, 2); s.strain = clamp((s.strain || 0) - 10); }
+  // Who remembers what you did, and what it costs them (the on-set cards). Covering for a co-star
+  // is the cover story (career/cover.js), which remembers it itself and decides what comes of it.
+  const sp = s.production;
+  if (sp) {
+    for (const m of out.mem || c.mem || []) { const who = crewOf(sp, m.who); const key = who ? keyFor(s, who, sp) : null; if (key) remember(s, { act: arc.id, p: sp, about: key, felt: { [key]: { felt: m.felt, why: m.why } } }); }
+    const hurt = out.career || c.career;
+    if (hurt) costsThem(s, crewOf(sp, hurt.who), sp, hurt.by, arc.id);
+    if (act === 'cover') startCover(s, sp);
+  }
   // Effects that land on the shoot itself rather than on you.
   const prod = out.prod || c.prod;
   if (prod && s.production) {
@@ -170,6 +273,13 @@ export function effectTags(s, out, c = out) {
     if (bl) add(`${first(p.crew[0].name)} trusts you ${Math.abs(bl) >= 15 ? 'much ' : ''}${bl > 0 ? 'more' : 'less'}`, bl > 0);
     if (prod.bondAll && (p.crew || []).some((cr) => room(cr.bond, prod.bondAll))) add(prod.bondAll > 0 ? 'the set warms to you' : `the ${prod.bondAll <= -15 ? 'whole ' : ''}set turns on you`, prod.bondAll > 0);
   }
+  // Who will remember it, and whose name pays for it: what resolveArc does with `mem` and `career`.
+  if (p && p.crew) {
+    for (const m of out.mem || c.mem || []) { const who = p.crew[m.who === 'lead' ? 0 : 1]; if (who) add(`${first(who.name)} will remember it`, m.felt > 0); }
+    const hurt = out.career || c.career; const hw = hurt ? p.crew[hurt.who === 'lead' ? 0 : 1] : null;
+    if (hw) add(`it costs ${first(hw.name)} in the business`, null);
+  }
+  if (act === 'cover') add('it may come back later', null);
   if (act === 'job' && !s.job) add('you take a day job', null);
   if (act === 'rest') add(p ? 'two months off · each production decides whether to wait' : 'two months off', null);
   return [...tags, ...fxWords(out.fx, s, true)];
