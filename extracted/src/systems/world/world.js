@@ -45,6 +45,19 @@ function makeActor(s, tier, fameSpan, taken, age) {
     alive: true, retired: false, askers: 0, noms: 0, credits: [], debut: (s.year || 2026) - Math.max(0, age - rint(18, 24)),
   };
 }
+// Somebody you know becomes a name of the world (random events, wave one: the friend who got
+// famous first). Made the way everybody else out there is, then given their own name and age, and
+// linked both ways so the world's news about them is news about your friend.
+export function joinTheWorld(s, p, fame) {
+  const w = ensureWorld(s);
+  if (p.worldId && actorById(s, p.worldId)) return actorById(s, p.worldId);
+  const age = p.born ? (s.year || 0) - p.born : rint(24, 34);
+  const a = makeActor(s, 'rising', [fame, fame], namesInUse(s), age);
+  Object.assign(a, { name: p.name, gender: p.gender || a.gender, born: p.born || a.born, debut: s.year || a.debut, knownId: p.id });
+  w.actors.push(a);
+  p.worldId = a.id;
+  return a;
+}
 export function ensureWorld(s) {
   if (s.world && s.world.actors) return s.world;
   const taken = namesInUse(s);

@@ -5,6 +5,7 @@ import { addTimeline, showMoment } from '../../engine/timeline.js';
 import { homeBond } from '../../engine/economy.js';
 import { childYear } from './children.js';
 import { meansOf } from './dating.js';
+import { hushFor } from './pace.js';
 const clamp = (v) => Math.max(0, Math.min(100, v));
 const MFIRST = ['James','Michael','David','Robert','Daniel','Andrew','Thomas','Marcus','Viktor','Sergei'];
 const FFIRST = ['Mary','Linda','Susan','Karen','Elena','Anna','Sofia','Olga','Nina','Claire'];
@@ -146,6 +147,8 @@ export function familyYear(s) {
       const grief = p.relation === 'Child' ? 34 : p.relation === 'Spouse' ? 24
         : (p.relation === 'Mother' || p.relation === 'Father') ? 15 : 8;
       s.mental = clamp((s.mental || 50) - grief);
+      // And the months after are quiet: nothing new opens (life/pace.js), what was running still comes.
+      if (grief >= 15) hushFor(s, grief >= 24 ? 6 : 4);
       // Whether anything comes to you depends on how close you actually were.
       const left = inheritFrom(s, p);
       if (left && left.note) {

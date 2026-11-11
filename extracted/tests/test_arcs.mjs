@@ -113,6 +113,13 @@ add('rival', 'settled', '', () => life(), null);
 add('agent', 'slip', '', () => life(), { name: 'Ava Stone' });
 add('agent', 'books', 'still their client', () => life(), { name: 'Ava Stone' });
 add('agent', 'books', 'not any more', () => life({ agent: null }), { name: 'Ava Stone' });
+// The agent who stops answering (random events, wave one): why, and whether you waited.
+add('agent', 'gone', '', () => life(), { name: 'Ava Stone' });
+for (const why of ['sold', 'ill', 'sinking']) for (const how of ['waited', 'left']) add('agent', 'found', `${why}, ${how}`, () => (how === 'left' ? life({ agent: null }) : life()), { name: 'Ava Stone', why, how });
+// The friend who got there first: the party, and a year or two on, as close as you stayed.
+const FRIEND = (close) => ({ people: [{ id: 'f1', name: 'Tom Hale', role: 'Fellow Actor', relationship: close }] });
+add('friend', 'party', '', () => life(FRIEND(55)), { pid: 'f1', name: 'Tom Hale', film: 'Blue Hour', genre: 'Drama' });
+for (const close of [70, 45, 20]) add('friend', 'later', `close ${close}`, () => life(FRIEND(close)), { pid: 'f1', name: 'Tom Hale', film: 'Blue Hour', genre: 'Drama' });
 add('ageing', 'call', '', () => life(), { fame0: 50 });
 for (const path of ['fight', 'character', 'tv']) for (const fame0 of [50, 70]) add('ageing', 'verdict', `${path}, fame0 ${fame0}`, () => life(), { fame0, path });
 add('comeback', 'call', '', () => life(), { who: 'Dana Reyes' });

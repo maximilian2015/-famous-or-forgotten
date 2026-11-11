@@ -773,6 +773,10 @@ function answerSubmission(s, sub) {
     s.lastEvent = `They went another way on "${c.title}". No reason given, because there never is one.`;
     addTimeline(s, `Did not get ${c.title}.`);
     sendMail(s, { from: 'Casting', subj: `Re: ${c.title}`, tag: 'reply', kind: 'reply', body: `Thank you for coming in to read for ${c.role} on ${c.title}. They have decided to go in a different direction. We will keep you in mind.`, cta: [{ label: 'Delete', fx: {}, reply: 'Kept on file, they said. Nobody has ever been taken off a file.' }] });
+    // A good read that lost is kept a few months: now and then the one they chose is let go two
+    // weeks in, and the casting director rings you (life/arcs.js recastCall, random events wave one).
+    // A film: a series does not let somebody go two weeks into a shoot and ring the next name.
+    if ((sub.quality || 0) >= 60 && (s.fame || 0) < 50 && !c.perEpisode && !/series|episode|show/i.test(c.type || '')) s._nearMiss = { title: c.title, role: c.role, genre: c.genre, type: c.type, salary: c.salary, months: c.months, tier: c.tier, scale: c.scale, at: (s.year || 0) * 12 + (s.month || 0) };
     return s;
   }
   // A yes is an offer, not a summons. If you are shooting, it waits on the board until it

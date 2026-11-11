@@ -20,6 +20,8 @@ import { addTimeline } from '../../engine/timeline.js';
 import { inCareer } from '../../engine/stage.js';
 import { COST, canAfford, spend, tooTired } from '../../engine/energy.js';
 import { applyBond } from './bonds.js';
+import { mayOpen, opened } from './pace.js';
+import { setRespect } from '../meta/status.js';
 
 export const SPACING = 3;       // months between two needs put to you, across everybody
 export const MEMORY_CAP = 8;
@@ -61,6 +63,12 @@ export function memoryLines(p) {
       if (m.a === 'repaid') return null;   // told on the loan's own line
     }
     if (m.k === 'favour' && m.a === 'returned') return `${name} covered you when you were short, in ${t}.`;
+    if (m.k === 'work') {
+      if (m.a === 'vouched') return m.told ? `You got ${name} a job in ${t}. ${m.ok ? 'They were good.' : 'It did not go well.'}` : `You put in a word for ${name} in ${t}.`;
+      if (m.a === 'money') return `${name} asked you for work in ${t}. You gave them ${money(m.n)} instead.`;
+      if (m.a === 'refused') return `${name} asked you for work in ${t}. You said no.`;
+      if (m.a === 'ignored') return `${name} asked you for work in ${t}. You never got back to them.`;
+    }
     return null;
   }).filter(Boolean);
 }
@@ -138,6 +146,43 @@ export const NEEDS = {
       addTimeline(s, `You never called ${first(p)} back about the rent. They sorted it out somehow.`, true);
     },
   },
+  // Somebody from the business whose work has dried up asks you to put their name forward (random
+  // events, wave one, no. 4). Only once your name opens doors. Whether they turn out reliable is
+  // theirs, decided when they ask and kept with the ask, and you find out half a year on (laterTick):
+  // a good deed can cost you standing, and the right choice pays no fame.
+  work: {
+    deadline: 2, cooldown: 36, urgency: 0,
+    wants: (s, p) => (s.fame || 0) >= 45 && !!p.role && p.role === 'Fellow Actor' && !p.agent && !p.cold && !p.drifted
+      && (p.relationship || 0) >= 25 && (p.industryWeight || 40) <= 35 && !recall(p, 'work'),
+    chance: () => 3,
+    data: () => ({ reliable: chance(65), sum: 2000 }),
+    call: (s, p) => `${p.name} has left a message. Three, actually.`,
+    card: (s, p) => `${first(p)} has not worked in a year, and has a favour to ask. You can hear what it costs them.`,
+    build: (s, p, need) => {
+      const name = first(p); const n = need.data.sum;
+      return { speaker: `${p.name} · from the business`, text: `${name} has not had a part in a year. "You are the only person I know who gets into those rooms. One word, on your next one. That is all."`,
+        choices: [
+          { id: 'vouch', label: 'Put in a word on your next film', hint: 'Your name goes with theirs.',
+            shows: { more: [{ t: `you and ${name}: closer`, good: true }, { t: 'in six months you find out how it went, and so does everybody', good: null }] },
+            apply: () => { applyBond(s, p, 8); remember(s, p, { k: 'work', a: 'vouched', due: stamp(s) + 6, ok: need.data.reliable });
+              return `You make the call. ${name} cries a little on the phone, and pretends it is a cold.`; } },
+          { id: 'money', label: `Lend a hand instead — ${money(n)}`, hint: 'Help that keeps your name out of it.',
+            shows: { fx: { cash: -n }, more: [{ t: `${name} grateful, and a little stung`, good: null }] },
+            apply: () => { s.cash = (s.cash || 0) - n; applyBond(s, p, 3); remember(s, p, { k: 'work', a: 'money', n });
+              return `${name} takes it, says thank you, and does not quite meet your eye. It was not what they asked for.`; } },
+          { id: 'no', label: 'Tell them you cannot', hint: 'True, or near enough.',
+            shows: { more: [{ t: `you and ${name}: further apart`, good: false }] },
+            apply: () => { applyBond(s, p, -6); p.neglect = (p.neglect || 0) + 1; remember(s, p, { k: 'work', a: 'refused' });
+              return `"Sure. I understand." ${name} does. That is the worst part.`; } },
+          { id: 'later', later: true, label: 'Let me see what I can do', hint: `${name} is waiting until ${when(need.until)}.`,
+            shows: { more: [{ t: `if you never answer, ${name} remembers that too`, good: null }] } },
+        ] };
+    },
+    ignored: (s, p) => {
+      applyBond(s, p, -8, { seen: false }); p.neglect = (p.neglect || 0) + 1; remember(s, p, { k: 'work', a: 'ignored' });
+      addTimeline(s, `You never got back to ${first(p)} about the word on your next film.`, true);
+    },
+  },
 };
 
 // ── the month ────────────────────────────────────────────────────────────────
@@ -158,6 +203,16 @@ function laterTick(s) {
   const now = stamp(s);
   for (const p of s.people || []) {
     for (const m of memoryOf(p)) {
+      // The word you put in, six months on: they were good, or they were late three days running,
+      // and the business remembers who sent them.
+      if (m.k === 'work' && m.a === 'vouched' && !m.told && m.due <= now) {
+        m.told = true;
+        if (m.ok) { applyBond(s, p, 6); p.industryWeight = Math.min(70, (p.industryWeight || 30) + 10); setRespect(s, (s.respect || 0) + 1);
+          addTimeline(s, `${first(p)} was good on the job you got them, and the director asked who had sent them. Your name came up.`); }
+        else { setRespect(s, (s.respect || 0) - 2);
+          addTimeline(s, `${first(p)} was late three days running on the job you got them. People remember who vouched.`, true); }
+        continue;
+      }
       if (m.k === 'rent' && m.a === 'lent' && m.ok == null && m.due <= now) {
         if (!p.drifted && (p.relationship || 0) >= 0) {
           m.ok = true; s.cash = (s.cash || 0) + m.n; remember(s, p, { k: 'rent', a: 'repaid', n: m.n });
@@ -192,6 +247,8 @@ export function needsTick(s) {
   // One at a time, and not too often.
   if (liveNeeds(s).length) return s;
   if (s.needAt != null && now - s.needAt < SPACING) return s;
+  // Somebody asking is something new: only when the year has room for it (life/pace.js).
+  if (!mayOpen(s)) return s;
   const cands = [];
   for (const p of everyone(s)) {
     if (p.need || (p.needCool || 0) > now) continue;
@@ -202,6 +259,7 @@ export function needsTick(s) {
   const c = cands[0];
   if (!chance(c.N.chance(s, c.p))) return s;
   raise(s, c.p, c.id);
+  opened(s, 'need:' + c.id);
   return s;
 }
 

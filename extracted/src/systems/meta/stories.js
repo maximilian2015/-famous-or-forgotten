@@ -17,7 +17,10 @@ import { comboOf } from '../../engine/combo.js';
 import { setFame, setRespect, quoteFor } from './status.js';
 import { typecastScandal, typecastBump } from './typecast.js';
 import { hasAgent, fireAgent } from '../career/agent.js';
-import { actorById, activeActors, ageOf, yourRank } from '../world/world.js';
+import { hushed, opened } from '../life/pace.js';
+import { applyBond } from '../life/bonds.js';
+import { closeFriend } from '../life/needs.js';
+import { actorById, activeActors, ageOf, yourRank, joinTheWorld } from '../world/world.js';
 import { personName, namesInUse } from '../world/names.js';
 import { newTitle } from '../world/titles.js';
 import { GENRES } from './news.js';
@@ -159,7 +162,10 @@ export const CHAINS = {
         build: (s, st) => {
           const a = actorById(s, st.data.who); const you = yourRank(s); const ahead = a ? you < (a.rank || 999) : true;
           return { speaker: 'Settled', text: ahead ? `Two years and the trades have stopped pairing you. You are #${you}; ${st.data.name} is #${a ? a.rank : '?'}. The piece this time is about you, and they are a paragraph in it.` : `Two years and the trades have stopped pairing you. ${st.data.name} is #${a ? a.rank : '?'}; you are #${you}. The piece this time is about them, and you are the paragraph.`,
-            choices: [{ label: ahead ? 'Good' : 'Noted', shows: { fx: ahead ? { respect: 3, fame: 2 } : { fame: -3 } }, apply: () => { if (ahead) { setRespect(s, (s.respect || 0) + 3); setFame(s, (s.fame || 0) + 2); addTimeline(s, `The trades call it settled: you, not ${st.data.name}.`); } else { setFame(s, (s.fame || 0) - 3); addTimeline(s, `The trades call it settled: ${st.data.name}, not you.`, true); } return { reply: ahead ? 'It was never a race. It was, and you won it.' : 'It was never a race. It was, and they won it. There will be another list next year.', end: true }; } }] };
+            choices: [{ label: ahead ? 'Good' : 'Noted', shows: { fx: ahead ? { respect: 3, fame: 2 } : { fame: -3 } }, apply: () => {
+              // Kept for afterwards: a rival whose name later goes is a card of its own (arcs.js rivalFell).
+              s._rivalPast = { who: st.data.who, name: st.data.name, fame: a ? a.fame || 0 : 0, at: stamp(s) };
+              if (ahead) { setRespect(s, (s.respect || 0) + 3); setFame(s, (s.fame || 0) + 2); addTimeline(s, `The trades call it settled: you, not ${st.data.name}.`); } else { setFame(s, (s.fame || 0) - 3); addTimeline(s, `The trades call it settled: ${st.data.name}, not you.`, true); } return { reply: ahead ? 'It was never a race. It was, and you won it.' : 'It was never a race. It was, and they won it. There will be another list next year.', end: true }; } }] };
         } },
     },
   },
@@ -167,9 +173,42 @@ export const CHAINS = {
   // 3. The agent who took somebody else into the meeting.
   agent: {
     title: 'The agent', cooldown: 48,
-    start: (s) => (inCareer(s) && hasAgent(s) && (s.fame || 0) >= 25 && stamp(s) - (s.agent.since || 0) >= 12 && chance(1.5) ? { name: s.agent.name, beat: 'slip', due: stamp(s) } : null),
-    status: (s, st) => (st.data.path === 'sharp' ? `${st.data.name} is working for you again. For now.` : st.data.path === 'slack' ? `${st.data.name} sends what is left after the bigger clients.` : `${st.data.name}: a casting director told you something.`),
+    // Two ways in: the agent who slips (a bigger client in your meeting), and, a third of the time,
+    // the agent who stops answering altogether (random events, wave one, no. 5). Why is decided
+    // when you choose what to do about it, so the card that tells you is the same however often
+    // it is drawn.
+    start: (s) => (inCareer(s) && hasAgent(s) && (s.fame || 0) >= 25 && stamp(s) - (s.agent.since || 0) >= 12 && chance(1.5) ? { name: s.agent.name, beat: chance(35) ? 'gone' : 'slip', due: stamp(s) } : null),
+    status: (s, st) => (st.data.why && !st.data.told ? `${st.data.name} has stopped answering.` : st.data.path === 'sharp' ? `${st.data.name} is working for you again. For now.` : st.data.path === 'slack' ? `${st.data.name} sends what is left after the bigger clients.` : `${st.data.name}: a casting director told you something.`),
     beats: {
+      gone: {
+        build: (s, st) => ({ speaker: 'Your agent', text: `${st.data.name} has not answered in three weeks. Nothing has come through them since the start of the month, and the agency's switchboard says they are "travelling".`,
+          choices: [
+            { label: 'Wait', hint: 'Agents vanish and come back. Usually.', shows: { more: [{ t: 'fewer offers from your agent for two months', good: false }] }, apply: () => { st.data.how = 'waited'; st.data.why = pick(['sold', 'ill', 'sinking']); s.agentSlack = stamp(s) + 2; return { reply: 'You wait. The phone stays very quiet.', next: { beat: 'found', inMonths: 2 } }; } },
+            { label: 'Go to the agency', hint: 'Find out today, whatever it is.', shows: { fx: { mental: -1 }, more: [{ t: 'you find out next month', good: null }] }, apply: () => { st.data.how = 'went'; st.data.why = pick(['sold', 'ill', 'sinking']); s.mental = clamp((s.mental || 50) - 1); return { reply: 'A receptionist you have never seen before takes your name and asks you to wait. You wait an hour.', next: { beat: 'found', inMonths: 1 } }; } },
+            { label: 'Start looking for a new agent', hint: 'Nobody keeps you waiting twice.', shows: { more: [SAY.noAgent] }, apply: () => { st.data.how = 'left'; st.data.why = pick(['sold', 'ill', 'sinking']); fireAgent(s); return { reply: 'You send the letter. There is no answer to that either.', next: { beat: 'found', inMonths: 3 } }; } },
+          ] }) },
+      found: {
+        build: (s, st) => {
+          const n = st.data.name, f = String(n).split(' ')[0], left = st.data.how === 'left';
+          const mine = hasAgent(s) && s.agent.name === n;
+          const done = (reply, fx = null) => ({ label: 'Noted', shows: fx ? { fx } : { more: [{ t: 'the story ends here', good: null }] }, apply: () => { st.data.told = true; if (fx && fx.mental) s.mental = clamp((s.mental || 50) + fx.mental); return { reply, end: true }; } });
+          if (st.data.why === 'sold') {
+            if (left || !mine) return { speaker: 'Later', text: `You hear it from somebody else: ${n}'s agency was sold, and ${f} had wanted to take you along to the new one.`, choices: [done(`It would have been a good move. ${f} does not ring to say so.`, { mental: -2 })] };
+            return { speaker: n, text: `${f} is back on the phone, and talking fast: the agency has been sold, and they are leaving for a bigger one. "Come with me. Better rooms. I will not lose you in the move."`,
+              choices: [
+                { label: 'Go with them', shows: { more: [{ t: 'more offers from your agent for a year', good: true }] }, apply: () => { st.data.told = true; s.agentBoost = stamp(s) + 12; return { reply: 'New offices, a better view, the same voice on the phone. The first month of calls is the best you have had.', end: true }; } },
+                { label: 'Stay where you are', shows: { more: [SAY.noAgent] }, apply: () => { st.data.told = true; fireAgent(s); return { reply: `The new owners give your file to somebody who has not read it. You let them go, and ${f} does not ask twice.`, end: true }; } },
+              ] };
+          }
+          if (st.data.why === 'ill') {
+            if (left || !mine) return { speaker: 'Later', text: `${n} was in hospital for six weeks, it turns out. They are back at work. They have not called you, and they are not going to.`, choices: [done('You did not know. It does not change what you did.', { mental: -2 })] };
+            return { speaker: n, text: `${f} was in hospital for six weeks and told nobody. Back at the desk now, thinner, and the first call is to you. "You waited. I will not forget it."`,
+              choices: [{ label: 'Welcome back', shows: { more: [{ t: 'more offers from your agent for nine months', good: true }] }, apply: () => { st.data.told = true; s.agentBoost = stamp(s) + 9; return { reply: `${f} fights for you like somebody who owes you, which, in their own head, they do.`, end: true }; } }] };
+          }
+          if (left || !mine) return { speaker: 'The trades', text: `${n}'s agency has gone under. Everybody still signed to it has lost a year. You got out in time.`, choices: [done('You were lucky, and you were early.', { mental: 2 })] };
+          return { speaker: 'A letter', text: `${n}'s agency is going under. The contracts go with it; yours among them. ${f} rings once, to apologise, and does not know what else to say.`,
+            choices: [{ label: 'Start again', shows: { more: [SAY.noAgent] }, apply: () => { st.data.told = true; fireAgent(s); return { reply: 'You are between agents, through no fault of your own. The business does not care whose fault it was.', end: true }; } }] };
+        } },
       slip: {
         build: (s, st) => ({ speaker: 'A casting director, off the record', text: `${st.data.name} sent your name for the part, then took a bigger client into the meeting instead and left yours on the table. It is not the first time, they say. It is the first time you have heard.`,
           choices: [
@@ -215,6 +254,58 @@ export const CHAINS = {
             : (since.some((c) => c.episodes) ? 'A season a year. People stop you in shops to tell you what your character should do. That is what television is.' : 'The networks are slower than they said. The season has not started yet.');
           const fx = st.data.path === 'fight' ? (held ? { respect: 2 } : { fame: -3 }) : st.data.path === 'character' ? { respect: 3 } : st.data.path === 'tv' ? { fame: 3 } : {};
           return { speaker: 'Eighteen months on', text, choices: [{ label: 'On', shows: { fx }, apply: () => { if (st.data.path === 'fight') { if (held) setRespect(s, (s.respect || 0) + 2); else setFame(s, (s.fame || 0) - 3); } if (st.data.path === 'character') setRespect(s, (s.respect || 0) + 3); if (st.data.path === 'tv') setFame(s, (s.fame || 0) + 3); return { reply: 'On.', end: true }; } }] };
+        } },
+    },
+  },
+
+  // (offerWith, below the chains, is the paper the friend sends.)
+  // 4b. The friend who got there first (random events, wave one, no. 3). A fellow actor you are
+  // close to gets a lead while you are still nobody much; they become a name of the world
+  // (world.js joinTheWorld) and go on there by themselves. Two beats: the party, and a year or two on.
+  friend: {
+    title: 'The friend', cooldown: 120,
+    start: (s) => {
+      if (!inCareer(s) || (s.fame || 0) >= 40 || !chance(1.2)) return null;
+      // A close friend by the rule the phone already uses (life/needs.js closeFriend: 40 and warm). At 50
+      // it started in one life of a hundred.
+      const p = (s.people || []).find((x) => x.role === 'Fellow Actor' && !x.worldId && x.alive !== false && closeFriend(x));
+      if (!p) return null;
+      const genre = pick(GENRES), film = newTitle(s, genre);
+      joinTheWorld(s, p, rint(38, 50));
+      addTimeline(s, `${p.name} got the lead in "${film}".`);
+      return { pid: p.id, name: p.name, film, genre, beat: 'party', due: stamp(s) + 2 };
+    },
+    status: (s, st) => `${st.data.name} is in "${st.data.film}". You are not.`,
+    beats: {
+      party: {
+        build: (s, st) => {
+          const p = (s.people || []).find((x) => x.id === st.data.pid); const f = String(st.data.name).split(' ')[0];
+          const stuck = (s.fame || 0) < 20;
+          const bond = (by, o = {}) => { if (p) applyBond(s, p, by, o); };
+          return { speaker: st.data.name, text: `${f} is throwing a party for "${st.data.film}" in a bar that is far too small for it. "You have to come. You, of all people."`,
+            choices: [
+              { label: 'Go, and be glad for them', hint: stuck ? 'You are. It still costs something.' : 'You are.', shows: { fx: { mental: stuck ? -3 : 2 }, more: [{ t: `you and ${f}: closer`, good: true }] },
+                apply: () => { bond(10); s.mental = clamp((s.mental || 50) + (stuck ? -3 : 2)); return { reply: stuck ? `You are glad for ${f}, and you mean it, and on the way home you are quiet for a long time.` : `You stay until they close the bar. ${f} makes a speech and points at you in the middle of it.`, next: { beat: 'later', inMonths: rint(12, 30) } }; } },
+              { label: 'Ask them to put in a word', hint: 'Charisma. A favour, or a friend who thinks that is why you came.', shows: { odds: oddsOf(s, 'charisma', 50), stat: 'charisma', good: { more: [{ t: `an offer: a part in ${f}'s next film`, good: true }] }, bad: { more: [{ t: `you and ${f}: further apart`, good: false }] } },
+                apply: () => { if (check(s, 'charisma', 50)) { bond(4); offerWith(s, st, 'Supporting', `${f} put your name forward. They did not have to.`); return { reply: `"Of course," ${f} says, and means it. The paper is in Messages before the week is out.`, next: { beat: 'later', inMonths: rint(12, 30) } }; }
+                  bond(-10); return { reply: `${f} says they will see what they can do, in the voice people use for that. You both know why you came now.`, next: { beat: 'later', inMonths: rint(12, 30) } }; } },
+              { label: 'Do not go', hint: 'You have a reason. It is not a good one.', shows: { more: [{ t: `you and ${f}: further apart`, good: false }] },
+                apply: () => { bond(-8, { seen: false }); return { reply: `You send a message at midnight. ${f} reads it in the morning and does not answer.`, next: { beat: 'later', inMonths: rint(12, 30) } }; } },
+            ] };
+        } },
+      later: {
+        build: (s, st) => {
+          const p = (s.people || []).find((x) => x.id === st.data.pid); const f = String(st.data.name).split(' ')[0];
+          const close = p ? p.relationship || 0 : 0;
+          if (close >= 60) return { speaker: st.data.name, text: `${f} rings out of nowhere. They are making another one, there is a part in it, and they told the director there is only one person for it.`,
+            choices: [
+              { label: 'Take it', shows: { more: [{ t: `an offer: a part opposite ${f}`, good: true }] }, apply: () => { offerWith(s, st, 'Supporting', `${f} asked for you by name.`); return { reply: 'The paper is in Messages. Their name is already on it.', end: true }; } },
+              { label: 'Thank them, and pass', shows: { more: [{ t: 'no offer; still friends', good: null }] }, apply: () => ({ reply: `"Next time, then," ${f} says. You both mean it.`, end: true }) },
+            ] };
+          if (close >= 35) return { speaker: 'An interview', text: `${f} is on the cover of something, and in the second paragraph calls you "my oldest friend in this business". Your phone lights up for a week.`,
+            choices: [{ label: 'Good', shows: { fx: { media: 4 } }, apply: () => { s.media = clamp((s.media || 0) + 4); return { reply: 'It is nice to be in somebody else\'s story, even as a line.', end: true }; } }] };
+          return { speaker: 'A year on', text: `${f} has not called in a year. You see the posters for the next one, and the name on them is very big.`,
+            choices: [{ label: 'Noted', shows: { fx: { mental: -2 } }, apply: () => { s.mental = clamp((s.mental || 50) - 2); return { reply: 'People get busy. Some of them stay busy.', end: true }; } }] };
         } },
     },
   },
@@ -347,7 +438,16 @@ export const CHAINS = {
   // 8. Covering for a co-star (career/cover.js): started from the on-set ask, never by a roll.
   cover: COVER,
 };
-export const CHAIN_ORDER = ['scandal', 'refused', 'recast', 'comeback', 'ageing', 'agent', 'rival'];
+export const CHAIN_ORDER = ['scandal', 'refused', 'recast', 'comeback', 'ageing', 'friend', 'agent', 'rival'];
+// A part that came through somebody in a story: their film, their name on the paper, and them on
+// the set opposite you when it is somebody of the world (production.js reads costarId).
+function offerWith(s, st, role, note) {
+  const quote = quoteFor(s, 'film_studio') || 200000; const genre = st.data.genre || pick(GENRES);
+  const p = (s.people || []).find((x) => x.id === st.data.pid);
+  (s.offers = s.offers || []).push({ id: uid(s, 'off'), via: 'studio', kind: 'friend', story: st.id, costarId: (p && p.worldId) || undefined,
+    projectTitle: newTitle(s, genre), role, type: 'Feature Film', genre, salary: Math.round(quote * 0.45), months: rint(2, 4), fame: 3,
+    prestigeScore: rint(45, 70), tier: 'supporting', scale: 'feature', stability: rollStability('feature'), deadline: 3, note });
+}
 
 // What the recast thread has come to, in words: which season or part, who has your part, and
 // how it went — each of those is on st.data by the time the line can be shown.
@@ -489,8 +589,10 @@ export function storiesTick(s) {
   for (const st of known(s)) {
     if (st.due != null && st.due <= now && !s.pendingArc) { present(s, st); break; }
   }
-  // a new chain: one a month, two at a time, never the same one twice in its cooldown
-  if (known(s).length < 2) {
+  // a new chain: one a month, two at a time, never the same one twice in its cooldown. Each one is
+  // what something you did became, so the year's temper does not hold it back — only a loss does
+  // (life/pace.js) — and it counts toward what the year has brought.
+  if (known(s).length < 2 && !hushed(s)) {
     for (const id of CHAIN_ORDER) {
       const chain = CHAINS[id];
       if (storyOf(s, id) || (chain.cooldown && onCooldown(s, id, chain.cooldown))) continue;
@@ -499,6 +601,7 @@ export function storiesTick(s) {
       const { beat, due, ...rest } = data;
       const st = { id, beat, due, since: now, data: rest };
       stories(s).push(st);
+      opened(s, 'story:' + id);
       addTimeline(s, `${chain.title}: it has started.`);
       if (due <= now && !s.pendingArc) present(s, st);
       break;

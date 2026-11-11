@@ -37,6 +37,11 @@ const DM = await import(P + 'systems/career/demands.js');
 const W = await import(P + 'systems/world/world.js');
 const BO = await import(P + 'systems/life/burnout.js');
 const CAREFUL = process.argv[4] === 'careful';
+// `quiet`, `ordinary` or `busy` as a fifth word holds every year to that temper (life/pace.js), so the
+// same life can be lived three ways; with one life, each year's choices are printed.
+const FORCE = ['quiet', 'ordinary', 'busy'].includes(process.argv[5]) ? process.argv[5] : null;
+const PACE = await import(new URL('../../src/systems/life/pace.js', import.meta.url).href);
+PACE.PROBE.temper = FORCE;
 let rests = 0;
 
 const LIVES = Number(process.argv[2]) || 20;
@@ -61,13 +66,16 @@ const carry = { again: 0, wrecked: 0, worldCostars: 0, worldFameLost: 0, remembe
 const perYear = { cards: 0, moments: 0, feed: 0, badFeed: 0, texts: 0, invites: 0, press: 0 };
 let years = 0, died = 0;
 const cardsInALife = [];
+// Stage 2 (life/pace.js): how the years differ. Choices that are not the doctor, a year at a time,
+// with the year's temper; and how many an unknown sees in the first ten years.
+const spread = [], firstTen = [];
 
 for (let life = 0; life < LIVES; life++) {
   const s = createInitialState({ name: 'R' + life, dream: Math.random() < 0.2 ? 'singer' : 'actor', created: true });
   beginLife(s);
   Object.assign(s, { stage: 'career', ageY: 20, year: 2050, month: 0, hasApartment: true,
     housing: 'room', cash: 12000, alive: true, ap: 100, apMax: 100, apMaxEff: 100, livingWith: 'own_place' });
-  let t = s; let cardsHere = 0; const onsetHere = Object.fromEntries(ONSET.map((id) => [id, 0]));
+  let t = s; let cardsHere = 0, yearHere = 0, tenHere = 0; const onsetHere = Object.fromEntries(ONSET.map((id) => [id, 0]));
   for (let m = 0; m < YEARS * 12 && t.alive; m++) {
     const r = Math.random();
     // ── the player's month, as audit_wide plays it ──
@@ -113,12 +121,15 @@ for (let life = 0; life < LIVES; life++) {
     // ── the month itself, and what came out of it ──
     const feedBefore = new Set(t.timeline || []), textsBefore = new Set(t.sms || []);
     const invBefore = (t.events || []).length, pressBefore = new Set(t.press || []);
+    const temperNow = (t._pace && t._pace.year === t.year && t._pace.temper) || '?';   // the year this month belongs to
     t = advanceMonth(t);
-    if (m % 12 === 11) years++;
+    if (m % 12 === 11) { years++; spread.push({ n: yearHere, temper: temperNow }); yearHere = 0; }
     if (t.pendingArc) {
       const a = t.pendingArc;
       const key = a.story ? `story ${a.story} · ${a.beat}` : a.need ? `ask ${a.need}` : a.health ? `doctor ${a.id || a.health}` : a.youth ? `youth ${a.id}` : `card ${a.id}`;
       bump(CARDS, key, life); perYear.cards++; cardsHere++;
+      if (LIVES === 1 && !a.health) console.log(`  ${t.year} ${String(t.month + 1).padStart(2)}  ${key.padEnd(28)} ${String(a.text || '').slice(0, 90)}`);
+      if (!a.health) { yearHere++; if (m < 120) tenHere++; }
       if (ONSET.includes(a.id)) { onsetHere[a.id]++;
         if (a.id === 'costarWrecked') { carry.wrecked++; if (/ again. On "/.test(a.text || '')) carry.again++; const co = t.production && t.production.crew[1]; if (co && co.worldId) carry.worldCostars++; } }
     }
@@ -129,7 +140,7 @@ for (let life = 0; life < LIVES; life++) {
     perYear.press += (t.press || []).filter((x) => !pressBefore.has(x)).length;
   }
   if (!t.alive) died++;
-  cardsInALife.push(cardsHere);
+  cardsInALife.push(cardsHere); firstTen.push(tenHere);
   for (const id of ONSET) onsetLives[id].push(onsetHere[id]);
   for (const a of ((t.world && t.world.actors) || [])) for (const x of a.incidents || []) if (x.what === 'drink') carry.worldFameLost++;
   carry.remembered += ((t.memory && t.memory.events) || []).filter((e) => ONSET.includes(e.act) || e.act === 'covered').length;
@@ -156,6 +167,11 @@ console.log('\nTHE FIVE ON-SET CARDS, per life (min · median · max), and in ho
 for (const id of ONSET) { const v = onsetLives[id].slice().sort((a, b) => a - b); console.log(`  ${id.padEnd(18)} ${v[0]} · ${v[Math.floor(v.length / 2)]} · ${v[v.length - 1]}   in ${v.filter((x) => x > 0).length}/${LIVES} lives, ${v.reduce((a, b) => a + b, 0)} in all`); }
 console.log(`  a co-star turned up wrecked ${carry.wrecked} times: ${carry.again} of them somebody who had done it on an earlier film of yours; ${carry.worldCostars} were stars of the world`);
 console.log(`  incidents left on world stars' own records: ${carry.worldFameLost} · things the people involved remember: ${carry.remembered}`);
+{ const h = [0, 0, 0, 0, 0, 0]; spread.forEach((y) => { h[Math.min(5, y.n)]++; });
+  console.log(`
+YEARS BY CHOICES (not the doctor): ${h.map((n, i) => `${i === 5 ? '5+' : i}: ${Math.round((n / Math.max(1, spread.length)) * 100)}%`).join(' · ')}`);
+  for (const tp of ['quiet', 'ordinary', 'busy']) { const ys = spread.filter((y) => y.temper === tp); if (ys.length) console.log(`  ${tp.padEnd(9)} ${ys.length} years, ${(ys.reduce((a, y) => a + y.n, 0) / ys.length).toFixed(2)} choices a year`); }
+  const ft = firstTen.slice().sort((a, b) => a - b); console.log(`  the first ten years of a career: min ${ft[0]}, median ${ft[Math.floor(ft.length / 2)]}, max ${ft[ft.length - 1]} choices`); }
 cardsInALife.sort((a, b) => a - b);
 console.log(`\nchoice cards in a whole life: min ${cardsInALife[0]}, median ${cardsInALife[Math.floor(LIVES / 2)]}, max ${cardsInALife[LIVES - 1]}`);
 // What never came up at all, from the cards the game has.
