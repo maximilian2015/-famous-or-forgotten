@@ -36,7 +36,12 @@ const SC = await import(P + 'systems/career/scenes.js');
 const DM = await import(P + 'systems/career/demands.js');
 const W = await import(P + 'systems/world/world.js');
 const BO = await import(P + 'systems/life/burnout.js');
-const CAREFUL = process.argv[4] === 'careful';
+// The fourth word is the player: `careful` rests; `social` also goes out (a reading, a bar) and sees
+// somebody every month, the way a player who makes friends does; `careful,social` is both.
+const FLAGS = String(process.argv[4] || '').split(',');
+const CAREFUL = FLAGS.includes('careful'), SOCIAL = FLAGS.includes('social');
+const TOWN = await import(P + 'systems/life/town.js');
+const NE = await import(P + 'systems/life/needs.js');
 // `quiet`, `ordinary` or `busy` as a fifth word holds every year to that temper (life/pace.js), so the
 // same life can be lived three ways; with one life, each year's choices are printed.
 const FORCE = ['quiet', 'ordinary', 'busy'].includes(process.argv[5]) ? process.argv[5] : null;
@@ -68,7 +73,7 @@ let years = 0, died = 0;
 const cardsInALife = [];
 // Stage 2 (life/pace.js): how the years differ. Choices that are not the doctor, a year at a time,
 // with the year's temper; and how many an unknown sees in the first ten years.
-const spread = [], firstTen = [];
+const spread = [], firstTen = [], known = [];
 
 for (let life = 0; life < LIVES; life++) {
   const s = createInitialState({ name: 'R' + life, dream: Math.random() < 0.2 ? 'singer' : 'actor', created: true });
@@ -115,6 +120,25 @@ for (let life = 0; life < LIVES; life++) {
       const a = acts[Math.floor(Math.random() * acts.length)];
       if (a && !a.locked) { try { I.interact(t, who.id, a.id); } catch (e) { /* */ } }
     }
+    if (SOCIAL && !tired) {
+      if (TOWN.townOpen(t) && Math.random() < 0.5) { try { TOWN.goOut(t, Math.random() < 0.5 ? 'reading' : 'bar'); } catch (e) { /* */ } }
+      // Two people kept close, fellow actors first, seen every month and properly: the game's
+      // friendships cool every month you do not (life/bonds.js), and one evening every other month
+      // held a friend at about 35 for ten years (probed 11 Nov).
+      const ppl = (t.people || []).filter((p) => !p.drifted && p.alive !== false);
+      const friends = [...ppl.filter((p) => p.role === 'Fellow Actor'), ...ppl.filter((p) => p.role !== 'Fellow Actor')].sort((a, b) => (b.relationship || 0) - (a.relationship || 0)).slice(0, 2);
+      const BEST = ['evening', 'deep', 'compliment', 'advice', 'joke', 'chat'];
+      for (const who of friends) {
+        for (let k = 0; k < 3; k++) {
+          const acts = (I.interactionsFor(t, who.id) || []).filter((x) => x.open && !x.why && x.group === 'friendly');
+          const a = BEST.map((id) => acts.find((x) => x.id === id)).find(Boolean);
+          if (!a) break;
+          try { I.interact(t, who.id, a.id); } catch (err) { break; }
+        }
+      }
+    }
+    // Somebody asking sits on Home until it is opened, and a player opens it (life/needs.js).
+    if (!t.pendingArc) { const nc = NE.needCards(t)[0]; if (nc && Math.random() < 0.8) NE.openNeed(t, nc.pid); }
     if (t.production && (t.ap || 0) > 0) PR.rehearse(t);
     // What a production asks of you this month (career/demands.js), answered as any player might.
     for (const p of t.productions || []) { if (!p.demand) continue; bump(ASKS, p.demand.id, life); const ops = DM.optionsFor(t, p); if (ops.length && r > 0.2) DM.answerDemand(t, p.id, ops[Math.floor(Math.random() * ops.length)].id); }
@@ -137,10 +161,13 @@ for (let life = 0; life < LIVES; life++) {
     for (const x of (t.timeline || []).filter((x) => !feedBefore.has(x))) { bump(FEED, shape(x.text), life); perYear.feed++; if (x.bad) { bump(BADFEED, shape(x.text), life); perYear.badFeed++; } }
     for (const x of (t.sms || []).filter((x) => !textsBefore.has(x))) { bump(TEXTS, shape(x.text || x.body || x.kind || '?'), life); perYear.texts++; }
     perYear.invites += Math.max(0, (t.events || []).length - invBefore);
-    perYear.press += (t.press || []).filter((x) => !pressBefore.has(x)).length;
+    { const fresh = (t.press || []).filter((x) => !pressBefore.has(x)); perYear.press += fresh.length; perYear.known = (perYear.known || 0) + fresh.filter((x) => x.known).length; }
   }
   if (!t.alive) died++;
   cardsInALife.push(cardsHere); firstTen.push(tenHere);
+  // Who the life ended up knowing: is the social player social? (ChatGPT, 10 Nov: the careful one
+  // hardly made friends, so everything that needs a friend was measured low.)
+  known.push({ all: (t.people || []).length, close: (t.people || []).filter((p) => (p.relationship || 0) >= 40).length, actors: (t.people || []).filter((p) => p.role === 'Fellow Actor' && (p.relationship || 0) >= 40).length });
   for (const id of ONSET) onsetLives[id].push(onsetHere[id]);
   for (const a of ((t.world && t.world.actors) || [])) for (const x of a.incidents || []) if (x.what === 'drink') carry.worldFameLost++;
   carry.remembered += ((t.memory && t.memory.events) || []).filter((e) => ONSET.includes(e.act) || e.act === 'covered').length;
@@ -151,7 +178,7 @@ const per = (n) => (n / Math.max(1, years)).toFixed(2);
 console.log(`${LIVES} lives from 20, up to ${YEARS} years${CAREFUL ? ', a player who rests' : ', a player who never stops'}: ${years} lived years, ${died} died before the end`);
 if (CAREFUL) console.log(`burnout card answered with two months' rest ${rests} times`);
 console.log(`\nPER YEAR OF LIFE`);
-console.log(`  choice cards ${per(perYear.cards)} · big screens ${per(perYear.moments)} · feed lines ${per(perYear.feed)} (bad news ${per(perYear.badFeed)}) · texts ${per(perYear.texts)} · invitations ${per(perYear.invites)} · press ${per(perYear.press)}`);
+console.log(`  choice cards ${per(perYear.cards)} · big screens ${per(perYear.moments)} · feed lines ${per(perYear.feed)} (bad news ${per(perYear.badFeed)}) · texts ${per(perYear.texts)} · invitations ${per(perYear.invites)} · press ${per(perYear.press)} (about people you know ${per(perYear.known || 0)})`);
 const show = (title, m, top = 40) => {
   const rows = [...m.entries()].sort((a, b) => b[1].n - a[1].n);
   console.log(`\n${title}: ${rows.length} different`);
@@ -172,6 +199,8 @@ console.log(`  incidents left on world stars' own records: ${carry.worldFameLost
 YEARS BY CHOICES (not the doctor): ${h.map((n, i) => `${i === 5 ? '5+' : i}: ${Math.round((n / Math.max(1, spread.length)) * 100)}%`).join(' · ')}`);
   for (const tp of ['quiet', 'ordinary', 'busy']) { const ys = spread.filter((y) => y.temper === tp); if (ys.length) console.log(`  ${tp.padEnd(9)} ${ys.length} years, ${(ys.reduce((a, y) => a + y.n, 0) / ys.length).toFixed(2)} choices a year`); }
   const ft = firstTen.slice().sort((a, b) => a - b); console.log(`  the first ten years of a career: min ${ft[0]}, median ${ft[Math.floor(ft.length / 2)]}, max ${ft[ft.length - 1]} choices`); }
+{ const med = (k) => { const v = known.map((x) => x[k]).sort((a, b) => a - b); return v[Math.floor(v.length / 2)]; };
+  console.log(`  people known at the end (median): ${med('all')}, close ${med('close')}, close fellow actors ${med('actors')}`); }
 cardsInALife.sort((a, b) => a - b);
 console.log(`\nchoice cards in a whole life: min ${cardsInALife[0]}, median ${cardsInALife[Math.floor(LIVES / 2)]}, max ${cardsInALife[LIVES - 1]}`);
 // What never came up at all, from the cards the game has.

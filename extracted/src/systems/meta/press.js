@@ -216,19 +216,45 @@ function setPieces(s) {
 // ── the business ──────────────────────────────────────────────────────────────
 // Maxi: "and about your rivals — you can find out how they are doing." One a month, at most:
 // somebody near your rank and what they just did, a retirement, a death, the year's lists.
+// The people out there you know, and how (random events: the world goes on without you, and the
+// events of wave one leave people in it — the friend who got famous first, the rival, the star you
+// met in a café). Read off the save each month, never stored: who is in your phone with a name in
+// the world, and the rival whose story ended.
+function knownOut(s) {
+  const k = new Map();
+  for (const p of s.people || []) if (p.worldId) k.set(p.worldId, (p.relationship || 0) >= 40 ? 'your friend' : 'somebody you know');
+  if (s._rivalPast && s._rivalPast.who) k.set(s._rivalPast.who, 'your old rival');
+  return k;
+}
 function worldPieces(s) {
   const out = [];
   const w = s.world; if (!w || !w.actors) return out;
   const year = s.year || 0;
   s._pressWorld = s._pressWorld || { retired: [], died: [], credits: [] };
   const seen = s._pressWorld;
+  const known = knownOut(s);
+  const knew = (a) => (known.has(a.id) ? ` You knew them: ${known.get(a.id)}.` : '');
   for (const a of w.actors) {
-    if (a.died && !a.alive && !seen.died.includes(a.id)) { seen.died.push(a.id); if ((a.fame || 0) >= 40 || a.icon) out.push({ tone: 'news', head: `${a.name}, ${year - a.born}`, body: `${a.icon ? 'An icon' : 'A name'} of the business, ${(a.credits || []).length} films, ${a.askers ? `${a.askers} Asker${a.askers > 1 ? 's' : ''}` : 'never an Asker'}. The obituaries use the word "generation". Half of them get the films wrong.`, kind: 'biz' }); }
-    else if (a.retired && a.alive && !seen.retired.includes(a.id)) { seen.retired.push(a.id); if ((a.fame || 0) >= 45 || a.icon) out.push({ tone: 'news', head: `${a.name} steps away at ${year - a.born}`, body: `"For now", the statement says. ${a.icon ? 'An icon, and a chair that is now empty.' : `Rank #${a.rank || '—'} when the phone stopped ringing.`} The piece is kind, and it is written in the past tense.`, kind: 'biz' }); }
+    if (a.died && !a.alive && !seen.died.includes(a.id)) { seen.died.push(a.id); if ((a.fame || 0) >= 40 || a.icon || known.has(a.id)) out.push({ tone: 'news', head: `${a.name}, ${year - a.born}`, body: `${a.icon ? 'An icon' : 'A name'} of the business, ${(a.credits || []).length} films, ${a.askers ? `${a.askers} Asker${a.askers > 1 ? 's' : ''}` : 'never an Asker'}. The obituaries use the word "generation". Half of them get the films wrong.${knew(a)}`, kind: 'biz', known: known.has(a.id) || undefined }); }
+    else if (a.retired && a.alive && !seen.retired.includes(a.id)) { seen.retired.push(a.id); if ((a.fame || 0) >= 45 || a.icon || known.has(a.id)) out.push({ tone: 'news', head: `${a.name} steps away at ${year - a.born}`, body: `"For now", the statement says. ${a.icon ? 'An icon, and a chair that is now empty.' : `Rank #${a.rank || '—'} when the phone stopped ringing.`} The piece is kind, and it is written in the past tense.${knew(a)}`, kind: 'biz', known: known.has(a.id) || undefined }); }
   }
   if (seen.retired.length > 80) seen.retired = seen.retired.slice(-40);
   if (seen.died.length > 80) seen.died = seen.died.slice(-40);
   if (out.length) return out.slice(0, 1);
+  // Somebody you know made something last year: news to you whatever their rank, before the names
+  // near yours on the list. Each film once.
+  const fresh = (a) => (a.credits || []).filter((c) => c.year >= year - 1 && !seen.credits.includes(a.id + '|' + c.title));
+  const mine = w.actors.filter((a) => known.has(a.id) && a.alive && !a.retired && fresh(a).length);
+  if (mine.length && chance(70)) {
+    const a = mine[Math.floor(Math.random() * mine.length)];
+    const c = fresh(a).sort((p, q) => (q.gross || 0) - (p.gross || 0))[0];
+    seen.credits.push(a.id + '|' + c.title); if (seen.credits.length > 120) seen.credits = seen.credits.slice(-60);
+    const g = (c.gross || 0) / 1e6, how = known.get(a.id), up = (c.rating || 0) >= 70 || g >= 60, down = (c.rating || 0) < 45;
+    out.push({ tone: 'news', kind: 'biz', known: true, rival: how === 'your old rival' ? a.id : undefined,
+      head: up ? `${a.name}'s "${c.title}" lands` : down ? `${a.name} stumbles with "${c.title}"` : `${a.name} in "${c.title}"`,
+      body: `${how[0].toUpperCase() + how.slice(1)}, in the trades: €${g.toFixed(1)}m, ${((c.rating || 0) / 10).toFixed(1)}/10. ${up ? (how === 'your old rival' ? 'Not finished, then.' : 'You read it twice.') : down ? (how === 'your old rival' ? 'You read it twice, and are not proud of that.' : 'You think about ringing them, and do not know what you would say.') : 'Rank #' + (a.rank || '—') + '. The piece is short and you read all of it.'}` });
+    return out;
+  }
   // Somebody near you and what they made. The world's films are credited in January for the
   // year before, so this is a piece about last year's picture — the trades are always late.
   const you = (w.rank && w.rank.you) || 999;

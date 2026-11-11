@@ -11,6 +11,7 @@ import { ARCS, maybeStartArc, resolveArc } from '../src/systems/life/arcs.js';
 import { storiesTick, CHAINS } from '../src/systems/meta/stories.js';
 import { submissionsTick } from '../src/systems/career/castings.js';
 import { NEEDS, needsTick } from '../src/systems/life/needs.js';
+import { pressTick } from '../src/systems/meta/press.js';
 import { familyYear } from '../src/systems/life/family.js';
 
 let failed = 0;
@@ -204,6 +205,21 @@ test('the friend who got there first becomes a name of the world, linked to who 
   assert.equal(a.name, 'Tom Hale');
   assert.equal(a.knownId, 'f1');
   assert.equal(CHAINS.friend.start(s), null, 'the same friend twice');
+});
+
+test('somebody you know out there is news to you: their film, whatever their rank, once', () => {
+  const s = career({ fame: 20 });
+  s.world = { ...(s.world || {}), rank: { you: 300 }, actors: [{ ...STAR, id: 'w-tom', name: 'Tom Hale', rank: 140, born: (s.year || 0) - 30,
+    credits: [{ title: 'Blue Hour', year: (s.year || 0) - 1, gross: 80e6, rating: 76 }] }] };
+  s.people = [{ id: 'f1', name: 'Tom Hale', role: 'Fellow Actor', relationship: 60, worldId: 'w-tom' }];
+  let piece = null;
+  for (let i = 0; i < 30 && !piece; i++) { pressTick(s); piece = (s.press || []).find((p) => p.known); s.month++; }
+  assert.ok(piece, 'no news about Tom');
+  assert.match(piece.head + piece.body, /Tom Hale/);
+  assert.match(piece.body, /Your friend/);
+  const n = (s.press || []).filter((p) => p.known).length;
+  for (let i = 0; i < 12; i++) { pressTick(s); s.month++; if (s.month > 11) { s.month = 0; s.year++; } }
+  assert.equal((s.press || []).filter((p) => p.known && /Blue Hour/.test(p.head)).length, n, 'the same film twice');
 });
 
 console.log(failed ? `\n${failed} failed` : '\nall passed');

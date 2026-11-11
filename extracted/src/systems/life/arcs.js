@@ -50,6 +50,8 @@ function costsThem(s, c, p, by, what) {
   if (person) { (person.incidents = person.incidents || []).push(rec); person.industryWeight = Math.max(5, (person.industryWeight || 40) - by); if (what === 'drink') person.habit = 'drink'; }
   if (what === 'drink') c.habit = 'drink';
 }
+// Whether this director is one who breaks under it: in the trait, or read off the name.
+const cracks = (d) => /perfectionist|difficult/.test(d.trait || '') || hashOf(d.name) % 3 === 0;
 const crewOf = (p, who) => (p && p.crew ? p.crew[who === 'lead' ? 0 : 1] : null);
 // The share of shoots that have one of the on-set cards at all (maybeStartArc).
 const INCIDENT_FILMS = 40;
@@ -186,15 +188,21 @@ export const ARCS = [
   // happen on THIS set, and two or three ways of happening, written from this film's people.
   // `happen` is what the incident does whether or not you do anything about it; `mem` on a
   // choice is who remembers what you did (meta/memory.js); `career` is what it costs them.
-  { id: 'directorCracks', scope: 'production', cooldown: 36,
+  // Five ways in, five years between two, and only a director who cracks: a perfectionist or a
+  // difficult one, or one in three of the rest, read off the name as a co-star's habit is. At three
+  // years and any director it came 4.5 times a life (100 lives, 10 Nov), and the five-year rest alone
+  // changed nothing: the shoots in trouble were what it was waiting for.
+  { id: 'directorCracks', scope: 'production', cooldown: 60,
     // A shoot that is behind or going badly, or a director who was always going to take it hard.
-    when: (s) => { const p = s.production; return !!p && p.monthsLeft < p.months && !!p.crew[0]
+    when: (s) => { const p = s.production; return !!p && p.monthsLeft < p.months && !!p.crew[0] && cracks(p.crew[0])
       && ((p.meter || 0) < 35 || (p.lostDays || 0) > 0 || (/perfectionist|difficult/.test(p.crew[0].trait || '') && (p.meter || 0) < 50)); },
     happen: (s) => costsThem(s, crewOf(s.production, 'lead'), s.production, rint(1, 3), 'cracked'),
     build: (s) => { const d = s.production.crew[0]; const t = pick([
         `You find ${d.name} behind the set, hands shaking. The studio has been calling every night about the budget. "Don't tell them I'm like this," they say. "I can finish. I can."`,
         `${d.name} has shot the same set-up thirty-one times and is calling for a thirty-second. The studio's man is on the phone outside. "Do not tell them," ${d.name} says to you, quietly. "Give me today."`,
-        `You find ${d.name} in a parked car with the engine running and nowhere to go. The money called again last night. "Give me a day," they say. "Do not let them see me like this."`]);
+        `You find ${d.name} in a parked car with the engine running and nowhere to go. The money called again last night. "Give me a day," they say. "Do not let them see me like this."`,
+        `${d.name} tears up the call sheet in front of the whole crew and walks off the set. You find them on the fire escape twenty minutes later, very calm, which is worse. "Do not call the studio. Ten minutes."`,
+        `The studio's accountant has been on the set for three days, and ${d.name} has stopped eating. Tonight they ask you, of all people, to read the scene with them in the trailer, twice, "to hear it". Their hands are shaking. "Not a word to anyone."`]);
       return { speaker: d.name, text: t,
       choices: [ { label: 'Cover for them, carry the day', fx: { mental: -3, respect: 2 }, prod: { meter: -4, bondLead: 18 }, mem: [{ who: 'lead', felt: 2, why: 'that you covered for them when they cracked' }], reply: `You keep the machine running while they pull themselves together. They will not forget this.` },
         { label: 'Quietly tell the studio', fx: { respect: -2 }, prod: { meter: 10, bondLead: -25 }, mem: [{ who: 'lead', felt: -3, why: 'that you were the one who called the studio' }], career: { who: 'lead', by: 6 }, reply: `The studio steps in and the schedule steadies. ${d.name} knows exactly who made the call.` },
