@@ -56,7 +56,7 @@ import { faceTick } from '../systems/life/face.js';
 import { pressTick } from '../systems/meta/press.js';
 import { storyTick, overtakenTick } from '../systems/meta/trouble.js';
 import { riskTick } from '../systems/meta/risk.js';
-import { storiesTick, grudgesTick } from '../systems/meta/stories.js';
+import { storiesTick, grudgesTick, offersWait } from '../systems/meta/stories.js';
 import { hypeTick } from '../systems/meta/hype.js';
 import { socialTick } from '../systems/social/posting.js';
 import { priceTick } from '../systems/meta/price.js';
@@ -208,16 +208,19 @@ export function advanceMonth(state) {
   startSigned(s);    // a paper you signed to start later starts itself when the set is free
   releaseTick(s);    // anything that finished shooting months ago opens today
   runTick(s);        // and anything already open takes another few weeks of money
-  submissionsTick(s); // and somewhere a casting office finally rings back
+  // On strike nobody casts (meta/stories.js `strike`): the calls a casting office, a network, a studio
+  // or a party contact owed you wait, through the month it ends, and come the first month back.
+  const held = offersWait(s);
+  if (!held) submissionsTick(s); // and somewhere a casting office finally rings back
   // The board lives on its own clock. It was only ever swept when the player opened the
   // app, so listings sat on it past their own expiry until somebody looked.
   // Guarded on the board itself, not on the stage: a player who loses the flat drops to
   // 'moving_out' and the sweep stopped running, so their listings sat there expired.
   if ((s.castingPool || []).length) refreshCastingPool(s);
   frozenTick(s);     // and anything that stopped might find its money again
-  bubbleTick(s);      // and somewhere a network finally decides about a show it has been sitting on
-  resolveBubbles(s);  // and the ones that came good become papers
-  laterOffersTick(s); // and a sequel announced years ago finally has a script
+  if (!held) bubbleTick(s);      // and somewhere a network finally decides about a show it has been sitting on
+  if (!held) resolveBubbles(s);  // and the ones that came good become papers
+  if (!held) laterOffersTick(s); // and a sequel announced years ago finally has a script
   continuationTick(s); // and the season or the sequel that went on without you comes out, and the trades say how
   if (inCareer(s)) runNominations(s);   // the lists come out in September, and judge the year behind them
   ceremonyTick(s);   // and the night itself is the following March
@@ -225,15 +228,15 @@ export function advanceMonth(state) {
   ceremonyTick(s, SERIES);   // and its night in August
   eventsTick(s);
   maybeGenerateEvent(s);
-  contractsTick(s);   // the papers you sent back come back with an answer
-  nightTick(s);       // and somebody you met at a party calls, or does not
+  if (!held) contractsTick(s);   // the papers you sent back come back with an answer
+  if (!held) nightTick(s);       // and somebody you met at a party calls, or does not
   offersTick(s);      // and a part you never answered goes to somebody else
   maybeGenerateOffer(s);
   maybeBrandOffer(s);   // and the brands, once you are a name worth putting on something
   maybePlatformOffer(s);   // and a platform, once you are a star (career/castings.js streamingOfferFor)
-  tentpolesTick(s);     // the pictures in development, and what became of the names put in
-  collabTick(s);        // and the thing you and somebody you know decided to make: financed, or dead
-  maybeYoungOffer(s);  // and once in a long while, somebody nobody has heard of asks for you
+  if (!held) tentpolesTick(s);     // the pictures in development, and what became of the names put in
+  if (!held) collabTick(s);        // and the thing you and somebody you know decided to make: financed, or dead
+  if (!held) maybeYoungOffer(s);  // and once in a long while, somebody nobody has heard of asks for you
   dressOffers(s);    // and everything on the table says who you would be playing and what it is about
   agentTick(s);      // the agent leaves the liability, or moves you up a desk
   hypeTick(s);       // being talked about fades: a tenth and a point a month

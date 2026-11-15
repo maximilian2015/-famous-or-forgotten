@@ -91,6 +91,11 @@ export function Messages({ g }) {
             : o.via === 'casting' ? 'Casting · you read for this'
             : o.via === 'party' ? `${o.from || 'Somebody'} · you met at a party`
             : o.via === 'pitch' ? `${o.from || 'Somebody'} · your own picture, from your own sofa`
+            // The takeover's year after (meta/stories.js): the director you stood with, or the new owners.
+            : o.kind === 'takeover' ? (o.via === 'director' ? `${o.director || 'A director'} · they asked for you first` : `${o.from || 'The studio'} · the new owners want you`)
+            // A director who asked for you by name (a story's comeback, a first-timer coming back):
+            // it was never the agent who brought it, whoever your agent is.
+            : o.via === 'director' && o.director ? `${o.director} · they asked for you`
             : o.via === 'studio' ? (o.kind === 'renewal' ? 'The network · they want you back for another season' : 'The studio · the sequel, and they want you back')
             : o.via === 'partner' ? `${(o.viaPartner || 'a friend').split(' ')[0]} got you in the room`
             : o.via === 'agent' || agent ? `${agent || 'Your agent'} · your agent brought it` : 'A producer'}

@@ -21,10 +21,9 @@ import { loseContinuation } from './continuation.js';
 import { recordPassed } from '../meta/passed.js';
 import { paid } from './agent.js';
 import { sendMail } from '../meta/email.js';
-import { STUDIOS } from '../world/names.js';
+import { studioOf } from '../world/names.js';
 import { payMarketOf } from './project.js';
-// The studio on the letterhead — the same hash ContractRoom draws the stamp from.
-function studioOf(o) { let h = 0; for (const ch of String(o.id || o.projectTitle || '')) h = (h * 31 + ch.charCodeAt(0)) >>> 0; return STUDIOS[h % STUDIOS.length]; }
+// The studio on the letterhead (world/names.js studioOf — the same hash ContractRoom draws the stamp from).
 // How long a production will hold a part for somebody who is on another set. A month or
 // two, usually; half a year, rarely; and a nobody asking is a nobody asking.
 const SCALE_RANK = { oneoff: 0, small: 1, episode: 1, indie: 2, recurring: 3, prestige: 4, feature: 4, blockbuster: 5 };

@@ -25,10 +25,28 @@ const SEED = [
 ];
 export const RANK_LABEL = { great: 'One of the five', strong: 'A name', working: 'Works constantly', new: 'A first film' };
 
+// What a director can do, which the business only finds out from the films (15 Nov 2026). Their
+// films come out around it, and their standing follows the films (creditDirector). Before this,
+// nothing counted a director's films at all: standing drifted a point down a year, and measured
+// over sixty years (tests/probes/probe_directors.mjs) the five had gone by year twenty and every
+// director in the business was "a first film" by forty. A director on the roster from the start
+// has the craft their standing says; a first-timer's is the bet nobody can see — mostly a working
+// director's, sometimes a name's, now and then one of the five.
+const craftFor = (standing) => clamp(Math.round(45 + standing / 2 + rint(-4, 4)));
+function newcomerCraft() {
+  const r = Math.random();
+  return r < 0.13 ? rint(86, 95) : r < 0.36 ? rint(76, 85) : r < 0.75 ? rint(64, 75) : rint(50, 63);
+}
+// Created the first time it is asked for, so a save from before has the craft its standing says.
+export function craftOf(d) {
+  if (d.craft == null) d.craft = craftFor(d.standing || 0);
+  return d.craft;
+}
 function makeDirector(s, band, span, taken) {
   const gender = chance(50) ? 'female' : 'male';
   const standing = rint(span[0], span[1]);
   return {
+    craft: band === 'new' ? newcomerCraft() : craftFor(standing),
     id: 'd' + Math.random().toString(36).slice(2, 8),
     name: personName(gender, taken), gender,
     born: (s.year || 2026) - rint(band === 'new' ? 28 : band === 'working' ? 34 : band === 'strong' ? 42 : 48, band === 'new' ? 38 : band === 'working' ? 58 : 70),
@@ -121,10 +139,12 @@ export function directorsYear(s) {
     if (age > 74 && chance(9)) { d.retired = true; continue; }
     if (age > 80 && chance(7)) { d.alive = false; continue; }
     if (d.retired) continue;
-    // Standing drifts on what the year did to them: a great year lifts, a quiet one costs
-    // a little, because a director who has not made anything is a director nobody is
-    // talking about.
-    d.standing = clamp(d.standing + rint(-3, 3) + (d.films > 0 ? 1 : -1));
+    // What they made this year without you: most of them make something, and it comes out
+    // around what they can do.
+    if (chance(WORLD_FILM)) { const rating = clamp(craftOf(d) + rint(-12, 12)); creditDirector(s, d.id, rating); d.lastFilm = year; d.lastRating = rating; }
+    // Standing drifts a little on talk alone, and a director who has made nothing this year — with
+    // you or without — is a director nobody is talking about.
+    d.standing = clamp(d.standing + rint(-2, 2) + (d.films > 0 ? 0 : -2));
     d.films = 0;
     if (age > 66) d.standing = clamp(d.standing - 1);
   }
@@ -142,13 +162,20 @@ export function directorsYear(s) {
   }
   return s;
 }
-// A film you made with them lands on their record too.
+// The share of the roster that gets a film out in a year, without you.
+const WORLD_FILM = 70;
+// What the business makes of one film: the standing of a director whose films were all like it.
+// 86 is one of the five, 76 a name, 64 somebody who works constantly.
+const standingFor = (rating) => clamp(Math.round(((rating || 0) - 45) * 2));
+// A film lands on their record — one they made without you (directorsYear), or one you made with
+// them (production.js, at the wrap). The business re-reads a director on every picture, hard: a
+// third of the way to what this film says they are. This is how the five change.
 export function creditDirector(s, id, rating) {
   const d = directorById(s, id);
   if (!d) return s;
   d.films = (d.films || 0) + 1;
+  d.made = (d.made || 0) + 1;
   d.best = Math.max(d.best || 0, rating || 0);
-  // The business re-reads a director on every picture, hard. This is how the five change.
-  d.standing = clamp(d.standing + ((rating || 0) >= 88 ? rint(3, 7) : (rating || 0) >= 74 ? rint(1, 3) : (rating || 0) >= 55 ? 0 : rint(-6, -2)));
+  d.standing = clamp(Math.round(d.standing + (standingFor(rating) - d.standing) * 0.34));
   return s;
 }

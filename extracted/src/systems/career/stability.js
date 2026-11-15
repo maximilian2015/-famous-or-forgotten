@@ -144,9 +144,15 @@ export function payOrPlay(s, p) {
   if (owed > 0) { paid(s, owed, `"${p.title}" — pay-or-play, the rest of the fee`); p.paid = p.salary; addTimeline(s, `"${p.title}" stopped and the paper said pay-or-play. They paid the rest of the fee.`); }
   return owed;
 }
-export function freezeProject(s, p) {
-  const why = FROZEN_REASONS[rint(0, FROZEN_REASONS.length - 1)];
-  const pop = payOrPlay(s, p);
+// Not every freeze is about money (random events: the studio sold under you, the strike). `why`
+// is the reason said out loud; `held` marks a freeze that something else ends — the strike thaws
+// everything it stopped on the day it ends, so frozenTick leaves those alone until then; `quiet`
+// is for a freeze a story card has already told, so the shutdown screen does not tell it twice;
+// `forceMajeure` is a stop nobody's paper covers (the strike): pay-or-play pays nothing for it.
+export const FREEZE_MENTAL = 6;
+export function freezeProject(s, p, opts = {}) {
+  const why = opts.why || FROZEN_REASONS[rint(0, FROZEN_REASONS.length - 1)];
+  const pop = opts.forceMajeure ? 0 : payOrPlay(s, p);
   const frozen = {
     id: uid(s, 'frz'),
     title: p.title, role: p.role, type: p.type, genre: p.genre, scale: p.scale, tier: p.tier,
@@ -165,12 +171,14 @@ export function freezeProject(s, p) {
     // Whatever is left of the fee, which is what you would be paid if it ever restarts.
     owed: pop ? 0 : Math.max(0, (p.salary || 0) - (p.paid || 0)), payOrPlay: !!p.payOrPlay,
     paid: p.paid || 0, salary: p.salary || 0, why,
+    held: opts.held || null,
   };
   (s.frozen = s.frozen || []).push(frozen);
   s.productions = (s.productions || []).filter((x) => x !== p && (x.id == null || x.id !== p.id)); s.production = s.productions[0] || null;
-  s.lastEvent = `"${frozen.title}" has stopped. They say ${why}. Everyone was sent home with no date to come back.`;
   addTimeline(s, `"${frozen.title}" went into freeze — ${why}.`, true);
-  s.mental = Math.max(0, (s.mental || 50) - 6);
+  s.mental = Math.max(0, (s.mental || 50) - FREEZE_MENTAL);
+  if (opts.quiet) return frozen;
+  s.lastEvent = `"${frozen.title}" has stopped. They say ${why}. Everyone was sent home with no date to come back.`;
   showMoment(s, {
     id: 'shutdown', kind: 'bad', frozen: true, title: frozen.title,
     reason: why, months: frozen.monthsLeft, paid: frozen.paid,
@@ -229,33 +237,44 @@ export function deathOdds(frozen, now) {
   return Math.min(6, (waited - 15) * 0.18);
 }
 
+// The paper for a frozen project coming back: the same script, the same part, the rest of the fee.
+// `note` is whoever brought it back saying so (a story can: the director who bought it back).
+export function thawOffer(s, f, note) {
+  const now = (s.year || 0) * 12 + (s.month || 0);
+  const waited = now - (f.since ?? now);
+  const years = Math.round(waited / 12);
+  const o = {
+    id: uid(s, 'thaw'),
+    kind: 'thaw', projectTitle: f.title, role: f.role, type: f.type, genre: f.genre, projectId: f.projectId || null,
+    character: f.character || null, premise: f.premise || null, plot: f.plot || null,
+    seriesTitle: f.seriesTitle || '', potential: f.potential || null,
+    ...tvTermsOf(f),
+    scale: f.scale, tier: f.tier, prestigeScore: f.prestigeScore,
+    salary: f.owed, months: f.monthsLeft, episodes: f.episodes, episodeFee: f.episodeFee,
+    season: f.season, part: f.part, optioned: f.optioned, optionParts: f.optionParts,
+    // Whoever rescued it has real money, or they could not have rescued it.
+    stability: Math.min(95, (f.stability || 50) + rint(12, 26)),
+    fame: f.tier === 'tentpole' ? 9 : 5, deadline: rint(2, 3),
+    frozenFor: waited,                                   // how long they kept you waiting (offers.js thawExcused)
+    note: note || (waited >= 12
+      ? `Somebody found the money. After ${years} year${years === 1 ? '' : 's'} they want to finish it — €${f.owed.toLocaleString()} for the ${f.monthsLeft} month${f.monthsLeft === 1 ? '' : 's'} still owed.`
+      : `The money came back. They want to finish it — €${f.owed.toLocaleString()} for the ${f.monthsLeft} month${f.monthsLeft === 1 ? '' : 's'} still owed.`),
+  };
+  (s.offers = s.offers || []).push(o);
+  s.frozen = (s.frozen || []).filter((x) => x !== f);
+  addTimeline(s, `"${f.title}" came out of freeze after ${count(waited, 'month')}.`);
+  return o;
+}
 export function frozenTick(s) {
   if (!(s.frozen || []).length) return s;
   const now = (s.year || 0) * 12 + (s.month || 0);
   const survivors = [];
   for (const f of s.frozen) {
+    // A freeze something else will end (the strike): no rescue and no write-off while it lasts.
+    if (f.held) { survivors.push(f); continue; }
     if (chance(thawOdds(f, now))) {
-      const waited = now - (f.since ?? now);
-      const years = Math.round(waited / 12);
-      (s.offers = s.offers || []).push({
-        id: uid(s, 'thaw'),
-        kind: 'thaw', projectTitle: f.title, role: f.role, type: f.type, genre: f.genre, projectId: f.projectId || null,
-        character: f.character || null, premise: f.premise || null, plot: f.plot || null,
-        seriesTitle: f.seriesTitle || '', potential: f.potential || null,
-        ...tvTermsOf(f),
-        scale: f.scale, tier: f.tier, prestigeScore: f.prestigeScore,
-        salary: f.owed, months: f.monthsLeft, episodes: f.episodes, episodeFee: f.episodeFee,
-        season: f.season, part: f.part, optioned: f.optioned, optionParts: f.optionParts,
-        // Whoever rescued it has real money, or they could not have rescued it.
-        stability: Math.min(95, (f.stability || 50) + rint(12, 26)),
-        fame: f.tier === 'tentpole' ? 9 : 5, deadline: rint(2, 3),
-        frozenFor: waited,                                   // how long they kept you waiting (offers.js thawExcused)
-        note: waited >= 12
-          ? `Somebody found the money. After ${years} year${years === 1 ? '' : 's'} they want to finish it — €${f.owed.toLocaleString()} for the ${f.monthsLeft} month${f.monthsLeft === 1 ? '' : 's'} still owed.`
-          : `The money came back. They want to finish it — €${f.owed.toLocaleString()} for the ${f.monthsLeft} month${f.monthsLeft === 1 ? '' : 's'} still owed.`,
-      });
+      thawOffer(s, f);
       s.lastEvent = `"${f.title}" is alive again. Somebody found the money.`;
-      addTimeline(s, `"${f.title}" came out of freeze after ${count(waited, 'month')}.`);
       continue;                                              // it leaves the freezer either way
     }
     if (chance(deathOdds(f, now))) {

@@ -11,6 +11,7 @@ import { chance, rint } from '../../engine/rng.js';
 import { addTimeline } from '../../engine/timeline.js';
 import { setFame, setRespect } from './status.js';
 import { OUTLETS } from '../world/names.js';
+import { directors } from '../world/directors.js';
 import { hotGenre } from './market.js';
 import { slotNorm } from '../career/franchise.js';
 import { budgetFor } from '../career/release.js';
@@ -226,6 +227,30 @@ function knownOut(s) {
   if (s._rivalPast && s._rivalPast.who) k.set(s._rivalPast.who, 'your old rival');
   return k;
 }
+// The first-timers you said yes or no to (career/youngblood.js), as the world decides what becomes
+// of them: world/directors.js makes their films every year now, and their standing follows the
+// films (random events, no. 1). Each of their films once, the year it came out.
+function youngNews(s, year, seen) {
+  const worked = new Set(s._youngWorked || []);
+  const passed = new Map((s.passedOn || []).filter((x) => x.kind === 'young' && x.youngId).map((x) => [x.youngId, x]));
+  if (!worked.size && !passed.size) return null;
+  seen.dirs = seen.dirs || [];
+  for (const d of directors(s)) {
+    if (!d.alive || d.retired || d.lastFilm == null || d.lastFilm < year - 1) continue;
+    const yes = worked.has(d.id), no = passed.get(d.id);
+    if (!yes && !no) continue;
+    const tag = d.id + '|' + d.lastFilm;
+    if (seen.dirs.includes(tag)) continue;
+    seen.dirs.push(tag); if (seen.dirs.length > 60) seen.dirs = seen.dirs.slice(-30);
+    const r = d.lastRating || 0, up = r >= 76, down = r < 58;
+    const now = d.band === 'great' ? 'one of the five names in the business now' : d.band === 'strong' ? 'a name now, and people take their calls' : d.band === 'working' ? 'working constantly' : 'still looking for the money for the next one';
+    return { tone: 'news', kind: 'biz', known: true,
+      head: up ? `${d.name}'s new film is the talk of the festivals` : down ? `${d.name}'s new film comes and goes` : `${d.name} has a new film out`,
+      body: yes ? `You made their second film when nobody else would. They are ${now}.${up ? ' The piece says where they started, and your name is in that sentence.' : ''}`
+        : `They asked you once to lead a film of theirs, for next to nothing, and you said no${no.replacedBy ? ` — ${no.replacedBy} took it` : ''}. They are ${now}.${up ? ' You read the piece twice.' : ''}` };
+  }
+  return null;
+}
 function worldPieces(s) {
   const out = [];
   const w = s.world; if (!w || !w.actors) return out;
@@ -241,6 +266,8 @@ function worldPieces(s) {
   if (seen.retired.length > 80) seen.retired = seen.retired.slice(-40);
   if (seen.died.length > 80) seen.died = seen.died.slice(-40);
   if (out.length) return out.slice(0, 1);
+  const young = youngNews(s, year, seen);
+  if (young) return [young];
   // Somebody you know made something last year: news to you whatever their rank, before the names
   // near yours on the list. Each film once.
   const fresh = (a) => (a.credits || []).filter((c) => c.year >= year - 1 && !seen.credits.includes(a.id + '|' + c.title));

@@ -7,16 +7,23 @@
 // the same as the last. The plan: one place that knows what this year has already brought.
 //
 // - A year has a temper, rolled in January: quiet, ordinary or busy. It says how many NEW things
-//   that ask for a choice the year will open (2, 4 or 6), not how many it must.
-// - A year behind its temper looks harder (`keen` raises the odds where a source rolls them); a
-//   year that has had its fill opens nothing new that can wait.
+//   that ask for a choice the year can open (1, 3 or 6), and how likely each one is (`keen`: a source
+//   that rolls a chance multiplies by it). A year that has had its fill opens nothing new that can wait.
+// - The big story of a busy year (meta/stories.js `takeover`) comes only in a busy year.
+//
+// 15 Nov: the temper did not show. Measured with every year held to one temper (12 lives, 20 years,
+// a player who rests and goes out): quiet 1.19 choices a year, busy 1.23. `keen` used to say how far
+// behind its cap the year was, and nothing ever reached a cap, so every year was behind — a quiet one
+// looked twice as hard for something as a busy one by December. Now the temper is the multiplier.
 // - After a loss (a death in the family) the months that follow are quiet: nothing new opens. What
 //   was already running still comes: those are the consequences you were promised.
 // - What the state demands (no money, burnt out) is not the conductor's to hold back. It counts.
 //
 // Continuations are never asked for here. Only beginnings.
 const stampOf = (s) => (s.year || 0) * 12 + (s.month || 0);
-const TEMPER = { quiet: 2, ordinary: 4, busy: 6 };
+const TEMPER = { quiet: 1, ordinary: 3, busy: 6 };
+// How likely a new thing is, by the year's temper (keen).
+const TEMPO = { quiet: 0.5, ordinary: 1.5, busy: 2.4 };
 // a quarter of years are quiet, a quarter busy
 const roll = () => { const r = Math.random(); return r < 0.25 ? 'quiet' : r < 0.75 ? 'ordinary' : 'busy'; };
 // For the probes only (tests/probes/probe_random_events.mjs): every year held to one temper, so the
@@ -39,12 +46,10 @@ export function mayOpen(s) {
   const p = paceOf(s);
   return !hushed(s) && p.opened < p.room;
 }
-// How far behind its temper the year is: 1 on pace, up to 2 behind, down to a half ahead. A source
-// that rolls a chance multiplies by it, so a quiet stretch looks a little harder for something.
+// What the year's temper does to the odds of something new: a quiet year half as likely, a busy one
+// more than twice. A source that rolls a chance multiplies by it.
 export function keen(s) {
-  const p = paceOf(s);
-  const due = (p.room * ((s.month || 0) + 1)) / 12;
-  return Math.max(0.5, Math.min(2, 1 + (due - p.opened) * 0.5));
+  return TEMPO[paceOf(s).temper] || 1;
 }
 // Something new opened (a card, a story, somebody asking).
 export function opened(s, what) {

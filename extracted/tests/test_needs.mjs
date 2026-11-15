@@ -6,6 +6,11 @@
 //   the loan comes back; and when it is you who is short, the friend who owes you covers you.
 import { needsTick, openNeed, resolveNeed, NEEDS, SPACING, MEMORY_CAP, remember, memoryOf, memoryLines, needCards, closeFriend } from '../src/systems/life/needs.js';
 import { arcCard, resolveArc } from '../src/systems/life/arcs.js';
+import { PROBE } from '../src/systems/life/pace.js';
+// Every chance here is forced to come up yes (Math.random 0), and 0 also rolls every year quiet —
+// which since 15 Nov has room for one new thing, not two. This file is about the people who ask, not
+// the year's temper (test_pace.mjs), so every year here is an ordinary one.
+PROBE.temper = 'ordinary';
 
 let fails = 0;
 const ok = (n, c, e = '') => { if (!c) { fails++; console.log('FAIL  ' + n + (e ? ' :: ' + e : '')); } else console.log('ok    ' + n); };

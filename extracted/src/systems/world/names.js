@@ -56,3 +56,6 @@ export const OUTLETS = ['Southern Night', 'Funtimes', 'Exquisite Cinématique', 
 // The people who pay. A studio on the letterhead and the stamp, drawn once per offer.
 export const STUDIOS = ['Lumen Pictures', 'Vega Pictures', 'Nord Media', 'Lyra Studios', 'Aurora Films', 'Harbourlight', 'Meridian Pictures', 'Old Bank Films',
   'Pier House Productions', 'Halcyon Studios', 'Tallwater Pictures', 'Kestrel & Sons', 'Northlight', 'Corvin Bros.', 'Saltmarsh Films', 'The Ninth Floor'];
+// The studio behind an offer — or behind the shoot it became, by the offer's id (production.js keeps
+// it as offerId). The same hash as the stamp ContractRoom draws (ui/components/ContractRoom.jsx studioFor).
+export function studioOf(o) { let h = 0; for (const ch of String((o && (o.id || o.projectTitle)) || '')) h = (h * 31 + ch.charCodeAt(0)) >>> 0; return STUDIOS[h % STUDIOS.length]; }

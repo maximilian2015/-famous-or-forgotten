@@ -114,6 +114,11 @@ export function canWork(s) {
     return { ok: false, why: `You are signed off. ${s.burnout.left} more month${s.burnout.left === 1 ? '' : 's'} before anyone will insure you on a set.` };
   }
   if (healing(s)) return { ok: false, why: `You are healing. ${s.face.recovery} more month${s.face.recovery === 1 ? '' : 's'} before anyone films that face.` };
+  // The strike (meta/stories.js `strike` writes s.strike; read here as plain state, so the body does
+  // not import the business). A paper already signed waits for it to end (contract.js startSigned
+  // asks again every month); a part on your desk waits too — the strike gave it the months back.
+  const left = s.strike ? s.strike.until - ((s.year || 0) * 12 + (s.month || 0)) : 0;
+  if (left > 0) return { ok: false, why: `The actors are on strike. Nothing shoots for ${left} more month${left === 1 ? '' : 's'}. The parts on your desk will wait until it is over.` };
   return { ok: true, why: '' };
 }
 

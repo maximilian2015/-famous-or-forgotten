@@ -14,7 +14,7 @@ import { makePremise, prestigeShift, ratingShift, swingShift, apartShift } from 
 import { setLife } from './setlife.js';
 import { rollDemand, expireDemands } from './demands.js';
 import { skillCap } from './actions.js';
-import { bandLift } from '../world/directors.js';
+import { bandLift, directorById, creditDirector } from '../world/directors.js';
 import { coldStart } from '../meta/standing.js';
 import { activeActors, actorById } from '../world/world.js';
 import { fameTier } from '../meta/status.js';
@@ -132,6 +132,10 @@ export function startProduction(s, offer) {
     brand: offer.kind === 'brand',
     // Kept on the shoot so the picture is judged with them on it. world/directors.js
     directorBand: offer.directorBand || null, directorTop: !!offer.directorTop,
+    // Which director of the world it is, so the film lands on their record at the wrap. A casting
+    // carries the roster's id as directorId; a first-timer's offer carries it as youngId; an offer
+    // from somebody in your phone carries THEIR id as directorId, which is not on the roster.
+    rosterDirector: directorById(s, offer.directorId) ? offer.directorId : directorById(s, offer.youngId) ? offer.youngId : null,
     // What part one was paid. Every sequel raise is measured against THIS, not against
     // whatever the last one happened to earn. See systems/career/franchise.js.
     baseSalary: offer.baseSalary || offer.salary, arc: offer.arc || null,
@@ -715,6 +719,8 @@ function wrapProduction(s, p) {
   credit.character = p.character || null; credit.direction = p.direction || null;
   pitchAftermath(s, credit, p);
   youngAfterCredit(s, credit, p);
+  // The director's record moves with the film you made together (world/directors.js).
+  if (p.rosterDirector) creditDirector(s, p.rosterDirector, rating);
   // A brand campaign has no opening night, no reviews and no box office. It was going
   // through the whole release machine and landing in the filmography as a picture — and
   // because offers.js gives a campaign two months once the fee passes €2m, the better the

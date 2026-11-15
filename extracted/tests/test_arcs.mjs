@@ -80,7 +80,9 @@ const SIGNS = [
   { id: 'agent works for you', said: /more offers from your agent/, did: (b, a, s) => (a.agentBoost || 0) > NOW(s) },
   { id: 'agent slacks', said: /fewer offers from your agent/, did: (b, a, s) => (a.agentSlack || 0) > NOW(s) },
   { id: 'no agent', said: /no agent for/, did: (b, a) => !!b.agent && !a.agent },
-  { id: 'an offer', said: /an offer|their paper again/, did: (b, a) => (a.offers || []).length > (b.offers || []).length },
+  // By id, not by count: the strike's last day can bring one paper back and pull another.
+  { id: 'an offer', said: /an offer|their paper again/, did: (b, a) => (a.offers || []).some((o) => !(b.offers || []).some((x) => x.id === o.id)) },
+  { id: 'an offer pulled', said: /pulled/, did: (b, a) => (b.offers || []).some((o) => !(a.offers || []).some((x) => x.id === o.id)) },
   { id: 'a later offer', said: /a studio offer/, did: (b, a) => (a.laterOffers || []).length > (b.laterOffers || []).length },
   { id: 'fighting for leads', said: /better odds at the leads/, did: (b, a, s) => (a.ageFight || 0) > NOW(s) && !b.ageFight },
   { id: 'character actor', said: /worse odds at leads/, did: (b, a) => !!a.characterActor && !b.characterActor },
@@ -143,6 +145,41 @@ add('cover', 'quiet', '', () => withDir(), COVERD('chill'));
 add('cover', 'amends', 'nobody to vouch', () => withDir({ grudges: [{ who: 'Ulrich Beaumont', title: 'Vanished Margo', since: 0, until: 99999, opened: true, why: 'x' }] }), COVERD('perfectionist', 2));
 add('cover', 'amends', 'a heavyweight to vouch', () => withDir({ grudges: [{ who: 'Ulrich Beaumont', title: 'Vanished Margo', since: 0, until: 99999, opened: true, why: 'x' }],
   people: [{ id: 'dir1', name: 'Ulrich Beaumont', role: 'Film Director', relationship: 20 }, { id: 'big', name: 'Hedda Morn', role: 'Film Director', relationship: 80, industryWeight: 92 }] }), COVERD('perfectionist', 2));
+// The takeover (random events, the big story of a busy year): the week of the sale, the review
+// on each road with the picture kept, shelved, pay-or-play and already wrapped, and a year on.
+const TAKE = (over = {}) => ({ setId: 'set1', title: 'Glass Harbour', studio: 'Vega Pictures', buyer: 'a private-equity fund that has never made a film', exec: 'Nina Kroll', director: 'Ulrich Beaumont', ...over });
+const onSet = (over = {}) => life({ productions: [{ id: 'set1', title: 'Glass Harbour', scale: 'feature', role: 'Lead', tier: 'lead', months: 4, monthsLeft: 3, salary: 900000, paid: 300000, stability: 88, crew: [{ name: 'Ulrich Beaumont', role: 'Director', bond: 40, trait: 'chill' }, { name: 'Mara Vance', role: 'Co-star', bond: 40 }], ...over }] });
+add('takeover', 'sold', '', () => onSet(), TAKE());
+for (const path of ['director', 'owner', 'quiet']) for (const saved of [true, false]) add('takeover', 'review', `${path}, ${saved ? 'kept' : 'shelved'}`, () => onSet(), TAKE({ path, saved }));
+add('takeover', 'review', 'shelved, pay-or-play', () => onSet({ payOrPlay: true }), TAKE({ path: 'director', saved: false }));
+add('takeover', 'review', 'already wrapped', () => life(), TAKE({ path: 'director', saved: false }));
+// A year on, both ways: they call, or they do not — and when a director does not, for each of the
+// three reasons, with the picture in the freezer and without.
+const shelf = () => life({ frozen: [{ id: 'frz1', title: 'Glass Harbour', role: 'Lead', scale: 'feature', tier: 'lead', monthsLeft: 2, owed: 600000, stability: 60, since: NOW(life()) - 14 }] });
+const dirIs = (close, respect, over = {}) => life({ respect, people: [{ id: 'dir1', name: 'Ulrich Beaumont', role: 'Film Director', relationship: close }], ...over });
+add('takeover', 'year', 'stood with them, the picture kept', () => life(), TAKE({ path: 'director', saved: true, called: true }));
+add('takeover', 'year', 'stood with them, the picture in the freezer', () => shelf(), TAKE({ path: 'director', saved: false, shelved: true, called: true }));
+for (const shelved of [false, true]) add('takeover', 'year', `lunch, ${shelved ? 'shelved' : 'kept'}`, () => life(), TAKE({ path: 'owner', saved: !shelved, shelved, called: true }));
+for (const fame of [30, 70]) add('takeover', 'year', `lunch, nobody calls, fame ${fame}`, () => life({ fame }), TAKE({ path: 'owner', saved: true, called: false }));
+for (const [why, close, respect] of [['nothing made', 90, 90], ['not close', 10, 90], ['no name', 90, 5]]) {
+  add('takeover', 'year', `stood with them, nobody calls: ${why}`, () => dirIs(close, respect), TAKE({ path: 'director', saved: true, called: false, dirId: 'dir1' }));
+  add('takeover', 'year', `stood with them, the freezer, nobody calls: ${why}`, () => dirIs(close, respect, { frozen: shelf().frozen }), TAKE({ path: 'director', saved: false, shelved: true, called: false, dirId: 'dir1' }));
+}
+// The strike (wave one, no. 9): the day it starts, and the day it ends on each road, with a
+// picture of yours in the freezer and without one.
+const STRIKE = (over = {}) => ({ months: 4, until: NOW(life()) + 4, stopped: ['Glass Harbour'], ...over });
+const struck = () => life({ frozen: [{ id: 'frz1', title: 'Glass Harbour', role: 'Lead', scale: 'feature', tier: 'lead', monthsLeft: 2, owed: 600000, stability: 80, since: NOW(life()) - 4, held: 'strike' }],
+  people: [{ id: 'a1', name: 'Tom Hale', role: 'Fellow Actor', relationship: 50 }] });
+add('strike', 'out', '', () => struck(), STRIKE());
+add('strike', 'out', 'nothing of yours shooting', () => life(), STRIKE({ stopped: [] }));
+for (const path of ['picket', 'home']) add('strike', 'over', path, () => struck(), STRIKE({ path }));
+for (const caught of [false, true]) add('strike', 'over', `the advert, ${caught ? 'found out' : 'never found'}`, () => struck(), STRIKE({ path: 'ad', caught }));
+add('strike', 'over', 'nothing in the freezer', () => life(), STRIKE({ path: 'home', stopped: [] }));
+// The day it ends, each way a picture can go, and a part pulled off the desk.
+const FATE = (fate, pulled = []) => ({ pics: [{ id: 'frz1', title: 'Glass Harbour', fate, cut: fate === 'back' ? 25 : 0 }], pulled });
+for (const fate of ['back', 'cold', 'dead']) add('strike', 'over', `the picture: ${fate}`, () => struck(), STRIKE({ path: 'home', fates: FATE(fate) }));
+add('strike', 'over', 'a part pulled, the picture back', () => ({ ...struck(), offers: [{ id: 'o1', projectTitle: 'Low Tide', kind: 'film' }] }), STRIKE({ path: 'picket', fates: FATE('back', [{ id: 'o1', title: 'Low Tide' }]) }));
+add('strike', 'over', 'a part pulled, the advert found out', () => ({ ...life(), offers: [{ id: 'o1', projectTitle: 'Low Tide', kind: 'film' }] }), STRIKE({ path: 'ad', caught: true, stopped: [], fates: { pics: [], pulled: [{ id: 'o1', title: 'Low Tide' }] } }));
 
 const realRandom = Math.random;
 let ran = 0, rolls = 0; const bad = [];

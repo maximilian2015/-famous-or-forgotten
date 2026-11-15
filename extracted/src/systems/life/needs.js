@@ -20,7 +20,7 @@ import { addTimeline } from '../../engine/timeline.js';
 import { inCareer } from '../../engine/stage.js';
 import { COST, canAfford, spend, tooTired } from '../../engine/energy.js';
 import { applyBond } from './bonds.js';
-import { mayOpen, opened } from './pace.js';
+import { mayOpen, opened, keen } from './pace.js';
 import { setRespect } from '../meta/status.js';
 
 export const SPACING = 3;       // months between two needs put to you, across everybody
@@ -257,7 +257,8 @@ export function needsTick(s) {
   if (!cands.length) return s;
   cands.sort((a, b) => b.N.urgency - a.N.urgency);
   const c = cands[0];
-  if (!chance(c.N.chance(s, c.p))) return s;
+  // The year's temper makes somebody asking likelier or rarer, like every other new thing (pace.js keen).
+  if (!chance(c.N.chance(s, c.p) * keen(s))) return s;
   raise(s, c.p, c.id);
   opened(s, 'need:' + c.id);
   return s;

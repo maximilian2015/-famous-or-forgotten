@@ -48,11 +48,12 @@ test('a year that has had its fill opens nothing new, and the next year has room
   assert.equal(mayOpen(s), true);
 });
 
-test('a year behind its temper looks harder, one ahead of it less', () => {
-  const s = career({ fame: 20 }); s.month = 10; const p = paceOf(s);
-  const behind = keen(s);
-  for (let i = 0; i < p.room; i++) opened(s, 'x');
-  assert.ok(behind > 1 && keen(s) < behind, `${behind} then ${keen(s)}`);
+// 15 Nov: `keen` used to say how far behind its cap a year was, and since no year ever reached its
+// cap a quiet one ended up looking as hard for something as a busy one. The temper is the multiplier now.
+test('a quiet year is half as likely to bring something new, a busy one more than twice, whatever the month', () => {
+  const at = (temper, month) => { const s = career({ fame: 20 }); s._pace = { year: s.year, temper, room: 9, opened: 0, hush: 0, log: [] }; s.month = month; return keen(s); };
+  assert.ok(at('quiet', 0) < 1 && at('ordinary', 0) > 1 && at('busy', 0) > at('ordinary', 0));
+  assert.equal(at('quiet', 11), at('quiet', 0), 'a quiet December is as quiet as its January');
 });
 
 test('a card that can wait does not come in a full year; what the state demands still does', () => {

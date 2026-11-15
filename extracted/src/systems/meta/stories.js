@@ -12,19 +12,23 @@
 import { rint, chance, pick } from '../../engine/rng.js';
 import { uid } from '../../engine/id.js';
 import { addTimeline } from '../../engine/timeline.js';
+import { count } from '../../engine/text.js';
 import { inCareer } from '../../engine/stage.js';
 import { comboOf } from '../../engine/combo.js';
 import { setFame, setRespect, quoteFor } from './status.js';
 import { typecastScandal, typecastBump } from './typecast.js';
 import { hasAgent, fireAgent } from '../career/agent.js';
-import { hushed, opened } from '../life/pace.js';
+import { hushed, opened, paceOf } from '../life/pace.js';
 import { applyBond } from '../life/bonds.js';
 import { closeFriend } from '../life/needs.js';
 import { actorById, activeActors, ageOf, yourRank, joinTheWorld } from '../world/world.js';
-import { personName, namesInUse } from '../world/names.js';
+import { personName, namesInUse, STUDIOS, studioOf } from '../world/names.js';
 import { newTitle } from '../world/titles.js';
 import { GENRES } from './news.js';
-import { rollStability } from '../career/stability.js';
+import { rollStability, freezeProject, thawOffer, FREEZE_MENTAL } from '../career/stability.js';
+import { sets } from '../../engine/sets.js';
+import { keyFor, remember } from './memory.js';
+import { directorById } from '../world/directors.js';
 import { ambitionOf } from './ambition.js';
 import { notePassedOutcome } from './passed.js';
 import { loseContinuation, recordForTitle, ensureResult, withoutYouLine, returned } from '../career/continuation.js';
@@ -310,6 +314,170 @@ export const CHAINS = {
     },
   },
 
+  // 4c. The takeover (random events: the big story of a busy year). The studio paying for the
+  // picture you are shooting is sold, and the new owners review everything they did not start
+  // themselves. What you do that week decides who remembers you for it — the director you stood
+  // next to, or the people who own the studio now — and a year on, what that is worth. Only in a
+  // busy year (life/pace.js), only on a studio picture, and not again for ten years.
+  takeover: {
+    title: 'The takeover', cooldown: 120,
+    start: (s) => {
+      if (!inCareer(s) || (s.fame || 0) < 20 || paceOf(s).temper !== 'busy' || !chance(TAKEOVER_ODDS)) return null;
+      const p = sets(s).find(studioPicture);
+      const d = p && (p.crew || [])[0];
+      if (!d) return null;
+      const studio = studioOf({ id: p.offerId, projectTitle: p.title });
+      const rival = pick(STUDIOS.filter((x) => x !== studio));
+      return { setId: p.id, title: p.title, studio, buyer: pick([rival, ...BUYERS]), exec: personName(chance(50) ? 'female' : 'male', namesInUse(s)), director: d.name, rosterId: p.rosterDirector || null, beat: 'sold', due: stamp(s) };
+    },
+    status: (s, st) => {
+      const d = st.data, f = first(d.director);
+      if (st.beat === 'sold') return `${d.studio} has been sold. "${d.title}" is under review.`;
+      const left = st.due != null ? st.due - stamp(s) : 0;
+      const when = left > 1 ? `in ${left} months` : left === 1 ? 'next month' : 'this month';
+      if (st.beat === 'review') return d.path === 'director' ? `You and ${f} argued for "${d.title}". The review is ${when}.` : d.path === 'owner' ? `You had lunch with ${d.exec}. The review is ${when}.` : `"${d.title}" is under review, ${when === 'this month' ? 'and it ends this month' : `and it ends ${when}`}. You are keeping your head down.`;
+      return d.path === 'director' ? `${f} remembers who was in the room.` : `${d.exec} remembers you were easy.`;
+    },
+    beats: {
+      sold: {
+        build: (s, st) => {
+          const d = st.data, f = first(d.director), p = takeoverSet(s, st);
+          // Whatever the picture's fate, it is decided at the review a month on; this only says which
+          // way you leaned, and every way has its own odds.
+          const sides = (odds, extra) => ({ odds, good: { more: [{ t: `next month: "${d.title}" survives the review`, good: true }, ...extra] }, bad: { more: [{ t: `next month: "${d.title}" is shelved`, good: false }, ...extra] } });
+          return { speaker: 'The trades', text: `${d.studio} has been sold to ${d.buyer}. The first memo from the new owners is one line long: everything on the slate that they did not start themselves is under review. "${d.title}" is on the slate. ${d.director} has called you twice since breakfast.`,
+            choices: [
+              { label: `Stand with ${f}`, hint: `Go with them to the new owners and argue for the picture. Charisma. Whatever happens to it, ${f} will know who was in the room.`,
+                shows: { ...sides(oddsOf(s, 'charisma', 55), [{ t: `${f} will remember you stood with them`, good: true }]), stat: 'charisma' },
+                apply: () => { d.path = 'director'; d.saved = check(s, 'charisma', 55); felt(s, st, p, 2, 'that you stood next to them in the new owners’ office', 8);
+                  return { reply: `You go in together. ${d.exec} listens to the two of you for forty minutes and says nothing that means anything. ${f} holds the door for you on the way out.`, next: { beat: 'review', inMonths: 1 } }; } },
+              { label: `Have lunch with ${first(d.exec)}`, hint: `${d.exec} runs production for the new owners. They like names who are easy, and your name is worth something to them.`,
+                shows: sides(ownerOdds(s), [{ t: `${first(d.exec)} will remember you were easy`, good: true }, { t: `${f} will remember you went over their head`, good: false }]),
+                apply: () => { d.path = 'owner'; d.saved = chance(ownerOdds(s)); felt(s, st, p, -2, 'that you went to the new owners over their head', -6);
+                  return { reply: `A long lunch, a short conversation. ${first(d.exec)} says they are glad somebody on the slate understands how this works. Somebody at the next table recognises you both.`, next: { beat: 'review', inMonths: 1 } }; } },
+              { label: 'Keep your head down', hint: 'Finish your days. It is not your fight, and nobody will say it was.',
+                shows: sides(QUIET_ODDS, []),
+                apply: () => { d.path = 'quiet'; d.saved = chance(QUIET_ODDS);
+                  return { reply: 'You learn your lines, hit your marks and say nothing to anybody. The set is very quiet this month. So is everybody on it.', next: { beat: 'review', inMonths: 1 } }; } },
+            ] };
+        } },
+      review: {
+        build: (s, st) => {
+          const d = st.data, f = first(d.director), p = takeoverSet(s, st);
+          const on = d.path === 'quiet' ? { end: true } : { next: { beat: 'year', inMonths: rint(12, 18) } };
+          // The shoot was over (or stopped for its own reasons) before the review got to it.
+          if (!p) return { speaker: 'The review', text: `The review got to "${d.title}" after it was out of their hands. Nothing happens to it. What you did that week is remembered anyway.`,
+            choices: [{ label: 'On', shows: {}, apply: () => ({ reply: 'On.', ...on }) }] };
+          if (d.saved) return { speaker: 'The review', text: `The review is done. "${d.title}" stays on the slate${d.path === 'owner' ? `, and ${d.exec} made a point of telling you it was their decision` : d.path === 'director' ? `. ${f} came out of the room and hugged you in the corridor, which they have never done` : ''}.`,
+            choices: [{ label: 'Good', shows: {}, apply: () => { addTimeline(s, `"${d.title}" survived the takeover at ${d.studio}.`); return { reply: 'The picture goes on. Nothing on the call sheet has changed, which this month is the best news there is.', ...on }; } }] };
+          const owed = p.payOrPlay ? Math.max(0, (p.salary || 0) - (p.paid || 0)) : 0;
+          return { speaker: 'The review', text: `The review is done. "${d.title}" is shelved: the new owners are not finishing anything they did not start. The crew was sent home this morning, and ${f} was the last one off the lot.`,
+            choices: [{ label: 'On', shows: { fx: { mental: -FREEZE_MENTAL, ...(owed ? { cash: owed } : {}) }, more: [{ t: `"${d.title}" goes into the freezer`, good: false }, ...(owed ? [{ t: 'pay-or-play: they pay the rest of the fee', good: true }] : [])] },
+              apply: () => { freezeProject(s, p, { why: `${d.studio} was sold and the new owners shelved it`, quiet: true }); d.shelved = true;
+                return { reply: 'The set comes down in a day. Somebody puts your chair in a skip.', ...on }; } }] };
+        } },
+      year: {
+        build: (s, st) => {
+          const d = st.data, f = first(d.director);
+          // Whether anybody calls is not a promise made the week of the sale. Decided once, the first
+          // time this card is drawn, and kept.
+          if (d.called == null) d.called = chance(d.path === 'director' ? directorCall(s, d).odds : ownerCall(s));
+          if (!d.called) return takeoverSilence(s, st);
+          if (d.path === 'director') {
+            const fz = (s.frozen || []).find((x) => x.title === d.title);
+            if (fz) return { speaker: d.director, text: `${f} bought "${d.title}" back from the new owners of ${d.studio} — their own money, two friends' money, and a bank that should know better. They want to finish it, and they want you in it.`,
+              choices: [{ label: 'Finish it', shows: { fx: { respect: 2 }, more: [{ t: `an offer: the rest of "${d.title}", out of the freezer`, good: true }] },
+                apply: () => { thawOffer(s, fz, `${f} bought it back from the new owners of ${d.studio}. The same part, the rest of the fee.`); setRespect(s, (s.respect || 0) + 2); addTimeline(s, `${d.director} bought "${d.title}" back, and the trades remembered who stood with them.`);
+                  return { reply: 'The paper is in Messages. Their name is on it twice: as the director, and as the money.', end: true }; } }] };
+            return { speaker: d.director, text: `${f} is making their next one at another studio, and the first thing they did was send it to you. "You were in the room. Most people were not."`,
+              choices: [{ label: 'Read it', shows: { fx: { respect: 2 }, more: [{ t: `an offer: the lead in ${f}'s next film`, good: true }] },
+                apply: () => { takeoverOffer(s, st, 'director'); setRespect(s, (s.respect || 0) + 2); addTimeline(s, `${d.director} asked for you first. They have not forgotten the takeover.`);
+                  return { reply: 'The paper is in Messages. The part is a real one.', end: true }; } }] };
+          }
+          return { speaker: d.exec, text: `${d.exec} rang. The new ${d.studio} is making its first big picture and wants a name who is easy to work with${d.shelved ? ` — they are sorry about "${d.title}", in the way people are sorry about weather` : ''}. ${f} gave an interview about the takeover last month. Your name is not in it, which is how you know it is about you.`,
+            choices: [{ label: 'Take the meeting', shows: { fx: { respect: -2 }, more: [{ t: 'an offer: the lead in the new owners’ first big picture', good: true }] },
+              apply: () => { takeoverOffer(s, st, 'owner'); setRespect(s, (s.respect || 0) - 2); addTimeline(s, `The trades say you found the new owners of ${d.studio} faster than ${d.director} did.`, true);
+                return { reply: 'The paper is in Messages. It is a great deal of paper.', end: true }; } }] };
+        } },
+    },
+  },
+
+  // 4d. The strike (random events, wave one, no. 9). Not on a timer: the business goes ten years
+  // without one, and after that the pressure builds a little every month until it goes. Every set
+  // stops — yours go into the freezer with no pay-or-play (force majeure) — every opening of yours
+  // inside it is moved back, and nothing new is cast while it lasts (hiding, strain.js canWork). The
+  // day it ends is not a reset (Maxi, 15 Nov: "too safe — hard, the way it is"): a picture comes back
+  // smaller, stays in the freezer, or is cancelled, by how solid its money was, and some of the parts
+  // on your desk are pulled. What you did while it lasted is what the actors you know remember.
+  strike: {
+    title: 'The strike', cooldown: 180,
+    start: (s) => {
+      if (!inCareer(s)) return null;
+      if (s._strikeCalm == null) s._strikeCalm = stamp(s);    // an old save starts with no pressure built up
+      if (!chance(strikeOdds(stamp(s) - s._strikeCalm))) return null;
+      const months = rint(3, 6);
+      const desk = (s.offers || []).map((o) => o.id);           // what was on the desk the day it began
+      const { stopped, moved } = beginStrike(s, months);
+      return { months, until: stamp(s) + months, stopped, moved, desk, beat: 'out', due: stamp(s) };
+    },
+    status: (s, st) => { const left = Math.max(0, st.data.until - stamp(s)); return left > 0 ? `The actors are on strike. Nothing shoots for ${left} more month${left === 1 ? '' : 's'}, the guild says.` : 'The strike is over.'; },
+    beats: {
+      out: {
+        build: (s, st) => {
+          const d = st.data, fee = adFee(s), n = (d.stopped || []).length;
+          const yours = n ? ` Yours among them: ${d.stopped.map((t) => `"${t}"`).join(' and ')}. The lawyers call it force majeure, which means pay-or-play pays nothing, and not every picture stopped by a strike starts again.` : '';
+          const mv = d.moved || [];
+          const moved = mv.length === 1 ? ` "${mv[0].title}" will not open when it was meant to: nobody can sell a picture its actors are not allowed to talk about. The studio has moved it back ${count(mv[0].by, 'month')}.`
+            : mv.length ? ` ${mv.map((m) => `"${m.title}"`).join(' and ')} will not open when they were meant to: nobody can sell a picture its actors are not allowed to talk about. Every one of them has been moved back.` : '';
+          return { speaker: 'The guild', text: `The actors' guild has called a strike. Every set in the business went dark this morning.${yours}${moved} The guild says ${d.months} months. Nothing new will be cast until it is over, and the picket at the studio gates starts at seven tomorrow.`,
+            choices: [
+              { label: 'Walk the picket line', hint: 'Every morning at the gates. The people next to you will remember who was there.',
+                shows: { fx: { mental: 3 }, more: [{ t: 'the actors you know: closer', good: true }] },
+                apply: () => { d.path = 'picket'; s.mental = clamp((s.mental || 50) + 3); colleagues(s, 6, true);
+                  return { reply: 'Cold coffee, a hand-painted sign, and actors you have only ever seen on posters handing out leaflets next to you. It is the best month you have had in a while.', next: { beat: 'over', inMonths: d.months } }; } },
+              { label: 'Stay home', hint: 'It is not your fight. Or it is, and you cannot afford to stand in it.',
+                shows: {},
+                apply: () => { d.path = 'home'; return { reply: 'You stay home and watch the picket on the news. Somebody you know is on it.', next: { beat: 'over', inMonths: d.months } }; } },
+              { label: 'Shoot an advert abroad, quietly', hint: `A day for a brand in a country where nobody reads the trades, ${money(fee)}. If it gets out, the guild will know who crossed.`,
+                shows: { odds: AD_HIDDEN, good: { fx: { cash: fee }, more: [{ t: 'nobody finds out', good: true }] }, bad: { fx: { cash: fee }, more: [{ t: 'when it is over, it comes out: a scandal, and the actors you know colder', good: false }] } },
+                apply: () => { d.path = 'ad'; d.caught = !chance(AD_HIDDEN); s.cash = (s.cash || 0) + fee; addTimeline(s, `A day's work abroad during the strike: ${money(fee)}.`);
+                  return { reply: 'A beach, a bottle of something, a crew who do not know who you are. Nobody asks. The money arrives on Friday.', next: { beat: 'over', inMonths: d.months } }; } },
+            ] };
+        } },
+      over: {
+        build: (s, st) => {
+          const d = st.data;
+          // Decided once, the first time the card is drawn, and kept: drawing it again changes nothing.
+          if (!d.fates) d.fates = strikeFates(s, d.desk);
+          const pics = d.fates.pics.filter((x) => heldByStrike(s, x.id));
+          const pulled = d.fates.pulled.filter((x) => (s.offers || []).some((o) => o.id === x.id));
+          const by = (fate) => pics.filter((x) => x.fate === fate);
+          const back = by('back'), cold = by('cold'), dead = by('dead');
+          const list = (xs) => xs.map((x) => `"${x.title}"`).join(' and ');
+          const more = [
+            ...back.map((x) => ({ t: `an offer: the rest of "${x.title}", ${x.cut}% less`, good: true })),
+            ...cold.map((x) => ({ t: `"${x.title}" stays in the freezer`, good: false })),
+            ...dead.map((x) => ({ t: `"${x.title}" is cancelled`, good: false })),
+            ...pulled.map((x) => ({ t: `pulled: the offer for "${x.title}"`, good: false })),
+          ];
+          const said = [
+            back.length ? `${list(back)} ${back.length > 1 ? 'are' : 'is'} going again, on less money: the strike ate the budget, and the paper in Messages says so.` : '',
+            cold.length ? `${list(cold)} ${cold.length > 1 ? 'are' : 'is'} not: the money went somewhere else while the sets were dark.` : '',
+            dead.length ? `${list(dead)} ${dead.length > 1 ? 'are' : 'is'} cancelled. The studio called it force majeure and tore up the paper.` : '',
+            pulled.length ? `And the studios have cut their slates: ${list(pulled)} ${pulled.length > 1 ? 'are' : 'is'} off your desk.` : '',
+          ].filter(Boolean).join(' ') || 'The sets are lit again all over town.';
+          const caught = d.path === 'ad' && d.caught;
+          const line = d.path === 'picket' ? ' The people who stood at the gates with you have not forgotten it.' : caught ? ' And the trades have found the advert: your face, a beach and a bottle, dated the second month of the strike.' : '';
+          const fx = { ...(caught ? { scandal: 6, respect: -3 } : {}), ...(dead.length ? { mental: -STRIKE_LOSS } : {}) };
+          return { speaker: 'The guild', text: `The strike is over after ${d.months} months. ${said}${line}`,
+            choices: [{ label: 'Back to work', shows: { ...(Object.keys(fx).length ? { fx } : {}), more: [...(caught ? [{ t: 'the actors you know: colder', good: false }] : []), ...more] },
+              apply: () => { endStrike(s, pics, pulled);
+                if (caught) { s.scandal = clamp((s.scandal || 0) + 6); setRespect(s, (s.respect || 0) - 3); colleagues(s, -8, false); addTimeline(s, 'The advert you shot during the strike is in the trades. The guild has a word for it.', true); }
+                return { reply: caught ? 'Back to work, and every set you walk onto this year knows about the beach.' : dead.length || cold.length ? 'Back to work, for the ones who still have some.' : 'Back to work.', end: true }; } }] };
+        } },
+    },
+  },
+
   // 5. The comeback. Forgotten a year and more, and then one call.
   comeback: {
     title: 'The comeback', cooldown: 120,
@@ -438,7 +606,7 @@ export const CHAINS = {
   // 8. Covering for a co-star (career/cover.js): started from the on-set ask, never by a roll.
   cover: COVER,
 };
-export const CHAIN_ORDER = ['scandal', 'refused', 'recast', 'comeback', 'ageing', 'friend', 'agent', 'rival'];
+export const CHAIN_ORDER = ['strike', 'scandal', 'refused', 'recast', 'comeback', 'takeover', 'ageing', 'friend', 'agent', 'rival'];
 // A part that came through somebody in a story: their film, their name on the paper, and them on
 // the set opposite you when it is somebody of the world (production.js reads costarId).
 function offerWith(s, st, role, note) {
@@ -447,6 +615,166 @@ function offerWith(s, st, role, note) {
   (s.offers = s.offers || []).push({ id: uid(s, 'off'), via: 'studio', kind: 'friend', story: st.id, costarId: (p && p.worldId) || undefined,
     projectTitle: newTitle(s, genre), role, type: 'Feature Film', genre, salary: Math.round(quote * 0.45), months: rint(2, 4), fame: 3,
     prestigeScore: rint(45, 70), tier: 'supporting', scale: 'feature', stability: rollStability('feature'), deadline: 3, note });
+}
+
+// ── the takeover's pieces ─────────────────────────────────────────────────────────
+// A month's chance, in a busy year, on a studio picture. About once in a long career.
+const TAKEOVER_ODDS = 8;
+// What the review does to a picture nobody argued for: a coin.
+const QUIET_ODDS = 50;
+// Who buys a studio. Never a real one; sometimes another studio of this world.
+const BUYERS = ['a streaming company with more subscribers than films', 'a private-equity fund that has never made a film', 'a phone company that wants a library'];
+// A studio's own picture, still shooting long enough for a review to reach it: not an indie (nobody
+// sells a studio from under an indie), not television, not a day as the face of a brand, and not a
+// shoot that already belongs to another story.
+const studioPicture = (p) => /^(feature|blockbuster|prestige)$/.test(p.scale || '') && !p.episodes && !p.brand && !p.story && (p.monthsLeft || 0) >= 2;
+const takeoverSet = (s, st) => sets(s).find((p) => p.id === st.data.setId) || null;
+// Lunch with the new owners: a name is worth keeping to them, so the bigger yours is, the likelier
+// they keep the picture you are in.
+const ownerOdds = (s) => Math.round(Math.min(85, 35 + (s.fame || 0) * 0.5));
+// The director remembers the week (meta/memory.js), and in your phone the friendship moves.
+function felt(s, st, p, by, why, bond) {
+  const c = p && (p.crew || [])[0];
+  if (!c) return;
+  const key = keyFor(s, c, p);
+  st.data.dirId = c.knownId || null;
+  if (key) remember(s, { act: 'takeover', p, about: key, felt: { [key]: { felt: by, why } } });
+  const person = c.knownId ? (s.people || []).find((x) => x.id === c.knownId) : null;
+  if (person) applyBond(s, person, bond, { seen: bond > 0 });
+}
+// A year on, whether the director calls (ChatGPT, 15 Nov: standing by them must not be a sure way to
+// a part). Three things, each 0–100: whether they can get anything made — the roster's standing, which
+// moves with their films (world/directors.js), or for a director off the roster a working 45, 30 if the
+// takeover shelved their picture; whether they still want you — how close you are; and whether the money
+// will take you — your Standing. Most of the time it is a coin with weight on it, not a promise.
+export function directorCall(s, d) {
+  const r = d.rosterId ? directorById(s, d.rosterId) : null;
+  const pull = r ? r.standing || 0 : d.shelved ? 30 : 45;
+  const p = d.dirId ? (s.people || []).find((x) => x.id === d.dirId) : null;
+  const close = p ? p.relationship || 0 : 50;
+  const name = Math.max(0, s.respect || 0);
+  return { pull, close, name, odds: Math.round(Math.max(10, Math.min(90, 5 + name * 0.35 + close * 0.3 + pull * 0.3))) };
+}
+// The new owners want a name, and only while it is one.
+export const ownerCall = (s) => Math.round(Math.max(15, Math.min(90, 15 + (s.fame || 0) * 0.8)));
+// Nobody calls: said with the reason — for a director the weakest of the three, for the new owners
+// your name or their own churn. What was felt the week of the sale stays felt (meta/memory.js).
+function takeoverSilence(s, st) {
+  const d = st.data, f = first(d.director);
+  const noted = (reply, extra = {}) => [{ label: 'Noted', shows: { ...extra.shows, more: [...((extra.shows || {}).more || []), { t: 'no offer', good: false }] },
+    apply: () => { if (extra.apply) extra.apply(); return { reply, end: true }; } }];
+  if (d.path !== 'director') {
+    const small = (s.fame || 0) < 50;
+    return { speaker: 'The trades', text: `${small ? `The new ${d.studio} is making its first big picture, and the lead went to a bigger name than yours is this year. ${first(d.exec)} sent flowers.` : `${d.exec} is gone: the new owners of ${d.studio} changed heads of production twice this year, and whatever the lunch bought you went out of the door with them.`} ${f} gave an interview about the takeover last month. Your name is not in it, which is how you know it is about you.`,
+      choices: noted('Lunch is not a contract.') };
+  }
+  const c = directorCall(s, d);
+  const why = c.pull <= Math.min(c.close, c.name) ? 'pull' : c.close <= c.name ? 'close' : 'name';
+  const fz = (s.frozen || []).find((x) => x.title === d.title);
+  if (fz && why === 'pull') return { speaker: d.director, text: `${f} tried to buy "${d.title}" back from the new owners of ${d.studio}. The bank wanted a director with a hit behind them, and ${f} has not had one since the takeover. It stays in the freezer.`,
+    choices: noted('Standing next to somebody is not a contract.') };
+  if (fz) return { speaker: 'The trades', text: why === 'close' ? `${f} bought "${d.title}" back from the new owners of ${d.studio}, and is finishing it with somebody else in your part. You have not really spoken since the takeover, and it shows.` : `${f} bought "${d.title}" back, and the money would only pay for it with a bigger name than yours in your part. ${f} rang to tell you themself, which most directors would not.`,
+    choices: noted('Somebody else will finish your part.', { shows: { fx: { mental: -2 }, more: [{ t: `"${d.title}" goes on without you`, good: false }] },
+      apply: () => { s.frozen = (s.frozen || []).filter((x) => x !== fz); s.mental = Math.max(0, (s.mental || 50) - 2); addTimeline(s, `"${d.title}" came out of the freezer with somebody else in your part.`, true); } }) };
+  return { speaker: why === 'close' ? 'The trades' : d.director, text: why === 'pull' ? `${f} has not made anything since the takeover. Nobody will put money behind the director who argued with the new owners of ${d.studio}. They still tell the story at dinners, and you are in it.`
+    : why === 'close' ? `${f} is making their next one, and the part went to somebody else. You have not really spoken since the takeover, and it shows.`
+    : `${f} sent their next one to you, and the money sent it back: they wanted a name with more weight than yours is this year. ${f} rang to say so themself, which most directors would not.`,
+    choices: noted('Standing next to somebody is not a contract.') };
+}
+// What a year on is worth: the director's next film, or the new owners' first big picture.
+function takeoverOffer(s, st, side) {
+  const d = st.data, genre = pick(GENRES);
+  const big = side === 'owner';
+  const quote = quoteFor(s, big ? 'film_tentpole' : 'film_studio') || quoteFor(s, 'film_studio') || 200000;
+  (s.offers = s.offers || []).push({ id: uid(s, 'off'), via: big ? 'studio' : 'director', kind: 'takeover', from: big ? d.studio : d.director,
+    director: big ? undefined : d.director, directorId: big ? undefined : d.dirId || undefined,
+    projectTitle: newTitle(s, genre), role: 'Lead', type: 'Feature Film', genre, salary: Math.round(quote * (big ? 1.15 : 0.9)), months: rint(3, big ? 6 : 4),
+    fame: big ? 8 : 5, prestigeScore: big ? rint(35, 60) : rint(55, 80), tier: 'lead', scale: big ? 'blockbuster' : 'feature', stability: rollStability(big ? 'blockbuster' : 'feature'), deadline: 3,
+    note: big ? `${first(d.exec)} asked for you. The new owners of ${d.studio} remember who was easy.` : `${first(d.director)} asked for you first. They remember who was in the room when ${d.studio} was sold.` });
+}
+
+// ── the strike's pieces ───────────────────────────────────────────────────────────
+// No strike for ten years after the last one; then the chance a month climbs from nothing to 1.5%
+// over the next fifteen. About one in fifteen to twenty years.
+export const strikeOdds = (calm) => (calm < 120 ? 0 : Math.min(1.5, ((calm - 120) / 180) * 1.5));
+// That the advert stays a secret.
+const AD_HIDDEN = 65;
+const adFee = (s) => Math.round(Math.max(40000, (quoteFor(s, 'film_indie') || 60000) * 0.8));
+// Whether the business is on strike this month (s.strike, read by strain.js canWork without asking here).
+export const striking = (s) => !!s.strike && s.strike.until > stamp(s);
+// The parts on your desk wait while it lasts, and through the month it ends, so the first month
+// back is a month to answer them in (offers.js offersTick).
+export const offersWait = (s) => !!s.strike && s.strike.until >= stamp(s);
+// The day it starts: every set of yours into the freezer, held for the day it ends, and no
+// pay-or-play — a strike is force majeure. Every picture of yours due to open before it is over,
+// or the month after, is moved back: nobody can promote it. While it lasts the parts on your desk
+// do not lapse (offers.js offersTick), and a paper signed for a date inside it waits: it cannot start
+// while canWork says no, and nobody casts elsewhere during a strike.
+function beginStrike(s, months) {
+  const now = stamp(s), until = now + months;
+  s.strike = { since: now, until };
+  const stopped = [], moved = [];
+  for (const p of sets(s).slice()) { if (p.brand) continue; freezeProject(s, p, { why: 'the actors are on strike', held: 'strike', quiet: true, forceMajeure: true }); stopped.push(p.title); }
+  for (const r of s.releases || []) {
+    if (r.due > until + 1) continue;                       // opens after it anyway
+    const by = Math.max(0, until - r.due) + rint(2, 6);
+    r.due += by; r.wait = (r.wait || 0) + by;              // "in post since" stays where it was (Diary.jsx)
+    moved.push({ title: r.title, by });
+    addTimeline(s, `"${r.title}" was moved back ${count(by, 'month')}. Nobody can promote a picture during a strike.`);
+  }
+  // The casting offices are shut too: a read you are waiting to hear about answers the first month
+  // back, and its date says so (OpenCall.jsx, Diary.jsx). The rest of the calls owed you are held in
+  // the month itself (engine/time.js, offersWait).
+  for (const x of s.submissions || []) if (x.due <= until) x.due = until + 1;
+  addTimeline(s, `The actors' guild is on strike. Every set in the business has stopped.`, true);
+  return { stopped, moved };
+}
+// What the day it ends does to each picture it stopped, by how solid its money was (stability.js):
+// a studio's own picture nearly always comes back, smaller; money nobody could name goes somewhere
+// else, or the studio calls it force majeure and tears up the paper. And a third of the parts on
+// your desk that nobody has signed are pulled when the studios cut their slates.
+const STRIKE_DEAD = (f) => Math.round(Math.min(50, 10 + Math.max(0, 92 - (f.stability ?? 70)) * 0.7));
+const STRIKE_COLD = (f) => Math.round(Math.min(40, 15 + Math.max(0, 92 - (f.stability ?? 70)) * 0.5));
+const SLATE_CUT = 35;
+const STRIKE_LOSS = 4;   // mental, when a picture of yours does not survive it
+const heldByStrike = (s, id) => (s.frozen || []).some((f) => f.id === id && f.held === 'strike');
+function strikeFates(s, desk) {
+  const pics = (s.frozen || []).filter((f) => f.held === 'strike').map((f) => {
+    const fate = chance(STRIKE_DEAD(f)) ? 'dead' : chance(STRIKE_COLD(f)) ? 'cold' : 'back';
+    return { id: f.id, title: f.title, fate, cut: fate === 'back' ? rint(15, 35) : 0 };
+  });
+  const onDesk = (o) => !desk || desk.includes(o.id);   // not a part that came in the month it ended
+  const pulled = (s.offers || []).filter((o) => onDesk(o) && o.kind !== 'brand' && !o.signed && chance(SLATE_CUT)).map((o) => ({ id: o.id, title: o.projectTitle || o.title || 'a part' }));
+  return { pics, pulled };
+}
+// The day it ends. A paper signed for a date inside the strike starts from today: the date moved
+// with everything else, so business affairs' two months of holding it (contract.js) start now too.
+function endStrike(s, pics, pulled) {
+  s.strike = null; s._strikeCalm = stamp(s);
+  for (const o of s.offers || []) if (o.signed && o.startAt != null && o.startAt < stamp(s)) o.startAt = stamp(s);
+  for (const x of pics) {
+    const f = (s.frozen || []).find((y) => y.id === x.id); if (!f) continue;
+    if (x.fate === 'back') {
+      f.owed = Math.round((f.owed || 0) * (1 - x.cut / 100));
+      thawOffer(s, f, `The strike is over and it ate the budget. They want to finish it — the same part, ${x.cut}% less for the rest: €${f.owed.toLocaleString()}.`);
+    } else if (x.fate === 'cold') {
+      f.held = null; f.why = 'the money went somewhere else during the strike';   // an ordinary freeze from here (frozenTick)
+      addTimeline(s, `"${f.title}" did not come back after the strike. The money went somewhere else while the sets were dark.`, true);
+    } else {
+      s.frozen = s.frozen.filter((y) => y !== f);
+      addTimeline(s, `"${f.title}" was cancelled after the strike. The studio called it force majeure.`, true);
+    }
+  }
+  if (pics.some((x) => x.fate === 'dead')) s.mental = Math.max(0, (s.mental || 50) - STRIKE_LOSS);
+  if (pulled.length) {
+    const gone = new Set(pulled.map((x) => x.id));
+    s.offers = (s.offers || []).filter((o) => !gone.has(o.id));
+    addTimeline(s, `The studios cut their slates after the strike: ${pulled.map((x) => `"${x.title}"`).join(', ')} pulled.`);
+  }
+}
+// The actors in your phone: the picket line or the advert, they all hear.
+function colleagues(s, by, seen) {
+  for (const p of s.people || []) if (p.role === 'Fellow Actor' && p.alive !== false) applyBond(s, p, by, { seen });
 }
 
 // What the recast thread has come to, in words: which season or part, who has your part, and
@@ -640,8 +968,9 @@ export function activeStories(s) {
 }
 
 // ── what the chains reach into ──────────────────────────────────────────────────
-// Out of sight for a month (the scandal chain): no board, no parties, no offers.
-export function hiding(s) { return (s.hiding || 0) >= stamp(s); }
+// Out of sight for a month (the scandal chain): no board, no parties, no offers. And while the
+// actors are on strike nobody is cast at all.
+export function hiding(s) { return (s.hiding || 0) >= stamp(s) || striking(s); }
 // A rival the rooms have taken sides over; the character actor; the one still fighting
 // for the leads. Read by castings.js castingChance.
 export function storyCastFactor(s, c) {

@@ -45,6 +45,9 @@ export function recordPassed(s, o, how) {
     offerId: o.id, title, root: clean(o.seriesTitle) || title.replace(/\s+(II|III|IV|V|VI)$/, ''),
     kind: o.kind || 'film', type: o.type || null, genre: o.genre || null, scale: o.scale || null,
     role: o.role || null, tier: o.tier || null, director: o.director || null, with: o.withName || o.with || null,
+    // A first-timer's film (career/youngblood.js): who they are on the roster, so the papers can
+    // say what became of them (meta/press.js).
+    youngId: o.youngId || null,
     season: o.season || 0, part: o.part || 0, salary: o.salary || 0, startAt: o.startAt ?? null,
     at: stamp(s), how, why,
     // What became of it, filled in when a story tells it (stories.js). Unknown until then.

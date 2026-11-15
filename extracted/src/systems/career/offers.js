@@ -12,7 +12,7 @@ import { canWork } from '../life/strain.js';
 import { off, signLater } from '../life/burnout.js';
 import { newTitle } from '../world/titles.js';
 import { refusedOnType, refusalLoosens, labelInfo } from '../meta/typecast.js';
-import { storyOfferFactor, noteRefusal, holdsAGrudge, storyOf, fanMood, BURN_STANDING } from '../meta/stories.js';
+import { storyOfferFactor, noteRefusal, holdsAGrudge, storyOf, fanMood, BURN_STANDING, offersWait } from '../meta/stories.js';
 import { loseContinuation, sourceCredit } from './continuation.js';
 import { recordPassed } from '../meta/passed.js';
 import { ensureBudget } from './budget.js';
@@ -136,6 +136,8 @@ export function offersTick(s) {
     // And they called because you were visible. Go invisible before you answer and they
     // have already found somebody else.
     if (o.kind === 'brand' && hype(s) < 30) { addTimeline(s, 'The brand went quiet when you did. The campaign is off.'); s.inbox = (s.inbox || []).filter((m) => m.offerId !== o.id); continue; }
+    // Nobody casts anybody while the actors are on strike (stories.js), so nobody gives up waiting either.
+    if (offersWait(s) && o.kind !== 'brand') { kept.push(o); continue; }
     o.deadline -= 1;
     if (o.deadline > 0) { kept.push(o); continue; }
     const title = String(o.projectTitle || 'it').replace('⭐ ', '');
