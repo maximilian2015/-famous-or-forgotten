@@ -80,6 +80,29 @@ function makeCrew(s, scale) {
     return { id: 'crew' + Math.random().toString(36).slice(2, 8), name, gender, role, trait: pick(TRAITS), bond: rint(30, 55) - cold };
   }
 }
+// A picture back from the freezer comes back with the people who were making it (career/stability.js
+// freezeProject keeps them): the same director, co-star and crew, by id. Somebody in your phone
+// arrives at the relationship you have now, which carries whatever happened while it was frozen;
+// everybody else where they were the day it stopped. The one replacement is somebody who cannot
+// come back — dead, or an actor of the world who has retired — and that is said, not done quietly.
+function resumeCrew(s, kept, scale, title) {
+  let fresh = null;
+  return kept.map((c, i) => {
+    const known = c.knownId ? (s.people || []).find((x) => x.id === c.knownId) : null;
+    const actor = c.worldId ? actorById(s, c.worldId) : null;
+    const gone = (known && known.alive === false) || (actor && (!actor.alive || actor.retired));
+    if (gone) {
+      fresh = fresh || makeCrew(s, scale);
+      const why = actor && actor.alive ? 'has left the business' : 'has died';
+      addTimeline(s, `${c.name} ${why}, and "${String(title || 'it').replace('⭐ ', '')}" goes on without them. ${fresh[i] ? fresh[i].name : 'Somebody new'} takes their place.`, true);
+      return fresh[i] ? { ...fresh[i], role: c.role } : { ...c };
+    }
+    const bond = known ? Math.max(10, Math.min(90, known.relationship || 40)) : (c.bond ?? 40);
+    const back = { ...c, bond, bond0: bond };
+    delete back.remembers;                                  // the set card says it again on the day (meta/memory.js)
+    return back;
+  });
+}
 // Who would be cast opposite you. The size of the picture decides how often it is a name at
 // all, and which names: nobody puts an icon in a short, and nobody puts a nobody in a tentpole.
 const COSTAR_ODDS = { blockbuster: 70, feature: 42, prestige: 38, indie: 18, recurring: 10 };
@@ -135,7 +158,9 @@ export function startProduction(s, offer) {
     // Which director of the world it is, so the film lands on their record at the wrap. A casting
     // carries the roster's id as directorId; a first-timer's offer carries it as youngId; an offer
     // from somebody in your phone carries THEIR id as directorId, which is not on the roster.
-    rosterDirector: directorById(s, offer.directorId) ? offer.directorId : directorById(s, offer.youngId) ? offer.youngId : null,
+    // A picture back from the freezer keeps the one it had (career/stability.js thawOffer).
+    rosterDirector: offer.resume ? offer.resume.rosterDirector || null
+      : directorById(s, offer.directorId) ? offer.directorId : directorById(s, offer.youngId) ? offer.youngId : null,
     // What part one was paid. Every sequel raise is measured against THIS, not against
     // whatever the last one happened to earn. See systems/career/franchise.js.
     baseSalary: offer.baseSalary || offer.salary, arc: offer.arc || null,
@@ -162,7 +187,7 @@ export function startProduction(s, offer) {
     // How solid the money is. Decides whether this shoot ever reaches its last day, and
     // how wildly the finished thing can turn out. See systems/career/stability.js.
     stability: offer.stability ?? rollStability(offer.scale || 'feature'),
-    crew: makeCrew(s, scaleOfOffer(offer)), meter: 20,
+    crew: offer.resume ? resumeCrew(s, offer.resume.crew, scaleOfOffer(offer), offer.projectTitle) : makeCrew(s, scaleOfOffer(offer)), meter: 20,
     // What it is about, and which version of it you end up shooting. See story.js — the
     // argument happens on day one and the room decides whether you are listened to.
     // What the paper said it was about and who you would be. Rolled at the offer now
@@ -192,7 +217,8 @@ export function startProduction(s, offer) {
   // A renewal carries the person who runs the show as `showrunner`, not `director`, and this
   // read only `director` — so the next season of your own show was run by a stranger in 13 of
   // 16 measured renewals, the bond restarting from nothing (tests/probes/probe_transition_tv.mjs).
-  const leadId = offer.directorId || offer.showrunnerId || null, leadName = offer.director || offer.showrunner || null;
+  // A resumed picture already has its people: its director is not overwritten by the name on the paper.
+  const leadId = offer.resume ? null : offer.directorId || offer.showrunnerId || null, leadName = offer.resume ? null : offer.director || offer.showrunner || null;
   const known = leadId ? (s.people || []).find((x) => x.id === leadId) : null;
   if (known) { const b = Math.max(10, Math.min(90, known.relationship || 40)); p.crew[0] = { ...p.crew[0], name: known.name, bond: b, bond0: b, knownId: known.id, trait: known.trait || p.crew[0].trait }; }
   else if (leadName) p.crew[0] = { ...p.crew[0], name: leadName };
@@ -202,7 +228,7 @@ export function startProduction(s, offer) {
   // never had to ask who the lead was; measured after it could, a minor part of yours in a tentpole
   // opened on YOUR name and the tentpoles of a career fell by a tenth. The lead is somebody from
   // the world of a size that fits the picture: your co-star, named on the set and on opening night.
-  if (offer.tier === 'supporting' && (p.scale === 'feature' || p.scale === 'blockbuster') && !p.crew.some((c) => c.worldId) && p.crew[1]) {
+  if (!offer.resume && offer.tier === 'supporting' && (p.scale === 'feature' || p.scale === 'blockbuster') && !p.crew.some((c) => c.worldId) && p.crew[1]) {
     const floor = p.scale === 'blockbuster' ? 65 : 40;
     const leads = activeActors(s).filter((a) => (a.fame || 0) >= floor).sort((a, b) => (b.fame || 0) - (a.fame || 0)).slice(0, p.scale === 'blockbuster' ? 25 : 60);
     if (leads.length) { const a = leads[rint(0, leads.length - 1)]; const b = rint(15, 35); p.crew[1] = { ...p.crew[1], name: a.name, worldId: a.id, bond: b, bond0: b }; }
@@ -242,9 +268,10 @@ export function startProduction(s, offer) {
   const others = sets(s).length - 1;
   s.strain = Math.min(100, (s.strain || 0) + 6 + ((s.strain || 0) > 48 ? 9 : 0) + others * 5);
   // Somebody who remembers you arrives where your history left them, and says so (meta/memory.js).
-  arriveRemembering(s, p);
+  arriveRemembering(s, p, { resumed: !!offer.resume });
   const dir = p.crew[0];
-  s.lastEvent = dir.knownId ? `Cameras roll on "${p.title}". ${dir.name} is directing — you two have done this before.` : `Cameras roll on "${p.title}". First day on set.`;
+  s.lastEvent = offer.resume ? `Cameras roll on "${p.title}" again. ${dir.name} is directing, and the same faces are on the set.`
+    : dir.knownId ? `Cameras roll on "${p.title}". ${dir.name} is directing — you two have done this before.` : `Cameras roll on "${p.title}". First day on set.`;
   if (others) s.lastEvent += ` That is ${others + 1} sets at once — the month is shorter for it.`;
   for (const c of p.crew || []) if (c.remembers) s.lastEvent += ` ${c.remembers}`;
   addTimeline(s, `Production began: ${p.title}.`);

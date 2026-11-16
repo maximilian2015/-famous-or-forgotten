@@ -172,6 +172,14 @@ export function freezeProject(s, p, opts = {}) {
     owed: pop ? 0 : Math.max(0, (p.salary || 0) - (p.paid || 0)), payOrPlay: !!p.payOrPlay,
     paid: p.paid || 0, salary: p.salary || 0, why,
     held: opts.held || null,
+    // Who was making it, so it comes back with the same people (production.js startProduction): the
+    // director, the co-star and the rest, by id — the people in your phone (knownId) and the actors
+    // of the world (worldId) — with the bonds they had; and the director of the world it is credited
+    // to at the wrap. Before this a thawed picture was shot by three strangers, and the director who
+    // bought "Glass Harbour" back (stories.js takeover) was not on its set.
+    crew: (p.crew || []).map((c) => ({ ...c })),
+    rosterDirector: p.rosterDirector || null, youngId: p.youngId || null,
+    directorBand: p.directorBand || null, directorTop: !!p.directorTop,
   };
   (s.frozen = s.frozen || []).push(frozen);
   s.productions = (s.productions || []).filter((x) => x !== p && (x.id == null || x.id !== p.id)); s.production = s.productions[0] || null;
@@ -256,6 +264,10 @@ export function thawOffer(s, f, note) {
     stability: Math.min(95, (f.stability || 50) + rint(12, 26)),
     fame: f.tier === 'tentpole' ? 9 : 5, deadline: rint(2, 3),
     frozenFor: waited,                                   // how long they kept you waiting (offers.js thawExcused)
+    // The same people, back (production.js startProduction). A freeze from an old save kept nobody.
+    resume: (f.crew || []).length ? { crew: f.crew, rosterDirector: f.rosterDirector || null } : null,
+    director: ((f.crew || [])[0] || {}).name || undefined, directorBand: f.directorBand || null, directorTop: !!f.directorTop,
+    youngId: f.youngId || null,
     note: note || (waited >= 12
       ? `Somebody found the money. After ${years} year${years === 1 ? '' : 's'} they want to finish it — €${f.owed.toLocaleString()} for the ${f.monthsLeft} month${f.monthsLeft === 1 ? '' : 's'} still owed.`
       : `The money came back. They want to finish it — €${f.owed.toLocaleString()} for the ${f.monthsLeft} month${f.monthsLeft === 1 ? '' : 's'} still owed.`),

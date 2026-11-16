@@ -99,16 +99,18 @@ export function keyOfCrew(c) { return c ? (c.worldId ? 'w:' + c.worldId : c.know
 
 // A new shoot with somebody who remembers: they arrive where your history left them, and the set
 // card says why. Called once, when the cameras roll (production.js startProduction).
-export function arriveRemembering(s, p) {
+export function arriveRemembering(s, p, opts = {}) {
   for (const c of (p.crew || [])) {
     const key = keyOfCrew(c);
     if (!key || !readOf(s).people[key]) continue;
     const t = traitOf(s, key); if (t) c.trait = t;                   // a person keeps their character
     // Somebody in your phone arrives at the relationship you left them at, which already carries
     // what happened — adding the memory on top would count the same deed twice. An actor of the
-    // world starts a shoot from nothing, so for them the memory IS the start.
+    // world starts a shoot from nothing, so for them the memory IS the start — except on a picture
+    // back from the freezer (production.js resumeCrew), where they come back at the bond they had,
+    // which the memory already moved the first time.
     const f = feltBy(s, key);
-    if (f && key.startsWith('w:')) { c.bond = Math.max(5, Math.min(95, (c.bond ?? 40) + f * 5)); c.bond0 = c.bond; }
+    if (f && key.startsWith('w:') && !opts.resumed) { c.bond = Math.max(5, Math.min(95, (c.bond ?? 40) + f * 5)); c.bond0 = c.bond; }
     c.remembers = memoryLine(s, key);
   }
 }

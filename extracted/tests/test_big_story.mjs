@@ -8,10 +8,10 @@
 // remembers either way; it does not come again for ten years.
 import assert from 'node:assert/strict';
 import { career, withSeed } from './helpers/contracts.mjs';
-import { startProduction } from '../src/systems/career/production.js';
+import { startProduction, productionTick } from '../src/systems/career/production.js';
 import { CHAINS, storiesTick, resolveStory, storyOf, hiding, strikeOdds, directorCall, ownerCall } from '../src/systems/meta/stories.js';
 import { PROBE } from '../src/systems/life/pace.js';
-import { frozenTick, freezeProject } from '../src/systems/career/stability.js';
+import { frozenTick, freezeProject, thawOffer } from '../src/systems/career/stability.js';
 import { feltBy, keyOfCrew } from '../src/systems/meta/memory.js';
 import { ensureWorld } from '../src/systems/world/world.js';
 import { canWork } from '../src/systems/life/strain.js';
@@ -80,6 +80,63 @@ test('stand with the director, the picture shelved: the freezer for a reason tha
   assert.ok(/bought it back/.test(o.note), o.note);
   assert.ok(!(s.frozen || []).some((x) => x.title === 'Glass Harbour'), 'out of the freezer');
   assert.equal(storyOf(s, 'takeover'), null, 'the story is over');
+});
+
+test('the picture they buy back is shot by the same people: the same director, the same co-star, on the same record', () => {
+  const s = life(); ensureWorld(s); ensureDirectors(s); onlyTheTakeover(s);
+  const r = s.world.directors.find((x) => x.band === 'working' || x.band === 'strong');
+  startProduction(s, film('Glass Harbour', { director: r.name, directorId: r.id }));
+  const p = s.productions[0]; p.prepLeft = 0; p.monthsLeft = 5;
+  const star = s.world.actors.find((a) => a.alive && !a.retired);
+  p.crew[1] = { ...p.crew[1], name: star.name, worldId: star.id, bond: 33, bond0: 33 };
+  const crewBefore = p.crew.map((c) => c.id);
+  startIt(s);
+  answer(s, 0, 0.99999);                                     // stand with them; the argument fails
+  const dirId = p.crew[0].knownId;
+  assert.ok(dirId, 'the director is somebody in your phone now');
+  until(s, 'review'); answer(s, 0);
+  const person = s.people.find((x) => x.id === dirId); person.relationship = 77;   // a year of being close
+  storyOf(s, 'takeover').data.called = true;
+  until(s, 'year'); answer(s, 0);
+  const o = s.offers.find((x) => x.kind === 'thaw' && x.projectTitle === 'Glass Harbour');
+  assert.ok(o && o.resume && o.director === r.name, 'the paper names the director who bought it back');
+  startProduction(s, o);
+  const q = s.productions.find((x) => x.title === 'Glass Harbour');
+  assert.deepEqual(q.crew.map((c) => c.id), crewBefore, 'the same crew, member for member');
+  assert.equal(q.crew[0].knownId, dirId, 'the same person directing');
+  assert.equal(q.crew[0].bond, 77, 'arriving at the relationship you have now');
+  assert.equal(q.crew[1].worldId, star.id, 'the same co-star of the world'); assert.equal(q.crew[1].bond, 33, 'where you left them');
+  assert.equal(q.with, star.name);
+  assert.equal(q.rosterDirector, r.id, 'the set knows whose film it is');
+  assert.ok(/again/.test(s.lastEvent), s.lastEvent);
+  assert.equal(o.via, 'director', 'and Messages says the director sent it, not the agent');
+  // The wrap: the film lands on that director's record, and nobody else's.
+  const made = r.made || 0, others = s.world.directors.filter((x) => x !== r).map((x) => x.made || 0);
+  s.productions = [q]; s.production = q; q.prepLeft = 0; q.monthsLeft = 1;
+  forced(0.5, () => productionTick(s));
+  assert.ok(!s.productions.some((x) => x.title === 'Glass Harbour'), 'it wrapped');
+  assert.equal(r.made, made + 1, `on ${r.name}'s record`);
+  assert.deepEqual(s.world.directors.filter((x) => x !== r).map((x) => x.made || 0), others, 'and on no other director\'s');
+});
+
+test('somebody who cannot come back is replaced, and it is said; a freeze from an old save still thaws', () => {
+  const s = life(); ensureWorld(s); const p = shoot(s, 'Long Pause');
+  const star = s.world.actors.find((a) => a.alive && !a.retired);
+  p.crew[1] = { ...p.crew[1], name: star.name, worldId: star.id };
+  freezeProject(s, p, { quiet: true });
+  star.alive = false;
+  const o = thawOffer(s, s.frozen[0]);
+  startProduction(s, o);
+  const q = s.productions.find((x) => x.title === 'Long Pause');
+  assert.equal(q.crew[0].name, 'Ulrich Beaumont', 'the director is back');
+  assert.ok(q.crew[1].worldId !== star.id && q.crew[1].name !== star.name, 'the co-star who died is not');
+  assert.ok(s.timeline.some((t) => /has died/.test(t.text || t) && /Long Pause/.test(t.text || t)), 'and the timeline says why');
+  const old = life(); const p2 = shoot(old, 'Old Freeze'); freezeProject(old, p2, { quiet: true });
+  delete old.frozen[0].crew; delete old.frozen[0].rosterDirector;    // what a save from before this kept
+  const o2 = thawOffer(old, old.frozen[0]);
+  assert.equal(o2.resume, null);
+  startProduction(old, o2);
+  assert.equal(old.productions.find((x) => x.title === 'Old Freeze').crew.length, p2.crew.length, 'a fresh crew, as before');
 });
 
 test('lunch with the new owners: the director remembers it the other way, and the owners send their big picture', () => {

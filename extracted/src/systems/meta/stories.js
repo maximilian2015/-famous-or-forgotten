@@ -387,7 +387,7 @@ export const CHAINS = {
             const fz = (s.frozen || []).find((x) => x.title === d.title);
             if (fz) return { speaker: d.director, text: `${f} bought "${d.title}" back from the new owners of ${d.studio} — their own money, two friends' money, and a bank that should know better. They want to finish it, and they want you in it.`,
               choices: [{ label: 'Finish it', shows: { fx: { respect: 2 }, more: [{ t: `an offer: the rest of "${d.title}", out of the freezer`, good: true }] },
-                apply: () => { thawOffer(s, fz, `${f} bought it back from the new owners of ${d.studio}. The same part, the rest of the fee.`); setRespect(s, (s.respect || 0) + 2); addTimeline(s, `${d.director} bought "${d.title}" back, and the trades remembered who stood with them.`);
+                apply: () => { thawOffer(s, fz, `${f} bought it back from the new owners of ${d.studio}. The same part, the rest of the fee.`).via = 'director'; setRespect(s, (s.respect || 0) + 2); addTimeline(s, `${d.director} bought "${d.title}" back, and the trades remembered who stood with them.`);
                   return { reply: 'The paper is in Messages. Their name is on it twice: as the director, and as the money.', end: true }; } }] };
             return { speaker: d.director, text: `${f} is making their next one at another studio, and the first thing they did was send it to you. "You were in the room. Most people were not."`,
               choices: [{ label: 'Read it', shows: { fx: { respect: 2 }, more: [{ t: `an offer: the lead in ${f}'s next film`, good: true }] },
