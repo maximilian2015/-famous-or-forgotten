@@ -9,6 +9,11 @@
 // A beat is shown through the same modal as a life dilemma (arcs.js) — s.pendingArc with
 // `story` set — and resolveArc hands it back here. Choices are rebuilt from the state
 // at the moment of the click, so nothing that cannot be saved is ever stored.
+//
+// The chains and the engine live here. The takeover's and the strike's pieces are in
+// storyBigYear.js, the recast thread's in storyRecast.js, and what all three share in
+// storyState.js. Everything those export that the rest of the game reads is re-exported
+// from here, so importers still ask stories.js.
 import { rint, chance, pick } from '../../engine/rng.js';
 import { uid } from '../../engine/id.js';
 import { addTimeline } from '../../engine/timeline.js';
@@ -27,18 +32,18 @@ import { newTitle } from '../world/titles.js';
 import { GENRES } from './news.js';
 import { rollStability, freezeProject, thawOffer, FREEZE_MENTAL } from '../career/stability.js';
 import { sets } from '../../engine/sets.js';
-import { keyFor, remember } from './memory.js';
-import { directorById } from '../world/directors.js';
 import { ambitionOf } from './ambition.js';
 import { notePassedOutcome } from './passed.js';
-import { loseContinuation, recordForTitle, ensureResult, withoutYouLine, returned } from '../career/continuation.js';
-import { slotNorm } from '../career/franchise.js';
+import { recordForTitle, ensureResult, withoutYouLine, returned } from '../career/continuation.js';
 import { COVER } from '../career/cover.js';
+import { clamp, stamp, money, first, stories, storyOf } from './storyState.js';
+import { TAKEOVER_ODDS, QUIET_ODDS, BUYERS, studioPicture, takeoverSet, ownerOdds, felt, directorCall, ownerCall, takeoverSilence, takeoverOffer,
+  strikeOdds, AD_HIDDEN, adFee, striking, beginStrike, STRIKE_LOSS, heldByStrike, strikeFates, endStrike, colleagues } from './storyBigYear.js';
+import { recastStatus, monthsToIt, wentBack, burnShows, burnTheBridge, nextQueuedRecast, recordFor } from './storyRecast.js';
+export { stories, storyOf } from './storyState.js';
+export { directorCall, ownerCall, strikeOdds, striking, offersWait } from './storyBigYear.js';
+export { BURN_STANDING, BURN_SCANDAL, noteSequelLoss, fanMood } from './storyRecast.js';
 
-const clamp = (v, a = 0, b = 100) => Math.max(a, Math.min(b, v));
-const stamp = (s) => (s.year || 0) * 12 + (s.month || 0);
-const money = (n) => (n >= 1e6 ? `€${(n / 1e6).toFixed(n >= 1e7 ? 0 : 1)}m` : `€${Math.round(n).toLocaleString()}`);
-const first = (name) => String(name || '').split(' ')[0];
 // The chance a story's roll has for this actor now: shown on the choice (shows.odds) and rolled
 // by check(), one formula.
 const oddsOf = (s, stat, diff) => 30 + (s[stat] || 0) * 0.6 - (diff - 50);
@@ -57,12 +62,10 @@ const SAY = {
   rooms: { t: 'the big castings go a little worse while the rivalry lasts', good: false },
 };
 
-export function stories(s) { return s.stories || (s.stories = []); }
 // The ones this build can tell. A save that a newer build touched can carry a story this one
 // has never heard of; it is kept, untouched, for the build that knows it, and skipped here —
 // before this, one unknown id stopped every month and the story list from drawing.
 const known = (s) => stories(s).filter((st) => CHAINS[st.id] && CHAINS[st.id].beats);
-export function storyOf(s, id) { return stories(s).find((x) => x.id === id) || null; }
 function onCooldown(s, id, months) { const last = ((s._storyLog || {})[id] || []).slice(-1)[0]; return last != null && stamp(s) - last < months; }
 function end(s, st) {
   s.stories = stories(s).filter((x) => x !== st);
@@ -615,292 +618,6 @@ function offerWith(s, st, role, note) {
   (s.offers = s.offers || []).push({ id: uid(s, 'off'), via: 'studio', kind: 'friend', story: st.id, costarId: (p && p.worldId) || undefined,
     projectTitle: newTitle(s, genre), role, type: 'Feature Film', genre, salary: Math.round(quote * 0.45), months: rint(2, 4), fame: 3,
     prestigeScore: rint(45, 70), tier: 'supporting', scale: 'feature', stability: rollStability('feature'), deadline: 3, note });
-}
-
-// ── the takeover's pieces ─────────────────────────────────────────────────────────
-// A month's chance, in a busy year, on a studio picture. About once in a long career.
-const TAKEOVER_ODDS = 8;
-// What the review does to a picture nobody argued for: a coin.
-const QUIET_ODDS = 50;
-// Who buys a studio. Never a real one; sometimes another studio of this world.
-const BUYERS = ['a streaming company with more subscribers than films', 'a private-equity fund that has never made a film', 'a phone company that wants a library'];
-// A studio's own picture, still shooting long enough for a review to reach it: not an indie (nobody
-// sells a studio from under an indie), not television, not a day as the face of a brand, and not a
-// shoot that already belongs to another story.
-const studioPicture = (p) => /^(feature|blockbuster|prestige)$/.test(p.scale || '') && !p.episodes && !p.brand && !p.story && (p.monthsLeft || 0) >= 2;
-const takeoverSet = (s, st) => sets(s).find((p) => p.id === st.data.setId) || null;
-// Lunch with the new owners: a name is worth keeping to them, so the bigger yours is, the likelier
-// they keep the picture you are in.
-const ownerOdds = (s) => Math.round(Math.min(85, 35 + (s.fame || 0) * 0.5));
-// The director remembers the week (meta/memory.js), and in your phone the friendship moves.
-function felt(s, st, p, by, why, bond) {
-  const c = p && (p.crew || [])[0];
-  if (!c) return;
-  const key = keyFor(s, c, p);
-  st.data.dirId = c.knownId || null;
-  if (key) remember(s, { act: 'takeover', p, about: key, felt: { [key]: { felt: by, why } } });
-  const person = c.knownId ? (s.people || []).find((x) => x.id === c.knownId) : null;
-  if (person) applyBond(s, person, bond, { seen: bond > 0 });
-}
-// A year on, whether the director calls (ChatGPT, 15 Nov: standing by them must not be a sure way to
-// a part). Three things, each 0–100: whether they can get anything made — the roster's standing, which
-// moves with their films (world/directors.js), or for a director off the roster a working 45, 30 if the
-// takeover shelved their picture; whether they still want you — how close you are; and whether the money
-// will take you — your Standing. Most of the time it is a coin with weight on it, not a promise.
-export function directorCall(s, d) {
-  const r = d.rosterId ? directorById(s, d.rosterId) : null;
-  const pull = r ? r.standing || 0 : d.shelved ? 30 : 45;
-  const p = d.dirId ? (s.people || []).find((x) => x.id === d.dirId) : null;
-  const close = p ? p.relationship || 0 : 50;
-  const name = Math.max(0, s.respect || 0);
-  return { pull, close, name, odds: Math.round(Math.max(10, Math.min(90, 5 + name * 0.35 + close * 0.3 + pull * 0.3))) };
-}
-// The new owners want a name, and only while it is one.
-export const ownerCall = (s) => Math.round(Math.max(15, Math.min(90, 15 + (s.fame || 0) * 0.8)));
-// Nobody calls: said with the reason — for a director the weakest of the three, for the new owners
-// your name or their own churn. What was felt the week of the sale stays felt (meta/memory.js).
-function takeoverSilence(s, st) {
-  const d = st.data, f = first(d.director);
-  const noted = (reply, extra = {}) => [{ label: 'Noted', shows: { ...extra.shows, more: [...((extra.shows || {}).more || []), { t: 'no offer', good: false }] },
-    apply: () => { if (extra.apply) extra.apply(); return { reply, end: true }; } }];
-  if (d.path !== 'director') {
-    const small = (s.fame || 0) < 50;
-    return { speaker: 'The trades', text: `${small ? `The new ${d.studio} is making its first big picture, and the lead went to a bigger name than yours is this year. ${first(d.exec)} sent flowers.` : `${d.exec} is gone: the new owners of ${d.studio} changed heads of production twice this year, and whatever the lunch bought you went out of the door with them.`} ${f} gave an interview about the takeover last month. Your name is not in it, which is how you know it is about you.`,
-      choices: noted('Lunch is not a contract.') };
-  }
-  const c = directorCall(s, d);
-  const why = c.pull <= Math.min(c.close, c.name) ? 'pull' : c.close <= c.name ? 'close' : 'name';
-  const fz = (s.frozen || []).find((x) => x.title === d.title);
-  if (fz && why === 'pull') return { speaker: d.director, text: `${f} tried to buy "${d.title}" back from the new owners of ${d.studio}. The bank wanted a director with a hit behind them, and ${f} has not had one since the takeover. It stays in the freezer.`,
-    choices: noted('Standing next to somebody is not a contract.') };
-  if (fz) return { speaker: 'The trades', text: why === 'close' ? `${f} bought "${d.title}" back from the new owners of ${d.studio}, and is finishing it with somebody else in your part. You have not really spoken since the takeover, and it shows.` : `${f} bought "${d.title}" back, and the money would only pay for it with a bigger name than yours in your part. ${f} rang to tell you themself, which most directors would not.`,
-    choices: noted('Somebody else will finish your part.', { shows: { fx: { mental: -2 }, more: [{ t: `"${d.title}" goes on without you`, good: false }] },
-      apply: () => { s.frozen = (s.frozen || []).filter((x) => x !== fz); s.mental = Math.max(0, (s.mental || 50) - 2); addTimeline(s, `"${d.title}" came out of the freezer with somebody else in your part.`, true); } }) };
-  return { speaker: why === 'close' ? 'The trades' : d.director, text: why === 'pull' ? `${f} has not made anything since the takeover. Nobody will put money behind the director who argued with the new owners of ${d.studio}. They still tell the story at dinners, and you are in it.`
-    : why === 'close' ? `${f} is making their next one, and the part went to somebody else. You have not really spoken since the takeover, and it shows.`
-    : `${f} sent their next one to you, and the money sent it back: they wanted a name with more weight than yours is this year. ${f} rang to say so themself, which most directors would not.`,
-    choices: noted('Standing next to somebody is not a contract.') };
-}
-// What a year on is worth: the director's next film, or the new owners' first big picture.
-function takeoverOffer(s, st, side) {
-  const d = st.data, genre = pick(GENRES);
-  const big = side === 'owner';
-  const quote = quoteFor(s, big ? 'film_tentpole' : 'film_studio') || quoteFor(s, 'film_studio') || 200000;
-  (s.offers = s.offers || []).push({ id: uid(s, 'off'), via: big ? 'studio' : 'director', kind: 'takeover', from: big ? d.studio : d.director,
-    director: big ? undefined : d.director, directorId: big ? undefined : d.dirId || undefined,
-    projectTitle: newTitle(s, genre), role: 'Lead', type: 'Feature Film', genre, salary: Math.round(quote * (big ? 1.15 : 0.9)), months: rint(3, big ? 6 : 4),
-    fame: big ? 8 : 5, prestigeScore: big ? rint(35, 60) : rint(55, 80), tier: 'lead', scale: big ? 'blockbuster' : 'feature', stability: rollStability(big ? 'blockbuster' : 'feature'), deadline: 3,
-    note: big ? `${first(d.exec)} asked for you. The new owners of ${d.studio} remember who was easy.` : `${first(d.director)} asked for you first. They remember who was in the room when ${d.studio} was sold.` });
-}
-
-// ── the strike's pieces ───────────────────────────────────────────────────────────
-// No strike for ten years after the last one; then the chance a month climbs from nothing to 1.5%
-// over the next fifteen. About one in fifteen to twenty years.
-export const strikeOdds = (calm) => (calm < 120 ? 0 : Math.min(1.5, ((calm - 120) / 180) * 1.5));
-// That the advert stays a secret.
-const AD_HIDDEN = 65;
-const adFee = (s) => Math.round(Math.max(40000, (quoteFor(s, 'film_indie') || 60000) * 0.8));
-// Whether the business is on strike this month (s.strike, read by strain.js canWork without asking here).
-export const striking = (s) => !!s.strike && s.strike.until > stamp(s);
-// The parts on your desk wait while it lasts, and through the month it ends, so the first month
-// back is a month to answer them in (offers.js offersTick).
-export const offersWait = (s) => !!s.strike && s.strike.until >= stamp(s);
-// The day it starts: every set of yours into the freezer, held for the day it ends, and no
-// pay-or-play — a strike is force majeure. Every picture of yours due to open before it is over,
-// or the month after, is moved back: nobody can promote it. While it lasts the parts on your desk
-// do not lapse (offers.js offersTick), and a paper signed for a date inside it waits: it cannot start
-// while canWork says no, and nobody casts elsewhere during a strike.
-function beginStrike(s, months) {
-  const now = stamp(s), until = now + months;
-  s.strike = { since: now, until };
-  const stopped = [], moved = [];
-  for (const p of sets(s).slice()) { if (p.brand) continue; freezeProject(s, p, { why: 'the actors are on strike', held: 'strike', quiet: true, forceMajeure: true }); stopped.push(p.title); }
-  for (const r of s.releases || []) {
-    if (r.due > until + 1) continue;                       // opens after it anyway
-    const by = Math.max(0, until - r.due) + rint(2, 6);
-    r.due += by; r.wait = (r.wait || 0) + by;              // "in post since" stays where it was (Diary.jsx)
-    moved.push({ title: r.title, by });
-    addTimeline(s, `"${r.title}" was moved back ${count(by, 'month')}. Nobody can promote a picture during a strike.`);
-  }
-  // The casting offices are shut too: a read you are waiting to hear about answers the first month
-  // back, and its date says so (OpenCall.jsx, Diary.jsx). The rest of the calls owed you are held in
-  // the month itself (engine/time.js, offersWait).
-  for (const x of s.submissions || []) if (x.due <= until) x.due = until + 1;
-  addTimeline(s, `The actors' guild is on strike. Every set in the business has stopped.`, true);
-  return { stopped, moved };
-}
-// What the day it ends does to each picture it stopped, by how solid its money was (stability.js):
-// a studio's own picture nearly always comes back, smaller; money nobody could name goes somewhere
-// else, or the studio calls it force majeure and tears up the paper. And a third of the parts on
-// your desk that nobody has signed are pulled when the studios cut their slates.
-const STRIKE_DEAD = (f) => Math.round(Math.min(50, 10 + Math.max(0, 92 - (f.stability ?? 70)) * 0.7));
-const STRIKE_COLD = (f) => Math.round(Math.min(40, 15 + Math.max(0, 92 - (f.stability ?? 70)) * 0.5));
-const SLATE_CUT = 35;
-const STRIKE_LOSS = 4;   // mental, when a picture of yours does not survive it
-const heldByStrike = (s, id) => (s.frozen || []).some((f) => f.id === id && f.held === 'strike');
-function strikeFates(s, desk) {
-  const pics = (s.frozen || []).filter((f) => f.held === 'strike').map((f) => {
-    const fate = chance(STRIKE_DEAD(f)) ? 'dead' : chance(STRIKE_COLD(f)) ? 'cold' : 'back';
-    return { id: f.id, title: f.title, fate, cut: fate === 'back' ? rint(15, 35) : 0 };
-  });
-  const onDesk = (o) => !desk || desk.includes(o.id);   // not a part that came in the month it ended
-  const pulled = (s.offers || []).filter((o) => onDesk(o) && o.kind !== 'brand' && !o.signed && chance(SLATE_CUT)).map((o) => ({ id: o.id, title: o.projectTitle || o.title || 'a part' }));
-  return { pics, pulled };
-}
-// The day it ends. A paper signed for a date inside the strike starts from today: the date moved
-// with everything else, so business affairs' two months of holding it (contract.js) start now too.
-function endStrike(s, pics, pulled) {
-  s.strike = null; s._strikeCalm = stamp(s);
-  for (const o of s.offers || []) if (o.signed && o.startAt != null && o.startAt < stamp(s)) o.startAt = stamp(s);
-  for (const x of pics) {
-    const f = (s.frozen || []).find((y) => y.id === x.id); if (!f) continue;
-    if (x.fate === 'back') {
-      f.owed = Math.round((f.owed || 0) * (1 - x.cut / 100));
-      thawOffer(s, f, `The strike is over and it ate the budget. They want to finish it — the same part, ${x.cut}% less for the rest: €${f.owed.toLocaleString()}.`);
-    } else if (x.fate === 'cold') {
-      f.held = null; f.why = 'the money went somewhere else during the strike';   // an ordinary freeze from here (frozenTick)
-      addTimeline(s, `"${f.title}" did not come back after the strike. The money went somewhere else while the sets were dark.`, true);
-    } else {
-      s.frozen = s.frozen.filter((y) => y !== f);
-      addTimeline(s, `"${f.title}" was cancelled after the strike. The studio called it force majeure.`, true);
-    }
-  }
-  if (pics.some((x) => x.fate === 'dead')) s.mental = Math.max(0, (s.mental || 50) - STRIKE_LOSS);
-  if (pulled.length) {
-    const gone = new Set(pulled.map((x) => x.id));
-    s.offers = (s.offers || []).filter((o) => !gone.has(o.id));
-    addTimeline(s, `The studios cut their slates after the strike: ${pulled.map((x) => `"${x.title}"`).join(', ')} pulled.`);
-  }
-}
-// The actors in your phone: the picket line or the advert, they all hear.
-function colleagues(s, by, seen) {
-  for (const p of s.people || []) if (p.role === 'Fellow Actor' && p.alive !== false) applyBond(s, p, by, { seen });
-}
-
-// What the recast thread has come to, in words: which season or part, who has your part, and
-// how it went — each of those is on st.data by the time the line can be shown.
-function recastStatus(s, st) {
-  const d = st.data, tv = d.kind === 'renewal';
-  const root = d.root || String(d.title || '').replace(/(\s*·\s*season\s+\d+)+\s*$/i, '').replace(/\s+(II|III|IV|V|VI)$/, '');
-  const which = tv ? `Season ${d.season || 2} of "${root}"` : `"${d.title}"`;
-  if (st.beat === 'meeting') return `${which}: they will make it anyway. ${first(d.director)} has asked to meet.`;
-  if (st.beat === 'answer') return `${which}: the paper came back changed. They are waiting.`;
-  if (st.beat === 'again') {
-    const f = recordForTitle(s, d.title);
-    const who = f && f.rec.by ? `${f.rec.by.name} has your part` : d.other ? `${d.other} has your part` : 'Somebody else has your part';
-    // What the record knows beats what an old thread rolled.
-    const x = f && f.rec.result;
-    if (x && tv) return `${which} went out without you. ${who}, and ${x.renewed ? 'the network has ordered another' : 'it was not renewed'}.`;
-    return tv ? `${which} went out without you. ${who}, and the numbers held.`
-      : `${which} opened without you${d.gross ? ` at ${money(d.gross)}` : ''}. ${who}, and it did fine.`;
-  }
-  return `${which} is being made with somebody else in your part.`;
-}
-// How long until it comes out, from the record: that is when the trades can say how it did.
-function monthsToIt(s, st) {
-  const f = recordForTitle(s, st.data.title);
-  return f && f.rec.due != null ? Math.max(1, f.rec.due - stamp(s)) : rint(12, 18);
-}
-// You went back: on a set, finished and in post (which this used to miss, so the trades announced a
-// recast of a season about to open with you in it), on your record lately, or a signed paper.
-function wentBack(s, st) {
-  const t = String(st.data.title || '').replace('⭐ ', '');
-  const mine = (x) => !!x && String(x.title || '').replace('⭐ ', '') === t;
-  const sets = (s.productions || []).concat(s.production ? [s.production] : []);
-  return sets.some(mine) || (s.releases || []).some(mine) || (s.filmography || []).some((c) => mine(c) && (c.year || 0) >= (s.year || 0) - 2) || (s.offers || []).some((o) => o.story === 'recast' && o.signed);
-}
-// The second no. Very expensive, and the director is gone for good.
-// What the second no costs — one number, read by the choice that shows it, by the bridge that burns
-// and by the warning on Pass (career/offers.js declineConsequences).
-export const BURN_STANDING = 8, BURN_SCANDAL = 4;
-function burnShows(st) { return { fx: { respect: -BURN_STANDING, scandal: BURN_SCANDAL }, more: [{ t: `${first(st.data.director)} never works with you again`, good: false }] }; }
-function burnTheBridge(s, st) {
-  st.data.burned = true;
-  setRespect(s, (s.respect || 0) - BURN_STANDING);
-  s.scandal = clamp((s.scandal || 0) + BURN_SCANDAL);
-  (s.grudges = s.grudges || []).push({ who: st.data.director, title: st.data.title, scale: st.data.scale, since: stamp(s), due: stamp(s) + 9999, until: stamp(s) + 9999, hit: false, gross: 0, opened: true });
-  const p = (s.people || []).find((x) => x.name === st.data.director); if (p) { p.cold = true; p.relationship = Math.min(p.relationship || 0, 5); }
-  addTimeline(s, `${st.data.director} will not work with you again. Not a rumour: they said it to the trades.`, true);
-}
-// A lead who was asked back and did not come: passed, let the paper lapse, or pushed the
-// talks until they stopped answering (offers.js, contract.js). The fans are furious now;
-// the director writes in two months.
-// Called by career/continuation.js loseContinuation, which has already written the fact down — on the
-// credit and in the ledger — whatever happens here. This is only what people make of it.
-export function noteSequelLoss(s, o, how, rec = null, src = null) {
-  if (!o || (o.kind !== 'sequel' && o.kind !== 'renewal') || o.tier === 'supporting') return;
-  const title = String(o.projectTitle || '').replace('⭐ ', '');
-  const root = o.kind === 'renewal' ? (o.seriesTitle || title) : title.replace(/\s+(II|III|IV|V|VI)$/, '');
-  const st = storyOf(s, 'recast');
-  // The second no, after the meeting: it goes ahead without you, and the trades tell you how the
-  // month it comes out.
-  if (o.story === 'recast' && st) { burnTheBridge(s, st); st.beat = 'without'; st.due = Math.max(stamp(s) + 1, (rec && rec.due) || stamp(s) + rint(12, 18)); return; }
-  // The fans. Not every recast is a scandal (Maxi/ChatGPT, 22 Oct): it depends on how much the show
-  // meant to people, how long they have lived with it, and whose doing it looks like. A show nobody
-  // watched recasts in a paragraph. And nobody's standing moves because a negotiation did not close —
-  // walking out of an option (offers.js) and walking out of the room (standoff.js) cost what they cost there.
-  const mood = fansOf(o, how, src);
-  const onYou = how !== 'writtenOut' && how !== 'network' && how !== 'exit';
-  if (mood === 'furious' && onYou) {
-    s.scandal = clamp((s.scandal || 0) + 3);
-    addTimeline(s, how === 'schedule'
-      ? (o.kind === 'renewal' ? `Fans are furious: you could not free yourself for season ${o.season} of "${root}", and they are recasting.` : `Fans are furious: you were on another set and "${title}" is going ahead without you.`)
-      : how === 'notMade' ? `Fans are furious: there will be no ${o.kind === 'renewal' ? `season ${o.season} of "${root}"` : `"${title}"`}, and they have decided whose fault that is.`
-      : (o.kind === 'renewal' ? `Fans are furious: you are not coming back for season ${o.season} of "${root}".` : `Fans are furious: "${title}" is going ahead without you.`), true);
-  } else if (mood === 'furious') addTimeline(s, `Fans are furious with the network: your character is gone from "${root}". Some of the anger is on your side.`);
-  else if (mood === 'sorry') addTimeline(s, o.kind === 'renewal' ? `"${root}" goes on without you. The fans are sorry to see you go; the trades give it a paragraph.` : `"${title}" goes ahead without you. A paragraph in the trades, and some disappointed fans.`);
-  // The director's letter is for a part you could still go back to.
-  if (how === 'writtenOut' || how === 'network' || how === 'notMade' || how === 'exit' || how === 'option') return;
-  const source = src || (s.filmography || []).find((c) => !c.minor && (c.title === root || c.title === title)) || {};
-  const director = source.director || personName(chance(50) ? 'female' : 'male', namesInUse(s));
-  const data = { title, root, kind: o.kind, part: o.part || 0, season: o.season || 0, scale: o.scale, director, how, offer: { ...o, contract: undefined, signed: false, sent: false, waitsForWrap: false, startAt: 0, _warned: 0, deadline: 4 } };
-  // One "Without you" at a time — the next one waits its turn instead of never happening.
-  if (st) {
-    const q = (s.recastQueue = s.recastQueue || []);
-    if (!q.some((x) => x.title === title) && st.data.title !== title) q.push({ ...data, queued: stamp(s) });
-    return;
-  }
-  stories(s).push({ id: 'recast', beat: 'meeting', due: stamp(s) + 2, since: stamp(s), data });
-}
-// What the fans would make of it, asked before it happens (the warning on Pass): a reading, not a promise.
-export function fanMood(o, how, src) { return o && o.tier !== 'supporting' ? fansOf(o, how, src) : 'quiet'; }
-// How much the show or the film meant to the people watching it, and whose doing the loss looks like.
-function fansOf(o, how, src) {
-  if (!src) return 'quiet';
-  let pull;
-  if (o.kind === 'sequel') pull = src.worldHit || src.status === 'World Hit' ? 2.5 : ({ smash: 2, profitable: 1.3, 'broke even': 0.8, bomb: 0.4, breakout: 2, hit: 1.4, solid: 0.9, miss: 0.4 }[src.verdict] ?? 0.8);
-  else if (src.streaming) pull = (src.views28 || 0) / 30;
-  else pull = (src.endViewers || src.viewers || 0) / slotNorm(src.type);
-  const lived = o.kind === 'renewal' ? Math.min(0.6, Math.max(0, ((o.season || 2) - 2) * 0.15)) : 0;
-  // How strongly they feel. Whose doing it looks like decides only who they are angry with (onYou in
-  // noteSequelLoss): a hit show that writes out its lead has furious fans, furious with the network.
-  const strength = { passed: 1.2, option: 1.2, meeting: 1.1, schedule: 0.9, exit: 0.4 }[how] ?? 1;
-  const v = (Math.min(3, pull) + lived) * strength;
-  return v >= 1.6 ? 'furious' : v >= 0.9 ? 'sorry' : 'quiet';
-}
-// The next "Without you" in the queue (the chain's start). A part you could still go back to gets the
-// director's letter; one already being made without you gets the news the month it comes out; one
-// the trades have already told is done.
-function nextQueuedRecast(s) {
-  const q = s.recastQueue || [];
-  while (q.length) {
-    const d = q.shift();
-    const found = recordForTitle(s, d.title);
-    if (!found || found.rec.told || found.rec.you === 'returned') continue;
-    const late = found.rec.due != null && found.rec.due - ((d.offer && d.offer.months) || 4) - 2 <= stamp(s);
-    return { ...d, beat: late ? 'without' : 'meeting', due: late ? Math.max(stamp(s), found.rec.due) : stamp(s) + 1 };
-  }
-  return null;
-}
-// A "Without you" already running from before the record existed: its record is written now, from
-// the offer it carries, so what it tells is the same arithmetic as everybody else's.
-function recordFor(s, st) {
-  let found = recordForTitle(s, st.data.title);
-  if (!found && st.data.offer) {
-    loseContinuation(s, { ...st.data.offer, story: undefined }, st.data.how || 'talks', { quiet: true, at: st.since });
-    found = recordForTitle(s, st.data.title);
-  }
-  return found;
 }
 
 // ── the engine ───────────────────────────────────────────────────────────────────
